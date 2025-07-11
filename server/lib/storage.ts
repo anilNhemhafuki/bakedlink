@@ -87,7 +87,10 @@ export interface IStorage {
   // Category operations
   getCategories(): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
-  updateCategory(id: number, category: Partial<InsertCategory>): Promise<Category>;
+  updateCategory(
+    id: number,
+    category: Partial<InsertCategory>,
+  ): Promise<Category>;
   deleteCategory(id: number): Promise<void>;
 
   // Product operations
@@ -106,7 +109,7 @@ export interface IStorage {
   createUnit(data: InsertUnit): Promise<Unit>;
   updateUnit(id: number, data: Partial<InsertUnit>): Promise<Unit>;
   deleteUnit(id: number): Promise<void>;
-  
+
   // Unit conversion operations
   getUnitConversions(): Promise<any[]>;
   createUnitConversion(data: any): Promise<any>;
@@ -117,13 +120,23 @@ export interface IStorage {
   getInventoryItems(): Promise<InventoryItem[]>;
   getInventoryItemById(id: number): Promise<InventoryItem | undefined>;
   createInventoryItem(data: InsertInventoryItem): Promise<InventoryItem>;
-  updateInventoryItem(id: number, data: Partial<InsertInventoryItem>): Promise<InventoryItem>;
+  updateInventoryItem(
+    id: number,
+    data: Partial<InsertInventoryItem>,
+  ): Promise<InventoryItem>;
   deleteInventoryItem(id: number): Promise<void>;
   getInventoryCategories(): Promise<InventoryCategory[]>;
-  createInventoryCategory(data: InsertInventoryCategory): Promise<InventoryCategory>;
-  updateInventoryCategory(id: number, data: Partial<InsertInventoryCategory>): Promise<InventoryCategory>;
+  createInventoryCategory(
+    data: InsertInventoryCategory,
+  ): Promise<InventoryCategory>;
+  updateInventoryCategory(
+    id: number,
+    data: Partial<InsertInventoryCategory>,
+  ): Promise<InventoryCategory>;
   deleteInventoryCategory(id: number): Promise<void>;
-  createInventoryTransaction(transaction: InsertInventoryTransaction): Promise<InventoryTransaction>;
+  createInventoryTransaction(
+    transaction: InsertInventoryTransaction,
+  ): Promise<InventoryTransaction>;
   getInventoryTransactions(itemId?: number): Promise<any[]>;
   getLowStockItems(): Promise<InventoryItem[]>;
 
@@ -133,8 +146,15 @@ export interface IStorage {
   getRolePermissions(role: string): Promise<any[]>;
   setRolePermissions(role: string, permissionIds: number[]): Promise<void>;
   getUserPermissions(userId: string): Promise<any[]>;
-  setUserPermissions(userId: string, permissionUpdates: { permissionId: number; granted: boolean }[]): Promise<void>;
-  checkUserPermission(userId: string, resource: string, action: string): Promise<boolean>;
+  setUserPermissions(
+    userId: string,
+    permissionUpdates: { permissionId: number; granted: boolean }[],
+  ): Promise<void>;
+  checkUserPermission(
+    userId: string,
+    resource: string,
+    action: string,
+  ): Promise<boolean>;
   initializeDefaultPermissions(): Promise<void>;
 
   // Settings operations
@@ -147,14 +167,17 @@ export interface IStorage {
   getDashboardStats(): Promise<any>;
   getSalesAnalytics(startDate?: Date, endDate?: Date): Promise<any>;
 
-   // Customer operations
+  // Customer operations
   getCustomers(): Promise<Customer[]>;
   getCustomerById(id: number): Promise<Customer | undefined>;
   createCustomer(customer: InsertCustomer): Promise<Customer>;
-  updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer>;
+  updateCustomer(
+    id: number,
+    customer: Partial<InsertCustomer>,
+  ): Promise<Customer>;
   deleteCustomer(id: number): Promise<void>;
 
-   // Party operations
+  // Party operations
   getParties(): Promise<Party[]>;
   createParty(party: InsertParty): Promise<Party>;
   updateParty(id: number, party: Partial<InsertParty>): Promise<Party>;
@@ -162,16 +185,22 @@ export interface IStorage {
 
   // Ledger Transaction Methods
   createLedgerTransaction(data: any): Promise<any>;
-  getLedgerTransactions(entityId: number, entityType: 'customer' | 'party'): Promise<any[]>;
+  getLedgerTransactions(
+    entityId: number,
+    entityType: "customer" | "party",
+  ): Promise<any[]>;
   updateLedgerTransaction(id: number, data: any): Promise<any>;
   deleteLedgerTransaction(id: number): Promise<void>;
-  recalculateRunningBalance(entityId: number, entityType: 'customer' | 'party'): Promise<number>;
+  recalculateRunningBalance(
+    entityId: number,
+    entityType: "customer" | "party",
+  ): Promise<number>;
 
-   // Asset operations
-   getAssets(): Promise<Asset[]>;
-   createAsset(asset: InsertAsset): Promise<Asset>;
-   updateAsset(id: number, asset: Partial<InsertAsset>): Promise<Asset>;
-   deleteAsset(id: number): Promise<void>;
+  // Asset operations
+  getAssets(): Promise<Asset[]>;
+  createAsset(asset: InsertAsset): Promise<Asset>;
+  updateAsset(id: number, asset: Partial<InsertAsset>): Promise<Asset>;
+  deleteAsset(id: number): Promise<void>;
 }
 
 export class Storage implements IStorage {
@@ -201,7 +230,8 @@ export class Storage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const { email, password, firstName, lastName, profileImageUrl, role } = userData;
+    const { email, password, firstName, lastName, profileImageUrl, role } =
+      userData;
 
     const existingUser = await this.getUserByEmail(email);
 
@@ -219,7 +249,9 @@ export class Storage implements IStorage {
 
       return updatedUser;
     } else {
-      const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
+      const hashedPassword = password
+        ? await bcrypt.hash(password, 10)
+        : undefined;
       const [newUser] = await db
         .insert(users)
         .values({
@@ -325,11 +357,17 @@ export class Storage implements IStorage {
   }
 
   async createCategory(category: InsertCategory): Promise<Category> {
-    const [newCategory] = await db.insert(categories).values(category).returning();
+    const [newCategory] = await db
+      .insert(categories)
+      .values(category)
+      .returning();
     return newCategory;
   }
 
-  async updateCategory(id: number, category: Partial<InsertCategory>): Promise<Category> {
+  async updateCategory(
+    id: number,
+    category: Partial<InsertCategory>,
+  ): Promise<Category> {
     const [updatedCategory] = await db
       .update(categories)
       .set(category)
@@ -376,7 +414,7 @@ export class Storage implements IStorage {
       productsData.map(async (product) => {
         const ingredients = await this.getProductIngredients(product.id);
         return { ...product, ingredients };
-      })
+      }),
     );
 
     return productsWithIngredients;
@@ -387,7 +425,10 @@ export class Storage implements IStorage {
     return newProduct;
   }
 
-  async updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product> {
+  async updateProduct(
+    id: number,
+    product: Partial<InsertProduct>,
+  ): Promise<Product> {
     const [updatedProduct] = await db
       .update(products)
       .set({ ...product, updatedAt: new Date() })
@@ -397,7 +438,9 @@ export class Storage implements IStorage {
   }
 
   async deleteProduct(id: number): Promise<void> {
-    await db.delete(productIngredients).where(eq(productIngredients.productId, id));
+    await db
+      .delete(productIngredients)
+      .where(eq(productIngredients.productId, id));
     await db.delete(products).where(eq(products.id, id));
   }
 
@@ -413,7 +456,10 @@ export class Storage implements IStorage {
         inventoryItemUnit: inventoryItems.unit,
       })
       .from(productIngredients)
-      .leftJoin(inventoryItems, eq(productIngredients.inventoryItemId, inventoryItems.id))
+      .leftJoin(
+        inventoryItems,
+        eq(productIngredients.inventoryItemId, inventoryItems.id),
+      )
       .where(eq(productIngredients.productId, productId));
   }
 
@@ -426,7 +472,9 @@ export class Storage implements IStorage {
   }
 
   async deleteProductIngredients(productId: number): Promise<void> {
-    await db.delete(productIngredients).where(eq(productIngredients.productId, productId));
+    await db
+      .delete(productIngredients)
+      .where(eq(productIngredients.productId, productId));
   }
 
   // Unit operations
@@ -458,7 +506,10 @@ export class Storage implements IStorage {
   }
 
   async createUnitConversion(data: any): Promise<any> {
-    const [newConversion] = await db.insert(unitConversions).values(data).returning();
+    const [newConversion] = await db
+      .insert(unitConversions)
+      .values(data)
+      .returning();
     return newConversion;
   }
 
@@ -478,7 +529,10 @@ export class Storage implements IStorage {
   // Inventory operations
   async getInventoryItems(): Promise<InventoryItem[]> {
     try {
-      return await db.select().from(inventoryItems).orderBy(inventoryItems.name);
+      return await db
+        .select()
+        .from(inventoryItems)
+        .orderBy(inventoryItems.name);
     } catch (error) {
       console.error("Error in getInventoryItems:", error);
       return [];
@@ -499,7 +553,10 @@ export class Storage implements IStorage {
     return newItem;
   }
 
-  async updateInventoryItem(id: number, data: Partial<InsertInventoryItem>): Promise<InventoryItem> {
+  async updateInventoryItem(
+    id: number,
+    data: Partial<InsertInventoryItem>,
+  ): Promise<InventoryItem> {
     const [updatedItem] = await db
       .update(inventoryItems)
       .set({ ...data, updatedAt: new Date() })
@@ -509,20 +566,33 @@ export class Storage implements IStorage {
   }
 
   async deleteInventoryItem(id: number): Promise<void> {
-    await db.delete(inventoryTransactions).where(eq(inventoryTransactions.itemId, id));
+    await db
+      .delete(inventoryTransactions)
+      .where(eq(inventoryTransactions.itemId, id));
     await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
   }
 
   async getInventoryCategories(): Promise<InventoryCategory[]> {
-    return await db.select().from(inventoryCategories).orderBy(inventoryCategories.name);
+    return await db
+      .select()
+      .from(inventoryCategories)
+      .orderBy(inventoryCategories.name);
   }
 
-  async createInventoryCategory(data: InsertInventoryCategory): Promise<InventoryCategory> {
-    const [newCategory] = await db.insert(inventoryCategories).values(data).returning();
+  async createInventoryCategory(
+    data: InsertInventoryCategory,
+  ): Promise<InventoryCategory> {
+    const [newCategory] = await db
+      .insert(inventoryCategories)
+      .values(data)
+      .returning();
     return newCategory;
   }
 
-  async updateInventoryCategory(id: number, data: Partial<InsertInventoryCategory>): Promise<InventoryCategory> {
+  async updateInventoryCategory(
+    id: number,
+    data: Partial<InsertInventoryCategory>,
+  ): Promise<InventoryCategory> {
     const [updatedCategory] = await db
       .update(inventoryCategories)
       .set({ ...data, updatedAt: new Date() })
@@ -535,7 +605,9 @@ export class Storage implements IStorage {
     await db.delete(inventoryCategories).where(eq(inventoryCategories.id, id));
   }
 
-  async createInventoryTransaction(transaction: InsertInventoryTransaction): Promise<InventoryTransaction> {
+  async createInventoryTransaction(
+    transaction: InsertInventoryTransaction,
+  ): Promise<InventoryTransaction> {
     const [newTransaction] = await db
       .insert(inventoryTransactions)
       .values(transaction)
@@ -544,9 +616,10 @@ export class Storage implements IStorage {
     // Update the current stock
     const item = await this.getInventoryItemById(transaction.inventoryItemId);
     if (item) {
-      const quantityChange = transaction.type === "in" 
-        ? parseFloat(transaction.quantity) 
-        : -parseFloat(transaction.quantity);
+      const quantityChange =
+        transaction.type === "in"
+          ? parseFloat(transaction.quantity)
+          : -parseFloat(transaction.quantity);
 
       const newStock = parseFloat(item.currentStock || "0") + quantityChange;
 
@@ -572,7 +645,10 @@ export class Storage implements IStorage {
         unit: inventoryItems.unit,
       })
       .from(inventoryTransactions)
-      .leftJoin(inventoryItems, eq(inventoryTransactions.inventoryItemId, inventoryItems.id))
+      .leftJoin(
+        inventoryItems,
+        eq(inventoryTransactions.inventoryItemId, inventoryItems.id),
+      )
       .orderBy(desc(inventoryTransactions.createdAt));
 
     if (itemId) {
@@ -587,7 +663,7 @@ export class Storage implements IStorage {
       .select()
       .from(inventoryItems)
       .where(
-        sql`CAST(${inventoryItems.currentStock} AS DECIMAL) <= CAST(${inventoryItems.minLevel} AS DECIMAL)`
+        sql`CAST(${inventoryItems.currentStock} AS DECIMAL) <= CAST(${inventoryItems.minLevel} AS DECIMAL)`,
       )
       .orderBy(inventoryItems.name);
   }
@@ -597,11 +673,17 @@ export class Storage implements IStorage {
   }
 
   async getPermissions(): Promise<Permission[]> {
-    return await db.select().from(permissions).orderBy(permissions.resource, permissions.action);
+    return await db
+      .select()
+      .from(permissions)
+      .orderBy(permissions.resource, permissions.action);
   }
 
   async createPermission(data: InsertPermission): Promise<Permission> {
-    const [newPermission] = await db.insert(permissions).values(data).returning();
+    const [newPermission] = await db
+      .insert(permissions)
+      .values(data)
+      .returning();
     return newPermission;
   }
 
@@ -615,16 +697,22 @@ export class Storage implements IStorage {
         description: permissions.description,
       })
       .from(permissions)
-      .innerJoin(rolePermissions, eq(permissions.id, rolePermissions.permissionId))
+      .innerJoin(
+        rolePermissions,
+        eq(permissions.id, rolePermissions.permissionId),
+      )
       .where(eq(rolePermissions.role, role))
       .orderBy(permissions.resource, permissions.action);
   }
 
-  async setRolePermissions(role: string, permissionIds: number[]): Promise<void> {
+  async setRolePermissions(
+    role: string,
+    permissionIds: number[],
+  ): Promise<void> {
     await db.delete(rolePermissions).where(eq(rolePermissions.role, role));
 
     if (permissionIds.length > 0) {
-      const rolePermissionData = permissionIds.map(permissionId => ({
+      const rolePermissionData = permissionIds.map((permissionId) => ({
         role,
         permissionId,
       }));
@@ -638,7 +726,7 @@ export class Storage implements IStorage {
       if (!user) return [];
 
       // Super admin gets all permissions
-      if (user.role === 'super_admin') {
+      if (user.role === "super_admin") {
         return await db
           .select({
             id: permissions.id,
@@ -653,7 +741,7 @@ export class Storage implements IStorage {
       }
 
       // Admin gets most permissions except super admin specific ones
-      if (user.role === 'admin') {
+      if (user.role === "admin") {
         return await db
           .select({
             id: permissions.id,
@@ -679,7 +767,10 @@ export class Storage implements IStorage {
           granted: sql<boolean>`true`,
         })
         .from(permissions)
-        .innerJoin(this.rolePermissions, eq(permissions.id, this.rolePermissions.permissionId))
+        .innerJoin(
+          this.rolePermissions,
+          eq(permissions.id, this.rolePermissions.permissionId),
+        )
         .where(eq(this.rolePermissions.role, user.role))
         .orderBy(permissions.resource, permissions.action);
 
@@ -694,25 +785,27 @@ export class Storage implements IStorage {
           granted: this.userPermissions.granted,
         })
         .from(permissions)
-        .innerJoin(this.userPermissions, eq(permissions.id, this.userPermissions.permissionId))
+        .innerJoin(
+          this.userPermissions,
+          eq(permissions.id, this.userPermissions.permissionId),
+        )
         .where(eq(this.userPermissions.userId, userId))
         .orderBy(permissions.resource, permissions.action);
 
       // Merge permissions (user-specific overrides take precedence)
       const permissionMap = new Map();
-      
+
       // Add role permissions first
-      rolePermissions.forEach(perm => {
-        permissionMap.set(perm.id, perm);
-      });
-      
-      // Override with user-specific permissions
-      userPermissions.forEach(perm => {
+      rolePermissions.forEach((perm) => {
         permissionMap.set(perm.id, perm);
       });
 
-      return Array.from(permissionMap.values());ssions);
-      }
+      // Override with user-specific permissions
+      userPermissions.forEach((perm) => {
+        permissionMap.set(perm.id, perm);
+      });
+
+      return Array.from(permissionMap.values());
 
       const userResults = await db
         .select({
@@ -724,7 +817,10 @@ export class Storage implements IStorage {
           granted: userPermissions.granted,
         })
         .from(userPermissions)
-        .innerJoin(permissions, eq(permissions.id, userPermissions.permissionId))
+        .innerJoin(
+          permissions,
+          eq(permissions.id, userPermissions.permissionId),
+        )
         .where(eq(userPermissions.userId, userId));
 
       const roleResults = await db
@@ -737,13 +833,18 @@ export class Storage implements IStorage {
           granted: sql<boolean>`true`,
         })
         .from(rolePermissions)
-        .innerJoin(permissions, eq(permissions.id, rolePermissions.permissionId))
+        .innerJoin(
+          permissions,
+          eq(permissions.id, rolePermissions.permissionId),
+        )
         .where(eq(rolePermissions.role, user.role));
 
       // Merge user and role permissions, user permissions override role permissions
       const allPermissions = [...roleResults];
-      userResults.forEach(userPerm => {
-        const existingIndex = allPermissions.findIndex(p => p.id === userPerm.id);
+      userResults.forEach((userPerm) => {
+        const existingIndex = allPermissions.findIndex(
+          (p) => p.id === userPerm.id,
+        );
         if (existingIndex >= 0) {
           allPermissions[existingIndex] = userPerm;
         } else {
@@ -751,31 +852,39 @@ export class Storage implements IStorage {
         }
       });
 
-      return allPermissions.filter(p => p.granted);
+      return allPermissions.filter((p) => p.granted);
     } catch (error) {
       console.error("Error fetching user permissions:", error);
       return [];
     }
   }
 
-  async setUserPermissions(userId: string, permissionUpdates: { permissionId: number; granted: boolean }[]): Promise<void> {
+  async setUserPermissions(
+    userId: string,
+    permissionUpdates: { permissionId: number; granted: boolean }[],
+  ): Promise<void> {
     await db.delete(userPermissions).where(eq(userPermissions.userId, userId));
 
     if (permissionUpdates.length > 0) {
-      const userPermissionData = permissionUpdates.map(update => ({
+      const userPermissionData = permissionUpdates.map((update) => ({
         userId,
         permissionId: update.permissionId,
-        granted: update.granted
+        granted: update.granted,
       }));
       await db.insert(userPermissions).values(userPermissionData);
     }
   }
 
-  async checkUserPermission(userId: string, resource: string, action: string): Promise<boolean> {
+  async checkUserPermission(
+    userId: string,
+    resource: string,
+    action: string,
+  ): Promise<boolean> {
     const userPermissions = await this.getUserPermissions(userId);
-    return userPermissions.some(perm => 
-      perm.resource === resource && 
-      (perm.action === action || perm.action === 'read_write')
+    return userPermissions.some(
+      (perm) =>
+        perm.resource === resource &&
+        (perm.action === action || perm.action === "read_write"),
     );
   }
 
@@ -784,12 +893,23 @@ export class Storage implements IStorage {
     if (existingPermissions.length > 0) return;
 
     const resources = [
-      'dashboard', 'products', 'inventory', 'orders', 'production', 
-      'customers', 'parties', 'assets', 'expenses', 'sales', 
-      'purchases', 'reports', 'settings', 'users'
+      "dashboard",
+      "products",
+      "inventory",
+      "orders",
+      "production",
+      "customers",
+      "parties",
+      "assets",
+      "expenses",
+      "sales",
+      "purchases",
+      "reports",
+      "settings",
+      "users",
     ];
 
-    const actions = ['read', 'write', 'read_write'];
+    const actions = ["read", "write", "read_write"];
 
     const defaultPermissions = [];
     for (const resource of resources) {
@@ -798,7 +918,7 @@ export class Storage implements IStorage {
           name: `${resource}_${action}`,
           resource,
           action,
-          description: `${action.charAt(0).toUpperCase() + action.slice(1)} access to ${resource}`
+          description: `${action.charAt(0).toUpperCase() + action.slice(1)} access to ${resource}`,
         });
       }
     }
@@ -808,34 +928,36 @@ export class Storage implements IStorage {
     }
 
     const allPermissions = await this.getPermissions();
-    
+
     // Super admin gets all permissions
-    const superAdminPermissionIds = allPermissions.map(p => p.id);
-    await this.setRolePermissions('super_admin', superAdminPermissionIds);
+    const superAdminPermissionIds = allPermissions.map((p) => p.id);
+    await this.setRolePermissions("super_admin", superAdminPermissionIds);
 
     const adminPermissionIds = allPermissions
-      .filter(p => p.action === 'read_write')
-      .map(p => p.id);
-    await this.setRolePermissions('admin', adminPermissionIds);
+      .filter((p) => p.action === "read_write")
+      .map((p) => p.id);
+    await this.setRolePermissions("admin", adminPermissionIds);
 
     const managerPermissionIds = allPermissions
-      .filter(p => p.action === 'read_write' && p.resource !== 'users')
-      .map(p => p.id);
-    await this.setRolePermissions('manager', managerPermissionIds);
+      .filter((p) => p.action === "read_write" && p.resource !== "users")
+      .map((p) => p.id);
+    await this.setRolePermissions("manager", managerPermissionIds);
 
     const staffPermissionIds = allPermissions
-      .filter(p => 
-        p.action === 'read' || 
-        (p.action === 'write' && ['orders', 'customers', 'production'].includes(p.resource))
+      .filter(
+        (p) =>
+          p.action === "read" ||
+          (p.action === "write" &&
+            ["orders", "customers", "production"].includes(p.resource)),
       )
-      .map(p => p.id);
-    await this.setRolePermissions('staff', staffPermissionIds);
+      .map((p) => p.id);
+    await this.setRolePermissions("staff", staffPermissionIds);
   }
 
   async getSettings(): Promise<any> {
     const settingsResult = await db.select().from(settings);
     const settingsObj: any = {};
-    settingsResult.forEach(setting => {
+    settingsResult.forEach((setting) => {
       settingsObj[setting.key] = setting.value;
     });
     return settingsObj;
@@ -1021,8 +1143,8 @@ export class Storage implements IStorage {
         .where(
           and(
             gte(productionSchedule.scheduledDate, today),
-            lt(productionSchedule.scheduledDate, tomorrow)
-          )
+            lt(productionSchedule.scheduledDate, tomorrow),
+          ),
         )
         .orderBy(productionSchedule.scheduledDate);
     } catch (error) {
@@ -1032,7 +1154,10 @@ export class Storage implements IStorage {
   }
 
   async createProductionScheduleItem(item: any): Promise<any> {
-    const [newItem] = await db.insert(productionSchedule).values(item).returning();
+    const [newItem] = await db
+      .insert(productionSchedule)
+      .values(item)
+      .returning();
     return newItem;
   }
 
@@ -1082,11 +1207,17 @@ export class Storage implements IStorage {
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
-    const [newCustomer] = await db.insert(customers).values(customer).returning();
+    const [newCustomer] = await db
+      .insert(customers)
+      .values(customer)
+      .returning();
     return newCustomer;
   }
 
-  async updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer> {
+  async updateCustomer(
+    id: number,
+    customer: Partial<InsertCustomer>,
+  ): Promise<Customer> {
     const [updatedCustomer] = await db
       .update(customers)
       .set({ ...customer, updatedAt: new Date() })
@@ -1122,28 +1253,28 @@ export class Storage implements IStorage {
     await db.delete(parties).where(eq(parties.id, id));
   }
 
-    // Asset operations
-    async getAssets(): Promise<Asset[]> {
-        return await db.select().from(assets).orderBy(assets.name);
-    }
+  // Asset operations
+  async getAssets(): Promise<Asset[]> {
+    return await db.select().from(assets).orderBy(assets.name);
+  }
 
-    async createAsset(asset: InsertAsset): Promise<Asset> {
-        const [newAsset] = await db.insert(assets).values(asset).returning();
-        return newAsset;
-    }
+  async createAsset(asset: InsertAsset): Promise<Asset> {
+    const [newAsset] = await db.insert(assets).values(asset).returning();
+    return newAsset;
+  }
 
-    async updateAsset(id: number, asset: Partial<InsertAsset>): Promise<Asset> {
-        const [updatedAsset] = await db
-            .update(assets)
-            .set({ ...asset, updatedAt: new Date() })
-            .where(eq(assets.id, id))
-            .returning();
-        return updatedAsset;
-    }
+  async updateAsset(id: number, asset: Partial<InsertAsset>): Promise<Asset> {
+    const [updatedAsset] = await db
+      .update(assets)
+      .set({ ...asset, updatedAt: new Date() })
+      .where(eq(assets.id, id))
+      .returning();
+    return updatedAsset;
+  }
 
-    async deleteAsset(id: number): Promise<void> {
-        await db.delete(assets).where(eq(assets.id, id));
-    }
+  async deleteAsset(id: number): Promise<void> {
+    await db.delete(assets).where(eq(assets.id, id));
+  }
 
   // Purchase operations
   async getPurchases(): Promise<any[]> {
@@ -1164,7 +1295,10 @@ export class Storage implements IStorage {
   }
 
   async createPurchase(purchaseData: any): Promise<any> {
-    const [newPurchase] = await db.insert(purchases).values(purchaseData).returning();
+    const [newPurchase] = await db
+      .insert(purchases)
+      .values(purchaseData)
+      .returning();
     return newPurchase;
   }
 
@@ -1192,7 +1326,10 @@ export class Storage implements IStorage {
     return newExpense;
   }
 
-  async updateExpense(id: number, expense: Partial<InsertExpense>): Promise<Expense> {
+  async updateExpense(
+    id: number,
+    expense: Partial<InsertExpense>,
+  ): Promise<Expense> {
     const [updatedExpense] = await db
       .update(expenses)
       .set({ ...expense, updatedAt: new Date() })
@@ -1205,7 +1342,7 @@ export class Storage implements IStorage {
     await db.delete(expenses).where(eq(expenses.id, id));
   }
 
-   // Customer operations
+  // Customer operations
   async getCustomers(): Promise<Customer[]> {
     return await db.select().from(customers).orderBy(customers.name);
   }
@@ -1220,11 +1357,17 @@ export class Storage implements IStorage {
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
-    const [newCustomer] = await db.insert(customers).values(customer).returning();
+    const [newCustomer] = await db
+      .insert(customers)
+      .values(customer)
+      .returning();
     return newCustomer;
   }
 
-  async updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer> {
+  async updateCustomer(
+    id: number,
+    customer: Partial<InsertCustomer>,
+  ): Promise<Customer> {
     const [updatedCustomer] = await db
       .update(customers)
       .set({ ...customer, updatedAt: new Date() })
@@ -1262,72 +1405,120 @@ export class Storage implements IStorage {
 
   // Ledger Transaction Methods
   async createLedgerTransaction(data: any): Promise<any> {
-      const [newTransaction] = await db.insert(ledgerTransactions).values(data).returning();
-      await this.recalculateRunningBalance(data.customerOrPartyId, data.entityType);
-      return newTransaction;
+    const [newTransaction] = await db
+      .insert(ledgerTransactions)
+      .values(data)
+      .returning();
+    await this.recalculateRunningBalance(
+      data.customerOrPartyId,
+      data.entityType,
+    );
+    return newTransaction;
   }
 
-  async getLedgerTransactions(entityId: number, entityType: 'customer' | 'party'): Promise<any[]> {
+  async getLedgerTransactions(
+    entityId: number,
+    entityType: "customer" | "party",
+  ): Promise<any[]> {
     return await db
       .select()
       .from(ledgerTransactions)
       .where(
         and(
           eq(ledgerTransactions.customerOrPartyId, entityId),
-          eq(ledgerTransactions.entityType, entityType)
-        )
+          eq(ledgerTransactions.entityType, entityType),
+        ),
       )
       .orderBy(ledgerTransactions.transactionDate, ledgerTransactions.id);
   }
 
   async updateLedgerTransaction(id: number, data: any): Promise<any> {
-    const [updatedTransaction] = await db.update(ledgerTransactions).set(data).where(eq(ledgerTransactions.id, id)).returning();
-    const transaction = await db.select().from(ledgerTransactions).where(eq(ledgerTransactions.id, id)).limit(1);
+    const [updatedTransaction] = await db
+      .update(ledgerTransactions)
+      .set(data)
+      .where(eq(ledgerTransactions.id, id))
+      .returning();
+    const transaction = await db
+      .select()
+      .from(ledgerTransactions)
+      .where(eq(ledgerTransactions.id, id))
+      .limit(1);
     if (transaction && transaction[0]) {
-        await this.recalculateRunningBalance(transaction[0].customerOrPartyId, transaction[0].entityType);
+      await this.recalculateRunningBalance(
+        transaction[0].customerOrPartyId,
+        transaction[0].entityType,
+      );
     }
     return updatedTransaction;
   }
 
   async deleteLedgerTransaction(id: number): Promise<void> {
-    const transaction = await db.select().from(ledgerTransactions).where(eq(ledgerTransactions.id, id)).limit(1);
+    const transaction = await db
+      .select()
+      .from(ledgerTransactions)
+      .where(eq(ledgerTransactions.id, id))
+      .limit(1);
     await db.delete(ledgerTransactions).where(eq(ledgerTransactions.id, id));
-     if (transaction && transaction[0]) {
-        await this.recalculateRunningBalance(transaction[0].customerOrPartyId, transaction[0].entityType);
+    if (transaction && transaction[0]) {
+      await this.recalculateRunningBalance(
+        transaction[0].customerOrPartyId,
+        transaction[0].entityType,
+      );
     }
   }
 
-  async recalculateRunningBalance(entityId: number, entityType: 'customer' | 'party'): Promise<number> {
+  async recalculateRunningBalance(
+    entityId: number,
+    entityType: "customer" | "party",
+  ): Promise<number> {
     const transactions = await this.getLedgerTransactions(entityId, entityType);
 
     // Get opening balance
-    const entity = entityType === 'customer' 
-      ? await db.select().from(customers).where(eq(customers.id, entityId)).limit(1)
-      : await db.select().from(parties).where(eq(parties.id, entityId)).limit(1);
+    const entity =
+      entityType === "customer"
+        ? await db
+            .select()
+            .from(customers)
+            .where(eq(customers.id, entityId))
+            .limit(1)
+        : await db
+            .select()
+            .from(parties)
+            .where(eq(parties.id, entityId))
+            .limit(1);
 
-    const openingBalance = parseFloat(entity[0]?.openingBalance || '0');
+    const openingBalance = parseFloat(entity[0]?.openingBalance || "0");
     let runningBalance = openingBalance;
 
     // Update running balances for all transactions
     for (const transaction of transactions) {
-      const debit = parseFloat(transaction.debitAmount || '0');
-      const credit = parseFloat(transaction.creditAmount || '0');
+      const debit = parseFloat(transaction.debitAmount || "0");
+      const credit = parseFloat(transaction.creditAmount || "0");
       runningBalance = runningBalance + debit - credit;
 
       await db
         .update(ledgerTransactions)
         .set({ runningBalance: runningBalance.toString() })
-        .where(eq(ledgerTransactions.id, transaction.id)).returning();
+        .where(eq(ledgerTransactions.id, transaction.id))
+        .returning();
     }
 
     // Update entity's current balance
     const updateData = { currentBalance: runningBalance.toString() };
-      if (entity && entity[0]) {
-          if (entityType === 'customer') {
-            await db.update(customers).set(updateData).where(eq(customers.id, entityId)).returning();
-          } else {
-            await db.update(parties).set(updateData).where(eq(parties.id, entityId)).returning();
-          }
+    if (entity && entity[0]) {
+      if (entityType === "customer") {
+        await db
+          .update(customers)
+          .set(updateData)
+          .where(eq(customers.id, entityId))
+          .returning();
+      } else {
+        await db
+          .update(parties)
+          .set(updateData)
+          .where(eq(parties.id, entityId))
+          .returning();
+      }
     }
 
     return runningBalance;
@@ -1339,7 +1530,11 @@ export class Storage implements IStorage {
   }
 
   async uploadMedia(userId: string, file: any): Promise<any> {
-    return { id: Date.now(), filename: file.filename, url: `/uploads/${file.filename}` };
+    return {
+      id: Date.now(),
+      filename: file.filename,
+      url: `/uploads/${file.filename}`,
+    };
   }
 
   async deleteMedia(id: number): Promise<void> {
@@ -1363,20 +1558,24 @@ export class Storage implements IStorage {
     return [];
   }
 
-  async markNotificationAsRead(userId: string, notificationId: number): Promise<void> {
-  }
+  async markNotificationAsRead(
+    userId: string,
+    notificationId: number,
+  ): Promise<void> {}
 
-  async markAllNotificationsAsRead(userId: string): Promise<void> {
-  }
+  async markAllNotificationsAsRead(userId: string): Promise<void> {}
 
-  async saveNotificationSubscription(userId: string, subscription: any): Promise<void> {
-  }
+  async saveNotificationSubscription(
+    userId: string,
+    subscription: any,
+  ): Promise<void> {}
 
-  async removeNotificationSubscription(userId: string): Promise<void> {
-  }
+  async removeNotificationSubscription(userId: string): Promise<void> {}
 
-  async saveNotificationSettings(userId: string, settings: any): Promise<void> {
-  }
+  async saveNotificationSettings(
+    userId: string,
+    settings: any,
+  ): Promise<void> {}
 
   async createNotification(userId: string, notification: any): Promise<any> {
     return { id: Date.now(), ...notification };

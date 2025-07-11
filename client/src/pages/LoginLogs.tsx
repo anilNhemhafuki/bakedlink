@@ -214,22 +214,22 @@ export default function LoginLogs() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">
                     User
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">
                     Status
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">
                     IP Address
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">
                     Device
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">
                     Location
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">
                     Time
                   </th>
                 </tr>
@@ -238,20 +238,20 @@ export default function LoginLogs() {
                 {logsData?.logs?.map((log) => (
                   <tr
                     key={log.id}
-                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    className="border-b border-gray-100 hover:bg-gray-50"
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 dark:text-blue-400 text-sm font-medium">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 text-sm font-medium">
                             {log.email?.charAt(0)?.toUpperCase() || "U"}
                           </span>
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900 dark:text-white">
+                          <div className="font-medium text-gray-900">
                             {log.email}
                           </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                          <div className="text-sm text-gray-500">
                             {log.userId}
                           </div>
                         </div>
@@ -261,9 +261,7 @@ export default function LoginLogs() {
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-900 dark:text-white">
-                          {log.ipAddress}
-                        </span>
+                        <span className="text-gray-900">{log.ipAddress}</span>
                       </div>
                     </td>
                     <td className="py-3 px-4">
@@ -271,13 +269,13 @@ export default function LoginLogs() {
                         <span className="text-lg">
                           {getDeviceIcon(log.deviceType || "")}
                         </span>
-                        <span className="text-gray-900 dark:text-white">
+                        <span className="text-gray-900">
                           {log.deviceType || "Unknown"}
                         </span>
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-gray-900 dark:text-white">
+                      <span className="text-gray-900">
                         {log.location || "Unknown"}
                       </span>
                     </td>
@@ -285,7 +283,7 @@ export default function LoginLogs() {
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-gray-400" />
                         <div>
-                          <div className="text-gray-900 dark:text-white">
+                          <div className="text-gray-900">
                             {format(new Date(log.loginTime), "MMM dd, yyyy")}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
