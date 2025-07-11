@@ -476,34 +476,71 @@ export default function AdminUserManagement() {
                 Permissions for {selectedRole} role:
               </h4>
               <div className="grid gap-4">
-                {Object.entries(groupPermissionsByResource(allPermissions)).map(([resource, permissions]: [string, any[]]) => (
-                  <Card key={resource} className="p-4">
-                    <div className="font-medium mb-3 capitalize">{resource}</div>
-                    <div className="grid grid-cols-3 gap-3">
-                      {permissions.map((permission: any) => {
-                        const isChecked = rolePermissions.some((rp: any) => rp.id === permission.id);
-                        return (
-                          <label
-                            key={permission.id}
-                            className="flex items-center space-x-2 cursor-pointer"
-                          >
+                {Object.entries(groupPermissionsByResource(allPermissions)).map(([resource, permissions]: [string, any[]]) => {
+                  // Check if resource has read_write permission
+                  const hasReadWrite = rolePermissions.some((rp: any) => 
+                    permissions.some((p: any) => p.id === rp.id && p.action === 'read_write')
+                  );
+                  
+                  // Check if resource has any read permission (read or read_write)
+                  const hasRead = rolePermissions.some((rp: any) => 
+                    permissions.some((p: any) => p.id === rp.id && (p.action === 'read' || p.action === 'read_write'))
+                  );
+
+                  const handleToggleChange = (isReadWrite: boolean) => {
+                    // Remove all existing permissions for this resource
+                    const currentResourcePermissions = permissions.filter((p: any) =>
+                      rolePermissions.some((rp: any) => rp.id === p.id)
+                    );
+                    
+                    currentResourcePermissions.forEach((perm: any) => {
+                      handlePermissionChange(perm.id, false);
+                    });
+
+                    // Add appropriate permission based on toggle
+                    if (isReadWrite) {
+                      // Find and add read_write permission
+                      const readWritePerm = permissions.find((p: any) => p.action === 'read_write');
+                      if (readWritePerm) {
+                        handlePermissionChange(readWritePerm.id, true);
+                      }
+                    } else {
+                      // Find and add read permission
+                      const readPerm = permissions.find((p: any) => p.action === 'read');
+                      if (readPerm) {
+                        handlePermissionChange(readPerm.id, true);
+                      }
+                    }
+                  };
+
+                  return (
+                    <Card key={resource} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium capitalize">{resource}</div>
+                        <div className="flex items-center space-x-3">
+                          <span className="text-sm text-gray-600">Read Only</span>
+                          <label className="relative inline-flex items-center cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => handlePermissionChange(permission.id, e.target.checked)}
-                              className="rounded border-gray-300"
+                              checked={hasReadWrite}
+                              onChange={(e) => handleToggleChange(e.target.checked)}
+                              className="sr-only peer"
                             />
-                            <span className="text-sm">
-                              <Badge variant={permission.action === 'read_write' ? 'default' : permission.action === 'write' ? 'secondary' : 'outline'}>
-                                {permission.action.replace('_', ' ')}
-                              </Badge>
-                            </span>
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                           </label>
-                        );
-                      })}
-                    </div>
-                  </Card>
-                ))}
+                          <span className="text-sm text-gray-600">Read-Write</span>
+                        </div>
+                      </div>
+                      {hasRead && (
+                        <div className="mt-2 pt-2 border-t">
+                          <Badge variant={hasReadWrite ? 'default' : 'outline'}>
+                            {hasReadWrite ? 'Read-Write Access' : 'Read Only Access'}
+                          </Badge>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           )}
