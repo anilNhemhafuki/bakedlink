@@ -8,6 +8,7 @@ import {
   inventoryCategories,
   productIngredients,
   units,
+  unitConversions,
   orders,
   orderItems,
   customers,
@@ -38,6 +39,8 @@ import {
   type InsertProductIngredient,
   type Unit,
   type InsertUnit,
+  type UnitConversion,
+  type InsertUnitConversion,
   type Order,
   type InsertOrder,
   type OrderItem,
@@ -103,6 +106,12 @@ export interface IStorage {
   createUnit(data: InsertUnit): Promise<Unit>;
   updateUnit(id: number, data: Partial<InsertUnit>): Promise<Unit>;
   deleteUnit(id: number): Promise<void>;
+  
+  // Unit conversion operations
+  getUnitConversions(): Promise<any[]>;
+  createUnitConversion(data: any): Promise<any>;
+  updateUnitConversion(id: number, data: any): Promise<any>;
+  deleteUnitConversion(id: number): Promise<void>;
 
   // Inventory operations
   getInventoryItems(): Promise<InventoryItem[]>;
@@ -441,6 +450,29 @@ export class Storage implements IStorage {
 
   async deleteUnit(id: number): Promise<void> {
     await db.delete(units).where(eq(units.id, id));
+  }
+
+  // Unit conversion operations
+  async getUnitConversions(): Promise<any[]> {
+    return await db.select().from(unitConversions).orderBy(unitConversions.id);
+  }
+
+  async createUnitConversion(data: any): Promise<any> {
+    const [newConversion] = await db.insert(unitConversions).values(data).returning();
+    return newConversion;
+  }
+
+  async updateUnitConversion(id: number, data: any): Promise<any> {
+    const [updatedConversion] = await db
+      .update(unitConversions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(unitConversions.id, id))
+      .returning();
+    return updatedConversion;
+  }
+
+  async deleteUnitConversion(id: number): Promise<void> {
+    await db.delete(unitConversions).where(eq(unitConversions.id, id));
   }
 
   // Inventory operations

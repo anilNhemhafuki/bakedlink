@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns";
 import { db } from "./db";
 import { requirePermission, requireRead, requireWrite, requireReadWrite, requireSuperAdmin } from "./permissionMiddleware";
+import { unitConverter } from "./lib/unitConversion";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("🔧 Setting up routes...");
@@ -334,6 +335,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Calculate product cost with unit conversions
+  app.get("/api/products/:id/calculate-cost", isAuthenticated, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const costCalculation = await unitConverter.calculateProductCost(productId);
+      res.json(costCalculation);
+    } catch (error) {
+      console.error("Error calculating product cost:", error);
+      res.status(500).json({ message: "Failed to calculate product cost" });
+    }
+  });
+
+  // Update product cost automatically
+  app.post("/api/products/:id/update-cost", isAuthenticated, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      await unitConverter.updateProductCost(productId);
+      res.json({ message: "Product cost updated successfully" });
+    } catch (error) {
+      console.error("Error updating product cost:", error);
+      res.status(500).json({ message: "Failed to update product cost" });
+    }
+  });
+
   // Units
   app.get("/api/units", isAuthenticated, async (req, res) => {
     try {
@@ -531,6 +556,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to create unit",
         error: error instanceof Error ? error.message : "Unknown error",
       });
+    }
+  });
+
+  // Unit Conversions
+  app.get("/api/unit-conversions", isAuthenticated, async (req, res) => {
+    try {
+      const conversions = await storage.getUnitConversions();
+      res.json(conversions);
+    } catch (error) {
+      console.error("Error fetching unit conversions:", error);
+      res.status(500).json({ message: "Failed to fetch unit conversions" });
+    }
+  });
+
+  app.post("/api/unit-conversions", isAuthenticated, async (req, res) => {
+    try {
+      if (!req.body.fromUnitId || !req.body.toUnitId || !req.body.conversionFactor) {
+        return res.status(400).json({ message: "From unit, to unit, and conversion factor are required" });
+      }
+
+      const transformedData = {
+        fromUnitId: parseInt(req.body.fromUnitId),
+        toUnitId: parseInt(req.body.toUnitId),
+        conversionFactor: req.body.conversionFactor.toString(),
+        formula: req.body.formula || null,
+        isActive: true,
+      };
+
+      const conversion = await storage.createUnitConversion(transformedData);
+      res.json(conversion);
+    } catch (error) {
+      console.error("Error creating unit conversion:", error);
+      res.status(500).json({
+        message: "Failed to create unit conversion",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  app.put("/api/unit-conversions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const transformedData = {
+        fromUnitId: parseInt(req.body.fromUnitId),
+        toUnitId: parseInt(req.body.toUnitId),
+        conversionFactor: req.body.conversionFactor.toString(),
+        formula: req.body.formula || null,
+        isActive: req.body.isActive ?? true,
+      };
+
+      const conversion = await storage.updateUnitConversion(id, transformedData);
+      res.json(conversion);
+    } catch (error) {
+      console.error("Error updating unit conversion:", error);
+      res.status(500).json({ message: "Failed to update unit conversion" });
+    }
+  });
+
+  app.delete("/api/unit-conversions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteUnitConversion(id);
+      res.json({ message: "Unit conversion deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting unit conversion:", error);
+      res.status(500).json({ message: "Failed to delete unit conversion" });
     }
   });
 

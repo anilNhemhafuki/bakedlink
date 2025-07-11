@@ -79,8 +79,23 @@ export const units = pgTable("units", {
   name: varchar("name", { length: 50 }).notNull().unique(),
   abbreviation: varchar("abbreviation", { length: 10 }).notNull(),
   type: varchar("type", { length: 20 }).notNull(),
+  baseUnit: varchar("base_unit", { length: 100 }), // The base unit for conversion (e.g., 'gram' for weight)
+  conversionFactor: numeric("conversion_factor", { precision: 15, scale: 6 }).default("1"), // How many base units = 1 of this unit
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Unit Conversions table - for complex conversions between different unit types
+export const unitConversions = pgTable("unit_conversions", {
+  id: serial("id").primaryKey(),
+  fromUnitId: integer("from_unit_id").notNull(),
+  toUnitId: integer("to_unit_id").notNull(),
+  conversionFactor: numeric("conversion_factor", { precision: 15, scale: 6 }).notNull(),
+  formula: text("formula"), // Optional formula for complex conversions
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Customers table
@@ -326,6 +341,8 @@ export type ProductIngredient = typeof productIngredients.$inferSelect;
 export type InsertProductIngredient = typeof productIngredients.$inferInsert;
 export type Unit = typeof units.$inferSelect;
 export type InsertUnit = typeof units.$inferInsert;
+export type UnitConversion = typeof unitConversions.$inferSelect;
+export type InsertUnitConversion = typeof unitConversions.$inferInsert;
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = typeof customers.$inferInsert;
 export type Party = typeof parties.$inferSelect;
@@ -417,4 +434,10 @@ export const insertLedgerTransactionSchema = createInsertSchema(ledgerTransactio
 export const insertLoginLogSchema = createInsertSchema(loginLogs).omit({
   id: true,
   loginTime: true,
+});
+
+export const insertUnitConversionSchema = createInsertSchema(unitConversions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });

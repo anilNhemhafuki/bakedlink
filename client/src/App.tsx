@@ -35,6 +35,8 @@ import Purchases from "@/pages/purchases";
 import PublicOrderForm from "@/components/public-order-form";
 import Stock from "@/pages/stock";
 import Ingredients from "@/pages/ingredients";
+import Units from "@/pages/units";
+import UnitConversion from "@/pages/unit-conversion";
 import { ProtectedRoute } from "@/components/protected-route";
 
 function Router() {
@@ -269,6 +271,22 @@ function AuthenticatedApp({
                 component={() => (
                   <ProtectedRoute resource="purchases" action="read">
                     <Purchases />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/units"
+                component={() => (
+                  <ProtectedRoute resource="units" action="read">
+                    <Units />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/unit-conversion"
+                component={() => (
+                  <ProtectedRoute resource="units" action="read">
+                    <UnitConversion />
                   </ProtectedRoute>
                 )}
               />

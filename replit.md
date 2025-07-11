@@ -47,12 +47,14 @@ A comprehensive bakery management system built with React, TypeScript, and Postg
 5. **Billing**: Invoice generation and payment processing
 
 ### Advanced Features
-1. **User Management**: Role-based access (Admin, Manager, Staff)
+1. **User Management**: Role-based access (Super Admin, Admin, Manager, Staff)
 2. **Category Management**: Hierarchical organization system
 3. **Currency Support**: Multi-currency with formatting utilities
 4. **Notifications**: Push notification system for alerts
 5. **Reports & Analytics**: Business intelligence and insights
 6. **Theme Customization**: Dynamic color theming system
+7. **Unit Conversion System**: Advanced unit conversion with cost calculations
+8. **Cost Calculation Engine**: Automatic product cost calculation based on ingredient units
 
 ## Data Flow
 
@@ -128,6 +130,10 @@ Changelog:
 - July 9, 2025. Added login tracking system with IP address, location, and device tracking
 - July 9, 2025. Enhanced UI/UX with consistent theme color application across all components
 - July 9, 2025. Added theme-aware badge system and improved user interface consistency
+- July 11, 2025. Added unit conversion system with database tables and API endpoints
+- July 11, 2025. Implemented cost calculation system for products based on unit conversions
+- July 11, 2025. Enhanced super admin role with full access to all system resources
+- July 11, 2025. Added reusable SearchBar component across all 17 pages
 
 User Preferences:
 Preferred communication style: Simple, everyday language.
