@@ -1,0 +1,59 @@
+Project Requirements: Full System Development & Optimization
+1. System-Wide Review & Debugging
+Conduct a complete audit of the entire system including:
+All components (front-end modules)
+All pages (UI/UX flow)
+Database structure and relations
+Identify and fix all bugs, errors, and inconsistencies in each page and backend logic.
+Ensure cross-browser and responsive compatibility.
+2. UI/UX Enhancement
+Redesign all pages with a simple yet professional UI/UX .
+Maintain consistent design language across all pages (colors, fonts, buttons, spacing).
+Improve navigation, accessibility, and user experience.
+Ensure mobile responsiveness.
+3. Data Population
+Insert dummy/sample data into all tables and pages for testing and demonstration purposes.
+Ensure that all CRUD operations work smoothly with real-time updates.
+4. Database & Functional Integration
+Set up and optimize database schema:
+Tables for Products, Stock, Purchases, Sales, Customers, Suppliers, Accounts, etc.
+Implement relationships between tables:
+Link purchase orders with stock levels
+Connect production cost calculation with raw materials and labor
+5. Purchase Module with Stock Sync
+Create a purchase module with the following features:
+Add new purchases with supplier info
+Track purchased items, quantities, unit prices
+Automatically update stock levels upon purchase
+Calculate total purchase cost
+Generate purchase reports
+6. Production Cost Calculation
+Build a feature to calculate production cost per unit , including:
+Raw material cost
+Labor cost
+Overhead expenses
+Display detailed breakdown and final cost per product
+7. Customer & Supplier Account Management
+Implement account tracking for:
+Customers (Debtors)
+Suppliers (Creditors)
+Features:
+View account balances
+Record payments/receipts
+Track pending dues/payments
+Generate aging reports and transaction history
+8. Testing & Debugging
+Perform end-to-end testing of the system:
+Unit testing of individual components
+Integration testing for workflows (e.g., purchase → stock → sales → accounts)
+Stress test for performance and scalability
+Fix any remaining bugs or issues
+9. Security & Validation
+Apply input validation and sanitization
+Secure authentication and authorization where applicable
+Protect against SQL injection, XSS, and CSRF attacks
+10. Documentation
+Provide:
+Technical documentation (database schema, API if used)
+User manual for admin/staff
+Setup and deployment instructions
