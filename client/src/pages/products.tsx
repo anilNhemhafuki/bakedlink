@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import ProductForm from "@/components/product-form";
 import CostCalculator from "@/components/cost-calculator";
+import SearchBar from "@/components/search-bar";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -175,13 +176,12 @@ export default function Products() {
       <Card className="shadow-lg border-0 bg-white ">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-              <Input
+            <div className="flex-1">
+              <SearchBar
                 placeholder="Search products by name, category, or SKU..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                onChange={setSearchQuery}
+                className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
               />
             </div>
             <Select

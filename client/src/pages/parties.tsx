@@ -5,6 +5,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { PermissionWrapper, ReadOnlyWrapper } from "@/components/permission-wrapper";
 import { Input } from "@/components/ui/input";
+import SearchBar from "@/components/search-bar";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -681,13 +682,12 @@ export default function Parties() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle>Parties List</CardTitle>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
+              <div className="w-full sm:w-64">
+                <SearchBar
                   placeholder="Search parties..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-full sm:w-64"
+                  onChange={setSearchQuery}
+                  className="w-full"
                 />
               </div>
               <Select value={typeFilter} onValueChange={setTypeFilter}>

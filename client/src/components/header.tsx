@@ -122,18 +122,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
         </div>
 
         <div className="flex items-center space-x-2 lg:space-x-4">
-          {/* Search */}
-          <form onSubmit={handleSearch} className="relative hidden md:block">
-            <Input
-              type="search"
-              placeholder={t("search")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-48 lg:w-64"
-            />
-            <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-          </form>
-
           {/* Page title and date */}
           <div className="hidden lg:block">
             <div className="flex items-center gap-4">
@@ -252,58 +240,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <span className="mr-2">📧</span> Send us a message
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* User Profile */}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="flex items-center space-x-3 p-2"
-              >
-                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-primary rounded-full flex items-center justify-center">
-                  {user?.profileImageUrl ? (
-                    <img
-                      src={user.profileImageUrl}
-                      alt="Profile"
-                      className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <i className="fas fa-user text-orange text-sm"></i>
-                  )}
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <div className="px-3 py-2 border-b">
-                <p className="text-sm font-medium">
-                  {user?.firstName
-                    ? `${user.firstName} ${user.lastName || ""}`.trim()
-                    : user?.email || "User"}
-                </p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-                <span
-                  className={`inline-block text-xs px-2 py-1 rounded-full mt-1 `}
-                >
-                  {t(user?.role || "staff")}
-                </span>
-              </div>
-              <div className="p-2">
-                <ProfileEditor user={user} />
-              </div>
-              <DropdownMenuItem asChild>
-                <Link href="/settings" className="flex items-center w-full">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                <LogOut className="mr-2 h-4 w-4" />
-                {t("logout")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -5,13 +5,22 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Menu, X, ChevronDown, ChevronRight, Settings, User, LogOut } from "lucide-react";
 import { Receipt } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import ProfileEditor from "./profile-editor";
+import { useToast } from "@/hooks/use-toast";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -20,9 +29,10 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { branding } = useCompanyBranding();
   const { canAccessSidebarItem } = useRoleAccess();
+  const { toast } = useToast();
   const [openSections, setOpenSections] = useState<string[]>([
     "core",
     "Finance",
@@ -381,58 +391,96 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           </ScrollArea>
         </div>
 
-        {/* Enhanced User Profile */}
+        {/* Enhanced User Profile with Dropdown */}
         <div className="flex-shrink-0 p-1 border-t border-gray-200/60 bg-gradient-to-r from-white to-gray-50/50">
-          <div
-            className="flex items-center space-x-3 bg-gradient-to-r from-gray-50 to-white rounded-2xl p-2 
-                          border border-gray-100/60 hover:shadow-xl hover:shadow-primary/10 
-                          transition-all duration-400 hover:scale-102 glass-effect group"
-          >
-            <div
-              className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl 
-                           flex items-center justify-center shadow-lg transition-all duration-300 
-                           group-hover:scale-110 group-hover:rotate-3 relative overflow-hidden"
-            >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <div
-                className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 
-                             group-hover:opacity-100 transition-opacity duration-300"
-              ></div>
-              <i
-                className="fas fa-user text-primary-foreground text-base relative z-10 
-                           transition-transform duration-300 group-hover:scale-110"
-              ></i>
-            </div>
-            <div className="flex-1 min-w-0 transition-transform duration-300 group-hover:translate-x-1">
-              <p className="text-sm font-semibold text-gray-900 truncate transition-colors duration-300 group-hover:text-primary">
-                {user?.firstName
-                  ? `${user.firstName} ${user.lastName || ""}`.trim()
-                  : user?.email || "User"}
-              </p>
-              <p className="text-xs text-gray-500 capitalize flex items-center transition-colors duration-300 group-hover:text-gray-700">
-                <span className="w-2 h-2 bg-green-500 rounded-full mr-2 flex-shrink-0 animate-pulse"></span>
-                <span className="truncate">{user?.role || "Staff"}</span>
-              </p>
-            </div>
-            <button
-              onClick={async () => {
-                try {
-                  await fetch("/api/logout", {
-                    method: "POST",
-                    credentials: "include",
-                  });
-                  window.location.reload();
-                } catch (error) {
-                  console.error("Logout failed:", error);
-                }
-              }}
-              className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl 
-                       transition-all duration-300 flex-shrink-0 hover:scale-110 hover:rotate-3 
-                       hover:shadow-md btn-ripple group-hover:bg-red-50/80"
-              title="Logout"
-            >
-              <i className="fas fa-sign-out-alt text-sm transition-transform duration-300 hover:scale-110"></i>
-            </button>
-          </div>
+                className="flex items-center space-x-3 bg-gradient-to-r from-gray-50 to-white rounded-2xl p-2 
+                            border border-gray-100/60 hover:shadow-xl hover:shadow-primary/10 
+                            transition-all duration-400 hover:scale-102 glass-effect group cursor-pointer"
+              >
+                <div
+                  className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl 
+                             flex items-center justify-center shadow-lg transition-all duration-300 
+                             group-hover:scale-110 group-hover:rotate-3 relative overflow-hidden"
+                >
+                  <div
+                    className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 
+                               group-hover:opacity-100 transition-opacity duration-300"
+                  ></div>
+                  {user?.profileImageUrl ? (
+                    <img
+                      src={user.profileImageUrl}
+                      alt="Profile"
+                      className="w-10 h-10 rounded-xl object-cover relative z-10"
+                    />
+                  ) : (
+                    <i
+                      className="fas fa-user text-primary-foreground text-base relative z-10 
+                                 transition-transform duration-300 group-hover:scale-110"
+                    ></i>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 transition-transform duration-300 group-hover:translate-x-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate transition-colors duration-300 group-hover:text-primary">
+                    {user?.firstName
+                      ? `${user.firstName} ${user.lastName || ""}`.trim()
+                      : user?.email || "User"}
+                  </p>
+                  <p className="text-xs text-gray-500 capitalize flex items-center transition-colors duration-300 group-hover:text-gray-700">
+                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2 flex-shrink-0 animate-pulse"></span>
+                    <span className="truncate">{user?.role || "Staff"}</span>
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-primary transition-all duration-300 group-hover:translate-x-1" />
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="end" className="w-56 mr-2">
+              <div className="px-3 py-2 border-b">
+                <p className="text-sm font-medium">
+                  {user?.firstName
+                    ? `${user.firstName} ${user.lastName || ""}`.trim()
+                    : user?.email || "User"}
+                </p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+                <span className="inline-block text-xs px-2 py-1 rounded-full mt-1 bg-primary/10 text-primary">
+                  {user?.role || "staff"}
+                </span>
+              </div>
+              <div className="p-2">
+                <ProfileEditor user={user} />
+              </div>
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="flex items-center w-full">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={async () => {
+                  try {
+                    await logout();
+                    toast({
+                      title: "Success",
+                      description: "Logged out successfully",
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Error",
+                      description: "Failed to logout",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                className="text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
     </>

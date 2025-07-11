@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import SearchBar from "@/components/search-bar";
 import {
   Select,
   SelectContent,
@@ -612,13 +613,12 @@ export default function Sales() {
           <div className="flex items-center justify-between">
             <CardTitle>Sales History</CardTitle>
             <div className="flex gap-2">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
+              <div className="w-[200px]">
+                <SearchBar
                   placeholder="Search sales..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 w-[200px]"
+                  onChange={setSearchTerm}
+                  className="w-full"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>

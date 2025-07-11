@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import SearchBar from "@/components/search-bar";
 import {
   Card,
   CardContent,
@@ -151,13 +152,11 @@ export default function Inventory() {
       </div>
 
       <div className="flex items-center space-x-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
+        <div className="flex-1">
+          <SearchBar
             placeholder="Search items..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
+            onChange={setSearchQuery}
           />
         </div>
       </div>
