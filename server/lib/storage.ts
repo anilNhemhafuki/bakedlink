@@ -648,7 +648,70 @@ export class Storage implements IStorage {
             description: permissions.description,
             granted: sql<boolean>`true`,
           })
-          .from(permissions);
+          .from(permissions)
+          .orderBy(permissions.resource, permissions.action);
+      }
+
+      // Admin gets most permissions except super admin specific ones
+      if (user.role === 'admin') {
+        return await db
+          .select({
+            id: permissions.id,
+            name: permissions.name,
+            resource: permissions.resource,
+            action: permissions.action,
+            description: permissions.description,
+            granted: sql<boolean>`true`,
+          })
+          .from(permissions)
+          .where(sql`${permissions.resource} != 'super_admin'`)
+          .orderBy(permissions.resource, permissions.action);
+      }
+
+      // Get role-based permissions
+      const rolePermissions = await db
+        .select({
+          id: permissions.id,
+          name: permissions.name,
+          resource: permissions.resource,
+          action: permissions.action,
+          description: permissions.description,
+          granted: sql<boolean>`true`,
+        })
+        .from(permissions)
+        .innerJoin(this.rolePermissions, eq(permissions.id, this.rolePermissions.permissionId))
+        .where(eq(this.rolePermissions.role, user.role))
+        .orderBy(permissions.resource, permissions.action);
+
+      // Get user-specific permission overrides
+      const userPermissions = await db
+        .select({
+          id: permissions.id,
+          name: permissions.name,
+          resource: permissions.resource,
+          action: permissions.action,
+          description: permissions.description,
+          granted: this.userPermissions.granted,
+        })
+        .from(permissions)
+        .innerJoin(this.userPermissions, eq(permissions.id, this.userPermissions.permissionId))
+        .where(eq(this.userPermissions.userId, userId))
+        .orderBy(permissions.resource, permissions.action);
+
+      // Merge permissions (user-specific overrides take precedence)
+      const permissionMap = new Map();
+      
+      // Add role permissions first
+      rolePermissions.forEach(perm => {
+        permissionMap.set(perm.id, perm);
+      });
+      
+      // Override with user-specific permissions
+      userPermissions.forEach(perm => {
+        permissionMap.set(perm.id, perm);
+      });
+
+      return Array.from(permissionMap.values());ssions);
       }
 
       const userResults = await db

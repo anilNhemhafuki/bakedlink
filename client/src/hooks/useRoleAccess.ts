@@ -18,7 +18,8 @@ export function useRoleAccess() {
 
   const canAccessSidebarItem = (resource: string, action: 'read' | 'write' | 'read_write' = 'read') => {
     if (isSuperAdmin()) return true;
-    return canAccessPage(resource, action);
+    if (isAdmin()) return true;
+    return hasPermission(resource, action);
   };
 
   return {

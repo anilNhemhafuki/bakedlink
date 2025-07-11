@@ -31,7 +31,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { branding } = useCompanyBranding();
-  const { canAccessSidebarItem } = useRoleAccess();
+  const { canAccessSidebarItem, isSuperAdmin } = useRoleAccess();
   const { toast } = useToast();
   const [openSections, setOpenSections] = useState<string[]>([
     "core",
@@ -181,19 +181,19 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       items: [
         {
           name: "User Management",
-          href: "/users",
+          href: "/admin/users",
           icon: "fas fa-users-cog text-base",
           resource: "users",
         },
         {
           name: "Login Logs",
-          href: "/login-logs",
+          href: "/admin/login-logs",
           icon: "fas fa-shield-alt text-base",
-          resource: "users",
+          resource: "admin",
         },
         {
           name: "Category Management",
-          href: "/categories",
+          href: "/category-management",
           icon: "fas fa-tags text-base",
           resource: "settings",
         },
@@ -287,7 +287,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                   .flatMap((section) =>
                     section.items
                       .filter((item) =>
-                        canAccessSidebarItem(item.resource, "read"),
+                        isSuperAdmin() || canAccessSidebarItem(item.resource, "read"),
                       )
                       .map((item) => {
                         const active = isActive(item.href);
@@ -353,7 +353,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                         <CollapsibleContent className="mt-1 space-y-1">
                           {section.items
                             .filter((item) =>
-                              canAccessSidebarItem(item.resource, "read"),
+                              isSuperAdmin() || canAccessSidebarItem(item.resource, "read"),
                             )
                             .map((item) => {
                               const active = isActive(item.href);

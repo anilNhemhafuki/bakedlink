@@ -1527,11 +1527,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin user management routes
   const isAdmin = (req: any, res: any, next: any) => {
     console.log("Checking admin access for user:", req.user);
-    if (req.user && req.user.role === "admin") {
+    if (req.user && (req.user.role === "admin" || req.user.role === "super_admin")) {
       return next();
     }
     console.log("Access denied - user role:", req.user?.role);
     res.status(403).json({ message: "Access denied. Admin role required." });
+  };
+
+  const isSuperAdmin = (req: any, res: any, next: any) => {
+    console.log("Checking superadmin access for user:", req.user);
+    if (req.user && req.user.role === "super_admin") {
+      return next();
+    }
+    console.log("Access denied - user role:", req.user?.role);
+    res.status(403).json({ message: "Access denied. Super Admin role required." });
   };
 
   app.get("/api/admin/users", isAuthenticated, isAdmin, async (req, res) => {
@@ -2453,6 +2462,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to update settings",
         error: error instanceof Error ? error.message : "Unknown error",
       });
+    }
+  });
+
+  // Superadmin-only: Update user roles
+  app.put("/api/admin/users/:id/role", isAuthenticated, isSuperAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { role } = req.body;
+
+      const validRoles = ['super_admin', 'admin', 'manager', 'supervisor', 'marketer', 'staff'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      const user = await storage.updateUser(id, { role });
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
     }
   });
 
