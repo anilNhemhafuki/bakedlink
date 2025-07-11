@@ -477,67 +477,97 @@ export default function AdminUserManagement() {
               </h4>
               <div className="grid gap-4">
                 {Object.entries(groupPermissionsByResource(allPermissions)).map(([resource, permissions]: [string, any[]]) => {
+                  // Check if resource has read permission
+                  const hasRead = rolePermissions.some((rp: any) => 
+                    permissions.some((p: any) => p.id === rp.id && p.action === 'read')
+                  );
+                  
                   // Check if resource has read_write permission
                   const hasReadWrite = rolePermissions.some((rp: any) => 
                     permissions.some((p: any) => p.id === rp.id && p.action === 'read_write')
                   );
-                  
-                  // Check if resource has any read permission (read or read_write)
-                  const hasRead = rolePermissions.some((rp: any) => 
-                    permissions.some((p: any) => p.id === rp.id && (p.action === 'read' || p.action === 'read_write'))
-                  );
 
-                  const handleToggleChange = (isReadWrite: boolean) => {
-                    // Remove all existing permissions for this resource
-                    const currentResourcePermissions = permissions.filter((p: any) =>
-                      rolePermissions.some((rp: any) => rp.id === p.id)
-                    );
-                    
-                    currentResourcePermissions.forEach((perm: any) => {
-                      handlePermissionChange(perm.id, false);
-                    });
+                  const handleReadToggle = (checked: boolean) => {
+                    const readPerm = permissions.find((p: any) => p.action === 'read');
+                    if (readPerm) {
+                      handlePermissionChange(readPerm.id, checked);
+                    }
+                  };
 
-                    // Add appropriate permission based on toggle
-                    if (isReadWrite) {
-                      // Find and add read_write permission
-                      const readWritePerm = permissions.find((p: any) => p.action === 'read_write');
-                      if (readWritePerm) {
-                        handlePermissionChange(readWritePerm.id, true);
-                      }
-                    } else {
-                      // Find and add read permission
-                      const readPerm = permissions.find((p: any) => p.action === 'read');
-                      if (readPerm) {
-                        handlePermissionChange(readPerm.id, true);
-                      }
+                  const handleReadWriteToggle = (checked: boolean) => {
+                    const readWritePerm = permissions.find((p: any) => p.action === 'read_write');
+                    if (readWritePerm) {
+                      handlePermissionChange(readWritePerm.id, checked);
                     }
                   };
 
                   return (
-                    <Card key={resource} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium capitalize">{resource}</div>
-                        <div className="flex items-center space-x-3">
-                          <span className="text-sm text-gray-600">Read Only</span>
+                    <Card key={resource} className="p-4 border border-gray-200 hover:border-gray-300 transition-colors">
+                      <div className="space-y-4">
+                        <div className="font-semibold text-lg capitalize text-gray-800">{resource}</div>
+                        
+                        {/* Read Permission Toggle */}
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <i className="fas fa-eye text-blue-600 text-sm"></i>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-700">Read Permission</span>
+                              <p className="text-xs text-gray-500">View and access {resource} data</p>
+                            </div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={hasRead}
+                              onChange={(e) => handleReadToggle(e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300/50 rounded-full peer peer-checked:after:translate-x-7 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-500 shadow-sm hover:shadow-md transition-shadow"></div>
+                          </label>
+                        </div>
+
+                        {/* Read-Write Permission Toggle */}
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                              <i className="fas fa-edit text-green-600 text-sm"></i>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-700">Read-Write Permission</span>
+                              <p className="text-xs text-gray-500">Full access to {resource} - view, create, edit, delete</p>
+                            </div>
+                          </div>
                           <label className="relative inline-flex items-center cursor-pointer">
                             <input
                               type="checkbox"
                               checked={hasReadWrite}
-                              onChange={(e) => handleToggleChange(e.target.checked)}
+                              onChange={(e) => handleReadWriteToggle(e.target.checked)}
                               className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300/50 rounded-full peer peer-checked:after:translate-x-7 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-500 shadow-sm hover:shadow-md transition-shadow"></div>
                           </label>
-                          <span className="text-sm text-gray-600">Read-Write</span>
                         </div>
+
+                        {/* Permission Status */}
+                        {(hasRead || hasReadWrite) && (
+                          <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                            {hasRead && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                <i className="fas fa-eye mr-1 text-xs"></i>
+                                Read Access
+                              </Badge>
+                            )}
+                            {hasReadWrite && (
+                              <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
+                                <i className="fas fa-edit mr-1 text-xs"></i>
+                                Full Access
+                              </Badge>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      {hasRead && (
-                        <div className="mt-2 pt-2 border-t">
-                          <Badge variant={hasReadWrite ? 'default' : 'outline'}>
-                            {hasReadWrite ? 'Read-Write Access' : 'Read Only Access'}
-                          </Badge>
-                        </div>
-                      )}
                     </Card>
                   );
                 })}
