@@ -382,9 +382,9 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
         </div>
 
         {/* Enhanced User Profile */}
-        <div className="flex-shrink-0 p-4 border-t border-gray-200/60 bg-gradient-to-r from-white to-gray-50/50">
+        <div className="flex-shrink-0 p-1 border-t border-gray-200/60 bg-gradient-to-r from-white to-gray-50/50">
           <div
-            className="flex items-center space-x-3 bg-gradient-to-r from-gray-50 to-white rounded-2xl p-4 
+            className="flex items-center space-x-3 bg-gradient-to-r from-gray-50 to-white rounded-2xl p-2 
                           border border-gray-100/60 hover:shadow-xl hover:shadow-primary/10 
                           transition-all duration-400 hover:scale-102 glass-effect group"
           >

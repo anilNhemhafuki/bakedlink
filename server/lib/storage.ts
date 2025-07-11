@@ -1,4 +1,4 @@
-import { eq, desc, count, sql, and } from "drizzle-orm";
+import { eq, desc, count, sql, and, gte, lt } from "drizzle-orm";
 import { db } from "../db";
 import {
   users,
@@ -247,9 +247,25 @@ export class Storage implements IStorage {
   }
 
   async ensureDefaultAdmin(): Promise<void> {
+    const superAdminEmail = "superadmin@sweetreats.com";
     const adminEmail = "admin@sweetreats.com";
     const managerEmail = "manager@sweetreats.com";
     const staffEmail = "staff@sweetreats.com";
+
+    // Create superadmin user
+    const existingSuperAdmin = await this.getUserByEmail(superAdminEmail);
+    if (!existingSuperAdmin) {
+      await this.upsertUser({
+        email: superAdminEmail,
+        password: "superadmin123",
+        firstName: "Super",
+        lastName: "Admin",
+        role: "super_admin",
+      });
+      console.log("✅ Default superadmin user created");
+    } else {
+      console.log("✅ superadmin user already exists:", superAdminEmail);
+    }
 
     const existingAdmin = await this.getUserByEmail(adminEmail);
     if (!existingAdmin) {
@@ -697,6 +713,11 @@ export class Storage implements IStorage {
     }
 
     const allPermissions = await this.getPermissions();
+    
+    // Super admin gets all permissions
+    const superAdminPermissionIds = allPermissions.map(p => p.id);
+    await this.setRolePermissions('super_admin', superAdminPermissionIds);
+
     const adminPermissionIds = allPermissions
       .filter(p => p.action === 'read_write')
       .map(p => p.id);
