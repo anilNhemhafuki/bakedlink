@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +47,15 @@ import {
   PageSizeSelector,
   usePagination,
 } from "@/components/ui/pagination";
-import { MoreHorizontal, Plus, Printer, Edit, Trash2, Download, Upload } from "lucide-react";
+import {
+  MoreHorizontal,
+  Plus,
+  Printer,
+  Edit,
+  Trash2,
+  Download,
+  Upload,
+} from "lucide-react";
 
 export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,7 +65,8 @@ export default function Products() {
   const [showCostCalculator, setShowCostCalculator] = useState(false);
   const [showLabelPrint, setShowLabelPrint] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [selectedProductForLabel, setSelectedProductForLabel] = useState<any>(null);
+  const [selectedProductForLabel, setSelectedProductForLabel] =
+    useState<any>(null);
   const [labelData, setLabelData] = useState({
     companyName: "",
     companyLocation: "",
@@ -154,14 +162,14 @@ export default function Products() {
       netWeight: "",
       ingredients: "",
       mrp: formatCurrency(Number(product.price)),
-      manufactureDate: new Date().toISOString().split('T')[0],
+      manufactureDate: new Date().toISOString().split("T")[0],
       expireDate: "",
     });
     setShowLabelPrint(true);
   };
 
   const printLabel = () => {
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -219,24 +227,24 @@ export default function Products() {
           <div class="label">
             <div class="header">
               <div class="company-name">${labelData.companyName}</div>
-              ${labelData.companyLocation ? `<div>${labelData.companyLocation}</div>` : ''}
+              ${labelData.companyLocation ? `<div>${labelData.companyLocation}</div>` : ""}
             </div>
             
             <div class="product-name">${selectedProductForLabel?.name}</div>
             
-            ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ''}
-            ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ''}
-            ${labelData.batchNo ? `<div class="field"><span class="field-label">Batch No:</span><span class="field-value">${labelData.batchNo}</span></div>` : ''}
-            ${labelData.netWeight ? `<div class="field"><span class="field-label">Net Weight:</span><span class="field-value">${labelData.netWeight}</span></div>` : ''}
-            ${labelData.ingredients ? `<div class="field"><span class="field-label">Ingredients:</span><span class="field-value">${labelData.ingredients}</span></div>` : ''}
+            ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ""}
+            ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ""}
+            ${labelData.batchNo ? `<div class="field"><span class="field-label">Batch No:</span><span class="field-value">${labelData.batchNo}</span></div>` : ""}
+            ${labelData.netWeight ? `<div class="field"><span class="field-label">Net Weight:</span><span class="field-value">${labelData.netWeight}</span></div>` : ""}
+            ${labelData.ingredients ? `<div class="field"><span class="field-label">Ingredients:</span><span class="field-value">${labelData.ingredients}</span></div>` : ""}
             <div class="field"><span class="field-label">MRP:</span><span class="field-value">${labelData.mrp}</span></div>
-            ${labelData.manufactureDate ? `<div class="field"><span class="field-label">Mfg. Date:</span><span class="field-value">${new Date(labelData.manufactureDate).toLocaleDateString()}</span></div>` : ''}
-            ${labelData.expireDate ? `<div class="field"><span class="field-label">Exp. Date:</span><span class="field-value">${new Date(labelData.expireDate).toLocaleDateString()}</span></div>` : ''}
+            ${labelData.manufactureDate ? `<div class="field"><span class="field-label">Mfg. Date:</span><span class="field-value">${new Date(labelData.manufactureDate).toLocaleDateString()}</span></div>` : ""}
+            ${labelData.expireDate ? `<div class="field"><span class="field-label">Exp. Date:</span><span class="field-value">${new Date(labelData.expireDate).toLocaleDateString()}</span></div>` : ""}
           </div>
         </body>
       </html>
     `;
-    
+
     printWindow?.document.write(printContent);
     printWindow?.document.close();
     printWindow?.print();
@@ -299,14 +307,20 @@ export default function Products() {
               />
             </div>
             <div className="flex gap-2">
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+              >
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
                   {categories.map((category: any) => (
-                    <SelectItem key={category.id} value={category.id.toString()}>
+                    <SelectItem
+                      key={category.id}
+                      value={category.id.toString()}
+                    >
                       {category.name}
                     </SelectItem>
                   ))}
@@ -366,12 +380,20 @@ export default function Products() {
                       </div>
                     </TableCell>
                     <TableCell>{product.sku || "—"}</TableCell>
-                    <TableCell>{formatCurrency(Number(product.cost))}</TableCell>
-                    <TableCell>{formatCurrency(Number(product.price))}</TableCell>
+                    <TableCell>
+                      {formatCurrency(Number(product.cost))}
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(Number(product.price))}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={product.isActive ? "default" : "secondary"}
-                        className={product.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}
+                        className={
+                          product.isActive
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }
                       >
                         {product.isActive ? "In stock" : "Out of stock"}
                       </Badge>
@@ -379,37 +401,39 @@ export default function Products() {
                     <TableCell>{product.unitName || "—"}</TableCell>
                     <TableCell>{product.categoryName || "—"}</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setEditingProduct(product);
-                              setShowProductForm(true);
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleLabelPrint(product)}
-                          >
-                            <Printer className="mr-2 h-4 w-4" />
-                            Label Print
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => deleteProductMutation.mutate(product.id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex space-x-2">
+                        {/* Edit Button */}
+                        <button
+                          onClick={() => {
+                            setEditingProduct(product);
+                            setShowProductForm(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                          title="Edit"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+
+                        {/* Label Print Button */}
+                        <button
+                          onClick={() => handleLabelPrint(product)}
+                          className="text-green-600 hover:text-green-800 focus:outline-none"
+                          title="Label Print"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() =>
+                            deleteProductMutation.mutate(product.id)
+                          }
+                          className="text-red-600 hover:text-red-800 focus:outline-none"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -513,28 +537,39 @@ export default function Products() {
               <Label>Company Name</Label>
               <Input
                 value={labelData.companyName}
-                onChange={(e) => setLabelData({...labelData, companyName: e.target.value})}
+                onChange={(e) =>
+                  setLabelData({ ...labelData, companyName: e.target.value })
+                }
               />
             </div>
             <div>
               <Label>Company Location</Label>
               <Input
                 value={labelData.companyLocation}
-                onChange={(e) => setLabelData({...labelData, companyLocation: e.target.value})}
+                onChange={(e) =>
+                  setLabelData({
+                    ...labelData,
+                    companyLocation: e.target.value,
+                  })
+                }
               />
             </div>
             <div>
               <Label>Registration No.</Label>
               <Input
                 value={labelData.regNo}
-                onChange={(e) => setLabelData({...labelData, regNo: e.target.value})}
+                onChange={(e) =>
+                  setLabelData({ ...labelData, regNo: e.target.value })
+                }
               />
             </div>
             <div>
               <Label>DTQOC No.</Label>
               <Input
                 value={labelData.dtqocNo}
-                onChange={(e) => setLabelData({...labelData, dtqocNo: e.target.value})}
+                onChange={(e) =>
+                  setLabelData({ ...labelData, dtqocNo: e.target.value })
+                }
               />
             </div>
             <div>
@@ -549,28 +584,36 @@ export default function Products() {
               <Label>Batch No.</Label>
               <Input
                 value={labelData.batchNo}
-                onChange={(e) => setLabelData({...labelData, batchNo: e.target.value})}
+                onChange={(e) =>
+                  setLabelData({ ...labelData, batchNo: e.target.value })
+                }
               />
             </div>
             <div>
               <Label>Net Weight</Label>
               <Input
                 value={labelData.netWeight}
-                onChange={(e) => setLabelData({...labelData, netWeight: e.target.value})}
+                onChange={(e) =>
+                  setLabelData({ ...labelData, netWeight: e.target.value })
+                }
               />
             </div>
             <div>
               <Label>Ingredients</Label>
               <Input
                 value={labelData.ingredients}
-                onChange={(e) => setLabelData({...labelData, ingredients: e.target.value})}
+                onChange={(e) =>
+                  setLabelData({ ...labelData, ingredients: e.target.value })
+                }
               />
             </div>
             <div>
               <Label>MRP</Label>
               <Input
                 value={labelData.mrp}
-                onChange={(e) => setLabelData({...labelData, mrp: e.target.value})}
+                onChange={(e) =>
+                  setLabelData({ ...labelData, mrp: e.target.value })
+                }
               />
             </div>
             <div>
@@ -578,7 +621,12 @@ export default function Products() {
               <Input
                 type="date"
                 value={labelData.manufactureDate}
-                onChange={(e) => setLabelData({...labelData, manufactureDate: e.target.value})}
+                onChange={(e) =>
+                  setLabelData({
+                    ...labelData,
+                    manufactureDate: e.target.value,
+                  })
+                }
               />
             </div>
             <div>
@@ -586,11 +634,17 @@ export default function Products() {
               <Input
                 type="date"
                 value={labelData.expireDate}
-                onChange={(e) => setLabelData({...labelData, expireDate: e.target.value})}
+                onChange={(e) =>
+                  setLabelData({ ...labelData, expireDate: e.target.value })
+                }
               />
             </div>
             <div className="flex space-x-2 pt-4">
-              <Button variant="outline" onClick={() => setShowLabelPrint(false)} className="flex-1">
+              <Button
+                variant="outline"
+                onClick={() => setShowLabelPrint(false)}
+                className="flex-1"
+              >
                 Cancel
               </Button>
               <Button onClick={printLabel} className="flex-1">
