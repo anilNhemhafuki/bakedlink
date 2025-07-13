@@ -1936,7 +1936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(sales);
     } catch (error) {
       console.error("Error fetching sales:", error);
-      res.status(50).json({ message: "Failed to fetch sales" });
+      res.status(500).json({ message: "Failed to fetch sales" });
     }
   });
 

@@ -1411,6 +1411,150 @@ export class Storage implements IStorage {
     return runningBalance;
   }
 
+  // Order operations
+  async getOrders(): Promise<Order[]> {
+    return await db.select().from(orders).orderBy(desc(orders.createdAt));
+  }
+
+  async getOrderById(id: number): Promise<Order | undefined> {
+    const result = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async createOrder(order: InsertOrder): Promise<Order> {
+    const [newOrder] = await db.insert(orders).values(order).returning();
+    return newOrder;
+  }
+
+  async updateOrder(id: number, order: Partial<InsertOrder>): Promise<Order> {
+    const [updatedOrder] = await db
+      .update(orders)
+      .set({ ...order, updatedAt: new Date() })
+      .where(eq(orders.id, id))
+      .returning();
+    return updatedOrder;
+  }
+
+  async deleteOrder(id: number): Promise<void> {
+    await db.delete(orderItems).where(eq(orderItems.orderId, id));
+    await db.delete(orders).where(eq(orders.id, id));
+  }
+
+  async getOrderItems(orderId: number): Promise<any[]> {
+    return await db
+      .select({
+        id: orderItems.id,
+        orderId: orderItems.orderId,
+        productId: orderItems.productId,
+        quantity: orderItems.quantity,
+        unitPrice: orderItems.unitPrice,
+        totalPrice: orderItems.totalPrice,
+        productName: products.name,
+      })
+      .from(orderItems)
+      .leftJoin(products, eq(orderItems.productId, products.id))
+      .where(eq(orderItems.orderId, orderId));
+  }
+
+  async createOrderItem(item: InsertOrderItem): Promise<OrderItem> {
+    const [newItem] = await db.insert(orderItems).values(item).returning();
+    return newItem;
+  }
+
+  async getRecentOrders(limit: number): Promise<any[]> {
+    return await db
+      .select()
+      .from(orders)
+      .orderBy(desc(orders.createdAt))
+      .limit(limit);
+  }
+
+  async getTodayProductionSchedule(): Promise<any[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    return await db
+      .select({
+        id: productionSchedule.id,
+        productId: productionSchedule.productId,
+        quantity: productionSchedule.quantity,
+        scheduledDate: productionSchedule.scheduledDate,
+        status: productionSchedule.status,
+        productName: products.name,
+      })
+      .from(productionSchedule)
+      .leftJoin(products, eq(productionSchedule.productId, products.id))
+      .where(
+        and(
+          gte(productionSchedule.scheduledDate, today),
+          lte(productionSchedule.scheduledDate, tomorrow)
+        )
+      )
+      .orderBy(productionSchedule.scheduledDate);
+  }
+
+  async getProductionSchedule(): Promise<any[]> {
+    return await db
+      .select({
+        id: productionSchedule.id,
+        productId: productionSchedule.productId,
+        quantity: productionSchedule.quantity,
+        scheduledDate: productionSchedule.scheduledDate,
+        status: productionSchedule.status,
+        notes: productionSchedule.notes,
+        productName: products.name,
+      })
+      .from(productionSchedule)
+      .leftJoin(products, eq(productionSchedule.productId, products.id))
+      .orderBy(desc(productionSchedule.scheduledDate));
+  }
+
+  async createProductionScheduleItem(item: InsertProductionScheduleItem): Promise<ProductionScheduleItem> {
+    const [newItem] = await db.insert(productionSchedule).values(item).returning();
+    return newItem;
+  }
+
+  async updateProductionScheduleItem(id: number, item: Partial<InsertProductionScheduleItem>): Promise<ProductionScheduleItem> {
+    const [updatedItem] = await db
+      .update(productionSchedule)
+      .set({ ...item, updatedAt: new Date() })
+      .where(eq(productionSchedule.id, id))
+      .returning();
+    return updatedItem;
+  }
+
+  async getProductionScheduleByDate(date: string): Promise<any[]> {
+    const targetDate = new Date(date);
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    return await db
+      .select({
+        id: productionSchedule.id,
+        productId: productionSchedule.productId,
+        quantity: productionSchedule.quantity,
+        scheduledDate: productionSchedule.scheduledDate,
+        status: productionSchedule.status,
+        notes: productionSchedule.notes,
+        productName: products.name,
+      })
+      .from(productionSchedule)
+      .leftJoin(products, eq(productionSchedule.productId, products.id))
+      .where(
+        and(
+          gte(productionSchedule.scheduledDate, targetDate),
+          lte(productionSchedule.scheduledDate, nextDay)
+        )
+      )
+      .orderBy(productionSchedule.scheduledDate);
+  }
+
   // Additional utility methods for routes compatibility
   async getMediaItems(): Promise<any[]> {
     return [];
