@@ -37,7 +37,7 @@ import { format } from "date-fns";
 
 export default function SalaryManagement() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStaff, setSelectedStaff] = useState<string>("");
+  const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -64,7 +64,7 @@ export default function SalaryManagement() {
     queryKey: ["/api/salary-payments", selectedStaff],
     queryFn: () => {
       const params = new URLSearchParams();
-      if (selectedStaff) params.append('staffId', selectedStaff);
+      if (selectedStaff && selectedStaff !== "all") params.append('staffId', selectedStaff);
       
       return apiRequest(`/api/salary-payments?${params.toString()}`, "GET");
     },
@@ -475,7 +475,7 @@ export default function SalaryManagement() {
                   <SelectValue placeholder="All staff" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All staff</SelectItem>
+                  <SelectItem value="all">All staff</SelectItem>
                   {staff.map((member: any) => (
                     <SelectItem key={member.id} value={member.id.toString()}>
                       {member.firstName} {member.lastName}

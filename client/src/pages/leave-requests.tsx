@@ -36,8 +36,8 @@ import { format } from "date-fns";
 
 export default function LeaveRequests() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStaff, setSelectedStaff] = useState<string>("");
-  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [selectedStaff, setSelectedStaff] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -203,8 +203,8 @@ export default function LeaveRequests() {
     const matchesSearch = `${request.staffName} ${request.leaveType} ${request.reason}`
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const matchesStaff = !selectedStaff || request.staffId.toString() === selectedStaff;
-    const matchesStatus = !filterStatus || request.status === filterStatus;
+    const matchesStaff = selectedStaff === "all" || request.staffId.toString() === selectedStaff;
+    const matchesStatus = filterStatus === "all" || request.status === filterStatus;
     
     return matchesSearch && matchesStaff && matchesStatus;
   });
@@ -345,7 +345,7 @@ export default function LeaveRequests() {
                   <SelectValue placeholder="All staff" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All staff</SelectItem>
+                  <SelectItem value="all">All staff</SelectItem>
                   {staff.map((member: any) => (
                     <SelectItem key={member.id} value={member.id.toString()}>
                       {member.firstName} {member.lastName}
@@ -361,7 +361,7 @@ export default function LeaveRequests() {
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>

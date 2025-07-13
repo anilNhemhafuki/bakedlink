@@ -37,7 +37,7 @@ import { format } from "date-fns";
 
 export default function AttendanceManagement() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStaff, setSelectedStaff] = useState<string>("");
+  const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -75,7 +75,7 @@ export default function AttendanceManagement() {
     queryKey: ["/api/attendance", selectedStaff, startDate, endDate],
     queryFn: () => {
       const params = new URLSearchParams();
-      if (selectedStaff) params.append('staffId', selectedStaff);
+      if (selectedStaff && selectedStaff !== "all") params.append('staffId', selectedStaff);
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       
@@ -474,7 +474,7 @@ export default function AttendanceManagement() {
                   <SelectValue placeholder="All staff" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All staff</SelectItem>
+                  <SelectItem value="all">All staff</SelectItem>
                   {staff.map((member: any) => (
                     <SelectItem key={member.id} value={member.id.toString()}>
                       {member.firstName} {member.lastName}
