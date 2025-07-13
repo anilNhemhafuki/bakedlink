@@ -71,6 +71,10 @@ export default function Ingredients() {
 
   const { data: units = [] } = useQuery({
     queryKey: ["/api/units"],
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
+      return failureCount < 3;
+    },
   });
 
   const { data: categories = [] } = useQuery({
@@ -78,7 +82,7 @@ export default function Ingredients() {
   });
 
   // Filter only active units for the dropdown
-  const activeUnits = (units as any[]).filter((unit: any) => unit.isActive);
+  const activeUnits = Array.isArray(units) ? (units as any[]).filter((unit: any) => unit.isActive) : [];
 
   // Filter ingredients (items that can be used as ingredients)
   const ingredients = (items as any[]).filter(
@@ -316,6 +320,7 @@ export default function Ingredients() {
 
   // Get unit name by ID
   const getUnitName = (unitId: number) => {
+    if (!Array.isArray(units) || !unitId) return "Unknown Unit";
     const unit = (units as any[]).find((u: any) => u.id === unitId);
     return unit ? `${unit.name} (${unit.abbreviation})` : "Unknown Unit";
   };
@@ -399,7 +404,7 @@ export default function Ingredients() {
                       <SelectValue placeholder="Select unit of measurement" />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeUnits.map((unit: any) => (
+                      {Array.isArray(activeUnits) && activeUnits.map((unit: any) => (
                         <SelectItem key={unit.id} value={unit.id.toString()}>
                           {unit.name} ({unit.abbreviation})
                         </SelectItem>

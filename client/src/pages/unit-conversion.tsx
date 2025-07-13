@@ -239,7 +239,7 @@ export default function UnitConversion() {
                       <SelectValue placeholder="Select unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      {units.map((unit: Unit) => (
+                      {Array.isArray(units) && units.filter((unit: Unit) => unit.isActive).map((unit: Unit) => (
                         <SelectItem key={unit.id} value={unit.id.toString()}>
                           {unit.name} ({unit.abbreviation})
                         </SelectItem>
@@ -254,7 +254,7 @@ export default function UnitConversion() {
                       <SelectValue placeholder="Select unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      {units.map((unit: Unit) => (
+                      {Array.isArray(units) && units.filter((unit: Unit) => unit.isActive).map((unit: Unit) => (
                         <SelectItem key={unit.id} value={unit.id.toString()}>
                           {unit.name} ({unit.abbreviation})
                         </SelectItem>
@@ -338,7 +338,7 @@ export default function UnitConversion() {
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  {units.map((unit: Unit) => (
+                  {Array.isArray(units) && units.filter((unit: Unit) => unit.isActive).map((unit: Unit) => (
                     <SelectItem key={unit.id} value={unit.id.toString()}>
                       {unit.name} ({unit.abbreviation})
                     </SelectItem>
@@ -353,7 +353,7 @@ export default function UnitConversion() {
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  {units.map((unit: Unit) => (
+                  {Array.isArray(units) && units.filter((unit: Unit) => unit.isActive).map((unit: Unit) => (
                     <SelectItem key={unit.id} value={unit.id.toString()}>
                       {unit.name} ({unit.abbreviation})
                     </SelectItem>
