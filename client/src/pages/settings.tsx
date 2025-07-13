@@ -197,6 +197,8 @@ export default function Settings() {
       companyAddress: formData.get("companyAddress"),
       companyPhone: formData.get("companyPhone"),
       companyEmail: formData.get("companyEmail"),
+      companyRegNo: formData.get("companyRegNo"),
+      companyDtqocNo: formData.get("companyDtqocNo"),
       timezone: formData.get("timezone"),
       currency: formData.get("currency"),
     };
@@ -231,6 +233,20 @@ export default function Settings() {
     updateSettingsMutation.mutate(data);
   };
 
+  const handleSavePrinting = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+
+    const data = {
+      defaultPrinter: formData.get("defaultPrinter"),
+      labelSize: formData.get("labelSize"),
+      labelOrientation: formData.get("labelOrientation"),
+      labelMargin: formData.get("labelMargin"),
+    };
+
+    updateSettingsMutation.mutate(data);
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -245,10 +261,11 @@ export default function Settings() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="printing">Printing</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -293,6 +310,26 @@ export default function Settings() {
                     defaultValue={settings.companyAddress || ""}
                     rows={3}
                   />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="companyRegNo">Registration Number</Label>
+                    <Input
+                      id="companyRegNo"
+                      name="companyRegNo"
+                      defaultValue={settings.companyRegNo || ""}
+                      placeholder="Company registration number"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="companyDtqocNo">DTQOC Number</Label>
+                    <Input
+                      id="companyDtqocNo"
+                      name="companyDtqocNo"
+                      defaultValue={settings.companyDtqocNo || ""}
+                      placeholder="DTQOC certification number"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -526,47 +563,85 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="backup">
+        <TabsContent value="printing">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Backup & Data
+                <i className="fas fa-print text-lg"></i>
+                Printing Settings
               </CardTitle>
               <CardDescription>
-                Manage your data backup and export options
+                Configure your label printing preferences and printer settings
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">
-                  Automatic Backups
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  Your data is automatically backed up daily. Last backup:{" "}
-                  {new Date().toLocaleDateString()}
-                </p>
-                <Button variant="outline">Download Latest Backup</Button>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Export Data</h3>
-                <p className="text-muted-foreground mb-4">
-                  Export your data in various formats for external use
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="outline">Export as CSV</Button>
-                  <Button variant="outline">Export as JSON</Button>
-                  <Button variant="outline">Export as PDF</Button>
+            <CardContent>
+              <form onSubmit={handleSavePrinting} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="defaultPrinter">Default Printer</Label>
+                    <Input
+                      id="defaultPrinter"
+                      name="defaultPrinter"
+                      defaultValue={settings.defaultPrinter || ""}
+                      placeholder="Enter printer name"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Name of your default label printer
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="labelSize">Label Size</Label>
+                    <Select
+                      name="labelSize"
+                      defaultValue={settings.labelSize || "small"}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="small">Small (50x30mm)</SelectItem>
+                        <SelectItem value="medium">Medium (75x50mm)</SelectItem>
+                        <SelectItem value="large">Large (100x75mm)</SelectItem>
+                        <SelectItem value="custom">Custom Size</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Reset Data</h3>
-                <p className="text-muted-foreground mb-4">
-                  <strong>Warning:</strong> This will permanently delete all
-                  your data. This action cannot be undone.
-                </p>
-                <Button variant="destructive">Reset All Data</Button>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="labelOrientation">Label Orientation</Label>
+                    <Select
+                      name="labelOrientation"
+                      defaultValue={settings.labelOrientation || "portrait"}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="portrait">Portrait</SelectItem>
+                        <SelectItem value="landscape">Landscape</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="labelMargin">Label Margin (mm)</Label>
+                    <Input
+                      id="labelMargin"
+                      name="labelMargin"
+                      type="number"
+                      step="0.5"
+                      defaultValue={settings.labelMargin || "2"}
+                      placeholder="2"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={updateSettingsMutation.isPending}
+                >
+                  Save Printing Settings
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>

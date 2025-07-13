@@ -94,6 +94,12 @@ export default function Products() {
     queryKey: ["/api/categories"],
   });
 
+  const { data: settingsResponse = {} } = useQuery({
+    queryKey: ["/api/settings"],
+  });
+
+  const settings = settingsResponse?.settings || {};
+
   const deleteProductMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/products/${id}`);
@@ -154,10 +160,10 @@ export default function Products() {
   const handleLabelPrint = (product: any) => {
     setSelectedProductForLabel(product);
     setLabelData({
-      companyName: "Sweet Treats Bakery",
-      companyLocation: "",
-      regNo: "",
-      dtqocNo: "",
+      companyName: settings.companyName || "Sweet Treats Bakery",
+      companyLocation: settings.companyAddress || "",
+      regNo: settings.companyRegNo || "",
+      dtqocNo: settings.companyDtqocNo || "",
       batchNo: "",
       netWeight: "",
       ingredients: "",
@@ -170,56 +176,102 @@ export default function Products() {
 
   const printLabel = () => {
     const printWindow = window.open("", "_blank");
+    const labelSize = settings.labelSize || "small";
+    const orientation = settings.labelOrientation || "portrait";
+    const margin = settings.labelMargin || "2";
+    
+    // Size configurations
+    const sizeConfig = {
+      small: { width: "200px", height: "120px" },
+      medium: { width: "280px", height: "200px" },
+      large: { width: "350px", height: "260px" }
+    };
+    
+    const currentSize = sizeConfig[labelSize as keyof typeof sizeConfig] || sizeConfig.small;
+    
     const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Product Label</title>
+          <title>Product Label - ${selectedProductForLabel?.name}</title>
           <style>
             body { 
-              font-family: Arial, sans-serif; 
-              margin: 20px; 
-              font-size: 12px;
+              font-family: 'Arial', sans-serif; 
+              margin: ${margin}mm; 
+              font-size: 10px;
+              background: white;
             }
             .label {
               border: 2px solid #000;
-              padding: 15px;
-              width: 300px;
+              padding: 8px;
+              width: ${currentSize.width};
+              height: ${currentSize.height};
               margin: 0 auto;
+              box-sizing: border-box;
+              display: flex;
+              flex-direction: column;
+              ${orientation === "landscape" ? "transform: rotate(90deg); transform-origin: center;" : ""}
             }
             .header {
               text-align: center;
               border-bottom: 1px solid #000;
-              padding-bottom: 10px;
-              margin-bottom: 10px;
+              padding-bottom: 6px;
+              margin-bottom: 6px;
+              flex-shrink: 0;
             }
             .company-name {
-              font-size: 16px;
+              font-size: 12px;
               font-weight: bold;
-              margin-bottom: 5px;
+              margin-bottom: 2px;
+              line-height: 1.2;
+            }
+            .company-location {
+              font-size: 8px;
+              line-height: 1.1;
+            }
+            .product-name {
+              font-size: 11px;
+              font-weight: bold;
+              text-align: center;
+              margin: 4px 0;
+              border: 1px solid #000;
+              padding: 3px;
+              background: #f9f9f9;
+              flex-shrink: 0;
+            }
+            .fields {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              gap: 2px;
             }
             .field {
-              margin: 5px 0;
               display: flex;
               justify-content: space-between;
+              align-items: flex-start;
+              line-height: 1.2;
             }
             .field-label {
               font-weight: bold;
-              width: 40%;
+              width: 35%;
+              font-size: 9px;
             }
             .field-value {
-              width: 55%;
+              width: 60%;
+              text-align: right;
+              font-size: 9px;
+              word-wrap: break-word;
             }
-            .product-name {
-              font-size: 14px;
-              font-weight: bold;
-              text-align: center;
-              margin: 10px 0;
-              border: 1px solid #000;
-              padding: 5px;
+            .ingredients .field-value {
+              font-size: 7px;
+              line-height: 1.1;
             }
             @media print {
               body { margin: 0; }
+              .label { 
+                page-break-inside: avoid;
+                break-inside: avoid;
+              }
             }
           </style>
         </head>
@@ -227,19 +279,21 @@ export default function Products() {
           <div class="label">
             <div class="header">
               <div class="company-name">${labelData.companyName}</div>
-              ${labelData.companyLocation ? `<div>${labelData.companyLocation}</div>` : ""}
+              ${labelData.companyLocation ? `<div class="company-location">${labelData.companyLocation}</div>` : ""}
             </div>
             
             <div class="product-name">${selectedProductForLabel?.name}</div>
             
-            ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ""}
-            ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ""}
-            ${labelData.batchNo ? `<div class="field"><span class="field-label">Batch No:</span><span class="field-value">${labelData.batchNo}</span></div>` : ""}
-            ${labelData.netWeight ? `<div class="field"><span class="field-label">Net Weight:</span><span class="field-value">${labelData.netWeight}</span></div>` : ""}
-            ${labelData.ingredients ? `<div class="field"><span class="field-label">Ingredients:</span><span class="field-value">${labelData.ingredients}</span></div>` : ""}
-            <div class="field"><span class="field-label">MRP:</span><span class="field-value">${labelData.mrp}</span></div>
-            ${labelData.manufactureDate ? `<div class="field"><span class="field-label">Mfg. Date:</span><span class="field-value">${new Date(labelData.manufactureDate).toLocaleDateString()}</span></div>` : ""}
-            ${labelData.expireDate ? `<div class="field"><span class="field-label">Exp. Date:</span><span class="field-value">${new Date(labelData.expireDate).toLocaleDateString()}</span></div>` : ""}
+            <div class="fields">
+              ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ""}
+              ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ""}
+              ${labelData.batchNo ? `<div class="field"><span class="field-label">Batch No:</span><span class="field-value">${labelData.batchNo}</span></div>` : ""}
+              ${labelData.netWeight ? `<div class="field"><span class="field-label">Net Weight:</span><span class="field-value">${labelData.netWeight}</span></div>` : ""}
+              ${labelData.ingredients ? `<div class="field ingredients"><span class="field-label">Ingredients:</span><span class="field-value">${labelData.ingredients}</span></div>` : ""}
+              <div class="field"><span class="field-label">MRP:</span><span class="field-value">${labelData.mrp}</span></div>
+              ${labelData.manufactureDate ? `<div class="field"><span class="field-label">Mfg. Date:</span><span class="field-value">${new Date(labelData.manufactureDate).toLocaleDateString()}</span></div>` : ""}
+              ${labelData.expireDate ? `<div class="field"><span class="field-label">Exp. Date:</span><span class="field-value">${new Date(labelData.expireDate).toLocaleDateString()}</span></div>` : ""}
+            </div>
           </div>
         </body>
       </html>
@@ -528,130 +582,280 @@ export default function Products() {
 
       {/* Label Print Modal */}
       <Dialog open={showLabelPrint} onOpenChange={setShowLabelPrint}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Print Product Label</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5" />
+              Print Product Label
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Company Name</Label>
-              <Input
-                value={labelData.companyName}
-                onChange={(e) =>
-                  setLabelData({ ...labelData, companyName: e.target.value })
-                }
-              />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Label Data Form */}
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4">
+                <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
+                  Company Information
+                </h3>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <Label className="text-xs font-medium">Company Name</Label>
+                    <Input
+                      value={labelData.companyName}
+                      onChange={(e) =>
+                        setLabelData({ ...labelData, companyName: e.target.value })
+                      }
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Location/Address</Label>
+                    <Input
+                      value={labelData.companyLocation}
+                      onChange={(e) =>
+                        setLabelData({
+                          ...labelData,
+                          companyLocation: e.target.value,
+                        })
+                      }
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium">Registration No.</Label>
+                      <Input
+                        value={labelData.regNo}
+                        onChange={(e) =>
+                          setLabelData({ ...labelData, regNo: e.target.value })
+                        }
+                        className="h-8"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium">DTQOC No.</Label>
+                      <Input
+                        value={labelData.dtqocNo}
+                        onChange={(e) =>
+                          setLabelData({ ...labelData, dtqocNo: e.target.value })
+                        }
+                        className="h-8"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
+                  Product Information
+                </h3>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <Label className="text-xs font-medium">Product Name</Label>
+                    <Input
+                      value={selectedProductForLabel?.name || ""}
+                      readOnly
+                      className="bg-gray-50 h-8"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium">Batch No.</Label>
+                      <Input
+                        value={labelData.batchNo}
+                        onChange={(e) =>
+                          setLabelData({ ...labelData, batchNo: e.target.value })
+                        }
+                        className="h-8"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium">Net Weight</Label>
+                      <Input
+                        value={labelData.netWeight}
+                        onChange={(e) =>
+                          setLabelData({ ...labelData, netWeight: e.target.value })
+                        }
+                        placeholder="e.g., 250g"
+                        className="h-8"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Ingredients</Label>
+                    <Input
+                      value={labelData.ingredients}
+                      onChange={(e) =>
+                        setLabelData({ ...labelData, ingredients: e.target.value })
+                      }
+                      placeholder="List of ingredients"
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">MRP</Label>
+                    <Input
+                      value={labelData.mrp}
+                      onChange={(e) =>
+                        setLabelData({ ...labelData, mrp: e.target.value })
+                      }
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium">Manufacture Date</Label>
+                      <Input
+                        type="date"
+                        value={labelData.manufactureDate}
+                        onChange={(e) =>
+                          setLabelData({
+                            ...labelData,
+                            manufactureDate: e.target.value,
+                          })
+                        }
+                        className="h-8"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium">Expire Date</Label>
+                      <Input
+                        type="date"
+                        value={labelData.expireDate}
+                        onChange={(e) =>
+                          setLabelData({ ...labelData, expireDate: e.target.value })
+                        }
+                        className="h-8"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
+                  Printing Options
+                </h3>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <Label className="text-xs font-medium">Printer Name</Label>
+                    <Input
+                      defaultValue={settings.defaultPrinter || ""}
+                      placeholder="Select or enter printer name"
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs font-medium">Label Size</Label>
+                      <Select defaultValue={settings.labelSize || "small"}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="small">Small (50x30mm)</SelectItem>
+                          <SelectItem value="medium">Medium (75x50mm)</SelectItem>
+                          <SelectItem value="large">Large (100x75mm)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium">Orientation</Label>
+                      <Select defaultValue={settings.labelOrientation || "portrait"}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="portrait">Portrait</SelectItem>
+                          <SelectItem value="landscape">Landscape</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <Label>Company Location</Label>
-              <Input
-                value={labelData.companyLocation}
-                onChange={(e) =>
-                  setLabelData({
-                    ...labelData,
-                    companyLocation: e.target.value,
-                  })
-                }
-              />
+
+            {/* Label Preview */}
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4">
+                <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
+                  Label Preview
+                </h3>
+                <div className="border-2 border-gray-300 p-4 bg-white shadow-sm max-w-sm mx-auto" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px' }}>
+                  <div className="text-center border-b border-gray-300 pb-2 mb-3">
+                    <div className="font-bold text-sm">{labelData.companyName}</div>
+                    {labelData.companyLocation && <div className="text-xs">{labelData.companyLocation}</div>}
+                  </div>
+                  
+                  <div className="font-bold text-center text-sm border border-gray-300 p-1 mb-2">
+                    {selectedProductForLabel?.name}
+                  </div>
+                  
+                  <div className="space-y-1 text-xs">
+                    {labelData.regNo && (
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Reg. No:</span>
+                        <span>{labelData.regNo}</span>
+                      </div>
+                    )}
+                    {labelData.dtqocNo && (
+                      <div className="flex justify-between">
+                        <span className="font-semibold">DTQOC No:</span>
+                        <span>{labelData.dtqocNo}</span>
+                      </div>
+                    )}
+                    {labelData.batchNo && (
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Batch No:</span>
+                        <span>{labelData.batchNo}</span>
+                      </div>
+                    )}
+                    {labelData.netWeight && (
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Net Weight:</span>
+                        <span>{labelData.netWeight}</span>
+                      </div>
+                    )}
+                    {labelData.ingredients && (
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Ingredients:</span>
+                        <span className="text-right">{labelData.ingredients}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="font-semibold">MRP:</span>
+                      <span>{labelData.mrp}</span>
+                    </div>
+                    {labelData.manufactureDate && (
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Mfg. Date:</span>
+                        <span>{new Date(labelData.manufactureDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {labelData.expireDate && (
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Exp. Date:</span>
+                        <span>{new Date(labelData.expireDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <Label>Registration No.</Label>
-              <Input
-                value={labelData.regNo}
-                onChange={(e) =>
-                  setLabelData({ ...labelData, regNo: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>DTQOC No.</Label>
-              <Input
-                value={labelData.dtqocNo}
-                onChange={(e) =>
-                  setLabelData({ ...labelData, dtqocNo: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Product Name</Label>
-              <Input
-                value={selectedProductForLabel?.name || ""}
-                readOnly
-                className="bg-gray-50"
-              />
-            </div>
-            <div>
-              <Label>Batch No.</Label>
-              <Input
-                value={labelData.batchNo}
-                onChange={(e) =>
-                  setLabelData({ ...labelData, batchNo: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Net Weight</Label>
-              <Input
-                value={labelData.netWeight}
-                onChange={(e) =>
-                  setLabelData({ ...labelData, netWeight: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Ingredients</Label>
-              <Input
-                value={labelData.ingredients}
-                onChange={(e) =>
-                  setLabelData({ ...labelData, ingredients: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>MRP</Label>
-              <Input
-                value={labelData.mrp}
-                onChange={(e) =>
-                  setLabelData({ ...labelData, mrp: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Manufacture Date</Label>
-              <Input
-                type="date"
-                value={labelData.manufactureDate}
-                onChange={(e) =>
-                  setLabelData({
-                    ...labelData,
-                    manufactureDate: e.target.value,
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label>Expire Date</Label>
-              <Input
-                type="date"
-                value={labelData.expireDate}
-                onChange={(e) =>
-                  setLabelData({ ...labelData, expireDate: e.target.value })
-                }
-              />
-            </div>
-            <div className="flex space-x-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowLabelPrint(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button onClick={printLabel} className="flex-1">
-                <Printer className="h-4 w-4 mr-2" />
-                Print Label
-              </Button>
-            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setShowLabelPrint(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={printLabel}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print Label
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
