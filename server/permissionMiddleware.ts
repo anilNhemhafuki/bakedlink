@@ -22,8 +22,8 @@ export function requirePermission(resource: string, action: 'read' | 'write' | '
         return next();
       }
 
-      // Admin has access to most things but not user management or staff management
-      if (req.user.role === 'admin' && resource !== 'super_admin' && resource !== 'staff') {
+      // Admin has access to most things but not user management 
+      if (req.user.role === 'admin' && resource !== 'super_admin') {
         return next();
       }
 

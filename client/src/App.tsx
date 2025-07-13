@@ -37,6 +37,10 @@ import Stock from "@/pages/stock";
 import Ingredients from "@/pages/ingredients";
 import Units from "@/pages/units";
 import UnitConversion from "@/pages/unit-conversion";
+import Staff from "@/pages/staff";
+import Attendance from "@/pages/attendance";
+import Salary from "@/pages/salary";
+import LeaveRequests from "@/pages/leave-requests";
 import { ProtectedRoute } from "@/components/protected-route";
 
 function Router() {
@@ -287,6 +291,46 @@ function AuthenticatedApp({
                 component={() => (
                   <ProtectedRoute resource="units" action="read">
                     <UnitConversion />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/staff"
+                component={() => (
+                  <ProtectedRoute resource="staff" action="read">
+                    <Staff />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/attendance"
+                component={() => (
+                  <ProtectedRoute resource="staff" action="read">
+                    <Attendance />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/salary"
+                component={() => (
+                  <ProtectedRoute resource="staff" action="read">
+                    <Salary />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/leave-requests"
+                component={() => (
+                  <ProtectedRoute resource="staff" action="read">
+                    <LeaveRequests />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/staff-schedules"
+                component={() => (
+                  <ProtectedRoute resource="staff" action="read">
+                    <LeaveRequests />
                   </ProtectedRoute>
                 )}
               />
