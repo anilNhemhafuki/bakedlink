@@ -36,12 +36,13 @@ import type { Unit, UnitConversion } from "@shared/schema";
 export default function UnitConversion() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingConversion, setEditingConversion] = useState<UnitConversion | null>(null);
+  const [editingConversion, setEditingConversion] =
+    useState<UnitConversion | null>(null);
   const [fromUnit, setFromUnit] = useState("");
   const [toUnit, setToUnit] = useState("");
   const [conversionFactor, setConversionFactor] = useState("");
   const [formula, setFormula] = useState("");
-  
+
   // Unit conversion calculator states
   const [calcFromUnit, setCalcFromUnit] = useState("");
   const [calcToUnit, setCalcToUnit] = useState("");
@@ -75,7 +76,11 @@ export default function UnitConversion() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest(`/api/unit-conversions/${editingConversion?.id}`, "PUT", data);
+      await apiRequest(
+        `/api/unit-conversions/${editingConversion?.id}`,
+        "PUT",
+        data,
+      );
     },
     onSuccess: () => {
       toast({
@@ -111,7 +116,7 @@ export default function UnitConversion() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!fromUnit || !toUnit || !conversionFactor) {
       toast({
         title: "Error",
@@ -161,20 +166,27 @@ export default function UnitConversion() {
     }
 
     const conversion = conversions.find(
-      (c: any) => c.fromUnitId === parseInt(calcFromUnit) && c.toUnitId === parseInt(calcToUnit)
+      (c: any) =>
+        c.fromUnitId === parseInt(calcFromUnit) &&
+        c.toUnitId === parseInt(calcToUnit),
     );
 
     if (conversion) {
-      const result = parseFloat(calcAmount) * parseFloat(conversion.conversionFactor);
+      const result =
+        parseFloat(calcAmount) * parseFloat(conversion.conversionFactor);
       setCalcResult(result.toFixed(4));
     } else {
       // Try reverse conversion
       const reverseConversion = conversions.find(
-        (c: any) => c.fromUnitId === parseInt(calcToUnit) && c.toUnitId === parseInt(calcFromUnit)
+        (c: any) =>
+          c.fromUnitId === parseInt(calcToUnit) &&
+          c.toUnitId === parseInt(calcFromUnit),
       );
-      
+
       if (reverseConversion) {
-        const result = parseFloat(calcAmount) / parseFloat(reverseConversion.conversionFactor);
+        const result =
+          parseFloat(calcAmount) /
+          parseFloat(reverseConversion.conversionFactor);
         setCalcResult(result.toFixed(4));
       } else {
         toast({
@@ -201,15 +213,10 @@ export default function UnitConversion() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Unit Conversions</h1>
-          <p className="text-muted-foreground">
-            Manage unit conversions and calculate between different units
-          </p>
-        </div>
+        <div></div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()}>
@@ -287,13 +294,15 @@ export default function UnitConversion() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? "Saving..."
                     : editingConversion
-                    ? "Update"
-                    : "Add"}
+                      ? "Update"
+                      : "Add"}
                 </Button>
               </div>
             </form>
@@ -360,7 +369,8 @@ export default function UnitConversion() {
           {calcResult && (
             <div className="mt-4 p-4 bg-muted rounded-lg">
               <p className="text-lg font-semibold">
-                Result: {calcResult} {getUnitName(parseInt(calcToUnit)).split(' ')[0]}
+                Result: {calcResult}{" "}
+                {getUnitName(parseInt(calcToUnit)).split(" ")[0]}
               </p>
             </div>
           )}
@@ -388,7 +398,9 @@ export default function UnitConversion() {
           {conversionsLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading conversions...</p>
+              <p className="text-muted-foreground mt-2">
+                Loading conversions...
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -409,15 +421,15 @@ export default function UnitConversion() {
                       <TableCell className="font-medium">
                         {getUnitName(conversion.fromUnitId)}
                       </TableCell>
-                      <TableCell>
-                        {getUnitName(conversion.toUnitId)}
-                      </TableCell>
+                      <TableCell>{getUnitName(conversion.toUnitId)}</TableCell>
                       <TableCell>{conversion.conversionFactor}</TableCell>
+                      <TableCell>{conversion.formula || "N/A"}</TableCell>
                       <TableCell>
-                        {conversion.formula || "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={conversion.isActive ? "default" : "secondary"}>
+                        <Badge
+                          variant={
+                            conversion.isActive ? "default" : "secondary"
+                          }
+                        >
                           {conversion.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>

@@ -97,6 +97,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
       "/purchases": t("purchases"),
       "/ingredients": t("ingredients"),
       "/units": t("units"),
+      "/unit-conversion": t("unitConversions"),
     };
 
     return pathTitles[location] || t("dashboard");
