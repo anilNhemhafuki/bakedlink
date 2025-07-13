@@ -17,13 +17,13 @@ export function requirePermission(resource: string, action: 'read' | 'write' | '
         return res.status(401).json({ message: "Authentication required" });
       }
 
-      // Super admin always has access to everything - no exceptions
+      // Super admin always has access to everything - including staff management
       if (req.user.role === 'super_admin') {
         return next();
       }
 
-      // Admin has access to most things but not user management
-      if (req.user.role === 'admin' && resource !== 'super_admin') {
+      // Admin has access to most things but not user management or staff management
+      if (req.user.role === 'admin' && resource !== 'super_admin' && resource !== 'staff') {
         return next();
       }
 

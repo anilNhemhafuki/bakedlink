@@ -956,6 +956,10 @@ export class Storage implements IStorage {
       "reports",
       "settings",
       "users",
+      "staff",
+      "attendance",
+      "salary",
+      "leave_requests",
     ];
 
     const actions = ["read", "write", "read_write"];

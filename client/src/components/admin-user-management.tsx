@@ -548,139 +548,172 @@ export default function AdminUserManagement() {
             </Select>
           </div>
 
-          {allPermissions.length > 0 && (
+          {selectedRole && (
             <div className="space-y-4">
-              <h4 className="font-medium">
-                Permissions for {selectedRole} role:
-              </h4>
-              <div className="grid gap-4">
-                {Object.entries(groupPermissionsByResource(allPermissions)).map(
-                  ([resource, permissions]: [string, any[]]) => {
-                    // Check if resource has read permission
-                    const hasRead = rolePermissions.some((rp: any) =>
-                      permissions.some(
-                        (p: any) => p.id === rp.id && p.action === "read",
-                      ),
-                    );
+              {updateRolePermissionsMutation.isPending && (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Updating permissions...
+                  </p>
+                </div>
+              )}
 
-                    // Check if resource has read_write permission
-                    const hasReadWrite = rolePermissions.some((rp: any) =>
-                      permissions.some(
-                        (p: any) => p.id === rp.id && p.action === "read_write",
-                      ),
-                    );
+              {selectedRole === "super_admin" && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="default" className="bg-green-600">
+                      Super Admin
+                    </Badge>
+                    <span className="text-green-800 font-medium">
+                      Full Access to All System Resources
+                    </span>
+                  </div>
+                  <p className="text-green-700 text-sm mt-2">
+                    Super Admin has unrestricted access to all pages, features, and permissions in the system.
+                  </p>
+                </div>
+              )}
 
-                    const handleReadToggle = (checked: boolean) => {
-                      const readPerm = permissions.find(
-                        (p: any) => p.action === "read",
-                      );
-                      if (readPerm) {
-                        handlePermissionChange(readPerm.id, checked);
-                      }
-                    };
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px]">Resource</TableHead>
+                      <TableHead className="w-[300px]">Description</TableHead>
+                      <TableHead className="text-center w-[120px]">Read</TableHead>
+                      <TableHead className="text-center w-[120px]">Read-Write</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(groupPermissionsByResource(allPermissions)).map(
+                      ([resource, permissions]) => {
+                        const hasRead = rolePermissions.some(
+                          (rp: any) =>
+                            permissions.some(
+                              (p: any) => p.id === rp.permissionId && p.action === "read",
+                            ),
+                        );
 
-                    const handleReadWriteToggle = (checked: boolean) => {
-                      const readWritePerm = permissions.find(
-                        (p: any) => p.action === "read_write",
-                      );
-                      if (readWritePerm) {
-                        handlePermissionChange(readWritePerm.id, checked);
-                      }
-                    };
+                        const hasReadWrite = rolePermissions.some(
+                          (rp: any) =>
+                            permissions.some(
+                              (p: any) => p.id === rp.permissionId && p.action === "read_write",
+                            ),
+                        );
 
-                    return (
-                      <Card
-                        key={resource}
-                        className="p-4 border border-gray-200 hover:border-gray-300 transition-colors"
-                      >
-                        <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                          <div className="font-semibold text-lg capitalize text-gray-800">
-                            {resource}
-                            {/* Permission Status */}
-                            {(hasRead || hasReadWrite) && (
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {hasRead && (
-                                  <Badge
-                                    variant="outline"
-                                    className="bg-blue-50 text-blue-700 border-blue-200"
-                                  >
-                                    <i className="fas fa-eye mr-1 text-xs"></i>
-                                    Read Access
-                                  </Badge>
-                                )}
-                                {hasReadWrite && (
-                                  <Badge
-                                    variant="default"
-                                    className="bg-green-100 text-green-800 border-green-300"
-                                  >
-                                    <i className="fas fa-edit mr-1 text-xs"></i>
-                                    Full Access
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          {/* Read Permission Toggle */}
-                          <div className="flex items-center justify-between p-1 ">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <i className="fas fa-eye text-blue-600 text-sm"></i>
-                              </div>
-                              <div>
-                                <span className="font-medium text-gray-700">
-                                  Read Permission
+                        const handlePermissionChange = (
+                          permissionId: number,
+                          isGranted: boolean,
+                        ) => {
+                          const currentPermissionIds = rolePermissions.map(
+                            (rp: any) => rp.permissionId,
+                          );
+
+                          let newPermissionIds;
+                          if (isGranted) {
+                            newPermissionIds = currentPermissionIds.includes(permissionId)
+                              ? currentPermissionIds
+                              : [...currentPermissionIds, permissionId];
+                          } else {
+                            newPermissionIds = currentPermissionIds.filter(
+                              (id: number) => id !== permissionId,
+                            );
+                          }
+
+                          updateRolePermissionsMutation.mutate({
+                            role: selectedRole,
+                            permissionIds: newPermissionIds,
+                          });
+                        };
+
+                        const handleReadToggle = (checked: boolean) => {
+                          const readPerm = permissions.find(
+                            (p: any) => p.action === "read",
+                          );
+                          if (readPerm) {
+                            handlePermissionChange(readPerm.id, checked);
+                          }
+                        };
+
+                        const handleReadWriteToggle = (checked: boolean) => {
+                          const readWritePerm = permissions.find(
+                            (p: any) => p.action === "read_write",
+                          );
+                          if (readWritePerm) {
+                            handlePermissionChange(readWritePerm.id, checked);
+                          }
+                        };
+
+                        const getResourceDescription = (resource: string) => {
+                          const descriptions: { [key: string]: string } = {
+                            dashboard: "Overview and analytics",
+                            products: "Product catalog management",
+                            inventory: "Stock and materials tracking", 
+                            orders: "Customer order processing",
+                            production: "Production scheduling",
+                            customers: "Customer relationship management",
+                            parties: "Supplier and vendor management",
+                            assets: "Asset and equipment tracking",
+                            expenses: "Business expense tracking",
+                            sales: "Sales transaction management",
+                            purchases: "Purchase order management",
+                            reports: "Reports and analytics",
+                            settings: "System configuration",
+                            users: "User account management",
+                            staff: "Staff management and records",
+                            attendance: "Staff attendance tracking",
+                            salary: "Salary and payroll management",
+                            leave_requests: "Leave request management"
+                          };
+                          return descriptions[resource] || `Manage ${resource} access`;
+                        };
+
+                        return (
+                          <TableRow key={resource}>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center">
+                                  <i className="fas fa-cube text-primary text-xs"></i>
+                                </div>
+                                <span className="capitalize">
+                                  {resource.replace("_", " ")}
                                 </span>
-                                <p className="text-xs text-gray-500">
-                                  View and access {resource} data
-                                </p>
                               </div>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={hasRead}
-                                onChange={(e) =>
-                                  handleReadToggle(e.target.checked)
-                                }
-                                className="sr-only peer"
-                              />
-                              <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300/50 rounded-full peer peer-checked:after:translate-x-7 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-500 shadow-sm hover:shadow-md transition-shadow"></div>
-                            </label>
-                          </div>
-
-                          {/* Read-Write Permission Toggle */}
-                          <div className="flex items-center justify-between p-1">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                                <i className="fas fa-edit text-green-600 text-sm"></i>
-                              </div>
-                              <div>
-                                <span className="font-medium text-gray-700">
-                                  Read-Write Permission
-                                </span>
-                                <p className="text-xs text-gray-500">
-                                  Full access to {resource} - view, create,
-                                  edit, delete
-                                </p>
-                              </div>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={hasReadWrite}
-                                onChange={(e) =>
-                                  handleReadWriteToggle(e.target.checked)
-                                }
-                                className="sr-only peer"
-                              />
-                              <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300/50 rounded-full peer peer-checked:after:translate-x-7 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-500 shadow-sm hover:shadow-md transition-shadow"></div>
-                            </label>
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  },
-                )}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {getResourceDescription(resource)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={hasRead || selectedRole === "super_admin"}
+                                  onChange={(e) => handleReadToggle(e.target.checked)}
+                                  className="sr-only peer"
+                                  disabled={selectedRole === "super_admin"}
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+                              </label>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={hasReadWrite || selectedRole === "super_admin"}
+                                  onChange={(e) => handleReadWriteToggle(e.target.checked)}
+                                  className="sr-only peer"
+                                  disabled={selectedRole === "super_admin"}
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+                              </label>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      },
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           )}
