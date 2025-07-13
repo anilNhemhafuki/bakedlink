@@ -4,10 +4,36 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +53,11 @@ export default function AdminUserManagement() {
   });
   const { toast } = useToast();
 
-  const { data: users = [], isLoading, error } = useQuery<any[]>({
+  const {
+    data: users = [],
+    isLoading,
+    error,
+  } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
   });
 
@@ -43,11 +73,20 @@ export default function AdminUserManagement() {
   };
 
   const { data: allPermissions = [] } = useAllPermissions();
-  const { data: rolePermissions = [], refetch: refetchRolePermissions } = useRolePermissions(selectedRole);
+  const { data: rolePermissions = [], refetch: refetchRolePermissions } =
+    useRolePermissions(selectedRole);
 
   const updateRolePermissionsMutation = useMutation({
-    mutationFn: async ({ role, permissionIds }: { role: string; permissionIds: number[] }) => {
-      return apiRequest("PUT", `/api/permissions/role/${role}`, { permissionIds });
+    mutationFn: async ({
+      role,
+      permissionIds,
+    }: {
+      role: string;
+      permissionIds: number[];
+    }) => {
+      return apiRequest("PUT", `/api/permissions/role/${role}`, {
+        permissionIds,
+      });
     },
     onSuccess: () => {
       toast({ title: "Role permissions updated successfully" });
@@ -70,7 +109,13 @@ export default function AdminUserManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setIsDialogOpen(false);
       setEditingUser(null);
-      setUserData({ email: "", password: "", firstName: "", lastName: "", role: "staff" });
+      setUserData({
+        email: "",
+        password: "",
+        firstName: "",
+        lastName: "",
+        role: "staff",
+      });
       toast({
         title: "Success",
         description: "User created successfully",
@@ -104,7 +149,13 @@ export default function AdminUserManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setIsDialogOpen(false);
       setEditingUser(null);
-      setUserData({ email: "", password: "", firstName: "", lastName: "", role: "staff" });
+      setUserData({
+        email: "",
+        password: "",
+        firstName: "",
+        lastName: "",
+        role: "staff",
+      });
       toast({
         title: "Success",
         description: "User updated successfully",
@@ -169,8 +220,8 @@ export default function AdminUserManagement() {
       firstName: formData.get("firstName") as string,
       lastName: formData.get("lastName") as string,
       role: formData.get("role") as string,
-      ...((!editingUser || formData.get("password")) && { 
-        password: formData.get("password") as string 
+      ...((!editingUser || formData.get("password")) && {
+        password: formData.get("password") as string,
       }),
     };
 
@@ -194,9 +245,12 @@ export default function AdminUserManagement() {
   };
 
   const getRoleBadgeVariant = (role: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+    const variants: Record<
+      string,
+      "default" | "secondary" | "destructive" | "outline"
+    > = {
       super_admin: "destructive",
-      admin: "destructive", 
+      admin: "destructive",
       manager: "default",
       supervisor: "secondary",
       marketer: "outline",
@@ -218,7 +272,9 @@ export default function AdminUserManagement() {
     if (checked) {
       newPermissionIds = [...currentPermissionIds, permissionId];
     } else {
-      newPermissionIds = currentPermissionIds.filter((id: number) => id !== permissionId);
+      newPermissionIds = currentPermissionIds.filter(
+        (id: number) => id !== permissionId,
+      );
     }
 
     updateRolePermissionsMutation.mutate({
@@ -228,7 +284,11 @@ export default function AdminUserManagement() {
   };
 
   if (error) {
-    if (isUnauthorizedError(error) || error.message.includes('403') || error.message.includes('404')) {
+    if (
+      isUnauthorizedError(error) ||
+      error.message.includes("403") ||
+      error.message.includes("404")
+    ) {
       return (
         <Card>
           <CardContent className="pt-6">
@@ -236,7 +296,9 @@ export default function AdminUserManagement() {
               <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
               <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
               <p>You don't have permission to access user management.</p>
-              <p className="text-sm mt-2">Contact your administrator for access.</p>
+              <p className="text-sm mt-2">
+                Contact your administrator for access.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -266,13 +328,22 @@ export default function AdminUserManagement() {
               </CardTitle>
               <CardDescription>Manage users and their roles</CardDescription>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) {
-                setEditingUser(null);
-                setUserData({ email: "", password: "", firstName: "", lastName: "", role: "staff" });
-              }
-            }}>
+            <Dialog
+              open={isDialogOpen}
+              onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) {
+                  setEditingUser(null);
+                  setUserData({
+                    email: "",
+                    password: "",
+                    firstName: "",
+                    lastName: "",
+                    role: "staff",
+                  });
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -285,7 +356,9 @@ export default function AdminUserManagement() {
                     {editingUser ? "Edit User" : "Create New User"}
                   </DialogTitle>
                   <DialogDescription>
-                    {editingUser ? "Update user information" : "Add a new user to the system"}
+                    {editingUser
+                      ? "Update user information"
+                      : "Add a new user to the system"}
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSave} className="space-y-4">
@@ -324,7 +397,9 @@ export default function AdminUserManagement() {
                   </div>
                   <div>
                     <Label htmlFor="password">
-                      {editingUser ? "Password (leave blank to keep current)" : "Password"}
+                      {editingUser
+                        ? "Password (leave blank to keep current)"
+                        : "Password"}
                     </Label>
                     <Input
                       id="password"
@@ -360,7 +435,9 @@ export default function AdminUserManagement() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={createMutation.isPending || updateMutation.isPending}
+                      disabled={
+                        createMutation.isPending || updateMutation.isPending
+                      }
                     >
                       {editingUser ? "Update User" : "Create User"}
                     </Button>
@@ -449,7 +526,8 @@ export default function AdminUserManagement() {
         <CardHeader>
           <CardTitle>Role Permissions Management</CardTitle>
           <CardDescription>
-            Configure permissions for each role. Select a role to manage its permissions.
+            Configure permissions for each role. Select a role to manage its
+            permissions.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -476,101 +554,133 @@ export default function AdminUserManagement() {
                 Permissions for {selectedRole} role:
               </h4>
               <div className="grid gap-4">
-                {Object.entries(groupPermissionsByResource(allPermissions)).map(([resource, permissions]: [string, any[]]) => {
-                  // Check if resource has read permission
-                  const hasRead = rolePermissions.some((rp: any) => 
-                    permissions.some((p: any) => p.id === rp.id && p.action === 'read')
-                  );
-                  
-                  // Check if resource has read_write permission
-                  const hasReadWrite = rolePermissions.some((rp: any) => 
-                    permissions.some((p: any) => p.id === rp.id && p.action === 'read_write')
-                  );
+                {Object.entries(groupPermissionsByResource(allPermissions)).map(
+                  ([resource, permissions]: [string, any[]]) => {
+                    // Check if resource has read permission
+                    const hasRead = rolePermissions.some((rp: any) =>
+                      permissions.some(
+                        (p: any) => p.id === rp.id && p.action === "read",
+                      ),
+                    );
 
-                  const handleReadToggle = (checked: boolean) => {
-                    const readPerm = permissions.find((p: any) => p.action === 'read');
-                    if (readPerm) {
-                      handlePermissionChange(readPerm.id, checked);
-                    }
-                  };
+                    // Check if resource has read_write permission
+                    const hasReadWrite = rolePermissions.some((rp: any) =>
+                      permissions.some(
+                        (p: any) => p.id === rp.id && p.action === "read_write",
+                      ),
+                    );
 
-                  const handleReadWriteToggle = (checked: boolean) => {
-                    const readWritePerm = permissions.find((p: any) => p.action === 'read_write');
-                    if (readWritePerm) {
-                      handlePermissionChange(readWritePerm.id, checked);
-                    }
-                  };
+                    const handleReadToggle = (checked: boolean) => {
+                      const readPerm = permissions.find(
+                        (p: any) => p.action === "read",
+                      );
+                      if (readPerm) {
+                        handlePermissionChange(readPerm.id, checked);
+                      }
+                    };
 
-                  return (
-                    <Card key={resource} className="p-4 border border-gray-200 hover:border-gray-300 transition-colors">
-                      <div className="space-y-4">
-                        <div className="font-semibold text-lg capitalize text-gray-800">{resource}</div>
-                        
-                        {/* Read Permission Toggle */}
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <i className="fas fa-eye text-blue-600 text-sm"></i>
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-700">Read Permission</span>
-                              <p className="text-xs text-gray-500">View and access {resource} data</p>
-                            </div>
-                          </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={hasRead}
-                              onChange={(e) => handleReadToggle(e.target.checked)}
-                              className="sr-only peer"
-                            />
-                            <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300/50 rounded-full peer peer-checked:after:translate-x-7 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-500 shadow-sm hover:shadow-md transition-shadow"></div>
-                          </label>
-                        </div>
+                    const handleReadWriteToggle = (checked: boolean) => {
+                      const readWritePerm = permissions.find(
+                        (p: any) => p.action === "read_write",
+                      );
+                      if (readWritePerm) {
+                        handlePermissionChange(readWritePerm.id, checked);
+                      }
+                    };
 
-                        {/* Read-Write Permission Toggle */}
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                              <i className="fas fa-edit text-green-600 text-sm"></i>
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-700">Read-Write Permission</span>
-                              <p className="text-xs text-gray-500">Full access to {resource} - view, create, edit, delete</p>
-                            </div>
-                          </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={hasReadWrite}
-                              onChange={(e) => handleReadWriteToggle(e.target.checked)}
-                              className="sr-only peer"
-                            />
-                            <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300/50 rounded-full peer peer-checked:after:translate-x-7 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-500 shadow-sm hover:shadow-md transition-shadow"></div>
-                          </label>
-                        </div>
-
-                        {/* Permission Status */}
-                        {(hasRead || hasReadWrite) && (
-                          <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
-                            {hasRead && (
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                <i className="fas fa-eye mr-1 text-xs"></i>
-                                Read Access
-                              </Badge>
-                            )}
-                            {hasReadWrite && (
-                              <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
-                                <i className="fas fa-edit mr-1 text-xs"></i>
-                                Full Access
-                              </Badge>
+                    return (
+                      <Card
+                        key={resource}
+                        className="p-4 border border-gray-200 hover:border-gray-300 transition-colors"
+                      >
+                        <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                          <div className="font-semibold text-lg capitalize text-gray-800">
+                            {resource}
+                            {/* Permission Status */}
+                            {(hasRead || hasReadWrite) && (
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {hasRead && (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-blue-50 text-blue-700 border-blue-200"
+                                  >
+                                    <i className="fas fa-eye mr-1 text-xs"></i>
+                                    Read Access
+                                  </Badge>
+                                )}
+                                {hasReadWrite && (
+                                  <Badge
+                                    variant="default"
+                                    className="bg-green-100 text-green-800 border-green-300"
+                                  >
+                                    <i className="fas fa-edit mr-1 text-xs"></i>
+                                    Full Access
+                                  </Badge>
+                                )}
+                              </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                    </Card>
-                  );
-                })}
+                          {/* Read Permission Toggle */}
+                          <div className="flex items-center justify-between p-1 ">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i className="fas fa-eye text-blue-600 text-sm"></i>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">
+                                  Read Permission
+                                </span>
+                                <p className="text-xs text-gray-500">
+                                  View and access {resource} data
+                                </p>
+                              </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={hasRead}
+                                onChange={(e) =>
+                                  handleReadToggle(e.target.checked)
+                                }
+                                className="sr-only peer"
+                              />
+                              <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300/50 rounded-full peer peer-checked:after:translate-x-7 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-500 shadow-sm hover:shadow-md transition-shadow"></div>
+                            </label>
+                          </div>
+
+                          {/* Read-Write Permission Toggle */}
+                          <div className="flex items-center justify-between p-1">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                <i className="fas fa-edit text-green-600 text-sm"></i>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">
+                                  Read-Write Permission
+                                </span>
+                                <p className="text-xs text-gray-500">
+                                  Full access to {resource} - view, create,
+                                  edit, delete
+                                </p>
+                              </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={hasReadWrite}
+                                onChange={(e) =>
+                                  handleReadWriteToggle(e.target.checked)
+                                }
+                                className="sr-only peer"
+                              />
+                              <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300/50 rounded-full peer peer-checked:after:translate-x-7 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-500 shadow-sm hover:shadow-md transition-shadow"></div>
+                            </label>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  },
+                )}
               </div>
             </div>
           )}
