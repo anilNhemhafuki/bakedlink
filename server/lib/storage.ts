@@ -1,4 +1,4 @@
-import { eq, desc, count, sql, and, gte, lt } from "drizzle-orm";
+import { eq, desc, count, sql, and, gte, lte } from "drizzle-orm";
 import { db } from "../db";
 import {
   users,
@@ -166,6 +166,7 @@ export interface IStorage {
   // Analytics operations
   getDashboardStats(): Promise<any>;
   getSalesAnalytics(startDate?: Date, endDate?: Date): Promise<any>;
+  getLoginAnalytics(startDate?: string, endDate?: string): Promise<any>;
 
   // Customer operations
   getCustomers(): Promise<Customer[]>;
@@ -1015,181 +1016,67 @@ export class Storage implements IStorage {
     };
   }
 
-  // Order operations
-  async getOrders(): Promise<any[]> {
-    return await db
-      .select({
-        id: orders.id,
-        customerName: orders.customerName,
-        customerId: orders.customerId,
-        customerEmail: orders.customerEmail,
-        customerPhone: orders.customerPhone,
-        totalAmount: orders.totalAmount,
-        status: orders.status,
-        paymentMethod: orders.paymentMethod,
-        deliveryDate: orders.deliveryDate,
-        notes: orders.notes,
-        createdAt: orders.createdAt,
-        updatedAt: orders.updatedAt,
-      })
-      .from(orders)
-      .orderBy(desc(orders.createdAt));
-  }
-
-  async getOrderById(id: number): Promise<any> {
-    const result = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.id, id))
-      .limit(1);
-    return result[0];
-  }
-
-  async getRecentOrders(limit: number = 10): Promise<any[]> {
-    return await db
-      .select()
-      .from(orders)
-      .orderBy(desc(orders.createdAt))
-      .limit(limit);
-  }
-
-  async createOrder(order: InsertOrder): Promise<Order> {
-    const [newOrder] = await db.insert(orders).values(order).returning();
-    return newOrder;
-  }
-
-  async updateOrder(id: number, order: Partial<InsertOrder>): Promise<Order> {
-    const [updatedOrder] = await db
-      .update(orders)
-      .set({ ...order, updatedAt: new Date() })
-      .where(eq(orders.id, id))
-      .returning();
-    return updatedOrder;
-  }
-
-  async deleteOrder(id: number): Promise<void> {
-    await db.delete(orderItems).where(eq(orderItems.orderId, id));
-    await db.delete(orders).where(eq(orders.id, id));
-  }
-
-  async getOrderItems(orderId: number): Promise<any[]> {
-    return await db
-      .select({
-        id: orderItems.id,
-        orderId: orderItems.orderId,
-        productId: orderItems.productId,
-        quantity: orderItems.quantity,
-        unitPrice: orderItems.unitPrice,
-        totalPrice: orderItems.totalPrice,
-        createdAt: orderItems.createdAt,
-        productName: products.name,
-      })
-      .from(orderItems)
-      .leftJoin(products, eq(orderItems.productId, products.id))
-      .where(eq(orderItems.orderId, orderId));
-  }
-
-  async createOrderItem(item: InsertOrderItem): Promise<OrderItem> {
-    const [newItem] = await db.insert(orderItems).values(item).returning();
-    return newItem;
-  }
-
-  async deleteOrderItems(orderId: number): Promise<void> {
-    await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
-  }
-
-  // Production operations
-  async getProductionSchedule(): Promise<any[]> {
-    return await db
-      .select({
-        id: productionSchedule.id,
-        productId: productionSchedule.productId,
-        productName: products.name,
-        targetQuantity: productionSchedule.targetQuantity,
-        scheduledDate: productionSchedule.scheduledDate,
-        status: productionSchedule.status,
-        priority: productionSchedule.priority,
-        notes: productionSchedule.notes,
-        createdAt: productionSchedule.createdAt,
-      })
-      .from(productionSchedule)
-      .leftJoin(products, eq(productionSchedule.productId, products.id))
-      .orderBy(productionSchedule.scheduledDate);
-  }
-
-  async getTodayProductionSchedule(): Promise<any[]> {
+  async getLoginAnalytics(startDate?: string, endDate?: string) {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      let query = db.select().from(loginLogs);
 
-      return await db
-        .select({
-          id: productionSchedule.id,
-          productId: productionSchedule.productId,
-          productName: products.name,
-          targetQuantity: productionSchedule.targetQuantity,
-          targetAmount: productionSchedule.targetAmount,
-          unit: productionSchedule.unit,
-          scheduledDate: productionSchedule.scheduledDate,
-          status: productionSchedule.status,
-          priority: productionSchedule.priority,
-          assignedTo: productionSchedule.assignedTo,
-          notes: productionSchedule.notes,
-        })
-        .from(productionSchedule)
-        .leftJoin(products, eq(productionSchedule.productId, products.id))
-        .where(
+      if (startDate && endDate) {
+        // Ensure dates are properly formatted as strings for the database
+        const startDateStr = typeof startDate === 'string' ? startDate : new Date(startDate).toISOString();
+        const endDateStr = typeof endDate === 'string' ? endDate : new Date(endDate).toISOString();
+
+        query = query.where(
           and(
-            gte(productionSchedule.scheduledDate, today),
-            lt(productionSchedule.scheduledDate, tomorrow),
-          ),
-        )
-        .orderBy(productionSchedule.scheduledDate);
+            gte(loginLogs.timestamp, startDateStr),
+            lte(loginLogs.timestamp, endDateStr)
+          )
+        );
+      }
+
+      const logs = await query;
+
+      // Process logs for analytics
+      const analytics = {
+        totalLogins: logs.length,
+        uniqueUsers: new Set(logs.map(log => log.userId)).size,
+        loginsByDay: this.groupLoginsByDay(logs),
+        loginsByUser: this.groupLoginsByUser(logs),
+        recentLogins: logs.slice(-10)
+      };
+
+      return analytics;
     } catch (error) {
-      console.error("Error in getTodayProductionSchedule:", error);
-      return [];
+      console.error("Error in getLoginAnalytics:", error);
+      throw error;
     }
   }
 
-  async createProductionScheduleItem(item: any): Promise<any> {
-    const [newItem] = await db
-      .insert(productionSchedule)
-      .values(item)
-      .returning();
-    return newItem;
+  //```typescript
+  groupLoginsByDay(logs: any[]): any {
+    const loginsByDay: any = {};
+
+    logs.forEach(log => {
+      const date = log.timestamp.toISOString().split('T')[0];
+      if (!loginsByDay[date]) {
+        loginsByDay[date] = 0;
+      }
+      loginsByDay[date]++;
+    });
+
+    return Object.entries(loginsByDay).map(([date, count]) => ({ date, count }));
   }
 
-  async updateProductionScheduleItem(id: number, item: any): Promise<any> {
-    const [updatedItem] = await db
-      .update(productionSchedule)
-      .set({ ...item, updatedAt: new Date() })
-      .where(eq(productionSchedule.id, id))
-      .returning();
-    return updatedItem;
-  }
+  groupLoginsByUser(logs: any[]): any {
+    const loginsByUser: any = {};
 
-  async deleteProductionScheduleItem(id: number): Promise<void> {
-    await db.delete(productionSchedule).where(eq(productionSchedule.id, id));
-  }
+    logs.forEach(log => {
+      if (!loginsByUser[log.userId]) {
+        loginsByUser[log.userId] = 0;
+      }
+      loginsByUser[log.userId]++;
+    });
 
-  async getProductionScheduleByDate(date: string): Promise<any[]> {
-    return await db
-      .select({
-        id: productionSchedule.id,
-        productId: productionSchedule.productId,
-        productName: products.name,
-        targetQuantity: productionSchedule.targetQuantity,
-        scheduledDate: productionSchedule.scheduledDate,
-        status: productionSchedule.status,
-        priority: productionSchedule.priority,
-        notes: productionSchedule.notes,
-      })
-      .from(productionSchedule)
-      .leftJoin(products, eq(productionSchedule.productId, products.id))
-      .where(sql`DATE(${productionSchedule.scheduledDate}) = DATE(${date})`)
-      .orderBy(productionSchedule.priority, productionSchedule.scheduledDate);
+    return Object.entries(loginsByUser).map(([userId, count]) => ({ userId, count }));
   }
 
   // Customer operations
