@@ -71,6 +71,21 @@ import {
   type InsertLedgerTransaction,
   type LoginLog,
   type InsertLoginLog,
+  staff,
+  attendance,
+  salaryPayments,
+  leaveRequests,
+  staffSchedules,
+  type Staff,
+  type InsertStaff,
+  type Attendance,
+  type InsertAttendance,
+  type SalaryPayment,
+  type InsertSalaryPayment,
+  type LeaveRequest,
+  type InsertLeaveRequest,
+  type StaffSchedule,
+  type InsertStaffSchedule,
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
 
@@ -167,6 +182,39 @@ export interface IStorage {
   getDashboardStats(): Promise<any>;
   getSalesAnalytics(startDate?: Date, endDate?: Date): Promise<any>;
   getLoginAnalytics(startDate?: string, endDate?: string): Promise<any>;
+
+  // Staff management operations
+  getStaff(): Promise<Staff[]>;
+  getStaffById(id: number): Promise<Staff | undefined>;
+  createStaff(staff: InsertStaff): Promise<Staff>;
+  updateStaff(id: number, staff: Partial<InsertStaff>): Promise<Staff>;
+  deleteStaff(id: number): Promise<void>;
+
+  // Attendance operations
+  getAttendance(staffId?: number, startDate?: Date, endDate?: Date): Promise<any[]>;
+  createAttendance(attendance: InsertAttendance): Promise<Attendance>;
+  updateAttendance(id: number, attendance: Partial<InsertAttendance>): Promise<Attendance>;
+  deleteAttendance(id: number): Promise<void>;
+  clockIn(staffId: number): Promise<Attendance>;
+  clockOut(staffId: number): Promise<Attendance>;
+
+  // Salary operations
+  getSalaryPayments(staffId?: number): Promise<any[]>;
+  createSalaryPayment(payment: InsertSalaryPayment): Promise<SalaryPayment>;
+  updateSalaryPayment(id: number, payment: Partial<InsertSalaryPayment>): Promise<SalaryPayment>;
+  deleteSalaryPayment(id: number): Promise<void>;
+
+  // Leave request operations
+  getLeaveRequests(staffId?: number): Promise<any[]>;
+  createLeaveRequest(request: InsertLeaveRequest): Promise<LeaveRequest>;
+  updateLeaveRequest(id: number, request: Partial<InsertLeaveRequest>): Promise<LeaveRequest>;
+  deleteLeaveRequest(id: number): Promise<void>;
+
+  // Staff schedule operations
+  getStaffSchedules(staffId?: number, date?: Date): Promise<any[]>;
+  createStaffSchedule(schedule: InsertStaffSchedule): Promise<StaffSchedule>;
+  updateStaffSchedule(id: number, schedule: Partial<InsertStaffSchedule>): Promise<StaffSchedule>;
+  deleteStaffSchedule(id: number): Promise<void>;
 
   // Customer operations
   getCustomers(): Promise<Customer[]>;
@@ -1610,6 +1658,336 @@ export class Storage implements IStorage {
 
   async createNotification(userId: string, notification: any): Promise<any> {
     return { id: Date.now(), ...notification };
+  }
+
+  // Staff management operations
+  async getStaff(): Promise<Staff[]> {
+    return await db.select().from(staff).orderBy(staff.firstName, staff.lastName);
+  }
+
+  async getStaffById(id: number): Promise<Staff | undefined> {
+    const result = await db
+      .select()
+      .from(staff)
+      .where(eq(staff.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async createStaff(staffData: InsertStaff): Promise<Staff> {
+    const [newStaff] = await db.insert(staff).values(staffData).returning();
+    return newStaff;
+  }
+
+  async updateStaff(id: number, staffData: Partial<InsertStaff>): Promise<Staff> {
+    const [updatedStaff] = await db
+      .update(staff)
+      .set({ ...staffData, updatedAt: new Date() })
+      .where(eq(staff.id, id))
+      .returning();
+    return updatedStaff;
+  }
+
+  async deleteStaff(id: number): Promise<void> {
+    await db.delete(staff).where(eq(staff.id, id));
+  }
+
+  // Attendance operations
+  async getAttendance(staffId?: number, startDate?: Date, endDate?: Date): Promise<any[]> {
+    let query = db
+      .select({
+        id: attendance.id,
+        staffId: attendance.staffId,
+        date: attendance.date,
+        clockIn: attendance.clockIn,
+        clockOut: attendance.clockOut,
+        breakStart: attendance.breakStart,
+        breakEnd: attendance.breakEnd,
+        totalHours: attendance.totalHours,
+        overtimeHours: attendance.overtimeHours,
+        status: attendance.status,
+        notes: attendance.notes,
+        approvedBy: attendance.approvedBy,
+        createdAt: attendance.createdAt,
+        staffName: sql<string>`CONCAT(${staff.firstName}, ' ', ${staff.lastName})`,
+        staffPosition: staff.position,
+      })
+      .from(attendance)
+      .leftJoin(staff, eq(attendance.staffId, staff.id))
+      .orderBy(desc(attendance.date));
+
+    const conditions = [];
+    if (staffId) {
+      conditions.push(eq(attendance.staffId, staffId));
+    }
+    if (startDate) {
+      conditions.push(gte(attendance.date, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(attendance.date, endDate));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    return await query;
+  }
+
+  async createAttendance(attendanceData: InsertAttendance): Promise<Attendance> {
+    const [newAttendance] = await db.insert(attendance).values(attendanceData).returning();
+    return newAttendance;
+  }
+
+  async updateAttendance(id: number, attendanceData: Partial<InsertAttendance>): Promise<Attendance> {
+    const [updatedAttendance] = await db
+      .update(attendance)
+      .set({ ...attendanceData, updatedAt: new Date() })
+      .where(eq(attendance.id, id))
+      .returning();
+    return updatedAttendance;
+  }
+
+  async deleteAttendance(id: number): Promise<void> {
+    await db.delete(attendance).where(eq(attendance.id, id));
+  }
+
+  async clockIn(staffId: number): Promise<Attendance> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Check if already clocked in today
+    const existing = await db
+      .select()
+      .from(attendance)
+      .where(
+        and(
+          eq(attendance.staffId, staffId),
+          gte(attendance.date, today)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      throw new Error("Already clocked in today");
+    }
+
+    const [newAttendance] = await db
+      .insert(attendance)
+      .values({
+        staffId,
+        date: new Date(),
+        clockIn: new Date(),
+        status: "present",
+      })
+      .returning();
+
+    return newAttendance;
+  }
+
+  async clockOut(staffId: number): Promise<Attendance> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const existing = await db
+      .select()
+      .from(attendance)
+      .where(
+        and(
+          eq(attendance.staffId, staffId),
+          gte(attendance.date, today)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0) {
+      throw new Error("No clock-in record found for today");
+    }
+
+    const clockOutTime = new Date();
+    const clockInTime = existing[0].clockIn;
+    let totalHours = 0;
+
+    if (clockInTime) {
+      totalHours = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+    }
+
+    const [updatedAttendance] = await db
+      .update(attendance)
+      .set({
+        clockOut: clockOutTime,
+        totalHours: totalHours.toString(),
+        updatedAt: new Date(),
+      })
+      .where(eq(attendance.id, existing[0].id))
+      .returning();
+
+    return updatedAttendance;
+  }
+
+  // Salary operations
+  async getSalaryPayments(staffId?: number): Promise<any[]> {
+    let query = db
+      .select({
+        id: salaryPayments.id,
+        staffId: salaryPayments.staffId,
+        payPeriodStart: salaryPayments.payPeriodStart,
+        payPeriodEnd: salaryPayments.payPeriodEnd,
+        basicSalary: salaryPayments.basicSalary,
+        overtimePay: salaryPayments.overtimePay,
+        bonus: salaryPayments.bonus,
+        allowances: salaryPayments.allowances,
+        deductions: salaryPayments.deductions,
+        tax: salaryPayments.tax,
+        netPay: salaryPayments.netPay,
+        paymentDate: salaryPayments.paymentDate,
+        paymentMethod: salaryPayments.paymentMethod,
+        status: salaryPayments.status,
+        notes: salaryPayments.notes,
+        processedBy: salaryPayments.processedBy,
+        createdAt: salaryPayments.createdAt,
+        staffName: sql<string>`CONCAT(${staff.firstName}, ' ', ${staff.lastName})`,
+        staffPosition: staff.position,
+      })
+      .from(salaryPayments)
+      .leftJoin(staff, eq(salaryPayments.staffId, staff.id))
+      .orderBy(desc(salaryPayments.payPeriodEnd));
+
+    if (staffId) {
+      query = query.where(eq(salaryPayments.staffId, staffId));
+    }
+
+    return await query;
+  }
+
+  async createSalaryPayment(paymentData: InsertSalaryPayment): Promise<SalaryPayment> {
+    const [newPayment] = await db.insert(salaryPayments).values(paymentData).returning();
+    return newPayment;
+  }
+
+  async updateSalaryPayment(id: number, paymentData: Partial<InsertSalaryPayment>): Promise<SalaryPayment> {
+    const [updatedPayment] = await db
+      .update(salaryPayments)
+      .set({ ...paymentData, updatedAt: new Date() })
+      .where(eq(salaryPayments.id, id))
+      .returning();
+    return updatedPayment;
+  }
+
+  async deleteSalaryPayment(id: number): Promise<void> {
+    await db.delete(salaryPayments).where(eq(salaryPayments.id, id));
+  }
+
+  // Leave request operations
+  async getLeaveRequests(staffId?: number): Promise<any[]> {
+    let query = db
+      .select({
+        id: leaveRequests.id,
+        staffId: leaveRequests.staffId,
+        leaveType: leaveRequests.leaveType,
+        startDate: leaveRequests.startDate,
+        endDate: leaveRequests.endDate,
+        totalDays: leaveRequests.totalDays,
+        reason: leaveRequests.reason,
+        status: leaveRequests.status,
+        appliedDate: leaveRequests.appliedDate,
+        reviewedBy: leaveRequests.reviewedBy,
+        reviewedDate: leaveRequests.reviewedDate,
+        reviewComments: leaveRequests.reviewComments,
+        staffName: sql<string>`CONCAT(${staff.firstName}, ' ', ${staff.lastName})`,
+        staffPosition: staff.position,
+      })
+      .from(leaveRequests)
+      .leftJoin(staff, eq(leaveRequests.staffId, staff.id))
+      .orderBy(desc(leaveRequests.appliedDate));
+
+    if (staffId) {
+      query = query.where(eq(leaveRequests.staffId, staffId));
+    }
+
+    return await query;
+  }
+
+  async createLeaveRequest(requestData: InsertLeaveRequest): Promise<LeaveRequest> {
+    const [newRequest] = await db.insert(leaveRequests).values(requestData).returning();
+    return newRequest;
+  }
+
+  async updateLeaveRequest(id: number, requestData: Partial<InsertLeaveRequest>): Promise<LeaveRequest> {
+    const [updatedRequest] = await db
+      .update(leaveRequests)
+      .set({ ...requestData, updatedAt: new Date() })
+      .where(eq(leaveRequests.id, id))
+      .returning();
+    return updatedRequest;
+  }
+
+  async deleteLeaveRequest(id: number): Promise<void> {
+    await db.delete(leaveRequests).where(eq(leaveRequests.id, id));
+  }
+
+  // Staff schedule operations
+  async getStaffSchedules(staffId?: number, date?: Date): Promise<any[]> {
+    let query = db
+      .select({
+        id: staffSchedules.id,
+        staffId: staffSchedules.staffId,
+        date: staffSchedules.date,
+        shiftStart: staffSchedules.shiftStart,
+        shiftEnd: staffSchedules.shiftEnd,
+        position: staffSchedules.position,
+        department: staffSchedules.department,
+        isRecurring: staffSchedules.isRecurring,
+        recurringPattern: staffSchedules.recurringPattern,
+        notes: staffSchedules.notes,
+        createdBy: staffSchedules.createdBy,
+        staffName: sql<string>`CONCAT(${staff.firstName}, ' ', ${staff.lastName})`,
+        staffPosition: staff.position,
+      })
+      .from(staffSchedules)
+      .leftJoin(staff, eq(staffSchedules.staffId, staff.id))
+      .orderBy(staffSchedules.date);
+
+    const conditions = [];
+    if (staffId) {
+      conditions.push(eq(staffSchedules.staffId, staffId));
+    }
+    if (date) {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(
+        and(
+          gte(staffSchedules.date, startOfDay),
+          lte(staffSchedules.date, endOfDay)
+        )
+      );
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    return await query;
+  }
+
+  async createStaffSchedule(scheduleData: InsertStaffSchedule): Promise<StaffSchedule> {
+    const [newSchedule] = await db.insert(staffSchedules).values(scheduleData).returning();
+    return newSchedule;
+  }
+
+  async updateStaffSchedule(id: number, scheduleData: Partial<InsertStaffSchedule>): Promise<StaffSchedule> {
+    const [updatedSchedule] = await db
+      .update(staffSchedules)
+      .set({ ...scheduleData, updatedAt: new Date() })
+      .where(eq(staffSchedules.id, id))
+      .returning();
+    return updatedSchedule;
+  }
+
+  async deleteStaffSchedule(id: number): Promise<void> {
+    await db.delete(staffSchedules).where(eq(staffSchedules.id, id));
   }
 }
 

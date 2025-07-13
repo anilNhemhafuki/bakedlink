@@ -211,6 +211,42 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
         },
       ],
     },
+    {
+      id: "Staff",
+      title: "Staff Management",
+      items: [
+        {
+          name: "Staff Directory",
+          href: "/staff",
+          icon: "fas fa-users",
+          resource: "staff",
+        },
+        {
+          name: "Attendance",
+          href: "/attendance",
+          icon: "fas fa-clock",
+          resource: "staff",
+        },
+        {
+          name: "Salary Management",
+          href: "/salary",
+          icon: "fas fa-money-bill-wave",
+          resource: "staff",
+        },
+        {
+          name: "Leave Requests",
+          href: "/leave-requests",
+          icon: "fas fa-calendar-times",
+          resource: "staff",
+        },
+        {
+          name: "Staff Schedules",
+          href: "/staff-schedules",
+          icon: "fas fa-calendar-alt",
+          resource: "staff",
+        },
+      ],
+    },
   ];
 
   const isActive = (href: string) => {

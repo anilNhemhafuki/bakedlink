@@ -326,6 +326,106 @@ export const loginLogs = pgTable("login_logs", {
   deviceType: varchar("device_type", { length: 50 }),
 });
 
+// Staff management tables
+export const staff = pgTable("staff", {
+  id: serial("id").primaryKey(),
+  staffId: varchar("staff_id", { length: 50 }).unique().notNull(),
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }).unique(),
+  phone: varchar("phone", { length: 20 }),
+  address: text("address"),
+  dateOfBirth: timestamp("date_of_birth"),
+  hireDate: timestamp("hire_date").notNull(),
+  position: varchar("position", { length: 100 }).notNull(),
+  department: varchar("department", { length: 100 }).notNull(),
+  employmentType: varchar("employment_type", { length: 50 }).notNull(), // full-time, part-time, contract
+  salary: numeric("salary", { precision: 12, scale: 2 }),
+  hourlyRate: numeric("hourly_rate", { precision: 8, scale: 2 }),
+  bankAccount: varchar("bank_account", { length: 100 }),
+  emergencyContact: varchar("emergency_contact", { length: 200 }),
+  emergencyPhone: varchar("emergency_phone", { length: 20 }),
+  profilePhoto: varchar("profile_photo", { length: 500 }),
+  documents: jsonb("documents"), // Store document URLs/paths
+  status: varchar("status", { length: 20 }).default("active"), // active, inactive, terminated
+  terminationDate: timestamp("termination_date"),
+  terminationReason: text("termination_reason"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const attendance = pgTable("attendance", {
+  id: serial("id").primaryKey(),
+  staffId: integer("staff_id").notNull(),
+  date: timestamp("date").notNull(),
+  clockIn: timestamp("clock_in"),
+  clockOut: timestamp("clock_out"),
+  breakStart: timestamp("break_start"),
+  breakEnd: timestamp("break_end"),
+  totalHours: numeric("total_hours", { precision: 4, scale: 2 }),
+  overtimeHours: numeric("overtime_hours", { precision: 4, scale: 2 }),
+  status: varchar("status", { length: 20 }).default("present"), // present, absent, late, half-day, sick, vacation
+  notes: text("notes"),
+  approvedBy: varchar("approved_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const salaryPayments = pgTable("salary_payments", {
+  id: serial("id").primaryKey(),
+  staffId: integer("staff_id").notNull(),
+  payPeriodStart: timestamp("pay_period_start").notNull(),
+  payPeriodEnd: timestamp("pay_period_end").notNull(),
+  basicSalary: numeric("basic_salary", { precision: 12, scale: 2 }).notNull(),
+  overtimePay: numeric("overtime_pay", { precision: 12, scale: 2 }).default("0"),
+  bonus: numeric("bonus", { precision: 12, scale: 2 }).default("0"),
+  allowances: numeric("allowances", { precision: 12, scale: 2 }).default("0"),
+  deductions: numeric("deductions", { precision: 12, scale: 2 }).default("0"),
+  tax: numeric("tax", { precision: 12, scale: 2 }).default("0"),
+  netPay: numeric("net_pay", { precision: 12, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date"),
+  paymentMethod: varchar("payment_method", { length: 50 }).default("bank_transfer"),
+  status: varchar("status", { length: 20 }).default("pending"), // pending, paid, cancelled
+  notes: text("notes"),
+  processedBy: varchar("processed_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const leaveRequests = pgTable("leave_requests", {
+  id: serial("id").primaryKey(),
+  staffId: integer("staff_id").notNull(),
+  leaveType: varchar("leave_type", { length: 50 }).notNull(), // sick, vacation, personal, maternity, etc.
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  totalDays: integer("total_days").notNull(),
+  reason: text("reason").notNull(),
+  status: varchar("status", { length: 20 }).default("pending"), // pending, approved, rejected
+  appliedDate: timestamp("applied_date").defaultNow(),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedDate: timestamp("reviewed_date"),
+  reviewComments: text("review_comments"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const staffSchedules = pgTable("staff_schedules", {
+  id: serial("id").primaryKey(),
+  staffId: integer("staff_id").notNull(),
+  date: timestamp("date").notNull(),
+  shiftStart: timestamp("shift_start").notNull(),
+  shiftEnd: timestamp("shift_end").notNull(),
+  position: varchar("position", { length: 100 }),
+  department: varchar("department", { length: 100 }),
+  isRecurring: boolean("is_recurring").default(false),
+  recurringPattern: varchar("recurring_pattern", { length: 50 }), // daily, weekly, monthly
+  notes: text("notes"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Type definitions
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -373,6 +473,16 @@ export type LedgerTransaction = typeof ledgerTransactions.$inferSelect;
 export type InsertLedgerTransaction = typeof ledgerTransactions.$inferInsert;
 export type LoginLog = typeof loginLogs.$inferSelect;
 export type InsertLoginLog = typeof loginLogs.$inferInsert;
+export type Staff = typeof staff.$inferSelect;
+export type InsertStaff = typeof staff.$inferInsert;
+export type Attendance = typeof attendance.$inferSelect;
+export type InsertAttendance = typeof attendance.$inferInsert;
+export type SalaryPayment = typeof salaryPayments.$inferSelect;
+export type InsertSalaryPayment = typeof salaryPayments.$inferInsert;
+export type LeaveRequest = typeof leaveRequests.$inferSelect;
+export type InsertLeaveRequest = typeof leaveRequests.$inferInsert;
+export type StaffSchedule = typeof staffSchedules.$inferSelect;
+export type InsertStaffSchedule = typeof staffSchedules.$inferInsert;
 
 // Insert schemas for validation
 export const insertUserSchema = createInsertSchema(users).omit({ 
@@ -437,6 +547,36 @@ export const insertLoginLogSchema = createInsertSchema(loginLogs).omit({
 });
 
 export const insertUnitConversionSchema = createInsertSchema(unitConversions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStaffSchema = createInsertSchema(staff).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAttendanceSchema = createInsertSchema(attendance).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSalaryPaymentSchema = createInsertSchema(salaryPayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStaffScheduleSchema = createInsertSchema(staffSchedules).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

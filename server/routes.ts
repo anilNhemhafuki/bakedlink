@@ -2591,6 +2591,423 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Staff management routes
+  app.get("/api/staff", isAuthenticated, requireRead("staff"), async (req, res) => {
+    try {
+      const staffList = await storage.getStaff();
+      res.json(staffList);
+    } catch (error) {
+      console.error("Error fetching staff:", error);
+      res.status(500).json({ message: "Failed to fetch staff" });
+    }
+  });
+
+  app.get("/api/staff/:id", isAuthenticated, requireRead("staff"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const staffMember = await storage.getStaffById(id);
+      if (!staffMember) {
+        return res.status(404).json({ message: "Staff member not found" });
+      }
+      res.json(staffMember);
+    } catch (error) {
+      console.error("Error fetching staff member:", error);
+      res.status(500).json({ message: "Failed to fetch staff member" });
+    }
+  });
+
+  app.post("/api/staff", isAuthenticated, requireWrite("staff"), async (req: any, res) => {
+    try {
+      const {
+        staffId,
+        firstName,
+        lastName,
+        email,
+        phone,
+        address,
+        dateOfBirth,
+        hireDate,
+        position,
+        department,
+        employmentType,
+        salary,
+        hourlyRate,
+        bankAccount,
+        emergencyContact,
+        emergencyPhone,
+        notes,
+      } = req.body;
+
+      if (!staffId || !firstName || !lastName || !position || !department || !employmentType || !hireDate) {
+        return res.status(400).json({ message: "Required fields are missing" });
+      }
+
+      const staffData = {
+        staffId,
+        firstName,
+        lastName,
+        email: email || null,
+        phone: phone || null,
+        address: address || null,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        hireDate: new Date(hireDate),
+        position,
+        department,
+        employmentType,
+        salary: salary ? parseFloat(salary).toString() : null,
+        hourlyRate: hourlyRate ? parseFloat(hourlyRate).toString() : null,
+        bankAccount: bankAccount || null,
+        emergencyContact: emergencyContact || null,
+        emergencyPhone: emergencyPhone || null,
+        notes: notes || null,
+        status: "active",
+      };
+
+      const newStaff = await storage.createStaff(staffData);
+      res.json(newStaff);
+    } catch (error) {
+      console.error("Error creating staff member:", error);
+      res.status(500).json({ message: "Failed to create staff member" });
+    }
+  });
+
+  app.put("/api/staff/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+
+      if (updateData.dateOfBirth) {
+        updateData.dateOfBirth = new Date(updateData.dateOfBirth);
+      }
+      if (updateData.hireDate) {
+        updateData.hireDate = new Date(updateData.hireDate);
+      }
+      if (updateData.terminationDate) {
+        updateData.terminationDate = new Date(updateData.terminationDate);
+      }
+      if (updateData.salary) {
+        updateData.salary = parseFloat(updateData.salary).toString();
+      }
+      if (updateData.hourlyRate) {
+        updateData.hourlyRate = parseFloat(updateData.hourlyRate).toString();
+      }
+
+      const updatedStaff = await storage.updateStaff(id, updateData);
+      res.json(updatedStaff);
+    } catch (error) {
+      console.error("Error updating staff member:", error);
+      res.status(500).json({ message: "Failed to update staff member" });
+    }
+  });
+
+  app.delete("/api/staff/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteStaff(id);
+      res.json({ message: "Staff member deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting staff member:", error);
+      res.status(500).json({ message: "Failed to delete staff member" });
+    }
+  });
+
+  // Attendance routes
+  app.get("/api/attendance", isAuthenticated, requireRead("staff"), async (req, res) => {
+    try {
+      const { staffId, startDate, endDate } = req.query;
+      
+      const attendanceRecords = await storage.getAttendance(
+        staffId ? parseInt(staffId as string) : undefined,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.json(attendanceRecords);
+    } catch (error) {
+      console.error("Error fetching attendance:", error);
+      res.status(500).json({ message: "Failed to fetch attendance" });
+    }
+  });
+
+  app.post("/api/attendance", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const attendanceData = req.body;
+      
+      if (attendanceData.date) {
+        attendanceData.date = new Date(attendanceData.date);
+      }
+      if (attendanceData.clockIn) {
+        attendanceData.clockIn = new Date(attendanceData.clockIn);
+      }
+      if (attendanceData.clockOut) {
+        attendanceData.clockOut = new Date(attendanceData.clockOut);
+      }
+      if (attendanceData.breakStart) {
+        attendanceData.breakStart = new Date(attendanceData.breakStart);
+      }
+      if (attendanceData.breakEnd) {
+        attendanceData.breakEnd = new Date(attendanceData.breakEnd);
+      }
+
+      const newAttendance = await storage.createAttendance(attendanceData);
+      res.json(newAttendance);
+    } catch (error) {
+      console.error("Error creating attendance record:", error);
+      res.status(500).json({ message: "Failed to create attendance record" });
+    }
+  });
+
+  app.post("/api/attendance/clock-in", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const { staffId } = req.body;
+      const attendance = await storage.clockIn(staffId);
+      res.json(attendance);
+    } catch (error) {
+      console.error("Error clocking in:", error);
+      res.status(500).json({ message: error.message || "Failed to clock in" });
+    }
+  });
+
+  app.post("/api/attendance/clock-out", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const { staffId } = req.body;
+      const attendance = await storage.clockOut(staffId);
+      res.json(attendance);
+    } catch (error) {
+      console.error("Error clocking out:", error);
+      res.status(500).json({ message: error.message || "Failed to clock out" });
+    }
+  });
+
+  app.put("/api/attendance/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+
+      if (updateData.date) {
+        updateData.date = new Date(updateData.date);
+      }
+      if (updateData.clockIn) {
+        updateData.clockIn = new Date(updateData.clockIn);
+      }
+      if (updateData.clockOut) {
+        updateData.clockOut = new Date(updateData.clockOut);
+      }
+
+      const updatedAttendance = await storage.updateAttendance(id, updateData);
+      res.json(updatedAttendance);
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+      res.status(500).json({ message: "Failed to update attendance" });
+    }
+  });
+
+  app.delete("/api/attendance/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteAttendance(id);
+      res.json({ message: "Attendance record deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting attendance:", error);
+      res.status(500).json({ message: "Failed to delete attendance" });
+    }
+  });
+
+  // Salary payment routes
+  app.get("/api/salary-payments", isAuthenticated, requireRead("staff"), async (req, res) => {
+    try {
+      const { staffId } = req.query;
+      const payments = await storage.getSalaryPayments(
+        staffId ? parseInt(staffId as string) : undefined
+      );
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching salary payments:", error);
+      res.status(500).json({ message: "Failed to fetch salary payments" });
+    }
+  });
+
+  app.post("/api/salary-payments", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const paymentData = req.body;
+      
+      if (paymentData.payPeriodStart) {
+        paymentData.payPeriodStart = new Date(paymentData.payPeriodStart);
+      }
+      if (paymentData.payPeriodEnd) {
+        paymentData.payPeriodEnd = new Date(paymentData.payPeriodEnd);
+      }
+      if (paymentData.paymentDate) {
+        paymentData.paymentDate = new Date(paymentData.paymentDate);
+      }
+
+      // Convert numeric fields to strings
+      ['basicSalary', 'overtimePay', 'bonus', 'allowances', 'deductions', 'tax', 'netPay'].forEach(field => {
+        if (paymentData[field]) {
+          paymentData[field] = parseFloat(paymentData[field]).toString();
+        }
+      });
+
+      const newPayment = await storage.createSalaryPayment(paymentData);
+      res.json(newPayment);
+    } catch (error) {
+      console.error("Error creating salary payment:", error);
+      res.status(500).json({ message: "Failed to create salary payment" });
+    }
+  });
+
+  app.put("/api/salary-payments/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+
+      if (updateData.payPeriodStart) {
+        updateData.payPeriodStart = new Date(updateData.payPeriodStart);
+      }
+      if (updateData.payPeriodEnd) {
+        updateData.payPeriodEnd = new Date(updateData.payPeriodEnd);
+      }
+      if (updateData.paymentDate) {
+        updateData.paymentDate = new Date(updateData.paymentDate);
+      }
+
+      const updatedPayment = await storage.updateSalaryPayment(id, updateData);
+      res.json(updatedPayment);
+    } catch (error) {
+      console.error("Error updating salary payment:", error);
+      res.status(500).json({ message: "Failed to update salary payment" });
+    }
+  });
+
+  // Leave request routes
+  app.get("/api/leave-requests", isAuthenticated, requireRead("staff"), async (req, res) => {
+    try {
+      const { staffId } = req.query;
+      const requests = await storage.getLeaveRequests(
+        staffId ? parseInt(staffId as string) : undefined
+      );
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching leave requests:", error);
+      res.status(500).json({ message: "Failed to fetch leave requests" });
+    }
+  });
+
+  app.post("/api/leave-requests", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const requestData = req.body;
+      
+      if (requestData.startDate) {
+        requestData.startDate = new Date(requestData.startDate);
+      }
+      if (requestData.endDate) {
+        requestData.endDate = new Date(requestData.endDate);
+      }
+
+      const newRequest = await storage.createLeaveRequest(requestData);
+      res.json(newRequest);
+    } catch (error) {
+      console.error("Error creating leave request:", error);
+      res.status(500).json({ message: "Failed to create leave request" });
+    }
+  });
+
+  app.put("/api/leave-requests/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+
+      if (updateData.startDate) {
+        updateData.startDate = new Date(updateData.startDate);
+      }
+      if (updateData.endDate) {
+        updateData.endDate = new Date(updateData.endDate);
+      }
+      if (updateData.reviewedDate) {
+        updateData.reviewedDate = new Date(updateData.reviewedDate);
+      }
+
+      const updatedRequest = await storage.updateLeaveRequest(id, updateData);
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error("Error updating leave request:", error);
+      res.status(500).json({ message: "Failed to update leave request" });
+    }
+  });
+
+  // Staff schedule routes
+  app.get("/api/staff-schedules", isAuthenticated, requireRead("staff"), async (req, res) => {
+    try {
+      const { staffId, date } = req.query;
+      const schedules = await storage.getStaffSchedules(
+        staffId ? parseInt(staffId as string) : undefined,
+        date ? new Date(date as string) : undefined
+      );
+      res.json(schedules);
+    } catch (error) {
+      console.error("Error fetching staff schedules:", error);
+      res.status(500).json({ message: "Failed to fetch staff schedules" });
+    }
+  });
+
+  app.post("/api/staff-schedules", isAuthenticated, requireWrite("staff"), async (req: any, res) => {
+    try {
+      const scheduleData = req.body;
+      
+      if (scheduleData.date) {
+        scheduleData.date = new Date(scheduleData.date);
+      }
+      if (scheduleData.shiftStart) {
+        scheduleData.shiftStart = new Date(scheduleData.shiftStart);
+      }
+      if (scheduleData.shiftEnd) {
+        scheduleData.shiftEnd = new Date(scheduleData.shiftEnd);
+      }
+
+      scheduleData.createdBy = req.user?.id;
+
+      const newSchedule = await storage.createStaffSchedule(scheduleData);
+      res.json(newSchedule);
+    } catch (error) {
+      console.error("Error creating staff schedule:", error);
+      res.status(500).json({ message: "Failed to create staff schedule" });
+    }
+  });
+
+  app.put("/api/staff-schedules/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+
+      if (updateData.date) {
+        updateData.date = new Date(updateData.date);
+      }
+      if (updateData.shiftStart) {
+        updateData.shiftStart = new Date(updateData.shiftStart);
+      }
+      if (updateData.shiftEnd) {
+        updateData.shiftEnd = new Date(updateData.shiftEnd);
+      }
+
+      const updatedSchedule = await storage.updateStaffSchedule(id, updateData);
+      res.json(updatedSchedule);
+    } catch (error) {
+      console.error("Error updating staff schedule:", error);
+      res.status(500).json({ message: "Failed to update staff schedule" });
+    }
+  });
+
+  app.delete("/api/staff-schedules/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteStaffSchedule(id);
+      res.json({ message: "Staff schedule deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting staff schedule:", error);
+      res.status(500).json({ message: "Failed to delete staff schedule" });
+    }
+  });
+
   // Register enhanced routes for comprehensive system features
   // Enhanced routes functionality integrated above
 
