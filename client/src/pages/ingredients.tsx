@@ -82,7 +82,9 @@ export default function Ingredients() {
   });
 
   // Filter only active units for the dropdown
-  const activeUnits = Array.isArray(units) ? (units as any[]).filter((unit: any) => unit.isActive) : [];
+  const activeUnits = Array.isArray(units)
+    ? (units as any[]).filter((unit: any) => unit.isActive)
+    : [];
 
   // Filter ingredients (items that can be used as ingredients)
   const ingredients = (items as any[]).filter(
@@ -404,11 +406,12 @@ export default function Ingredients() {
                       <SelectValue placeholder="Select unit of measurement" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.isArray(activeUnits) && activeUnits.map((unit: any) => (
-                        <SelectItem key={unit.id} value={unit.id.toString()}>
-                          {unit.name} ({unit.abbreviation})
-                        </SelectItem>
-                      ))}
+                      {Array.isArray(activeUnits) &&
+                        activeUnits.map((unit: any) => (
+                          <SelectItem key={unit.id} value={unit.id.toString()}>
+                            {unit.name} ({unit.abbreviation})
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -748,6 +751,8 @@ export default function Ingredients() {
                                 setEditingItem(item);
                                 setIsDialogOpen(true);
                               }}
+                              className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                              title="Edit"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -756,6 +761,8 @@ export default function Ingredients() {
                               size="sm"
                               onClick={() => deleteMutation.mutate(item.id)}
                               disabled={deleteMutation.isPending}
+                              className="text-red-600 hover:text-red-800 focus:outline-none"
+                              title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

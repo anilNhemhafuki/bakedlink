@@ -434,6 +434,8 @@ export default function Units() {
                                 setEditingUnit(unit);
                                 setIsDialogOpen(true);
                               }}
+                              className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                              title="Edit"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -455,6 +457,8 @@ export default function Units() {
                               variant="outline"
                               size="sm"
                               onClick={() => deleteMutation.mutate(unit.id)}
+                              className="text-red-600 hover:text-red-800 focus:outline-none"
+                              title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

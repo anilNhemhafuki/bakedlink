@@ -256,6 +256,8 @@ export default function CategoryManagement() {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleEdit(category)}
+                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                    title="Edit"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -263,7 +265,8 @@ export default function CategoryManagement() {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDelete(category.id)}
-                    className="text-destructive hover:text-destructive"
+                    className="text-red-600 hover:text-red-800 focus:outline-none"
+                    title="Delete"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

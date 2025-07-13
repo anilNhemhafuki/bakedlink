@@ -485,6 +485,8 @@ export default function AdminUserManagement() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(user)}
+                            className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                            title="Edit"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -493,6 +495,8 @@ export default function AdminUserManagement() {
                             size="sm"
                             onClick={() => handleDeleteUser(user.id)}
                             disabled={user.role === "admin"}
+                            className="text-red-600 hover:text-red-800 focus:outline-none"
+                            title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -570,7 +574,8 @@ export default function AdminUserManagement() {
                     </span>
                   </div>
                   <p className="text-green-700 text-sm mt-2">
-                    Super Admin has unrestricted access to all pages, features, and permissions in the system.
+                    Super Admin has unrestricted access to all pages, features,
+                    and permissions in the system.
                   </p>
                 </div>
               )}
@@ -581,137 +586,154 @@ export default function AdminUserManagement() {
                     <TableRow>
                       <TableHead className="w-[200px]">Resource</TableHead>
                       <TableHead className="w-[300px]">Description</TableHead>
-                      <TableHead className="text-center w-[120px]">Read</TableHead>
-                      <TableHead className="text-center w-[120px]">Read-Write</TableHead>
+                      <TableHead className="text-center w-[120px]">
+                        Read
+                      </TableHead>
+                      <TableHead className="text-center w-[120px]">
+                        Read-Write
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Object.entries(groupPermissionsByResource(allPermissions)).map(
-                      ([resource, permissions]) => {
-                        const hasRead = rolePermissions.some(
-                          (rp: any) =>
-                            permissions.some(
-                              (p: any) => p.id === rp.permissionId && p.action === "read",
-                            ),
+                    {Object.entries(
+                      groupPermissionsByResource(allPermissions),
+                    ).map(([resource, permissions]) => {
+                      const hasRead = rolePermissions.some((rp: any) =>
+                        permissions.some(
+                          (p: any) =>
+                            p.id === rp.permissionId && p.action === "read",
+                        ),
+                      );
+
+                      const hasReadWrite = rolePermissions.some((rp: any) =>
+                        permissions.some(
+                          (p: any) =>
+                            p.id === rp.permissionId &&
+                            p.action === "read_write",
+                        ),
+                      );
+
+                      const handlePermissionChange = (
+                        permissionId: number,
+                        isGranted: boolean,
+                      ) => {
+                        const currentPermissionIds = rolePermissions.map(
+                          (rp: any) => rp.permissionId,
                         );
 
-                        const hasReadWrite = rolePermissions.some(
-                          (rp: any) =>
-                            permissions.some(
-                              (p: any) => p.id === rp.permissionId && p.action === "read_write",
-                            ),
+                        let newPermissionIds;
+                        if (isGranted) {
+                          newPermissionIds = currentPermissionIds.includes(
+                            permissionId,
+                          )
+                            ? currentPermissionIds
+                            : [...currentPermissionIds, permissionId];
+                        } else {
+                          newPermissionIds = currentPermissionIds.filter(
+                            (id: number) => id !== permissionId,
+                          );
+                        }
+
+                        updateRolePermissionsMutation.mutate({
+                          role: selectedRole,
+                          permissionIds: newPermissionIds,
+                        });
+                      };
+
+                      const handleReadToggle = (checked: boolean) => {
+                        const readPerm = permissions.find(
+                          (p: any) => p.action === "read",
                         );
+                        if (readPerm) {
+                          handlePermissionChange(readPerm.id, checked);
+                        }
+                      };
 
-                        const handlePermissionChange = (
-                          permissionId: number,
-                          isGranted: boolean,
-                        ) => {
-                          const currentPermissionIds = rolePermissions.map(
-                            (rp: any) => rp.permissionId,
-                          );
+                      const handleReadWriteToggle = (checked: boolean) => {
+                        const readWritePerm = permissions.find(
+                          (p: any) => p.action === "read_write",
+                        );
+                        if (readWritePerm) {
+                          handlePermissionChange(readWritePerm.id, checked);
+                        }
+                      };
 
-                          let newPermissionIds;
-                          if (isGranted) {
-                            newPermissionIds = currentPermissionIds.includes(permissionId)
-                              ? currentPermissionIds
-                              : [...currentPermissionIds, permissionId];
-                          } else {
-                            newPermissionIds = currentPermissionIds.filter(
-                              (id: number) => id !== permissionId,
-                            );
-                          }
-
-                          updateRolePermissionsMutation.mutate({
-                            role: selectedRole,
-                            permissionIds: newPermissionIds,
-                          });
+                      const getResourceDescription = (resource: string) => {
+                        const descriptions: { [key: string]: string } = {
+                          dashboard: "Overview and analytics",
+                          products: "Product catalog management",
+                          inventory: "Stock and materials tracking",
+                          orders: "Customer order processing",
+                          production: "Production scheduling",
+                          customers: "Customer relationship management",
+                          parties: "Supplier and vendor management",
+                          assets: "Asset and equipment tracking",
+                          expenses: "Business expense tracking",
+                          sales: "Sales transaction management",
+                          purchases: "Purchase order management",
+                          reports: "Reports and analytics",
+                          settings: "System configuration",
+                          users: "User account management",
+                          staff: "Staff management and records",
+                          attendance: "Staff attendance tracking",
+                          salary: "Salary and payroll management",
+                          leave_requests: "Leave request management",
                         };
-
-                        const handleReadToggle = (checked: boolean) => {
-                          const readPerm = permissions.find(
-                            (p: any) => p.action === "read",
-                          );
-                          if (readPerm) {
-                            handlePermissionChange(readPerm.id, checked);
-                          }
-                        };
-
-                        const handleReadWriteToggle = (checked: boolean) => {
-                          const readWritePerm = permissions.find(
-                            (p: any) => p.action === "read_write",
-                          );
-                          if (readWritePerm) {
-                            handlePermissionChange(readWritePerm.id, checked);
-                          }
-                        };
-
-                        const getResourceDescription = (resource: string) => {
-                          const descriptions: { [key: string]: string } = {
-                            dashboard: "Overview and analytics",
-                            products: "Product catalog management",
-                            inventory: "Stock and materials tracking", 
-                            orders: "Customer order processing",
-                            production: "Production scheduling",
-                            customers: "Customer relationship management",
-                            parties: "Supplier and vendor management",
-                            assets: "Asset and equipment tracking",
-                            expenses: "Business expense tracking",
-                            sales: "Sales transaction management",
-                            purchases: "Purchase order management",
-                            reports: "Reports and analytics",
-                            settings: "System configuration",
-                            users: "User account management",
-                            staff: "Staff management and records",
-                            attendance: "Staff attendance tracking",
-                            salary: "Salary and payroll management",
-                            leave_requests: "Leave request management"
-                          };
-                          return descriptions[resource] || `Manage ${resource} access`;
-                        };
-
                         return (
-                          <TableRow key={resource}>
-                            <TableCell className="font-medium">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center">
-                                  <i className="fas fa-cube text-primary text-xs"></i>
-                                </div>
-                                <span className="capitalize">
-                                  {resource.replace("_", " ")}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {getResourceDescription(resource)}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={hasRead || selectedRole === "super_admin"}
-                                  onChange={(e) => handleReadToggle(e.target.checked)}
-                                  className="sr-only peer"
-                                  disabled={selectedRole === "super_admin"}
-                                />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
-                              </label>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={hasReadWrite || selectedRole === "super_admin"}
-                                  onChange={(e) => handleReadWriteToggle(e.target.checked)}
-                                  className="sr-only peer"
-                                  disabled={selectedRole === "super_admin"}
-                                />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
-                              </label>
-                            </TableCell>
-                          </TableRow>
+                          descriptions[resource] || `Manage ${resource} access`
                         );
-                      },
-                    )}
+                      };
+
+                      return (
+                        <TableRow key={resource}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center">
+                                <i className="fas fa-cube text-primary text-xs"></i>
+                              </div>
+                              <span className="capitalize">
+                                {resource.replace("_", " ")}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {getResourceDescription(resource)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  hasRead || selectedRole === "super_admin"
+                                }
+                                onChange={(e) =>
+                                  handleReadToggle(e.target.checked)
+                                }
+                                className="sr-only peer"
+                                disabled={selectedRole === "super_admin"}
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+                            </label>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  hasReadWrite || selectedRole === "super_admin"
+                                }
+                                onChange={(e) =>
+                                  handleReadWriteToggle(e.target.checked)
+                                }
+                                className="sr-only peer"
+                                disabled={selectedRole === "super_admin"}
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+                            </label>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

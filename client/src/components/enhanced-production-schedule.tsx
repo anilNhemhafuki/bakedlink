@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -420,157 +421,196 @@ export default function EnhancedProductionSchedule() {
                 </div>
               </div>
               {/* Products Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Products</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      append({ productId: 0, targetQuantity: 1, unit: "kg" })
-                    }
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Product
-                  </Button>
-                </div>
+              <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left">
+                        Product
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left">
+                        Target Amount
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left">
+                        Unit
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left">
+                        Estimated Packets
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-right">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100 text-sm text-gray-700">
+                    {fields.map((field, index) => (
+                      <tr
+                        key={field.id}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        {/* Product Select */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Select
+                            value={
+                              form
+                                .watch(`products.${index}.productId`)
+                                ?.toString() || ""
+                            }
+                            onValueChange={(value) =>
+                              form.setValue(
+                                `products.${index}.productId`,
+                                parseInt(value),
+                              )
+                            }
+                          >
+                            <SelectTrigger className="w-full sm:w-[240px] h-9">
+                              <SelectValue placeholder="Select product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products.map((product: any) => (
+                                <SelectItem
+                                  key={product.id}
+                                  value={product.id.toString()}
+                                >
+                                  {product.name}
+                                  {product.packetsPerKg && (
+                                    <span className="text-gray-500 ml-2">
+                                      ({product.packetsPerKg} packets/kg)
+                                    </span>
+                                  )}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
 
-                {fields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className="p-4 border rounded-lg space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">Product {index + 1}</span>
-                      {fields.length > 1 && (
+                        {/* Target Quantity Input */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            {...form.register(
+                              `products.${index}.targetQuantity`,
+                              {
+                                valueAsNumber: true,
+                              },
+                            )}
+                            placeholder="Enter amount"
+                            className="w-28 h-9 px-2"
+                          />
+                        </td>
+
+                        {/* Unit Select */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Select
+                            value={form.watch(`products.${index}.unit`)}
+                            onValueChange={(value: "kg" | "packets") =>
+                              form.setValue(`products.${index}.unit`, value)
+                            }
+                          >
+                            <SelectTrigger className="h-9 w-[140px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="kg">
+                                <div className="flex items-center gap-2">
+                                  <Scale className="h-4 w-4" />
+                                  Kilograms (kg)
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="packets">
+                                <div className="flex items-center gap-2">
+                                  <Package className="h-4 w-4" />
+                                  Packets
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+
+                        {/* Estimated Packets Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {form.watch(`products.${index}.unit`) === "kg" &&
+                          form.watch(`products.${index}.productId`) &&
+                          form.watch(`products.${index}.targetQuantity`) ? (
+                            <div className="flex items-center gap-1 text-blue-700 text-sm">
+                              <Package className="h-4 w-4" />
+                              {calculatePackets(
+                                form.watch(`products.${index}.productId`),
+                                form.watch(`products.${index}.targetQuantity`),
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                          {fields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => remove(index)}
+                              className="p-1 h-9 w-9 flex items-center justify-center"
+                              title="Remove"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+
+                    {/* Add Product Button Row */}
+                    <tr>
+                      <td colSpan={5} className="px-6 py-4 text-right border-t">
                         <Button
                           type="button"
-                          variant="destructive"
+                          variant="outline"
                           size="sm"
-                          onClick={() => remove(index)}
+                          onClick={() =>
+                            append({
+                              productId: 0,
+                              targetQuantity: 1,
+                              unit: "kg",
+                            })
+                          }
+                          className="flex items-center gap-1 px-3 h-9 hover:shadow"
                         >
-                          <Minus className="h-4 w-4" />
+                          <Plus className="h-4 w-4" />
+                          Add Product
                         </Button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <Label>Product</Label>
-                        <Select
-                          value={
-                            form
-                              .watch(`products.${index}.productId`)
-                              ?.toString() || ""
-                          }
-                          onValueChange={(value) =>
-                            form.setValue(
-                              `products.${index}.productId`,
-                              parseInt(value),
-                            )
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products.map((product: any) => (
-                              <SelectItem
-                                key={product.id}
-                                value={product.id.toString()}
-                              >
-                                {product.name}
-                                {product.packetsPerKg && (
-                                  <span className="text-gray-500 ml-2">
-                                    ({product.packetsPerKg} packets/kg)
-                                  </span>
-                                )}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label>Target Amount</Label>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          {...form.register(
-                            `products.${index}.targetQuantity`,
-                            {
-                              valueAsNumber: true,
-                            },
-                          )}
-                          placeholder="Enter amount"
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Unit</Label>
-                        <Select
-                          value={form.watch(`products.${index}.unit`)}
-                          onValueChange={(value: "kg" | "packets") =>
-                            form.setValue(`products.${index}.unit`, value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="kg">
-                              <div className="flex items-center gap-2">
-                                <Scale className="h-4 w-4" />
-                                Kilograms (kg)
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="packets">
-                              <div className="flex items-center gap-2">
-                                <Package className="h-4 w-4" />
-                                Packets
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Packet Calculation Preview */}
-                    {form.watch(`products.${index}.unit`) === "kg" &&
-                      form.watch(`products.${index}.productId`) &&
-                      form.watch(`products.${index}.targetQuantity`) && (
-                        <div className="p-3 bg-blue-50 rounded-lg">
-                          <p className="text-sm text-blue-800">
-                            <Package className="h-4 w-4 inline mr-1" />
-                            Estimated packets needed:{" "}
-                            {calculatePackets(
-                              form.watch(`products.${index}.productId`),
-                              form.watch(`products.${index}.targetQuantity`),
-                            )}
-                          </p>
-                        </div>
-                      )}
-                  </div>
-                ))}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  disabled={
-                    createScheduleMutation.isPending ||
-                    updateScheduleMutation.isPending
-                  }
-                  className="flex-1"
-                >
-                  {editingItem ? "Update Schedule" : "Add to Schedule"}
-                </Button>
-                {editingItem && (
-                  <Button type="button" variant="outline" onClick={cancelEdit}>
-                    Cancel
+              <div className="w-full flex justify-end">
+                <div className="flex gap-2">
+                  <Button
+                    type="submit"
+                    disabled={
+                      createScheduleMutation.isPending ||
+                      updateScheduleMutation.isPending
+                    }
+                    className="flex-1"
+                  >
+                    {editingItem ? "Update Schedule" : "Add to Schedule"}
                   </Button>
-                )}
+                  {editingItem && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={cancelEdit}
+                      className="text-red-600 hover:text-red-800 focus:outline-none"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </div>
             </form>
           </CardContent>

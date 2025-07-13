@@ -1,9 +1,11 @@
-
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { PermissionWrapper, ReadOnlyWrapper } from "@/components/permission-wrapper";
+import {
+  PermissionWrapper,
+  ReadOnlyWrapper,
+} from "@/components/permission-wrapper";
 import { Input } from "@/components/ui/input";
 import SearchBar from "@/components/search-bar";
 import { Label } from "@/components/ui/label";
@@ -39,15 +41,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Building, 
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Building,
   Eye,
   Download,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -93,7 +95,8 @@ export default function Parties() {
   const [selectedType, setSelectedType] = useState("");
   const [transactionType, setTransactionType] = useState("");
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [transactionErrors, setTransactionErrors] = useState<TransactionFormErrors>({});
+  const [transactionErrors, setTransactionErrors] =
+    useState<TransactionFormErrors>({});
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
@@ -139,7 +142,7 @@ export default function Parties() {
         }, 500);
         return;
       }
-      
+
       if (error.response?.data?.errors) {
         setFormErrors(error.response.data.errors);
       } else {
@@ -174,13 +177,14 @@ export default function Parties() {
         }, 500);
         return;
       }
-      
+
       if (error.response?.data?.errors) {
         setFormErrors(error.response.data.errors);
       } else {
         toast({
           title: "Error",
-          description: error.response?.data?.message || "Failed to update party",
+          description:
+            error.response?.data?.message || "Failed to update party",
           variant: "destructive",
         });
       }
@@ -217,11 +221,16 @@ export default function Parties() {
     mutationFn: (data: any) => apiRequest("POST", "/api/ledger", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/parties"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/ledger/party", selectedParty?.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/ledger/party", selectedParty?.id],
+      });
       setIsTransactionDialogOpen(false);
       setTransactionType("");
       setTransactionErrors({});
-      toast({ title: "Success", description: "Transaction added successfully" });
+      toast({
+        title: "Success",
+        description: "Transaction added successfully",
+      });
     },
     onError: (error: any) => {
       if (error.response?.data?.errors) {
@@ -229,7 +238,8 @@ export default function Parties() {
       } else {
         toast({
           title: "Error",
-          description: error.response?.data?.message || "Failed to add transaction",
+          description:
+            error.response?.data?.message || "Failed to add transaction",
           variant: "destructive",
         });
       }
@@ -238,7 +248,7 @@ export default function Parties() {
 
   const validateForm = (formData: FormData): boolean => {
     const errors: FormErrors = {};
-    
+
     const name = formData.get("name") as string;
     const type = formData.get("type") as string;
     const email = formData.get("email") as string;
@@ -271,7 +281,7 @@ export default function Parties() {
 
   const validateTransactionForm = (formData: FormData): boolean => {
     const errors: TransactionFormErrors = {};
-    
+
     const amount = formData.get("amount") as string;
     const description = formData.get("description") as string;
     const transactionDate = formData.get("transactionDate") as string;
@@ -301,11 +311,12 @@ export default function Parties() {
       const today = new Date();
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(today.getFullYear() - 1);
-      
+
       if (selectedDate > today) {
         errors.transactionDate = "Transaction date cannot be in the future";
       } else if (selectedDate < oneYearAgo) {
-        errors.transactionDate = "Transaction date cannot be more than 1 year ago";
+        errors.transactionDate =
+          "Transaction date cannot be more than 1 year ago";
       }
     }
 
@@ -316,14 +327,14 @@ export default function Parties() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
-    
+
     if (!validateForm(formData)) {
       return;
     }
 
     const data = {
       name: formData.get("name") as string,
-      type: selectedType || formData.get("type") as string,
+      type: selectedType || (formData.get("type") as string),
       email: (formData.get("email") as string) || null,
       phone: (formData.get("phone") as string) || null,
       address: (formData.get("address") as string) || null,
@@ -346,14 +357,15 @@ export default function Parties() {
   const handleTransactionSave = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
-    
+
     if (!validateTransactionForm(formData)) {
       return;
     }
-    
+
     const amount = parseFloat(formData.get("amount") as string);
-    const isDebit = transactionType === "purchase" || transactionType === "adjustment_debit";
-    
+    const isDebit =
+      transactionType === "purchase" || transactionType === "adjustment_debit";
+
     const data = {
       customerOrPartyId: selectedParty.id,
       entityType: "party",
@@ -372,20 +384,24 @@ export default function Parties() {
 
   const exportLedger = () => {
     const csvContent = [
-      ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Balance'].join(','),
-      ...ledgerTransactions.map((txn: LedgerTransaction) => [
-        format(new Date(txn.transactionDate), 'dd/MM/yyyy'),
-        txn.description,
-        txn.referenceNumber || '',
-        txn.debitAmount,
-        txn.creditAmount,
-        txn.runningBalance
-      ].join(','))
-    ].join('\n');
+      ["Date", "Description", "Reference", "Debit", "Credit", "Balance"].join(
+        ",",
+      ),
+      ...ledgerTransactions.map((txn: LedgerTransaction) =>
+        [
+          format(new Date(txn.transactionDate), "dd/MM/yyyy"),
+          txn.description,
+          txn.referenceNumber || "",
+          txn.debitAmount,
+          txn.creditAmount,
+          txn.runningBalance,
+        ].join(","),
+      ),
+    ].join("\n");
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `${selectedParty?.name}_ledger.csv`;
     a.click();
@@ -431,9 +447,15 @@ export default function Parties() {
   const getBalanceBadge = (balance: any) => {
     const amount = parseFloat(balance || 0);
     if (amount > 0) {
-      return { variant: "destructive" as const, text: `Dr. ${formatCurrency(amount)}` };
+      return {
+        variant: "destructive" as const,
+        text: `Dr. ${formatCurrency(amount)}`,
+      };
     } else if (amount < 0) {
-      return { variant: "default" as const, text: `Cr. ${formatCurrency(Math.abs(amount))}` };
+      return {
+        variant: "default" as const,
+        text: `Cr. ${formatCurrency(Math.abs(amount))}`,
+      };
     }
     return { variant: "secondary" as const, text: formatCurrency(0) };
   };
@@ -441,7 +463,7 @@ export default function Parties() {
   const calculateTotals = () => {
     let totalDebit = 0;
     let totalCredit = 0;
-    
+
     ledgerTransactions.forEach((txn: LedgerTransaction) => {
       totalDebit += parseFloat(txn.debitAmount) || 0;
       totalCredit += parseFloat(txn.creditAmount) || 0;
@@ -470,7 +492,8 @@ export default function Parties() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <p className="text-gray-600">
-            Manage suppliers, vendors, and business partners with complete transaction history
+            Manage suppliers, vendors, and business partners with complete
+            transaction history
           </p>
         </div>
         <PermissionWrapper resource="parties" action="write">
@@ -531,7 +554,9 @@ export default function Parties() {
                       value={selectedType || editingParty?.type || ""}
                       onValueChange={setSelectedType}
                     >
-                      <SelectTrigger className={formErrors.type ? "border-red-500" : ""}>
+                      <SelectTrigger
+                        className={formErrors.type ? "border-red-500" : ""}
+                      >
                         <SelectValue placeholder="Select party type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -543,7 +568,11 @@ export default function Parties() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <input type="hidden" name="type" value={selectedType || editingParty?.type || ""} />
+                    <input
+                      type="hidden"
+                      name="type"
+                      value={selectedType || editingParty?.type || ""}
+                    />
                     {formErrors.type && (
                       <div className="flex items-center gap-1 text-sm text-red-600">
                         <AlertCircle className="h-4 w-4" />
@@ -628,10 +657,13 @@ export default function Parties() {
                     step="0.01"
                     placeholder="Enter opening balance (positive for debit, negative for credit)"
                     defaultValue={editingParty?.openingBalance || "0"}
-                    className={formErrors.openingBalance ? "border-red-500" : ""}
+                    className={
+                      formErrors.openingBalance ? "border-red-500" : ""
+                    }
                   />
                   <p className="text-sm text-muted-foreground">
-                    Positive values represent amounts owed to you (debit), negative values represent amounts you owe (credit)
+                    Positive values represent amounts owed to you (debit),
+                    negative values represent amounts you owe (credit)
                   </p>
                   {formErrors.openingBalance && (
                     <div className="flex items-center gap-1 text-sm text-red-600">
@@ -719,7 +751,9 @@ export default function Parties() {
                   <TableRow>
                     <TableHead>Party Details</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead className="hidden sm:table-cell">Contact Info</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Contact Info
+                    </TableHead>
                     <TableHead>Account Balance</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -737,7 +771,8 @@ export default function Parties() {
                             <div>
                               <div className="font-medium">{party.name}</div>
                               <div className="text-sm text-muted-foreground">
-                                {party.contactPerson && `Contact: ${party.contactPerson}`}
+                                {party.contactPerson &&
+                                  `Contact: ${party.contactPerson}`}
                               </div>
                             </div>
                           </div>
@@ -773,12 +808,16 @@ export default function Parties() {
                                   setSelectedParty(party);
                                   setIsLedgerDialogOpen(true);
                                 }}
-                                title="View Ledger"
+                                className="text-green-600 hover:text-green-800 focus:outline-none"
+                                title="View"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </PermissionWrapper>
-                            <PermissionWrapper resource="parties" action="write">
+                            <PermissionWrapper
+                              resource="parties"
+                              action="write"
+                            >
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -799,7 +838,8 @@ export default function Parties() {
                                   setFormErrors({});
                                   setIsDialogOpen(true);
                                 }}
-                                title="Edit Party"
+                                className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                                title="Edit"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -808,7 +848,8 @@ export default function Parties() {
                                 size="sm"
                                 onClick={() => deleteMutation.mutate(party.id)}
                                 disabled={deleteMutation.isPending}
-                                title="Delete Party"
+                                className="text-red-600 hover:text-red-800 focus:outline-none"
+                                title="Delete"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -843,13 +884,16 @@ export default function Parties() {
       </Card>
 
       {/* Transaction Dialog */}
-      <Dialog open={isTransactionDialogOpen} onOpenChange={(open) => {
-        setIsTransactionDialogOpen(open);
-        if (!open) {
-          setTransactionType("");
-          setTransactionErrors({});
-        }
-      }}>
+      <Dialog
+        open={isTransactionDialogOpen}
+        onOpenChange={(open) => {
+          setIsTransactionDialogOpen(open);
+          if (!open) {
+            setTransactionType("");
+            setTransactionErrors({});
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -857,10 +901,11 @@ export default function Parties() {
               Add Transaction for {selectedParty?.name}
             </DialogTitle>
             <DialogDescription className="text-base">
-              Record a new transaction to track debits and credits for this party
+              Record a new transaction to track debits and credits for this
+              party
             </DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={handleTransactionSave} className="space-y-6">
             {/* Transaction Type Section */}
             <Card>
@@ -870,40 +915,61 @@ export default function Parties() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="transactionType" className="text-sm font-medium">
+                    <Label
+                      htmlFor="transactionType"
+                      className="text-sm font-medium"
+                    >
                       Transaction Type *
                     </Label>
-                    <Select 
-                      value={transactionType} 
-                      onValueChange={setTransactionType} 
+                    <Select
+                      value={transactionType}
+                      onValueChange={setTransactionType}
                       required
                     >
-                      <SelectTrigger className={transactionErrors.transactionType ? "border-red-500" : ""}>
+                      <SelectTrigger
+                        className={
+                          transactionErrors.transactionType
+                            ? "border-red-500"
+                            : ""
+                        }
+                      >
                         <SelectValue placeholder="Select transaction type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="purchase">
                           <div className="flex flex-col">
                             <span className="font-medium">Purchase</span>
-                            <span className="text-xs text-muted-foreground">We owe them (Debit)</span>
+                            <span className="text-xs text-muted-foreground">
+                              We owe them (Debit)
+                            </span>
                           </div>
                         </SelectItem>
                         <SelectItem value="payment_sent">
                           <div className="flex flex-col">
                             <span className="font-medium">Payment Sent</span>
-                            <span className="text-xs text-muted-foreground">We paid them (Credit)</span>
+                            <span className="text-xs text-muted-foreground">
+                              We paid them (Credit)
+                            </span>
                           </div>
                         </SelectItem>
                         <SelectItem value="adjustment_debit">
                           <div className="flex flex-col">
-                            <span className="font-medium">Adjustment (Debit)</span>
-                            <span className="text-xs text-muted-foreground">Increase what they owe us</span>
+                            <span className="font-medium">
+                              Adjustment (Debit)
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              Increase what they owe us
+                            </span>
                           </div>
                         </SelectItem>
                         <SelectItem value="adjustment_credit">
                           <div className="flex flex-col">
-                            <span className="font-medium">Adjustment (Credit)</span>
-                            <span className="text-xs text-muted-foreground">Decrease what they owe us</span>
+                            <span className="font-medium">
+                              Adjustment (Credit)
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              Decrease what they owe us
+                            </span>
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -917,15 +983,22 @@ export default function Parties() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="transactionDate" className="text-sm font-medium">
+                    <Label
+                      htmlFor="transactionDate"
+                      className="text-sm font-medium"
+                    >
                       Transaction Date *
                     </Label>
                     <Input
                       id="transactionDate"
                       name="transactionDate"
                       type="date"
-                      defaultValue={format(new Date(), 'yyyy-MM-dd')}
-                      className={transactionErrors.transactionDate ? "border-red-500" : ""}
+                      defaultValue={format(new Date(), "yyyy-MM-dd")}
+                      className={
+                        transactionErrors.transactionDate
+                          ? "border-red-500"
+                          : ""
+                      }
                       required
                     />
                     {transactionErrors.transactionDate && (
@@ -945,7 +1018,9 @@ export default function Parties() {
                     id="description"
                     name="description"
                     placeholder="Enter detailed transaction description"
-                    className={transactionErrors.description ? "border-red-500" : ""}
+                    className={
+                      transactionErrors.description ? "border-red-500" : ""
+                    }
                     required
                   />
                   {transactionErrors.description && (
@@ -976,7 +1051,9 @@ export default function Parties() {
                       step="0.01"
                       min="0.01"
                       placeholder="0.00"
-                      className={transactionErrors.amount ? "border-red-500" : ""}
+                      className={
+                        transactionErrors.amount ? "border-red-500" : ""
+                      }
                       required
                     />
                     {transactionErrors.amount && (
@@ -988,7 +1065,10 @@ export default function Parties() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="paymentMethod" className="text-sm font-medium">
+                    <Label
+                      htmlFor="paymentMethod"
+                      className="text-sm font-medium"
+                    >
                       Payment Method
                     </Label>
                     <Select name="paymentMethod">
@@ -997,7 +1077,9 @@ export default function Parties() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="bank_transfer">
+                          Bank Transfer
+                        </SelectItem>
                         <SelectItem value="cheque">Cheque</SelectItem>
                         <SelectItem value="credit_card">Credit Card</SelectItem>
                         <SelectItem value="upi">UPI</SelectItem>
@@ -1008,7 +1090,10 @@ export default function Parties() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="referenceNumber" className="text-sm font-medium">
+                  <Label
+                    htmlFor="referenceNumber"
+                    className="text-sm font-medium"
+                  >
                     Reference Number
                   </Label>
                   <Input
@@ -1017,7 +1102,8 @@ export default function Parties() {
                     placeholder="Invoice number, receipt number, etc. (optional)"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Enter invoice number, receipt number, or any reference for this transaction
+                    Enter invoice number, receipt number, or any reference for
+                    this transaction
                   </p>
                 </div>
               </CardContent>
@@ -1026,7 +1112,9 @@ export default function Parties() {
             {/* Additional Information Section */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Additional Information</CardTitle>
+                <CardTitle className="text-lg">
+                  Additional Information
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -1050,13 +1138,19 @@ export default function Parties() {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-blue-900">Account Impact</span>
+                    <span className="text-sm font-medium text-blue-900">
+                      Account Impact
+                    </span>
                   </div>
                   <p className="text-sm text-blue-800">
-                    {transactionType === "purchase" && "This will increase the amount owed to the party (Debit their account)"}
-                    {transactionType === "payment_sent" && "This will decrease the amount owed to the party (Credit their account)"}
-                    {transactionType === "adjustment_debit" && "This will increase the party's account balance (Debit adjustment)"}
-                    {transactionType === "adjustment_credit" && "This will decrease the party's account balance (Credit adjustment)"}
+                    {transactionType === "purchase" &&
+                      "This will increase the amount owed to the party (Debit their account)"}
+                    {transactionType === "payment_sent" &&
+                      "This will decrease the amount owed to the party (Credit their account)"}
+                    {transactionType === "adjustment_debit" &&
+                      "This will increase the party's account balance (Debit adjustment)"}
+                    {transactionType === "adjustment_credit" &&
+                      "This will decrease the party's account balance (Credit adjustment)"}
                   </p>
                 </CardContent>
               </Card>
@@ -1076,8 +1170,8 @@ export default function Parties() {
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={transactionMutation.isPending || !transactionType}
                 className="w-full sm:w-auto"
               >
@@ -1115,11 +1209,13 @@ export default function Parties() {
               </Button>
             </div>
           </DialogHeader>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <Card>
               <CardContent className="p-4">
-                <div className="text-sm text-muted-foreground">Total Debits</div>
+                <div className="text-sm text-muted-foreground">
+                  Total Debits
+                </div>
                 <div className="text-lg font-semibold text-red-600">
                   {formatCurrency(calculateTotals().totalDebit)}
                 </div>
@@ -1127,7 +1223,9 @@ export default function Parties() {
             </Card>
             <Card>
               <CardContent className="p-4">
-                <div className="text-sm text-muted-foreground">Total Credits</div>
+                <div className="text-sm text-muted-foreground">
+                  Total Credits
+                </div>
                 <div className="text-lg font-semibold text-green-600">
                   {formatCurrency(calculateTotals().totalCredit)}
                 </div>
@@ -1136,9 +1234,13 @@ export default function Parties() {
             <Card>
               <CardContent className="p-4">
                 <div className="text-sm text-muted-foreground">Net Balance</div>
-                <div className={`text-lg font-semibold ${
-                  parseFloat(selectedParty?.currentBalance || 0) >= 0 ? 'text-red-600' : 'text-green-600'
-                }`}>
+                <div
+                  className={`text-lg font-semibold ${
+                    parseFloat(selectedParty?.currentBalance || 0) >= 0
+                      ? "text-red-600"
+                      : "text-green-600"
+                  }`}
+                >
                   {getBalanceBadge(selectedParty?.currentBalance).text}
                 </div>
               </CardContent>
@@ -1161,45 +1263,68 @@ export default function Parties() {
                 {ledgerTransactions.map((transaction: LedgerTransaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell>
-                      {format(new Date(transaction.transactionDate), 'dd/MM/yyyy')}
+                      {format(
+                        new Date(transaction.transactionDate),
+                        "dd/MM/yyyy",
+                      )}
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{transaction.description}</div>
+                        <div className="font-medium">
+                          {transaction.description}
+                        </div>
                         {transaction.notes && (
-                          <div className="text-sm text-muted-foreground">{transaction.notes}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {transaction.notes}
+                          </div>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{transaction.referenceNumber || '-'}</TableCell>
+                    <TableCell>{transaction.referenceNumber || "-"}</TableCell>
                     <TableCell className="text-right">
-                      {parseFloat(transaction.debitAmount) > 0 
-                        ? <span className="text-red-600 font-medium">
-                            {formatCurrency(parseFloat(transaction.debitAmount))}
-                          </span>
-                        : '-'
-                      }
+                      {parseFloat(transaction.debitAmount) > 0 ? (
+                        <span className="text-red-600 font-medium">
+                          {formatCurrency(parseFloat(transaction.debitAmount))}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {parseFloat(transaction.creditAmount) > 0 
-                        ? <span className="text-green-600 font-medium">
-                            {formatCurrency(parseFloat(transaction.creditAmount))}
-                          </span>
-                        : '-'
-                      }
+                      {parseFloat(transaction.creditAmount) > 0 ? (
+                        <span className="text-green-600 font-medium">
+                          {formatCurrency(parseFloat(transaction.creditAmount))}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      <span className={parseFloat(transaction.runningBalance) >= 0 ? 'text-red-600' : 'text-green-600'}>
-                        {formatCurrency(Math.abs(parseFloat(transaction.runningBalance)))}
-                        {parseFloat(transaction.runningBalance) >= 0 ? ' Dr' : ' Cr'}
+                      <span
+                        className={
+                          parseFloat(transaction.runningBalance) >= 0
+                            ? "text-red-600"
+                            : "text-green-600"
+                        }
+                      >
+                        {formatCurrency(
+                          Math.abs(parseFloat(transaction.runningBalance)),
+                        )}
+                        {parseFloat(transaction.runningBalance) >= 0
+                          ? " Dr"
+                          : " Cr"}
                       </span>
                     </TableCell>
                   </TableRow>
                 ))}
                 {ledgerTransactions.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No transactions found. Click the "+" button to add the first transaction.
+                    <TableCell
+                      colSpan={6}
+                      className="text-center py-8 text-muted-foreground"
+                    >
+                      No transactions found. Click the "+" button to add the
+                      first transaction.
                     </TableCell>
                   </TableRow>
                 )}

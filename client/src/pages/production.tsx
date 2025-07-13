@@ -136,7 +136,8 @@ export default function Production() {
                   type="button"
                   variant="outline"
                   onClick={() => {}}
-                  className="w-full sm:w-auto"
+                  className="text-red-600 hover:text-red-800 focus:outline-none"
+                 
                 >
                   Cancel
                 </Button>

@@ -39,14 +39,7 @@ const productFormSchema = insertProductSchema.extend({
   price: z.string().min(1, "Price is required"),
   cost: z.string().min(1, "Cost is required"),
   margin: z.string().min(1, "Margin is required"),
-  // Cost calculator fields
-  batchSize: z.string().default("1"),
-  finishedGoodRequired: z.string().default("1"),
-  productionQuantity: z.string().default("1"),
-  normalLossMfg: z.string().default("5"),
-  normalLossOnSold: z.string().default("0"),
-  mfgAndPackagingCost: z.string().default("45"),
-  overheadCost: z.string().default("5"),
+
   ingredients: z
     .array(
       z.object({
@@ -278,14 +271,6 @@ export default function ProductFormEnhanced({
         className="space-y-6"
       >
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="basic">Basic Information</TabsTrigger>
-            <TabsTrigger value="calculator">
-              <Calculator className="h-4 w-4 mr-2" />
-              Cost Calculator
-            </TabsTrigger>
-          </TabsList>
-
           <TabsContent value="basic" className="space-y-6">
             <Card>
               <CardHeader>

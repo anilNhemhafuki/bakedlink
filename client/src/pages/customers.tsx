@@ -506,6 +506,8 @@ export default function Customers() {
                                   setSelectedCustomer(customer);
                                   setIsLedgerDialogOpen(true);
                                 }}
+                                className="text-green-600 hover:text-green-800 focus:outline-none"
+                                title="View"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -531,6 +533,8 @@ export default function Customers() {
                                   setEditingCustomer(customer);
                                   setIsDialogOpen(true);
                                 }}
+                                className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                                title="Edit"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -541,6 +545,8 @@ export default function Customers() {
                                   deleteMutation.mutate(customer.id)
                                 }
                                 disabled={deleteMutation.isPending}
+                                className="text-red-600 hover:text-red-800 focus:outline-none"
+                                title="Delete"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

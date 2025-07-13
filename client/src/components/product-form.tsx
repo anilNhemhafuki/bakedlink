@@ -272,14 +272,6 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
         className="space-y-6"
       >
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="basic">Basic Information</TabsTrigger>
-            <TabsTrigger value="calculator">
-              <Calculator className="h-4 w-4 mr-2" />
-              Cost Calculator
-            </TabsTrigger>
-          </TabsList>
-
           <TabsContent value="basic" className="space-y-6">
             <Card>
               <CardHeader>
@@ -348,14 +340,16 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {(units as any[]).filter((unit: any) => unit.isActive).map((unit: any) => (
-                              <SelectItem
-                                key={unit.id}
-                                value={unit.id.toString()}
-                              >
-                                {unit.name} ({unit.abbreviation})
-                              </SelectItem>
-                            ))}
+                            {(units as any[])
+                              .filter((unit: any) => unit.isActive)
+                              .map((unit: any) => (
+                                <SelectItem
+                                  key={unit.id}
+                                  value={unit.id.toString()}
+                                >
+                                  {unit.name} ({unit.abbreviation})
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -513,258 +507,6 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
                   onClose={() => setShowMediaLibrary(false)}
                   onSelect={(imageUrl) => setSelectedImage(imageUrl)}
                 />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="calculator" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cost Calculator</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="batchSize"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Batch Size (kg)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="finishedGoodRequired"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>1 unit FG required (Gm RM)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="productionQuantity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>No. of FG to be Produced</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Ingredients */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-lg font-medium">Recipe Ingredients</h4>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => append({ inventoryItemId: "", quantity: "" })}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Ingredient
-                    </Button>
-                  </div>
-
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                      <FormField
-                        control={form.control}
-                        name={`ingredients.${index}.inventoryItemId`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Ingredient</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select ingredient" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {(inventoryItems as any[]).map((item: any) => (
-                                  <SelectItem
-                                    key={item.id}
-                                    value={item.id.toString()}
-                                  >
-                                    {item.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`ingredients.${index}.quantity`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Quantity</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                placeholder="1"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="space-y-2">
-                        <FormLabel>Unit</FormLabel>
-                        <div className="text-sm text-gray-600">
-                          {(() => {
-                            const selectedItem = (inventoryItems as any[]).find(
-                              (item: any) => item.id.toString() === form.getValues(`ingredients.${index}.inventoryItemId`)
-                            );
-                            return selectedItem ? selectedItem.unit : "Select ingredient first";
-                          })()}
-                        </div>
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => remove(index)}
-                        disabled={fields.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Production Parameters */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="normalLossMfg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Normal Loss during mfg. (%)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.1" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="mfgAndPackagingCost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mfg. and packaging cost (%)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.1" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="overheadCost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Overhead cost (%)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.1" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Cost Breakdown */}
-                {calculations.finalCostPerUnit > 0 && (
-                  <Card className="bg-gray-50">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Cost Breakdown</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span>Sub-total for batch:</span>
-                            <span className="font-medium">{formatCurrency(calculations.subTotalForBatch)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Total for production:</span>
-                            <span className="font-medium">{formatCurrency(calculations.totalForProduction)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Effective units produced:</span>
-                            <span className="font-medium">{calculations.effectiveUnitsProduced.toFixed(2)}</span>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span>Estimated cost per unit:</span>
-                            <span className="font-medium">{formatCurrency(calculations.estimatedCostPerUnit)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Mfg. cost per unit:</span>
-                            <span className="font-medium">{formatCurrency(calculations.mfgCostPerUnit)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Overhead cost per unit:</span>
-                            <span className="font-medium">{formatCurrency(calculations.overheadCostPerUnit)}</span>
-                          </div>
-                          <Separator />
-                          <div className="flex justify-between font-bold text-lg">
-                            <span>Final cost per unit:</span>
-                            <span className="text-green-600">{formatCurrency(calculations.finalCostPerUnit)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-4 border-t">
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            form.setValue("cost", calculations.finalCostPerUnit.toFixed(2));
-                            calculateMargin();
-                            toast({
-                              title: "Cost Updated",
-                              description: "Product cost has been updated with calculated value",
-                            });
-                          }}
-                          className="w-full"
-                        >
-                          Use Calculated Cost ({formatCurrency(calculations.finalCostPerUnit)})
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
               </CardContent>
             </Card>
           </TabsContent>

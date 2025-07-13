@@ -239,11 +239,17 @@ export default function UnitConversion() {
                       <SelectValue placeholder="Select unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.isArray(units) && units.filter((unit: Unit) => unit.isActive).map((unit: Unit) => (
-                        <SelectItem key={unit.id} value={unit.id.toString()}>
-                          {unit.name} ({unit.abbreviation})
-                        </SelectItem>
-                      ))}
+                      {Array.isArray(units) &&
+                        units
+                          .filter((unit: Unit) => unit.isActive)
+                          .map((unit: Unit) => (
+                            <SelectItem
+                              key={unit.id}
+                              value={unit.id.toString()}
+                            >
+                              {unit.name} ({unit.abbreviation})
+                            </SelectItem>
+                          ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -254,11 +260,17 @@ export default function UnitConversion() {
                       <SelectValue placeholder="Select unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.isArray(units) && units.filter((unit: Unit) => unit.isActive).map((unit: Unit) => (
-                        <SelectItem key={unit.id} value={unit.id.toString()}>
-                          {unit.name} ({unit.abbreviation})
-                        </SelectItem>
-                      ))}
+                      {Array.isArray(units) &&
+                        units
+                          .filter((unit: Unit) => unit.isActive)
+                          .map((unit: Unit) => (
+                            <SelectItem
+                              key={unit.id}
+                              value={unit.id.toString()}
+                            >
+                              {unit.name} ({unit.abbreviation})
+                            </SelectItem>
+                          ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -338,11 +350,14 @@ export default function UnitConversion() {
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.isArray(units) && units.filter((unit: Unit) => unit.isActive).map((unit: Unit) => (
-                    <SelectItem key={unit.id} value={unit.id.toString()}>
-                      {unit.name} ({unit.abbreviation})
-                    </SelectItem>
-                  ))}
+                  {Array.isArray(units) &&
+                    units
+                      .filter((unit: Unit) => unit.isActive)
+                      .map((unit: Unit) => (
+                        <SelectItem key={unit.id} value={unit.id.toString()}>
+                          {unit.name} ({unit.abbreviation})
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             </div>
@@ -353,11 +368,14 @@ export default function UnitConversion() {
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.isArray(units) && units.filter((unit: Unit) => unit.isActive).map((unit: Unit) => (
-                    <SelectItem key={unit.id} value={unit.id.toString()}>
-                      {unit.name} ({unit.abbreviation})
-                    </SelectItem>
-                  ))}
+                  {Array.isArray(units) &&
+                    units
+                      .filter((unit: Unit) => unit.isActive)
+                      .map((unit: Unit) => (
+                        <SelectItem key={unit.id} value={unit.id.toString()}>
+                          {unit.name} ({unit.abbreviation})
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             </div>
@@ -439,6 +457,8 @@ export default function UnitConversion() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(conversion)}
+                            className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                            title="Edit"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -446,6 +466,8 @@ export default function UnitConversion() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(conversion.id)}
+                            className="text-red-600 hover:text-red-800 focus:outline-none"
+                            title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

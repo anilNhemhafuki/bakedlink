@@ -525,6 +525,8 @@ export default function Assets() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(asset)}
+                            className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                            title="Edit"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -533,6 +535,8 @@ export default function Assets() {
                             size="sm"
                             onClick={() => deleteMutation.mutate(asset.id)}
                             disabled={deleteMutation.isPending}
+                            className="text-red-600 hover:text-red-800 focus:outline-none"
+                            title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

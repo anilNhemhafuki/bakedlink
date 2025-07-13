@@ -249,126 +249,149 @@ export default function OrderForm({ onSuccess }: OrderFormProps) {
         </Card>
 
         {/* Order Items */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Order Items</CardTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  append({ productId: "", quantity: "", unitPrice: "" })
-                }
-              >
-                Add Item
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {fields.map((field, index) => (
-              <div
-                key={field.id}
-                className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg"
-              >
-                <FormField
-                  control={form.control}
-                  name={`items.${index}.productId`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Product</FormLabel>
-                      <Select
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          updateItemPrice(index, value);
-                        }}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select product" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {products.map((product: any) => (
-                            <SelectItem
-                              key={product.id}
-                              value={product.id.toString()}
+        <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 text-sm font-semibold text-gray-700 uppercase tracking-wider">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Product
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Quantity
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Unit Price ({symbol})
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {fields.map((field, index) => (
+                <tr key={field.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.productId`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Select
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                updateItemPrice(index, value);
+                              }}
+                              value={field.value}
                             >
-                              {product.name} {product.unit ? `(${product.unit.name})` : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select product" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {products.map((product: any) => (
+                                  <SelectItem
+                                    key={product.id}
+                                    value={product.id.toString()}
+                                  >
+                                    {product.name}{" "}
+                                    {product.unit
+                                      ? `(${product.unit.name})`
+                                      : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </td>
 
-                <FormField
-                  control={form.control}
-                  name={`items.${index}.quantity`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quantity</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="1"
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            calculateTotal();
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.quantity`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="1"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                calculateTotal();
+                              }}
+                              className="w-24"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </td>
 
-                <FormField
-                  control={form.control}
-                  name={`items.${index}.unitPrice`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unit Price ({symbol})</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="8.50"
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            calculateTotal();
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.unitPrice`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="8.50"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                calculateTotal();
+                              }}
+                              className="w-24"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </td>
 
-                <div className="flex items-end">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        remove(index);
+                        calculateTotal();
+                      }}
+                      disabled={fields.length === 1}
+                    >
+                      Remove
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+
+              {/* Add Item Button Row */}
+              <tr>
+                <td colSpan={4} className="px-6 py-4 text-right">
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="outline"
                     size="sm"
-                    onClick={() => {
-                      remove(index);
-                      calculateTotal();
-                    }}
-                    disabled={fields.length === 1}
+                    onClick={() =>
+                      append({ productId: "", quantity: "", unitPrice: "" })
+                    }
                   >
-                    Remove
+                    Add Item
                   </Button>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         {/* Order Summary */}
         <Card>
           <CardHeader>
