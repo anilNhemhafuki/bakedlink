@@ -31,6 +31,7 @@ import { Plus, Trash2, Edit, Calculator, ArrowLeftRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SearchBar from "@/components/search-bar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import type { Unit, UnitConversion } from "@shared/schema";
 
 export default function UnitConversion() {
@@ -150,9 +151,7 @@ export default function UnitConversion() {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this conversion?")) {
-      deleteMutation.mutate(id);
-    }
+    deleteMutation.mutate(id);
   };
 
   const calculateConversion = () => {
@@ -462,15 +461,22 @@ export default function UnitConversion() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(conversion.id)}
-                            className="text-red-600 hover:text-red-800 focus:outline-none"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <DeleteConfirmationDialog
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600 hover:text-red-800 focus:outline-none"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            }
+                            title="Delete Unit Conversion"
+                            itemName={`${getUnitName(conversion.fromUnitId)} to ${getUnitName(conversion.toUnitId)}`}
+                            onConfirm={() => handleDelete(conversion.id)}
+                            isLoading={deleteMutation.isPending}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

@@ -54,6 +54,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { format } from "date-fns";
 
 interface LedgerTransaction {
@@ -843,16 +844,22 @@ export default function Parties() {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteMutation.mutate(party.id)}
-                                disabled={deleteMutation.isPending}
-                                className="text-red-600 hover:text-red-800 focus:outline-none"
-                                title="Delete"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <DeleteConfirmationDialog
+                                trigger={
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-800 focus:outline-none"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                }
+                                title="Delete Party"
+                                itemName={party.name}
+                                onConfirm={() => deleteMutation.mutate(party.id)}
+                                isLoading={deleteMutation.isPending}
+                              />
                             </PermissionWrapper>
                           </div>
                         </TableCell>

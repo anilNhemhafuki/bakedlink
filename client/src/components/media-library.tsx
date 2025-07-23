@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { Trash2, Upload, Image as ImageIcon, Search } from "lucide-react";
 
 interface MediaItem {
@@ -229,18 +230,22 @@ export default function MediaLibrary({
                           loading="lazy"
                         />
                         {allowDelete && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="absolute top-1 right-1 h-6 w-6 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteMutation.mutate(image.id);
-                            }}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <DeleteConfirmationDialog
+                            trigger={
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="absolute top-1 right-1 h-6 w-6 p-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            }
+                            title="Delete Image"
+                            itemName={image.filename}
+                            onConfirm={() => deleteMutation.mutate(image.id)}
+                            isLoading={deleteMutation.isPending}
+                          />
                         )}
                       </div>
                       <div className="space-y-1">

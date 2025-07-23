@@ -33,6 +33,7 @@ import { Plus, DollarSign, Edit, Trash2, CreditCard, Calculator } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import SearchBar from "@/components/search-bar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { format } from "date-fns";
 
 export default function SalaryManagement() {
@@ -185,9 +186,7 @@ export default function SalaryManagement() {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this salary payment?")) {
-      deleteMutation.mutate(id);
-    }
+    deleteMutation.mutate(id);
   };
 
   const getStatusBadge = (status: string) => {
@@ -552,13 +551,20 @@ export default function SalaryManagement() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(payment.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <DeleteConfirmationDialog
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            }
+                            title="Delete Salary Payment"
+                            itemName={`Payment for ${payment.staffName}`}
+                            onConfirm={() => handleDelete(payment.id)}
+                            isLoading={deleteMutation.isPending}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

@@ -32,6 +32,7 @@ import { Plus, Calendar, Edit, Trash2, Clock, CheckCircle, XCircle } from "lucid
 import { useToast } from "@/hooks/use-toast";
 import SearchBar from "@/components/search-bar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { format } from "date-fns";
 
 export default function LeaveRequests() {
@@ -162,9 +163,7 @@ export default function LeaveRequests() {
   };
 
   const handleDelete = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this leave request?")) {
-      deleteMutation.mutate(id);
-    }
+    deleteMutation.mutate(id);
   };
 
   const getStatusBadge = (status: string) => {
@@ -430,13 +429,20 @@ export default function LeaveRequests() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(request.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <DeleteConfirmationDialog
+                            trigger={
+                              <Button
+                                variant="outline"
+                                size="sm"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            }
+                            title="Delete Leave Request"
+                            itemName={`${request.staffName}'s ${request.leaveType} request`}
+                            onConfirm={() => handleDelete(request.id)}
+                            isLoading={deleteMutation.isPending}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

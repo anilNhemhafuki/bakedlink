@@ -31,6 +31,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { EnhancedStockItemForm } from "@/components/enhanced-stock-item-form";
 import {
   Pagination,
@@ -250,13 +251,20 @@ export default function Inventory() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => deleteMutation.mutate(item.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <DeleteConfirmationDialog
+                              trigger={
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              }
+                              title="Delete Stock Item"
+                              itemName={item.name}
+                              onConfirm={() => deleteMutation.mutate(item.id)}
+                              isLoading={deleteMutation.isPending}
+                            />
                           </div>
                         </TableCell>
                       </TableRow>

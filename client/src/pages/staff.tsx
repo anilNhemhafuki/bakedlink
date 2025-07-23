@@ -33,6 +33,7 @@ import { Plus, Edit, Trash2, Users, Phone, Mail, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SearchBar from "@/components/search-bar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 
 export default function StaffDirectory() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -219,9 +220,7 @@ export default function StaffDirectory() {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this staff member?")) {
-      deleteMutation.mutate(id);
-    }
+    deleteMutation.mutate(id);
   };
 
   const getStatusBadge = (status: string) => {
@@ -572,13 +571,20 @@ export default function StaffDirectory() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(member.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <DeleteConfirmationDialog
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            }
+                            title="Delete Staff Member"
+                            itemName={`${member.firstName} ${member.lastName}`}
+                            onConfirm={() => handleDelete(member.id)}
+                            isLoading={deleteMutation.isPending}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

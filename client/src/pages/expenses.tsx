@@ -40,6 +40,7 @@ import { Plus, Search, Edit, Trash2, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 
 export default function Expenses() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -416,14 +417,20 @@ export default function Expenses() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteMutation.mutate(expense.id)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <DeleteConfirmationDialog
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            }
+                            title="Delete Expense"
+                            itemName={expense.description || "expense"}
+                            onConfirm={() => deleteMutation.mutate(expense.id)}
+                            isLoading={deleteMutation.isPending}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

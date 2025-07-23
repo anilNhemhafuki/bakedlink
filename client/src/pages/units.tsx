@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit, Trash2, Ruler } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 
 export default function Units() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -453,15 +454,22 @@ export default function Units() {
                             >
                               {unit.isActive ? "Deactivate" : "Activate"}
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => deleteMutation.mutate(unit.id)}
-                              className="text-red-600 hover:text-red-800 focus:outline-none"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <DeleteConfirmationDialog
+                              trigger={
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-800 focus:outline-none"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              }
+                              title="Delete Unit"
+                              itemName={unit.name}
+                              onConfirm={() => deleteMutation.mutate(unit.id)}
+                              isLoading={deleteMutation.isPending}
+                            />
                           </div>
                         </TableCell>
                       </TableRow>

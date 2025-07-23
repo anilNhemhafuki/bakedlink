@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import {
   Pagination,
   PaginationInfo,
@@ -478,15 +479,20 @@ export default function Products() {
                         </button>
 
                         {/* Delete Button */}
-                        <button
-                          onClick={() =>
-                            deleteProductMutation.mutate(product.id)
+                        <DeleteConfirmationDialog
+                          trigger={
+                            <button
+                              className="text-red-600 hover:text-red-800 focus:outline-none"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           }
-                          className="text-red-600 hover:text-red-800 focus:outline-none"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                          title="Delete Product"
+                          itemName={product.name}
+                          onConfirm={() => deleteProductMutation.mutate(product.id)}
+                          isLoading={deleteProductMutation.isPending}
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
