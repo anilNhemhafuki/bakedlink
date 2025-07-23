@@ -17,6 +17,7 @@ import {
   insertExpenseSchema,
   loginLogs,
   ledgerTransactions,
+  auditLogs,
 } from "@shared/schema";
 import {
   notifyNewPublicOrder,
@@ -26,6 +27,82 @@ import { format } from "date-fns";
 import { db } from "./db";
 import { requirePermission, requireRead, requireWrite, requireReadWrite, requireSuperAdmin } from "./permissionMiddleware";
 import { unitConverter } from "./lib/unitConversion";
+
+// Audit logging middleware
+const auditLogger = (action: string, resource: string) => {
+  return async (req: any, res: any, next: any) => {
+    const originalSend = res.send;
+    const originalJson = res.json;
+    
+    let responseData: any;
+    let oldValues: any;
+    
+    // Capture old values for updates
+    if (action === 'UPDATE' && req.params.id) {
+      try {
+        const resourceId = parseInt(req.params.id);
+        switch (resource) {
+          case 'staff':
+            oldValues = await storage.getStaffById(resourceId);
+            break;
+          case 'product':
+            oldValues = await storage.getProductById(resourceId);
+            break;
+          case 'customer':
+            oldValues = await storage.getCustomerById(resourceId);
+            break;
+          // Add more resources as needed
+        }
+      } catch (error) {
+        console.warn('Failed to capture old values for audit log:', error);
+      }
+    }
+
+    // Override response methods to capture response data
+    res.send = function(data: any) {
+      responseData = data;
+      return originalSend.call(this, data);
+    };
+    
+    res.json = function(data: any) {
+      responseData = data;
+      return originalJson.call(this, data);
+    };
+
+    // Continue with the request
+    res.on('finish', async () => {
+      try {
+        if (req.user && res.statusCode < 400) {
+          const auditLogData = {
+            userId: req.user.id,
+            userEmail: req.user.email,
+            userName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim(),
+            action,
+            resource,
+            resourceId: req.params.id || (responseData?.id ? responseData.id.toString() : null),
+            details: {
+              method: req.method,
+              url: req.originalUrl,
+              body: action !== 'READ' ? req.body : undefined,
+              query: req.query,
+            },
+            oldValues: oldValues || null,
+            newValues: action !== 'DELETE' ? responseData : null,
+            ipAddress: req.ip || req.connection.remoteAddress || '127.0.0.1',
+            userAgent: req.get('User-Agent') || null,
+            status: res.statusCode < 400 ? 'success' : 'failed',
+          };
+
+          await storage.createAuditLog(auditLogData);
+        }
+      } catch (error) {
+        console.error('Failed to create audit log:', error);
+      }
+    });
+
+    next();
+  };
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("🔧 Setting up routes...");
@@ -2596,7 +2673,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Staff management routes
-  app.get("/api/staff", isAuthenticated, requireRead("staff"), async (req, res) => {
+  app.get("/api/staff", isAuthenticated, requireRead("staff"), auditLogger('READ', 'staff'), async (req, res) => {
     try {
       const staffList = await storage.getStaff();
       res.json(staffList);
@@ -2620,7 +2697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/staff", isAuthenticated, requireWrite("staff"), async (req: any, res) => {
+  app.post("/api/staff", isAuthenticated, requireWrite("staff"), auditLogger('CREATE', 'staff'), async (req: any, res) => {
     try {
       const {
         staffId,
@@ -2703,7 +2780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/staff/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
+  app.put("/api/staff/:id", isAuthenticated, requireWrite("staff"), auditLogger('UPDATE', 'staff'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const updateData = req.body;
@@ -2757,7 +2834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/staff/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
+  app.delete("/api/staff/:id", isAuthenticated, requireWrite("staff"), auditLogger('DELETE', 'staff'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteStaff(id);
@@ -2989,6 +3066,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating leave request:", error);
       res.status(500).json({ message: "Failed to update leave request" });
+    }
+  });
+
+  // Audit logs routes
+  app.get("/api/audit-logs", isAuthenticated, requireWrite("admin"), async (req: any, res) => {
+    try {
+      const {
+        userId,
+        action,
+        resource,
+        startDate,
+        endDate,
+        page = 1,
+        limit = 50
+      } = req.query;
+
+      const offset = (parseInt(page) - 1) * parseInt(limit);
+
+      const filters = {
+        userId: userId as string,
+        action: action as string,
+        resource: resource as string,
+        startDate: startDate ? new Date(startDate as string) : undefined,
+        endDate: endDate ? new Date(endDate as string) : undefined,
+        limit: parseInt(limit),
+        offset: offset,
+      };
+
+      const auditLogs = await storage.getAuditLogs(filters);
+      
+      // Get total count for pagination
+      const totalResult = await db.select({ count: count() }).from(auditLogs);
+      const total = totalResult[0]?.count || 0;
+
+      res.json({
+        auditLogs,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit)),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  app.get("/api/audit-logs/analytics", isAuthenticated, requireWrite("admin"), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      const filters = {
+        startDate: startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        endDate: endDate ? new Date(endDate as string) : new Date(),
+      };
+
+      const logs = await storage.getAuditLogs(filters);
+
+      // Analyze the logs
+      const analytics = {
+        totalActions: logs.length,
+        actionsByType: logs.reduce((acc: any, log: any) => {
+          acc[log.action] = (acc[log.action] || 0) + 1;
+          return acc;
+        }, {}),
+        actionsByResource: logs.reduce((acc: any, log: any) => {
+          acc[log.resource] = (acc[log.resource] || 0) + 1;
+          return acc;
+        }, {}),
+        actionsByUser: logs.reduce((acc: any, log: any) => {
+          acc[log.userName] = (acc[log.userName] || 0) + 1;
+          return acc;
+        }, {}),
+        recentActions: logs.slice(0, 10),
+      };
+
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching audit analytics:", error);
+      res.status(500).json({ message: "Failed to fetch audit analytics" });
     }
   });
 

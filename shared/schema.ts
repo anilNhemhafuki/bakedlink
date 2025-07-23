@@ -326,6 +326,25 @@ export const loginLogs = pgTable("login_logs", {
   deviceType: varchar("device_type", { length: 50 }),
 });
 
+// Audit logs table for tracking all user actions
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  userEmail: varchar("user_email", { length: 255 }).notNull(),
+  userName: varchar("user_name", { length: 200 }).notNull(),
+  action: varchar("action", { length: 100 }).notNull(), // 'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', etc.
+  resource: varchar("resource", { length: 100 }).notNull(), // 'staff', 'product', 'order', 'settings', etc.
+  resourceId: varchar("resource_id", { length: 100 }), // ID of the affected resource
+  details: jsonb("details"), // Additional details about the action
+  oldValues: jsonb("old_values"), // Previous values (for updates)
+  newValues: jsonb("new_values"), // New values (for creates/updates)
+  ipAddress: varchar("ip_address", { length: 45 }).notNull(),
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").defaultNow(),
+  status: varchar("status", { length: 20 }).default("success"), // 'success', 'failed', 'error'
+  errorMessage: text("error_message"),
+});
+
 // Staff management tables
 export const staff = pgTable("staff", {
   id: serial("id").primaryKey(),
@@ -473,6 +492,8 @@ export type LedgerTransaction = typeof ledgerTransactions.$inferSelect;
 export type InsertLedgerTransaction = typeof ledgerTransactions.$inferInsert;
 export type LoginLog = typeof loginLogs.$inferSelect;
 export type InsertLoginLog = typeof loginLogs.$inferInsert;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
 export type Staff = typeof staff.$inferSelect;
 export type InsertStaff = typeof staff.$inferInsert;
 export type Attendance = typeof attendance.$inferSelect;

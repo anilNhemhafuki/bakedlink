@@ -60,9 +60,16 @@ export default function StaffDirectory() {
 
   const { toast } = useToast();
 
-  const { data: staff = [], isLoading } = useQuery({
+  const { data: staff = [], isLoading, error } = useQuery({
     queryKey: ["/api/staff"],
-    queryFn: () => apiRequest("/api/staff", "GET"),
+    queryFn: async () => {
+      try {
+        return await apiRequest("/api/staff", "GET");
+      } catch (error) {
+        console.error("Error fetching staff:", error);
+        throw error;
+      }
+    },
   });
 
   const createMutation = useMutation({

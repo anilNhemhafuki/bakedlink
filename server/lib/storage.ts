@@ -25,6 +25,7 @@ import {
   userPermissions,
   settings,
   loginLogs,
+  auditLogs,
   type User,
   type UpsertUser,
   type Category,
@@ -71,6 +72,8 @@ import {
   type InsertLedgerTransaction,
   type LoginLog,
   type InsertLoginLog,
+  type AuditLog,
+  type InsertAuditLog,
   staff,
   attendance,
   salaryPayments,
@@ -250,6 +253,10 @@ export interface IStorage {
   createAsset(asset: InsertAsset): Promise<Asset>;
   updateAsset(id: number, asset: Partial<InsertAsset>): Promise<Asset>;
   deleteAsset(id: number): Promise<void>;
+
+    // Audit Log operations
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(startDate?: string, endDate?: string): Promise<AuditLog[]>;
 }
 
 export class Storage implements IStorage {
@@ -1764,7 +1771,7 @@ export class Storage implements IStorage {
   async clockIn(staffId: number): Promise<Attendance> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     // Check if already clocked in today
     const existing = await db
       .select()
@@ -1797,7 +1804,7 @@ export class Storage implements IStorage {
   async clockOut(staffId: number): Promise<Attendance> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const existing = await db
       .select()
       .from(attendance)
@@ -1998,6 +2005,28 @@ export class Storage implements IStorage {
   async deleteStaffSchedule(id: number): Promise<void> {
     await db.delete(staffSchedules).where(eq(staffSchedules.id, id));
   }
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+        const [newLog] = await db.insert(auditLogs).values(log).returning();
+        return newLog;
+    }
+
+    async getAuditLogs(startDate?: string, endDate?: string): Promise<AuditLog[]> {
+        let query = db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp));
+
+        if (startDate && endDate) {
+            const startDateStr = typeof startDate === 'string' ? startDate : new Date(startDate).toISOString();
+            const endDateStr = typeof endDate === 'string' ? endDate : new Date(endDate).toISOString();
+
+            query = query.where(
+                and(
+                    gte(auditLogs.timestamp, startDateStr),
+                    lte(auditLogs.timestamp, endDateStr)
+                )
+            );
+        }
+
+        return await query;
+    }
 }
 
 export const storage = new Storage();
