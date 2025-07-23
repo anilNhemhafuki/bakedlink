@@ -66,12 +66,13 @@ export default function StaffDirectory() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("/api/staff", "POST", data);
+      const response = await apiRequest("/api/staff", "POST", data);
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Success",
-        description: "Staff member created successfully",
+        description: `Staff member "${data.firstName} ${data.lastName}" created successfully with ID: ${data.staffId}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/staff"] });
       setIsDialogOpen(false);
@@ -155,18 +156,33 @@ export default function StaffDirectory() {
     e.preventDefault();
 
     if (!formData.firstName || !formData.lastName || !formData.position || !formData.department || !formData.hireDate) {
+      const missingFields = [];
+      if (!formData.firstName) missingFields.push("First Name");
+      if (!formData.lastName) missingFields.push("Last Name");
+      if (!formData.position) missingFields.push("Position");
+      if (!formData.department) missingFields.push("Department");
+      if (!formData.hireDate) missingFields.push("Hire Date");
+
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: `Please fill in the following required fields: ${missingFields.join(", ")}`,
         variant: "destructive",
       });
       return;
     }
 
+    // Auto-generate staff ID if not provided
+    let submitData = { ...formData };
+    if (!editingStaff && !formData.staffId) {
+      const timestamp = Date.now().toString().slice(-6);
+      const initials = (formData.firstName.charAt(0) + formData.lastName.charAt(0)).toUpperCase();
+      submitData.staffId = `EMP${initials}${timestamp}`;
+    }
+
     if (editingStaff) {
-      updateMutation.mutate(formData);
+      updateMutation.mutate(submitData);
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(submitData);
     }
   };
 
@@ -244,13 +260,13 @@ export default function StaffDirectory() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="staffId">Staff ID *</Label>
+                  <Label htmlFor="staffId">Staff ID {!editingStaff && "(Auto-generated if empty)"}</Label>
                   <Input
                     id="staffId"
                     value={formData.staffId}
                     onChange={(e) => setFormData({ ...formData, staffId: e.target.value })}
-                    placeholder="EMP001"
-                    required
+                    placeholder={editingStaff ? "Enter staff ID" : "Auto-generated if empty"}
+                    required={!!editingStaff}
                   />
                 </div>
                 <div>

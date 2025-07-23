@@ -2642,36 +2642,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes,
       } = req.body;
 
-      if (!staffId || !firstName || !lastName || !position || !department || !employmentType || !hireDate) {
+      // Validate required fields
+      if (!firstName || !lastName || !position || !department || !employmentType || !hireDate) {
         return res.status(400).json({ message: "Required fields are missing" });
       }
 
+      // Auto-generate staff ID if not provided
+      let finalStaffId = staffId;
+      if (!finalStaffId) {
+        const timestamp = Date.now().toString().slice(-6);
+        const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+        finalStaffId = `EMP${initials}${timestamp}`;
+      }
+
+      // Check if staff ID already exists
+      try {
+        const existingStaff = await storage.getStaffByStaffId(finalStaffId);
+        if (existingStaff) {
+          return res.status(400).json({ message: "Staff ID already exists" });
+        }
+      } catch (err) {
+        // Staff ID doesn't exist, which is good
+      }
+
       const staffData = {
-        staffId,
-        firstName,
-        lastName,
-        email: email || null,
-        phone: phone || null,
-        address: address || null,
+        staffId: finalStaffId,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email?.trim() || null,
+        phone: phone?.trim() || null,
+        address: address?.trim() || null,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
         hireDate: new Date(hireDate),
-        position,
-        department,
-        employmentType,
-        salary: salary ? parseFloat(salary).toString() : null,
-        hourlyRate: hourlyRate ? parseFloat(hourlyRate).toString() : null,
-        bankAccount: bankAccount || null,
-        emergencyContact: emergencyContact || null,
-        emergencyPhone: emergencyPhone || null,
-        notes: notes || null,
+        position: position.trim(),
+        department: department.trim(),
+        employmentType: employmentType.trim(),
+        salary: salary && !isNaN(parseFloat(salary)) ? parseFloat(salary).toString() : null,
+        hourlyRate: hourlyRate && !isNaN(parseFloat(hourlyRate)) ? parseFloat(hourlyRate).toString() : null,
+        bankAccount: bankAccount?.trim() || null,
+        emergencyContact: emergencyContact?.trim() || null,
+        emergencyPhone: emergencyPhone?.trim() || null,
+        notes: notes?.trim() || null,
         status: "active",
       };
 
+      console.log("Creating staff member with data:", staffData);
       const newStaff = await storage.createStaff(staffData);
+      console.log("Staff member created successfully:", newStaff);
       res.json(newStaff);
     } catch (error) {
       console.error("Error creating staff member:", error);
-      res.status(500).json({ message: "Failed to create staff member" });
+      if (error.message?.includes('duplicate key')) {
+        res.status(400).json({ message: "Staff ID already exists" });
+      } else {
+        res.status(500).json({ 
+          message: "Failed to create staff member",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
     }
   });
 
@@ -2680,6 +2708,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updateData = req.body;
 
+      // Validate required fields
+      if (!updateData.firstName || !updateData.lastName || !updateData.position || !updateData.department) {
+        return res.status(400).json({ message: "Required fields are missing" });
+      }
+
+      // Process dates
       if (updateData.dateOfBirth) {
         updateData.dateOfBirth = new Date(updateData.dateOfBirth);
       }
@@ -2689,18 +2723,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (updateData.terminationDate) {
         updateData.terminationDate = new Date(updateData.terminationDate);
       }
-      if (updateData.salary) {
+
+      // Process numeric fields
+      if (updateData.salary && !isNaN(parseFloat(updateData.salary))) {
         updateData.salary = parseFloat(updateData.salary).toString();
+      } else {
+        updateData.salary = null;
       }
-      if (updateData.hourlyRate) {
+      
+      if (updateData.hourlyRate && !isNaN(parseFloat(updateData.hourlyRate))) {
         updateData.hourlyRate = parseFloat(updateData.hourlyRate).toString();
+      } else {
+        updateData.hourlyRate = null;
       }
 
+      // Trim string fields
+      ['firstName', 'lastName', 'email', 'phone', 'address', 'position', 'department', 'employmentType', 'bankAccount', 'emergencyContact', 'emergencyPhone', 'notes'].forEach(field => {
+        if (updateData[field]) {
+          updateData[field] = updateData[field].trim();
+        }
+      });
+
+      console.log("Updating staff member with data:", updateData);
       const updatedStaff = await storage.updateStaff(id, updateData);
+      console.log("Staff member updated successfully:", updatedStaff);
       res.json(updatedStaff);
     } catch (error) {
       console.error("Error updating staff member:", error);
-      res.status(500).json({ message: "Failed to update staff member" });
+      res.status(500).json({ 
+        message: "Failed to update staff member",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

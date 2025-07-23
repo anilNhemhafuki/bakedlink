@@ -1696,6 +1696,11 @@ export class Storage implements IStorage {
     await db.delete(staff).where(eq(staff.id, id));
   }
 
+  async getStaffByStaffId(staffId: string): Promise<Staff | null> {
+    const result = await db.select().from(staff).where(eq(staff.staffId, staffId)).limit(1);
+    return result[0] || null;
+  }
+
   // Attendance operations
   async getAttendance(staffId?: number, startDate?: Date, endDate?: Date): Promise<any[]> {
     let query = db

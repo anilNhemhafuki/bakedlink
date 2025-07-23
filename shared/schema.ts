@@ -556,6 +556,8 @@ export const insertStaffSchema = createInsertSchema(staff).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  staffId: z.string().optional(), // Allow staffId to be optional during creation
 });
 
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({
