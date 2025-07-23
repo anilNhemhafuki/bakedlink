@@ -62,6 +62,7 @@ export default function StaffDirectory() {
 
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ["/api/staff"],
+    queryFn: () => apiRequest("/api/staff", "GET"),
   });
 
   const createMutation = useMutation({
