@@ -304,7 +304,7 @@ export default function Stock() {
       name: name.trim(),
       unitId: parseInt(unitId),
       unit: selectedUnit ? selectedUnit.abbreviation : "pcs", // Fallback unit
-      secondaryUnitId: secondaryUnitId ? parseInt(secondaryUnitId) : null,
+      secondaryUnitId: secondaryUnitId && secondaryUnitId !== "none" ? parseInt(secondaryUnitId) : null,
       conversionRate: parseFloat(conversionRate || "1"),
       defaultPrice: parseFloat(defaultPrice || "0"),
       group: group,
@@ -451,7 +451,7 @@ export default function Stock() {
                       <SelectValue placeholder="Select Secondary Unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Secondary Unit</SelectItem>
+                      <SelectItem value="none">No Secondary Unit</SelectItem>
                       {activeUnits.map((unit: any) => (
                         <SelectItem key={unit.id} value={unit.id.toString()}>
                           {unit.name} ({unit.abbreviation})
