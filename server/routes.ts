@@ -1,10 +1,21 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import multer from "multer";
 import { eq, desc, count, sql } from "drizzle-orm";
 
 import { createServer, type Server } from "http";
 import { storage } from "./lib/storage";
 import { setupAuth, isAuthenticated } from "./localAuth";
+
+// Define authenticated request interface
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    firstName?: string;
+    lastName?: string;
+  };
+}
 import {
   insertCategorySchema,
   insertProductSchema,
