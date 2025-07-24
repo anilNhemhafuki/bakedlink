@@ -297,10 +297,15 @@ export default function Stock() {
       (u: any) => u.id.toString() === unitId,
     );
 
+    const secondaryUnitId = formData.get("secondaryUnitId") as string;
+    const conversionRate = formData.get("conversionRate") as string;
+
     const data = {
       name: name.trim(),
       unitId: parseInt(unitId),
       unit: selectedUnit ? selectedUnit.abbreviation : "pcs", // Fallback unit
+      secondaryUnitId: secondaryUnitId ? parseInt(secondaryUnitId) : null,
+      conversionRate: parseFloat(conversionRate || "1"),
       defaultPrice: parseFloat(defaultPrice || "0"),
       group: group,
       currentStock: parseFloat(openingQuantity || "0"),
@@ -409,7 +414,7 @@ export default function Stock() {
                 </div>
                 <div>
                   <Label htmlFor="unitId" className="text-sm font-medium">
-                    Measuring Unit <span className="text-red-500">*</span>
+                    Primary Unit <span className="text-red-500">*</span>
                   </Label>
                   <div className="flex gap-2 mt-1">
                     <Select
@@ -418,7 +423,7 @@ export default function Stock() {
                       required
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select Measuring Unit of the item" />
+                        <SelectValue placeholder="Select Primary Unit" />
                       </SelectTrigger>
                       <SelectContent>
                         {activeUnits.map((unit: any) => (
@@ -428,6 +433,54 @@ export default function Stock() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Secondary Unit Section */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="secondaryUnitId" className="text-sm font-medium">
+                    Secondary Unit
+                  </Label>
+                  <Select
+                    name="secondaryUnitId"
+                    defaultValue={editingItem?.secondaryUnitId?.toString() || ""}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select Secondary Unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No Secondary Unit</SelectItem>
+                      {activeUnits.map((unit: any) => (
+                        <SelectItem key={unit.id} value={unit.id.toString()}>
+                          {unit.name} ({unit.abbreviation})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="conversionRate" className="text-sm font-medium">
+                    Conversion Rate
+                  </Label>
+                  <Input
+                    id="conversionRate"
+                    name="conversionRate"
+                    type="number"
+                    step="0.000001"
+                    min="0"
+                    placeholder="50 (1 secondary = 50 primary)"
+                    defaultValue={editingItem?.conversionRate || "1"}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">
+                    Conversion Info
+                  </Label>
+                  <div className="mt-1 p-2 bg-blue-50 rounded text-sm text-blue-700">
+                    1 Secondary = X Primary units
                   </div>
                 </div>
               </div>
@@ -739,9 +792,16 @@ export default function Stock() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm">
-                            {getUnitName(item.unitId)}
-                          </span>
+                          <div className="text-sm">
+                            <div className="font-medium">
+                              {getUnitName(item.unitId)} (Primary)
+                            </div>
+                            {item.secondaryUnitId && (
+                              <div className="text-xs text-muted-foreground">
+                                {getUnitName(item.secondaryUnitId)} (1:{item.conversionRate || 1})
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">

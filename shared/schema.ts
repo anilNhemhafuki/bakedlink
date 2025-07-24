@@ -55,6 +55,9 @@ export const inventoryItems = pgTable("inventory_items", {
   currentStock: numeric("current_stock", { precision: 10, scale: 2 }).notNull(),
   minLevel: numeric("min_level", { precision: 10, scale: 2 }).notNull(),
   unit: varchar("unit", { length: 50 }).notNull(),
+  unitId: integer("unit_id"), // Primary unit ID
+  secondaryUnitId: integer("secondary_unit_id"), // Secondary unit ID
+  conversionRate: numeric("conversion_rate", { precision: 15, scale: 6 }).default("1"), // How many primary units = 1 secondary unit
   costPerUnit: numeric("cost_per_unit", { precision: 10, scale: 2 }).notNull(),
   supplier: varchar("supplier", { length: 200 }),
   categoryId: integer("category_id"),

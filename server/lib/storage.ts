@@ -604,21 +604,61 @@ export class Storage implements IStorage {
     return result[0];
   }
 
-  async createInventoryItem(data: InsertInventoryItem): Promise<InventoryItem> {
-    const [newItem] = await db.insert(inventoryItems).values(data).returning();
-    return newItem;
+  async createInventoryItem(data: any): Promise<any> {
+    console.log("Creating inventory item with data:", data);
+    try {
+      const [item] = await this.db
+        .insert(inventoryItems)
+        .values({
+          name: data.name,
+          currentStock: data.currentStock?.toString() || "0",
+          minLevel: data.minLevel?.toString() || "0",
+          unit: data.unit || "pcs",
+          unitId: data.unitId,
+          secondaryUnitId: data.secondaryUnitId,
+          conversionRate: data.conversionRate?.toString() || "1",
+          costPerUnit: data.costPerUnit?.toString() || "0",
+          supplier: data.supplier,
+          categoryId: data.categoryId,
+          lastRestocked: data.lastRestocked ? new Date(data.lastRestocked) : new Date(),
+        })
+        .returning();
+
+      console.log("Inventory item created successfully:", item);
+      return item;
+    } catch (error) {
+      console.error("Error creating inventory item:", error);
+      throw error;
+    }
   }
 
-  async updateInventoryItem(
-    id: number,
-    data: Partial<InsertInventoryItem>,
-  ): Promise<InventoryItem> {
-    const [updatedItem] = await db
-      .update(inventoryItems)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(inventoryItems.id, id))
-      .returning();
-    return updatedItem;
+  async updateInventoryItem(id: number, data: any): Promise<any> {
+    console.log("Updating inventory item:", id, data);
+    try {
+      const [item] = await this.db
+        .update(inventoryItems)
+        .set({
+          name: data.name,
+          currentStock: data.currentStock?.toString(),
+          minLevel: data.minLevel?.toString(),
+          unit: data.unit,
+          unitId: data.unitId,
+          secondaryUnitId: data.secondaryUnitId,
+          conversionRate: data.conversionRate?.toString(),
+          costPerUnit: data.costPerUnit?.toString(),
+          supplier: data.supplier,
+          categoryId: data.categoryId,
+          updatedAt: new Date(),
+        })
+        .where(eq(inventoryItems.id, id))
+        .returning();
+
+      console.log("Inventory item updated successfully:", item);
+      return item;
+    } catch (error) {
+      console.error("Error updating inventory item:", error);
+      throw error;
+    }
   }
 
   async deleteInventoryItem(id: number): Promise<void> {
