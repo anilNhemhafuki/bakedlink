@@ -48,6 +48,7 @@ const costCalculatorSchema = z.object({
       z.object({
         inventoryItemId: z.string().min(1, "Ingredient is required"),
         quantity: z.string().min(1, "Quantity is required"),
+        unitId: z.string().min(1, "Unit is required"),
       }),
     )
     .min(1, "At least one ingredient is required"),
@@ -113,7 +114,7 @@ export default function CostCalculator({ onSave }: CostCalculatorProps) {
       normalLossOnSold: "0",
       mfgAndPackagingCost: "45",
       overheadCost: "5",
-      ingredients: [{ inventoryItemId: "", quantity: "" }],
+      ingredients: [{ inventoryItemId: "", quantity: "", unitId: "" }],
     },
   });
 
@@ -173,22 +174,22 @@ export default function CostCalculator({ onSave }: CostCalculatorProps) {
         const item = ingredients.find(
           (inv: any) => inv.id.toString() === ingredient.inventoryItemId,
         );
-        if (item && ingredient.quantity) {
+        if (item && ingredient.quantity && ingredient.unitId) {
           const quantity = parseFloat(ingredient.quantity);
           const pricePerUnit = parseFloat(item.costPerUnit);
           const amount = quantity * pricePerUnit;
+          
+          // Use the selected unit from the ingredient form
+          const selectedUnit = units.find((u: any) => u.id.toString() === ingredient.unitId);
+          const unitAbbr = selectedUnit?.abbreviation || item.unit;
+          
           return {
             sn: index + 1,
             particular: item.name,
             qty: quantity,
-            unit:
-              units.find((u: any) => u.id === item.unitId)?.abbreviation ||
-              item.unit,
+            unit: unitAbbr,
             price: pricePerUnit,
-            unitType: `Per ${
-              units.find((u: any) => u.id === item.unitId)?.abbreviation ||
-              item.unit
-            }`,
+            unitType: `Per ${unitAbbr}`,
             amount: amount,
           };
         }
@@ -208,12 +209,31 @@ export default function CostCalculator({ onSave }: CostCalculatorProps) {
 
     // Total weight in grams
     const totalForProductionGm = ingredientDetails.reduce((sum, item) => {
-      const qtyInGrams =
-        item.unit === "kg"
-          ? item.qty * 1000
-          : item.unit === "ml"
-            ? item.qty
-            : item.qty;
+      let qtyInGrams = item.qty;
+      
+      // Convert to grams based on unit
+      switch(item.unit.toLowerCase()) {
+        case 'kg':
+          qtyInGrams = item.qty * 1000;
+          break;
+        case 'g':
+        case 'gm':
+        case 'grams':
+          qtyInGrams = item.qty;
+          break;
+        case 'ml':
+        case 'milliliters':
+          qtyInGrams = item.qty; // Assuming 1ml = 1g for liquids
+          break;
+        case 'l':
+        case 'ltr':
+        case 'liters':
+          qtyInGrams = item.qty * 1000;
+          break;
+        default:
+          qtyInGrams = item.qty; // Default to the quantity as-is
+      }
+      
       return sum + qtyInGrams * scaleFactor;
     }, 0);
 
@@ -274,6 +294,7 @@ export default function CostCalculator({ onSave }: CostCalculatorProps) {
       ingredients: formData.ingredients.map((ing) => ({
         inventoryItemId: parseInt(ing.inventoryItemId),
         quantity: parseFloat(ing.quantity),
+        unitId: parseInt(ing.unitId),
       })),
     };
 
