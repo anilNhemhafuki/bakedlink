@@ -53,6 +53,7 @@ export default function Units() {
     error,
   } = useQuery({
     queryKey: ["/api/units"],
+    queryFn: () => apiRequest("GET", "/api/units"),
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;

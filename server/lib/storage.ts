@@ -607,7 +607,7 @@ export class Storage implements IStorage {
   async createInventoryItem(data: any): Promise<any> {
     console.log("Creating inventory item with data:", data);
     try {
-      const [item] = await this.db
+      const [item] = await db
         .insert(inventoryItems)
         .values({
           name: data.name,
@@ -635,7 +635,7 @@ export class Storage implements IStorage {
   async updateInventoryItem(id: number, data: any): Promise<any> {
     console.log("Updating inventory item:", id, data);
     try {
-      const [item] = await this.db
+      const [item] = await db
         .update(inventoryItems)
         .set({
           name: data.name,
@@ -1031,7 +1031,7 @@ export class Storage implements IStorage {
 
     // Super admin gets all permissions
     const superAdminPermissionIds = allPermissions.map((p) => p.id);
-    await this.setRolePermissions("super_admin", superAdminPermissionIds);
+    await this.setRolePermissions("super_admin", superadminPermissionIds);
 
     const adminPermissionIds = allPermissions
       .filter((p) => p.action === "read_write")

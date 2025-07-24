@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,14 +62,7 @@ export default function StaffDirectory() {
 
   const { data: staff = [], isLoading, error } = useQuery({
     queryKey: ["/api/staff"],
-    queryFn: async () => {
-      try {
-        return await apiRequest("/api/staff", "GET");
-      } catch (error) {
-        console.error("Error fetching staff:", error);
-        throw error;
-      }
-    },
+    queryFn: () => apiRequest("GET", "/api/staff"),
   });
 
   const createMutation = useMutation({
@@ -229,7 +221,7 @@ export default function StaffDirectory() {
       inactive: { variant: "secondary" as const, label: "Inactive" },
       terminated: { variant: "destructive" as const, label: "Terminated" },
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };

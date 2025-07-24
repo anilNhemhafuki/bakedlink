@@ -64,6 +64,7 @@ export default function Stock() {
     error,
   } = useQuery({
     queryKey: ["/api/inventory"],
+    queryFn: () => apiRequest("GET", "/api/inventory"),
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
@@ -72,6 +73,7 @@ export default function Stock() {
 
   const { data: units = [] } = useQuery({
     queryKey: ["/api/units"],
+    queryFn: () => apiRequest("GET", "/api/units"),
   });
 
   // Filter only active units for the dropdown
@@ -762,10 +764,10 @@ export default function Stock() {
                     <TableHead>Item</TableHead>
                     <TableHead>Unit</TableHead>
                     <TableHead>Stock</TableHead>
-                    <TableHead>Previous Qty</TableHead>
-                    <TableHead>Previous Amt</TableHead>
                     <TableHead>Min Level</TableHead>
                     <TableHead>Cost/Unit</TableHead>
+                    <TableHead>Previous Qty</TableHead>
+                    <TableHead>Previous Amt</TableHead>
                     <TableHead className="hidden md:table-cell">
                       Group
                     </TableHead>
@@ -807,9 +809,15 @@ export default function Stock() {
                           <div className="font-medium">
                             {parseFloat(item.currentStock || 0).toFixed(2)}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            Min: {parseFloat(item.minLevel || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">
+                            {parseFloat(item.minLevel || 0).toFixed(2)}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {symbol}
+                          {parseFloat(item.costPerUnit || 0).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {item.previousQuantity
@@ -821,10 +829,6 @@ export default function Stock() {
                           {item.previousAmount
                             ? parseFloat(item.previousAmount).toLocaleString()
                             : "0"}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {symbol}
-                          {parseFloat(item.costPerUnit || 0).toFixed(2)}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {item.group ? (
