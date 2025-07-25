@@ -59,8 +59,8 @@ export default function Units() {
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/units");
+        console.log("Raw Units API response:", response); // Add this line
         console.log("Units API response:", response);
-        
         // Handle different response types
         if (Array.isArray(response)) {
           return response;
@@ -87,14 +87,14 @@ export default function Units() {
     mutationFn: (data: any) => apiRequest("POST", "/api/units", data),
     onSuccess: (data) => {
       console.log("Unit created successfully:", data);
-      
+
       // Clear the form and close dialog first
       setIsDialogOpen(false);
-      
+
       // Invalidate and refetch the units
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
       refetchUnits();
-      
+
       toast({
         title: "Success",
         description: `Unit "${data.name}" created successfully`,
@@ -253,14 +253,16 @@ export default function Units() {
     }
 
     // Check for duplicates in the current units list
-    const duplicateName = units.find((unit: any) => 
-      unit.id !== editingUnit?.id && 
-      unit.name.toLowerCase() === name.trim().toLowerCase()
+    const duplicateName = units.find(
+      (unit: any) =>
+        unit.id !== editingUnit?.id &&
+        unit.name.toLowerCase() === name.trim().toLowerCase(),
     );
-    
-    const duplicateAbbr = units.find((unit: any) => 
-      unit.id !== editingUnit?.id && 
-      unit.abbreviation.toLowerCase() === abbreviation.trim().toLowerCase()
+
+    const duplicateAbbr = units.find(
+      (unit: any) =>
+        unit.id !== editingUnit?.id &&
+        unit.abbreviation.toLowerCase() === abbreviation.trim().toLowerCase(),
     );
 
     if (duplicateName) {
@@ -311,7 +313,10 @@ export default function Units() {
   }, [units, searchQuery]);
 
   // Add sorting functionality
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredUnits, 'name');
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredUnits,
+    "name",
+  );
 
   const getTypeBadge = (type: string) => {
     switch (type.toLowerCase()) {
@@ -372,9 +377,7 @@ export default function Units() {
           <p className="text-muted-foreground mb-4">
             {error instanceof Error ? error.message : "Failed to load units"}
           </p>
-          <Button onClick={() => refetchUnits()}>
-            Try Again
-          </Button>
+          <Button onClick={() => refetchUnits()}>Try Again</Button>
         </div>
       </div>
     );
@@ -395,7 +398,7 @@ export default function Units() {
             if (!open) {
               setEditingUnit(null);
               // Reset form when closing
-              const form = document.querySelector('form') as HTMLFormElement;
+              const form = document.querySelector("form") as HTMLFormElement;
               if (form) {
                 form.reset();
               }
@@ -420,7 +423,11 @@ export default function Units() {
                 Enter the unit details below
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSave} className="space-y-4" key={editingUnit?.id || 'new'}>
+            <form
+              onSubmit={handleSave}
+              className="space-y-4"
+              key={editingUnit?.id || "new"}
+            >
               <div>
                 <Label htmlFor="name">Unit Name</Label>
                 <Input
@@ -463,12 +470,16 @@ export default function Units() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full"
                 disabled={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending || updateMutation.isPending ? "Saving..." : (editingUnit ? "Update Unit" : "Add Unit")}
+                {createMutation.isPending || updateMutation.isPending
+                  ? "Saving..."
+                  : editingUnit
+                    ? "Update Unit"
+                    : "Add Unit"}
               </Button>
             </form>
           </DialogContent>
@@ -498,16 +509,32 @@ export default function Units() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="name"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Name
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="abbreviation" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="abbreviation"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Abbreviation
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="type" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="type"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Type
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="isActive" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="isActive"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Status
                     </SortableTableHeader>
                     <TableHead>Actions</TableHead>
