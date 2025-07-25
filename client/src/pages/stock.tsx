@@ -613,23 +613,12 @@ export default function Stock() {
                         placeholder="0"
                         readOnly
                         className="pl-8 bg-gray-100"
-                        value={(() => {
-                          const qty = parseFloat(
-                            (
-                              document.querySelector(
-                                '[name="openingQuantity"]',
-                              ) as HTMLInputElement
-                            )?.value || "0",
-                          );
-                          const rate = parseFloat(
-                            (
-                              document.querySelector(
-                                '[name="openingRate"]',
-                              ) as HTMLInputElement
-                            )?.value || "0",
-                          );
-                          return (qty * rate).toFixed(2);
-                        })()}
+                        defaultValue={
+                          editingItem?.openingValue || 
+                          (editingItem?.openingQuantity && editingItem?.openingRate 
+                            ? (parseFloat(editingItem.openingQuantity) * parseFloat(editingItem.openingRate)).toFixed(2)
+                            : "0.00")
+                        }
                       />
                     </div>
                   </div>
