@@ -357,7 +357,7 @@ export default function Orders() {
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${statusClass}`}
                       >
-                        {(order.status)}
+                        {order.status}
                       </span>
                     </TableCell>
                     {/* Actions */}
@@ -442,9 +442,7 @@ export default function Orders() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
-              Order Details - #{selectedOrder?.orderNumber}
-            </DialogTitle>
+            <DialogTitle>Order Details - {selectedOrder?.id}</DialogTitle>
           </DialogHeader>
           {/* Display details only if selectedOrder exists */}
           {selectedOrder && (
@@ -504,36 +502,40 @@ export default function Orders() {
               </div>
 
               {/* Order Items */}
-                {selectedOrder.items && selectedOrder.items.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      Order Items
-                    </h4>
-                    <div className="space-y-2">
-                      {selectedOrder.items.map((item: any, index: number) => (
-                        <div
-                          key={index}
-                          className="flex justify-between items-center p-2 bg-gray-50 rounded"
-                        >
+              {selectedOrder.items && selectedOrder.items.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    Order Items
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedOrder.items.map((item: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center p-2 bg-gray-50 rounded"
+                      >
+                        <div>
+                          <span className="font-medium">
+                            {item.productName}
+                          </span>
+                          <span className="text-gray-600 ml-2">
+                            (Qty: {item.quantity}{" "}
+                            {item.unitAbbreviation || item.unit || ""})
+                          </span>
+                        </div>
+                        <div className="text-right">
                           <div>
-                            <span className="font-medium">
-                              {item.productName}
-                            </span>
-                            <span className="text-gray-600 ml-2">
-                              (Qty: {item.quantity} {item.unitAbbreviation || item.unit || ''})
-                            </span>
+                            {formatCurrency(item.unitPrice)} per{" "}
+                            {item.unitAbbreviation || item.unit || "unit"}
                           </div>
-                          <div className="text-right">
-                            <div>{formatCurrency(item.unitPrice)} per {item.unitAbbreviation || item.unit || 'unit'}</div>
-                            <div className="font-semibold">
-                              {formatCurrency(item.totalPrice)}
-                            </div>
+                          <div className="font-semibold">
+                            {formatCurrency(item.totalPrice)}
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
               {/* Notes Section */}
               {selectedOrder.notes && (

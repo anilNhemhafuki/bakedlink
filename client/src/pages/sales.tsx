@@ -474,7 +474,6 @@ export default function Sales() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Sales</h1> {/* Added Title */}
           <p className="text-gray-600">
             Record and track all sales transactions
           </p>
@@ -815,23 +814,23 @@ export default function Sales() {
                       <TableCell className="text-right font-semibold">
                         {formatCurrency(parseFloat(sale.totalAmount) || 0)}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                      <TableCell>
+                        <div className="flex space-x-1">
                           <Button
-                            variant="outline"
-                            size="sm"
                             onClick={() => setSelectedSale(sale)}
+                            className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                            variant="outline-none"
+                            title="View Details"
                           >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
+                            <Eye className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="outline"
-                            size="sm"
+                            className="text-green-600 hover:text-green-800 focus:outline-none"
+                            variant="outline-none"
+                            title="Label Print"
                             onClick={() => printInvoice(sale)}
                           >
-                            <Printer className="h-4 w-4 mr-1" />
-                            Print
+                            <Printer className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -951,6 +950,18 @@ export default function Sales() {
                       <span className="text-gray-600">Customer Name:</span>
                       <span className="font-medium">
                         {selectedSale.customerName}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Phone Number:</span>
+                      <span className="font-medium">
+                        {selectedSale.phoneNumber || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Company Name:</span>
+                      <span className="font-medium">
+                        {selectedSale.companyName || "-"}
                       </span>
                     </div>
                   </div>

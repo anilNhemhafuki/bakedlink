@@ -149,7 +149,10 @@ export default function Products() {
   });
 
   // Add sorting functionality
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredProducts, 'name');
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredProducts,
+    "name",
+  );
 
   // Add pagination
   const pagination = usePagination(sortedData, 10);
@@ -166,7 +169,7 @@ export default function Products() {
   const handleLabelPrint = (product: any) => {
     setSelectedProductForLabel(product);
     setLabelData({
-      companyName: settings.companyName || "Sweet Treats Bakery",
+      companyName: settings.companyName || "Baked Link",
       companyLocation: settings.companyAddress || "",
       regNo: settings.companyRegNo || "",
       dtqocNo: settings.companyDtqocNo || "",
@@ -185,16 +188,17 @@ export default function Products() {
     const labelSize = settings.labelSize || "small";
     const orientation = settings.labelOrientation || "portrait";
     const margin = settings.labelMargin || "2";
-    
+
     // Size configurations
     const sizeConfig = {
       small: { width: "200px", height: "120px" },
       medium: { width: "280px", height: "200px" },
-      large: { width: "350px", height: "260px" }
+      large: { width: "350px", height: "260px" },
     };
-    
-    const currentSize = sizeConfig[labelSize as keyof typeof sizeConfig] || sizeConfig.small;
-    
+
+    const currentSize =
+      sizeConfig[labelSize as keyof typeof sizeConfig] || sizeConfig.small;
+
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -417,25 +421,53 @@ export default function Products() {
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="name"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Name
                 </SortableTableHeader>
-                <SortableTableHeader sortKey="sku" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="sku"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Code
                 </SortableTableHeader>
-                <SortableTableHeader sortKey="price" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="price"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Regular Price
                 </SortableTableHeader>
-                <SortableTableHeader sortKey="salePrice" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="salePrice"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Sales Price
                 </SortableTableHeader>
-                <SortableTableHeader sortKey="isActive" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="isActive"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Status
                 </SortableTableHeader>
-                <SortableTableHeader sortKey="unit" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="unit"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Unit
                 </SortableTableHeader>
-                <SortableTableHeader sortKey="categoryId" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="categoryId"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Category
                 </SortableTableHeader>
                 <TableHead>Actions</TableHead>
@@ -509,7 +541,9 @@ export default function Products() {
                           }
                           title="Delete Product"
                           itemName={product.name}
-                          onConfirm={() => deleteProductMutation.mutate(product.id)}
+                          onConfirm={() =>
+                            deleteProductMutation.mutate(product.id)
+                          }
                           isLoading={deleteProductMutation.isPending}
                         />
                       </div>
@@ -627,13 +661,18 @@ export default function Products() {
                     <Input
                       value={labelData.companyName}
                       onChange={(e) =>
-                        setLabelData({ ...labelData, companyName: e.target.value })
+                        setLabelData({
+                          ...labelData,
+                          companyName: e.target.value,
+                        })
                       }
                       className="h-8"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs font-medium">Location/Address</Label>
+                    <Label className="text-xs font-medium">
+                      Location/Address
+                    </Label>
                     <Input
                       value={labelData.companyLocation}
                       onChange={(e) =>
@@ -647,7 +686,9 @@ export default function Products() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs font-medium">Registration No.</Label>
+                      <Label className="text-xs font-medium">
+                        Registration No.
+                      </Label>
                       <Input
                         value={labelData.regNo}
                         onChange={(e) =>
@@ -661,7 +702,10 @@ export default function Products() {
                       <Input
                         value={labelData.dtqocNo}
                         onChange={(e) =>
-                          setLabelData({ ...labelData, dtqocNo: e.target.value })
+                          setLabelData({
+                            ...labelData,
+                            dtqocNo: e.target.value,
+                          })
                         }
                         className="h-8"
                       />
@@ -689,7 +733,10 @@ export default function Products() {
                       <Input
                         value={labelData.batchNo}
                         onChange={(e) =>
-                          setLabelData({ ...labelData, batchNo: e.target.value })
+                          setLabelData({
+                            ...labelData,
+                            batchNo: e.target.value,
+                          })
                         }
                         className="h-8"
                       />
@@ -699,7 +746,10 @@ export default function Products() {
                       <Input
                         value={labelData.netWeight}
                         onChange={(e) =>
-                          setLabelData({ ...labelData, netWeight: e.target.value })
+                          setLabelData({
+                            ...labelData,
+                            netWeight: e.target.value,
+                          })
                         }
                         placeholder="e.g., 250g"
                         className="h-8"
@@ -711,7 +761,10 @@ export default function Products() {
                     <Input
                       value={labelData.ingredients}
                       onChange={(e) =>
-                        setLabelData({ ...labelData, ingredients: e.target.value })
+                        setLabelData({
+                          ...labelData,
+                          ingredients: e.target.value,
+                        })
                       }
                       placeholder="List of ingredients"
                       className="h-8"
@@ -729,7 +782,9 @@ export default function Products() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs font-medium">Manufacture Date</Label>
+                      <Label className="text-xs font-medium">
+                        Manufacture Date
+                      </Label>
                       <Input
                         type="date"
                         value={labelData.manufactureDate}
@@ -748,7 +803,10 @@ export default function Products() {
                         type="date"
                         value={labelData.expireDate}
                         onChange={(e) =>
-                          setLabelData({ ...labelData, expireDate: e.target.value })
+                          setLabelData({
+                            ...labelData,
+                            expireDate: e.target.value,
+                          })
                         }
                         className="h-8"
                       />
@@ -779,14 +837,20 @@ export default function Products() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="small">Small (50x30mm)</SelectItem>
-                          <SelectItem value="medium">Medium (75x50mm)</SelectItem>
-                          <SelectItem value="large">Large (100x75mm)</SelectItem>
+                          <SelectItem value="medium">
+                            Medium (75x50mm)
+                          </SelectItem>
+                          <SelectItem value="large">
+                            Large (100x75mm)
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
                       <Label className="text-xs font-medium">Orientation</Label>
-                      <Select defaultValue={settings.labelOrientation || "portrait"}>
+                      <Select
+                        defaultValue={settings.labelOrientation || "portrait"}
+                      >
                         <SelectTrigger className="h-8">
                           <SelectValue />
                         </SelectTrigger>
@@ -807,16 +871,23 @@ export default function Products() {
                 <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
                   Label Preview
                 </h3>
-                <div className="border-2 border-gray-300 p-4 bg-white shadow-sm max-w-sm mx-auto" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px' }}>
+                <div
+                  className="border-2 border-gray-300 p-4 bg-white shadow-sm max-w-sm mx-auto"
+                  style={{ fontFamily: "Arial, sans-serif", fontSize: "10px" }}
+                >
                   <div className="text-center border-b border-gray-300 pb-2 mb-3">
-                    <div className="font-bold text-sm">{labelData.companyName}</div>
-                    {labelData.companyLocation && <div className="text-xs">{labelData.companyLocation}</div>}
+                    <div className="font-bold text-sm">
+                      {labelData.companyName}
+                    </div>
+                    {labelData.companyLocation && (
+                      <div className="text-xs">{labelData.companyLocation}</div>
+                    )}
                   </div>
-                  
+
                   <div className="font-bold text-center text-sm border border-gray-300 p-1 mb-2">
                     {selectedProductForLabel?.name}
                   </div>
-                  
+
                   <div className="space-y-1 text-xs">
                     {labelData.regNo && (
                       <div className="flex justify-between">
@@ -845,7 +916,9 @@ export default function Products() {
                     {labelData.ingredients && (
                       <div className="flex justify-between">
                         <span className="font-semibold">Ingredients:</span>
-                        <span className="text-right">{labelData.ingredients}</span>
+                        <span className="text-right">
+                          {labelData.ingredients}
+                        </span>
                       </div>
                     )}
                     <div className="flex justify-between">
@@ -855,13 +928,19 @@ export default function Products() {
                     {labelData.manufactureDate && (
                       <div className="flex justify-between">
                         <span className="font-semibold">Mfg. Date:</span>
-                        <span>{new Date(labelData.manufactureDate).toLocaleDateString()}</span>
+                        <span>
+                          {new Date(
+                            labelData.manufactureDate,
+                          ).toLocaleDateString()}
+                        </span>
                       </div>
                     )}
                     {labelData.expireDate && (
                       <div className="flex justify-between">
                         <span className="font-semibold">Exp. Date:</span>
-                        <span>{new Date(labelData.expireDate).toLocaleDateString()}</span>
+                        <span>
+                          {new Date(labelData.expireDate).toLocaleDateString()}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -869,12 +948,9 @@ export default function Products() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => setShowLabelPrint(false)}
-            >
+            <Button variant="outline" onClick={() => setShowLabelPrint(false)}>
               Cancel
             </Button>
             <Button onClick={printLabel}>
