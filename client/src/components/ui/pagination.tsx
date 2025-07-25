@@ -25,7 +25,11 @@ export function Pagination({
     const range = [];
     const rangeWithDots = [];
 
-    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+    for (
+      let i = Math.max(2, currentPage - delta);
+      i <= Math.min(totalPages - 1, currentPage + delta);
+      i++
+    ) {
       range.push(i);
     }
 
@@ -53,7 +57,10 @@ export function Pagination({
   }
 
   return (
-    <nav className={cn("flex items-center justify-center space-x-2", className)} aria-label="Pagination">
+    <nav
+      className={cn("flex items-center justify-center space-x-2", className)}
+      aria-label="Pagination"
+    >
       {showFirstLast && (
         <Button
           variant="outline"
@@ -62,10 +69,10 @@ export function Pagination({
           disabled={currentPage === 1}
           className="px-3"
         >
-          First
+          &laquo;
         </Button>
       )}
-      
+
       {showPreviousNext && (
         <Button
           variant="outline"
@@ -74,8 +81,7 @@ export function Pagination({
           disabled={currentPage === 1}
           className="px-3"
         >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Previous
+          &lsaquo;
         </Button>
       )}
 
@@ -106,11 +112,10 @@ export function Pagination({
           disabled={currentPage === totalPages}
           className="px-3"
         >
-          Next
-          <ChevronRight className="h-4 w-4 ml-1" />
+          &rsaquo;
         </Button>
       )}
-      
+
       {showFirstLast && (
         <Button
           variant="outline"
@@ -119,7 +124,7 @@ export function Pagination({
           disabled={currentPage === totalPages}
           className="px-3"
         >
-          Last
+          &raquo;
         </Button>
       )}
     </nav>
@@ -184,17 +189,14 @@ export function PageSizeSelector({
 }
 
 // Hook for pagination logic
-export function usePagination<T>(
-  data: T[],
-  initialPageSize: number = 10
-) {
+export function usePagination<T>(data: T[], initialPageSize: number = 10) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(initialPageSize);
 
   const totalPages = Math.ceil(data.length / pageSize);
   const paginatedData = data.slice(
     (currentPage - 1) * pageSize,
-    currentPage * pageSize
+    currentPage * pageSize,
   );
 
   const handlePageChange = (page: number) => {
