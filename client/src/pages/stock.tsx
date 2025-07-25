@@ -328,7 +328,7 @@ export default function Stock() {
     }
   };
 
-  const filteredItems = (items as any[]).filter(
+  const filteredItems = (items || []).filter(
     (item: any) =>
       item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
