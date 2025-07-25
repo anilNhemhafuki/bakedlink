@@ -535,13 +535,24 @@ export class Storage implements IStorage {
 
   // Unit operations
   async getUnits(): Promise<Unit[]> {
+    console.log("Storage getUnits called");
     try {
       const result = await db.select().from(units).orderBy(units.name);
-      console.log("Storage getUnits result:", result.length, "units found");
+      console.log(`Storage getUnits result: ${result.length} units found`);
       return Array.isArray(result) ? result : [];
     } catch (error) {
       console.error("Error in getUnits:", error);
       throw error; // Let the caller handle the error
+    }
+  }
+
+  async getActiveUnits() {
+    try {
+      const result = await db.select().from(units).where(eq(units.isActive, true)).orderBy(units.name);
+      return result;
+    } catch (error) {
+      console.error("Error in getActiveUnits:", error);
+      throw error;
     }
   }
 
@@ -591,7 +602,30 @@ export class Storage implements IStorage {
 
   // Unit conversion operations
   async getUnitConversions(): Promise<any[]> {
-    return await db.select().from(unitConversions).orderBy(unitConversions.id);
+    return await db.select({
+      id: unitConversions.id,
+      fromUnitId: unitConversions.fromUnitId,
+      toUnitId: unitConversions.toUnitId,
+      conversionFactor: unitConversions.conversionFactor,
+      formula: unitConversions.formula,
+      isActive: unitConversions.isActive,
+      createdAt: unitConversions.createdAt,
+      updatedAt: unitConversions.updatedAt,
+      fromUnit: {
+        id: sql`from_unit.id`,
+        name: sql`from_unit.name`,
+        abbreviation: sql`from_unit.abbreviation`,
+      },
+      toUnit: {
+        id: sql`to_unit.id`,
+        name: sql`to_unit.name`,
+        abbreviation: sql`to_unit.abbreviation`,
+      }
+    })
+    .from(unitConversions)
+    .leftJoin(sql`units as from_unit`, sql`from_unit.id = ${unitConversions.fromUnitId}`)
+    .leftJoin(sql`units as to_unit`, sql`to_unit.id = ${unitConversions.toUnitId}`)
+    .orderBy(sql`from_unit.name`, sql`to_unit.name`);
   }
 
   async createUnitConversion(data: any): Promise<any> {
@@ -613,6 +647,46 @@ export class Storage implements IStorage {
 
   async deleteUnitConversion(id: number): Promise<void> {
     await db.delete(unitConversions).where(eq(unitConversions.id, id));
+  }
+
+  async convertQuantity(fromQuantity: number, fromUnitId: number, toUnitId: number): Promise<number> {
+    if (fromUnitId === toUnitId) return fromQuantity;
+
+    // Try direct conversion
+    const directConversion = await db
+      .select()
+      .from(unitConversions)
+      .where(
+        and(
+          eq(unitConversions.fromUnitId, fromUnitId),
+          eq(unitConversions.toUnitId, toUnitId),
+          eq(unitConversions.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (directConversion.length > 0) {
+      return fromQuantity * parseFloat(directConversion[0].conversionFactor);
+    }
+
+    // Try reverse conversion
+    const reverseConversion = await db
+      .select()
+      .from(unitConversions)
+      .where(
+        and(
+          eq(unitConversions.fromUnitId, toUnitId),
+          eq(unitConversions.toUnitId, fromUnitId),
+          eq(unitConversions.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (reverseConversion.length > 0) {
+      return fromQuantity / parseFloat(reverseConversion[0].conversionFactor);
+    }
+
+    throw new Error(`No conversion found between units ${fromUnitId} and ${toUnitId}`);
   }
 
   // Inventory operations

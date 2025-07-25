@@ -386,7 +386,7 @@ export default function Stock() {
 
   // Get unit name by ID
   const getUnitName = (unitId: number) => {
-    const unit = (units as any[]).find((u: any) => u.id === unitId);
+    const const unit = (units as any[]).find((u: any) => u.id === unitId);
     return unit ? `${unit.name} (${unit.abbreviation})` : "Unknown Unit";
   };
 

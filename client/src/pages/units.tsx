@@ -217,83 +217,37 @@ export default function Units() {
     },
   });
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
 
+    const formData = new FormData(e.currentTarget);
     const name = formData.get("name") as string;
     const abbreviation = formData.get("abbreviation") as string;
     const type = formData.get("type") as string;
 
-    if (!name?.trim()) {
+    if (!name?.trim() || !abbreviation?.trim() || !type?.trim()) {
       toast({
         title: "Error",
-        description: "Unit name is required",
+        description: "Name, abbreviation, and type are required",
         variant: "destructive",
       });
       return;
     }
 
-    if (!abbreviation?.trim()) {
-      toast({
-        title: "Error",
-        description: "Abbreviation is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!type?.trim()) {
-      toast({
-        title: "Error",
-        description: "Unit type is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check for duplicates in the current units list
-    const duplicateName = units.find(
-      (unit: any) =>
-        unit.id !== editingUnit?.id &&
-        unit.name.toLowerCase() === name.trim().toLowerCase(),
-    );
-
-    const duplicateAbbr = units.find(
-      (unit: any) =>
-        unit.id !== editingUnit?.id &&
-        unit.abbreviation.toLowerCase() === abbreviation.trim().toLowerCase(),
-    );
-
-    if (duplicateName) {
-      toast({
-        title: "Error",
-        description: `Unit name "${name}" already exists`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (duplicateAbbr) {
-      toast({
-        title: "Error",
-        description: `Abbreviation "${abbreviation}" already exists`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const data = {
+    const unitData = {
       name: name.trim(),
       abbreviation: abbreviation.trim(),
       type: type.trim(),
+      baseUnit: (formData.get("baseUnit") as string)?.trim() || null,
+      conversionFactor: formData.get("conversionFactor") ? 
+        parseFloat(formData.get("conversionFactor") as string) : 1,
       isActive: true,
     };
 
     if (editingUnit) {
-      updateMutation.mutate({ id: editingUnit.id, values: data });
+      updateMutation.mutate({ id: editingUnit.id, values: unitData });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(unitData);
     }
   };
 
