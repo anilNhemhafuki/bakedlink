@@ -8,6 +8,8 @@ import {
 } from "@/components/permission-wrapper";
 import { Input } from "@/components/ui/input";
 import SearchBar from "@/components/search-bar";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -431,6 +433,9 @@ export default function Parties() {
     return matchesSearch && matchesType;
   });
 
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredParties, 'name');
+
   const getTypeBadge = (type: string) => {
     const variants: Record<
       string,
@@ -750,17 +755,23 @@ export default function Parties() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Party Details</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="hidden sm:table-cell">
+                    <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
+                      Party Details
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="type" sortConfig={sortConfig} onSort={requestSort}>
+                      Type
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="email" sortConfig={sortConfig} onSort={requestSort} className="hidden sm:table-cell">
                       Contact Info
-                    </TableHead>
-                    <TableHead>Account Balance</TableHead>
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="currentBalance" sortConfig={sortConfig} onSort={requestSort}>
+                      Account Balance
+                    </SortableTableHeader>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredParties.map((party: any) => {
+                  {sortedData.map((party: any) => {
                     const balanceInfo = getBalanceBadge(party.currentBalance);
                     return (
                       <TableRow key={party.id}>
@@ -868,7 +879,7 @@ export default function Parties() {
                   })}
                 </TableBody>
               </Table>
-              {filteredParties.length === 0 && (
+              {sortedData.length === 0 && (
                 <div className="text-center py-8">
                   <Building className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-muted-foreground mb-2">

@@ -55,6 +55,7 @@ A comprehensive bakery management system built with React, TypeScript, and Postg
 6. **Theme Customization**: Dynamic color theming system
 7. **Unit Conversion System**: Advanced unit conversion with cost calculations
 8. **Cost Calculation Engine**: Automatic product cost calculation based on ingredient units
+9. **Interactive Table Sorting**: Comprehensive column sorting with visual indicators across all listing pages
 
 ## Data Flow
 
@@ -134,6 +135,7 @@ Changelog:
 - July 11, 2025. Implemented cost calculation system for products based on unit conversions
 - July 11, 2025. Enhanced super admin role with full access to all system resources
 - July 11, 2025. Added reusable SearchBar component across all 17 pages
+- July 25, 2025. Implemented comprehensive interactive table sorting functionality across all listing pages with clickable column headers, ascending/descending toggle, and visual sort indicators
 
 User Preferences:
 Preferred communication style: Simple, everyday language.

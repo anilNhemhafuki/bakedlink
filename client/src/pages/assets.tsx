@@ -4,6 +4,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import SearchBar from "@/components/search-bar";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import {
   Card,
   CardContent,
@@ -257,6 +259,9 @@ export default function Assets() {
     return matchesSearch && matchesCategory;
   });
 
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredAssets, 'name');
+
   const getConditionBadge = (condition: string) => {
     const variants: Record<
       string,
@@ -460,22 +465,26 @@ export default function Assets() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Asset</TableHead>
-                    <TableHead className="hidden sm:table-cell">
+                    <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
+                      Asset
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="category" sortConfig={sortConfig} onSort={requestSort} className="hidden sm:table-cell">
                       Category
-                    </TableHead>
-                    <TableHead className="hidden md:table-cell">
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="location" sortConfig={sortConfig} onSort={requestSort} className="hidden md:table-cell">
                       Location
-                    </TableHead>
-                    <TableHead>Condition</TableHead>
-                    <TableHead className="hidden lg:table-cell">
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="condition" sortConfig={sortConfig} onSort={requestSort}>
+                      Condition
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="currentValue" sortConfig={sortConfig} onSort={requestSort} className="hidden lg:table-cell">
                       Value
-                    </TableHead>
+                    </SortableTableHeader>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAssets.map((asset: any) => (
+                  {sortedData.map((asset: any) => (
                     <TableRow key={asset.id}>
                       <TableCell>
                         <div className="flex items-center space-x-3">

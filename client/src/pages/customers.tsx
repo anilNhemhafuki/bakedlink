@@ -8,6 +8,8 @@ import {
 } from "@/components/permission-wrapper";
 import { Input } from "@/components/ui/input";
 import SearchBar from "@/components/search-bar";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import {
   Card,
   CardContent,
@@ -296,8 +298,11 @@ export default function Customers() {
       customer.phone?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredCustomers, 'name');
+
   // Add pagination
-  const pagination = usePagination(filteredCustomers, 10);
+  const pagination = usePagination(sortedData, 10);
   const {
     currentPage,
     pageSize,
@@ -449,11 +454,15 @@ export default function Customers() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead className="hidden md:table-cell">
+                    <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
+                      Customer
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="email" sortConfig={sortConfig} onSort={requestSort} className="hidden md:table-cell">
                       Contact
-                    </TableHead>
-                    <TableHead>Current Balance</TableHead>
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="currentBalance" sortConfig={sortConfig} onSort={requestSort}>
+                      Current Balance
+                    </SortableTableHeader>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>

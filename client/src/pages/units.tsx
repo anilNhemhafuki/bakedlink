@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SearchBar from "@/components/search-bar";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import {
   Card,
   CardContent,
@@ -88,8 +90,11 @@ export default function Units() {
         }, 500);
         return;
       }
-      
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to create unit";
+
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to create unit";
       toast({
         title: "Error",
         description: errorMessage,
@@ -252,6 +257,9 @@ export default function Units() {
     );
   }, [units, searchQuery]);
 
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredUnits, 'name');
+
   const getTypeBadge = (type: string) => {
     switch (type.toLowerCase()) {
       case "weight":
@@ -394,15 +402,6 @@ export default function Units() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Ruler className="h-5 w-5 mr-2" />
-            Units
-          </CardTitle>
-          <CardDescription>
-            Manage measuring units for inventory items
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">
@@ -414,15 +413,23 @@ export default function Units() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Abbreviation</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
+                    <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
+                      Name
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="abbreviation" sortConfig={sortConfig} onSort={requestSort}>
+                      Abbreviation
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="type" sortConfig={sortConfig} onSort={requestSort}>
+                      Type
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="isActive" sortConfig={sortConfig} onSort={requestSort}>
+                      Status
+                    </SortableTableHeader>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUnits.map((unit: any) => {
+                  {sortedData.map((unit: any) => {
                     const typeBadge = getTypeBadge(unit.type);
                     return (
                       <TableRow key={unit.id}>

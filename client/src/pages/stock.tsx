@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; // Added useEffect import
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,8 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 
 export default function Stock() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,6 +98,9 @@ export default function Stock() {
       item.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.group?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredItems, 'name');
 
   // --- Add useEffect to handle unit selection state ---
   useEffect(() => {
@@ -556,10 +561,10 @@ export default function Stock() {
                     placeholder="e.g., 50"
                     defaultValue={editingItem?.conversionRate || "1"}
                     className="mt-1"
-                    required={
+                    required={Boolean(
                       selectedSecondaryUnitId &&
                       selectedSecondaryUnitId !== "none"
-                    } // Make required if secondary unit selected
+                    )} // Make required if secondary unit selected
                   />
                 </div>
                 <div>
@@ -840,25 +845,41 @@ export default function Stock() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>Min Level</TableHead>
-                    <TableHead>Cost/Unit</TableHead>
-                    <TableHead>Previous Qty</TableHead>
-                    <TableHead>Previous Amt</TableHead>
-                    <TableHead className="hidden md:table-cell">
+                    <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
+                      Item
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="unitId" sortConfig={sortConfig} onSort={requestSort}>
+                      Unit
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="currentStock" sortConfig={sortConfig} onSort={requestSort}>
+                      Stock
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="minLevel" sortConfig={sortConfig} onSort={requestSort}>
+                      Min Level
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="costPerUnit" sortConfig={sortConfig} onSort={requestSort}>
+                      Cost/Unit
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="previousQuantity" sortConfig={sortConfig} onSort={requestSort}>
+                      Previous Qty
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="previousAmount" sortConfig={sortConfig} onSort={requestSort}>
+                      Previous Amt
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="group" sortConfig={sortConfig} onSort={requestSort} className="hidden md:table-cell">
                       Group
-                    </TableHead>
-                    <TableHead className="hidden lg:table-cell">
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="dateAdded" sortConfig={sortConfig} onSort={requestSort} className="hidden lg:table-cell">
                       Date Added
-                    </TableHead>
-                    <TableHead>Status</TableHead>
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="currentStock" sortConfig={sortConfig} onSort={requestSort}>
+                      Status
+                    </SortableTableHeader>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredItems.map((item: any) => {
+                  {sortedData.map((item: any) => {
                     const stockInfo = getStockBadge(item);
                     return (
                       <TableRow key={item.id}>
@@ -977,7 +998,7 @@ export default function Stock() {
                   })}
                 </TableBody>
               </Table>
-              {filteredItems.length === 0 && (
+              {sortedData.length === 0 && (
                 <div className="text-center py-8">
                   <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-muted-foreground mb-2">

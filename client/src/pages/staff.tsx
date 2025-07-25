@@ -31,6 +31,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Trash2, Users, Phone, Mail, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SearchBar from "@/components/search-bar";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 
@@ -231,6 +233,9 @@ export default function StaffDirectory() {
       .toLowerCase()
       .includes(searchQuery.toLowerCase())
   );
+
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredStaff, 'firstName');
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -495,7 +500,7 @@ export default function StaffDirectory() {
       {/* Staff Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Staff Members ({filteredStaff.length})</CardTitle>
+          <CardTitle>Staff Members ({sortedData.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -508,18 +513,32 @@ export default function StaffDirectory() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Staff ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Position</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Employment</TableHead>
-                    <TableHead>Status</TableHead>
+                    <SortableTableHeader sortKey="staffId" sortConfig={sortConfig} onSort={requestSort}>
+                      Staff ID
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="firstName" sortConfig={sortConfig} onSort={requestSort}>
+                      Name
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="position" sortConfig={sortConfig} onSort={requestSort}>
+                      Position
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="department" sortConfig={sortConfig} onSort={requestSort}>
+                      Department
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="email" sortConfig={sortConfig} onSort={requestSort}>
+                      Contact
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="employmentType" sortConfig={sortConfig} onSort={requestSort}>
+                      Employment
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="status" sortConfig={sortConfig} onSort={requestSort}>
+                      Status
+                    </SortableTableHeader>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStaff.map((member: any) => (
+                  {sortedData.map((member: any) => (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">{member.staffId}</TableCell>
                       <TableCell>

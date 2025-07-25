@@ -38,6 +38,8 @@ import CostCalculator from "@/components/cost-calculator";
 import SearchBar from "@/components/search-bar";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -146,8 +148,11 @@ export default function Products() {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredProducts, 'name');
+
   // Add pagination
-  const pagination = usePagination(filteredProducts, 10);
+  const pagination = usePagination(sortedData, 10);
   const {
     currentPage,
     pageSize,
@@ -412,13 +417,27 @@ export default function Products() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead>Regular Price</TableHead>
-                <TableHead>Sales Price</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead>Category</TableHead>
+                <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
+                  Name
+                </SortableTableHeader>
+                <SortableTableHeader sortKey="sku" sortConfig={sortConfig} onSort={requestSort}>
+                  Code
+                </SortableTableHeader>
+                <SortableTableHeader sortKey="price" sortConfig={sortConfig} onSort={requestSort}>
+                  Regular Price
+                </SortableTableHeader>
+                <SortableTableHeader sortKey="salePrice" sortConfig={sortConfig} onSort={requestSort}>
+                  Sales Price
+                </SortableTableHeader>
+                <SortableTableHeader sortKey="isActive" sortConfig={sortConfig} onSort={requestSort}>
+                  Status
+                </SortableTableHeader>
+                <SortableTableHeader sortKey="unit" sortConfig={sortConfig} onSort={requestSort}>
+                  Unit
+                </SortableTableHeader>
+                <SortableTableHeader sortKey="categoryId" sortConfig={sortConfig} onSort={requestSort}>
+                  Category
+                </SortableTableHeader>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>

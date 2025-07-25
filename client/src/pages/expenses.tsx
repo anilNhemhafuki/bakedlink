@@ -4,6 +4,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import SearchBar from "@/components/search-bar";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import {
   Card,
   CardContent,
@@ -185,6 +187,9 @@ export default function Expenses() {
     return matchesSearch && matchesCategory;
   });
 
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredExpenses, 'title');
+
   const getCategoryBadge = (category: string) => {
     const variants: Record<
       string,
@@ -365,17 +370,23 @@ export default function Expenses() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Expense</TableHead>
-                    <TableHead className="hidden sm:table-cell">
+                    <SortableTableHeader sortKey="title" sortConfig={sortConfig} onSort={requestSort}>
+                      Expense
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="category" sortConfig={sortConfig} onSort={requestSort} className="hidden sm:table-cell">
                       Category
-                    </TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead className="hidden md:table-cell">Date</TableHead>
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="amount" sortConfig={sortConfig} onSort={requestSort}>
+                      Amount
+                    </SortableTableHeader>
+                    <SortableTableHeader sortKey="date" sortConfig={sortConfig} onSort={requestSort} className="hidden md:table-cell">
+                      Date
+                    </SortableTableHeader>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredExpenses.map((expense: any) => (
+                  {sortedData.map((expense: any) => (
                     <TableRow key={expense.id}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
@@ -437,7 +448,7 @@ export default function Expenses() {
                   ))}
                 </TableBody>
               </Table>
-              {filteredExpenses.length === 0 && (
+              {sortedData.length === 0 && (
                 <div className="text-center py-8">
                   <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-muted-foreground mb-2">

@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SearchBar from "@/components/search-bar";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import {
   Select,
   SelectContent,
@@ -174,6 +176,9 @@ export default function Purchases() {
 
     return matchesSearch && matchesStatus;
   });
+
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredPurchases, 'supplierName');
 
   const totalPurchases = purchases.reduce(
     (sum: number, purchase: Purchase) => sum + parseFloat(purchase.totalAmount),
@@ -466,7 +471,7 @@ export default function Purchases() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredPurchases.map((purchase: Purchase) => (
+            {sortedData.map((purchase: Purchase) => (
               <div key={purchase.id} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">

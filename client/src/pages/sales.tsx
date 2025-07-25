@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SearchBar from "@/components/search-bar";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import {
   Select,
   SelectContent,
@@ -175,6 +177,9 @@ export default function Sales() {
       statusFilter === "all" || sale.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredSales, 'customerName');
 
   const totalSales = sales.reduce(
     (sum: number, sale: Sale) => sum + parseFloat(sale.totalAmount),
@@ -637,7 +642,7 @@ export default function Sales() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredSales.map((sale: Sale) => (
+            {sortedData.map((sale: Sale) => (
               <div key={sale.id} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -691,7 +696,7 @@ export default function Sales() {
             ))}
           </div>
 
-          {filteredSales.length === 0 && (
+          {sortedData.length === 0 && (
             <div className="text-center py-8">
               <Receipt className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-medium mb-2">No sales found</h3>

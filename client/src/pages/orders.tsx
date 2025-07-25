@@ -21,6 +21,8 @@ import OrderForm from "@/components/order-form";
 import SearchBar from "@/components/search-bar";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
 import {
@@ -181,8 +183,11 @@ export default function Orders() {
     return matchesSearch && matchesStatus && isNotCompleted;
   });
 
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredOrders, 'orderNumber');
+
   // Add pagination
-  const pagination = usePagination(filteredOrders, 5);
+  const pagination = usePagination(sortedData, 5);
   const {
     currentPage,
     pageSize,
