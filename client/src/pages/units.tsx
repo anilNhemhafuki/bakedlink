@@ -229,7 +229,8 @@ export default function Units() {
     }
   };
 
-  const filteredUnits = (units as any[]).filter(
+  // NEW (Fixed) Line 234-240:
+  const filteredUnits = (Array.isArray(units) ? units : []).filter(
     (unit: any) =>
       unit.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       unit.abbreviation?.toLowerCase().includes(searchQuery.toLowerCase()) ||

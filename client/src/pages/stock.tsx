@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Added useEffect import
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,14 @@ export default function Stock() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
+  // --- Add state for selected units ---
+  const [selectedPrimaryUnitId, setSelectedPrimaryUnitId] = useState<
+    string | undefined
+  >(undefined);
+  const [selectedSecondaryUnitId, setSelectedSecondaryUnitId] = useState<
+    string | undefined
+  >(undefined);
+  // --- End of new state variables ---
   const { toast } = useToast();
   const { symbol } = useCurrency();
 
@@ -76,8 +84,39 @@ export default function Stock() {
     queryFn: () => apiRequest("GET", "/api/units"),
   });
 
-  // Filter only active units for the dropdown
-  const activeUnits = (units as any[]).filter((unit: any) => unit.isActive);
+  // --- Fix 1: Ensure units is an array before filtering ---
+  const activeUnits = Array.isArray(units)
+    ? (units as any[]).filter((unit: any) => unit.isActive)
+    : [];
+
+  // --- Fix 2: Ensure items is an array before filtering ---
+  const filteredItems = (Array.isArray(items) ? items : []).filter(
+    (item: any) =>
+      item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.group?.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  // --- Add useEffect to handle unit selection state ---
+  useEffect(() => {
+    if (isDialogOpen) {
+      if (editingItem) {
+        // Pre-fill unit selections when editing
+        setSelectedPrimaryUnitId(editingItem?.unitId?.toString());
+        setSelectedSecondaryUnitId(
+          editingItem?.secondaryUnitId?.toString() || "none",
+        );
+      } else {
+        // Reset selections for new item
+        setSelectedPrimaryUnitId(undefined);
+        setSelectedSecondaryUnitId(undefined);
+      }
+    } else {
+      // Clear selections when dialog closes
+      setSelectedPrimaryUnitId(undefined);
+      setSelectedSecondaryUnitId(undefined);
+    }
+  }, [isDialogOpen, editingItem]);
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -107,10 +146,8 @@ export default function Stock() {
       ) {
         throw new Error("Valid cost per unit is required");
       }
-
       // Calculate opening value
       const openingValue = data.currentStock * data.costPerUnit;
-
       // Prepare stock data for API
       const stockData = {
         name: data.name.trim(),
@@ -167,7 +204,6 @@ export default function Stock() {
     mutationFn: async (data: { id: number; values: any }) => {
       console.log("Updating stock item:", data);
       const values = data.values;
-
       // Validate required fields before sending
       if (!values.name?.trim()) {
         throw new Error("Item name is required");
@@ -175,14 +211,12 @@ export default function Stock() {
       if (!values.unitId) {
         throw new Error("Measuring unit is required");
       }
-
       // Calculate opening value if opening fields are provided
       let openingValue = values.openingValue;
       if (values.openingQuantity && values.openingRate) {
         openingValue =
           parseFloat(values.openingQuantity) * parseFloat(values.openingRate);
       }
-
       const updateData = {
         name: values.name.trim(),
         unitId: parseInt(values.unitId),
@@ -267,9 +301,10 @@ export default function Stock() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
-
     const name = formData.get("name") as string;
-    const unitId = formData.get("unitId") as string;
+    // --- Modified: Get unitId from state instead of formData ---
+    const unitId = selectedPrimaryUnitId; // Use state variable
+    // --- End of modification ---
     const defaultPrice = formData.get("defaultPrice") as string;
     const group = formData.get("group") as string;
     const openingQuantity = formData.get("openingQuantity") as string;
@@ -284,7 +319,7 @@ export default function Stock() {
       });
       return;
     }
-
+    // --- Modified: Check state variable instead of formData ---
     if (!unitId) {
       toast({
         title: "Error",
@@ -293,20 +328,25 @@ export default function Stock() {
       });
       return;
     }
+    // --- End of modification ---
 
-    // Get the selected unit details
+    // Get the selected unit details (still okay to use units data here)
     const selectedUnit = (units as any[]).find(
-      (u: any) => u.id.toString() === unitId,
+      (u: any) => u.id.toString() === unitId, // unitId is still a string here
     );
-
-    const secondaryUnitId = formData.get("secondaryUnitId") as string;
+    // --- Modified: Get secondaryUnitId from state instead of formData ---
+    const secondaryUnitId = selectedSecondaryUnitId; // Use state variable
+    // --- End of modification ---
     const conversionRate = formData.get("conversionRate") as string;
 
     const data = {
       name: name.trim(),
-      unitId: parseInt(unitId),
+      unitId: parseInt(unitId), // Parse the string ID from state
       unit: selectedUnit ? selectedUnit.abbreviation : "pcs", // Fallback unit
-      secondaryUnitId: secondaryUnitId && secondaryUnitId !== "none" ? parseInt(secondaryUnitId) : null,
+      secondaryUnitId:
+        secondaryUnitId && secondaryUnitId !== "none"
+          ? parseInt(secondaryUnitId) // Parse the string ID from state
+          : null,
       conversionRate: parseFloat(conversionRate || "1"),
       defaultPrice: parseFloat(defaultPrice || "0"),
       group: group,
@@ -328,17 +368,9 @@ export default function Stock() {
     }
   };
 
-  const filteredItems = (items || []).filter(
-    (item: any) =>
-      item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.group?.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
   const getStockBadge = (item: any) => {
     const currentStock = parseFloat(item.currentStock || 0);
     const minLevel = parseFloat(item.minLevel || 0);
-
     if (currentStock <= minLevel) {
       return { variant: "destructive" as const, text: "Low Stock" };
     } else if (currentStock <= minLevel * 1.5) {
@@ -352,6 +384,34 @@ export default function Stock() {
     const unit = (units as any[]).find((u: any) => u.id === unitId);
     return unit ? `${unit.name} (${unit.abbreviation})` : "Unknown Unit";
   };
+
+  // --- Add function to generate dynamic conversion info text ---
+  const getConversionInfoText = () => {
+    // Helper function to find unit details by ID
+    const findUnit = (id: string | undefined) =>
+      activeUnits.find((u: any) => u.id.toString() === id);
+
+    if (!selectedPrimaryUnitId) {
+      return "Select a Primary Unit";
+    }
+    if (!selectedSecondaryUnitId || selectedSecondaryUnitId === "none") {
+      return "No Secondary Unit Selected";
+    }
+    if (selectedPrimaryUnitId === selectedSecondaryUnitId) {
+      return "Units must be different";
+    }
+
+    const primaryUnit = findUnit(selectedPrimaryUnitId);
+    const secondaryUnit = findUnit(selectedSecondaryUnitId);
+
+    if (!primaryUnit || !secondaryUnit) {
+      return "Selected unit not found";
+    }
+
+    // Display the dynamic conversion info
+    return `1 ${secondaryUnit.name} = X ${primaryUnit.name}`;
+  };
+  // --- End of getConversionInfoText ---
 
   if (error && isUnauthorizedError(error)) {
     toast({
@@ -380,6 +440,8 @@ export default function Stock() {
             if (!open) {
               setEditingItem(null);
               setShowAdditionalDetails(false);
+              // Reset unit selections when closing dialog
+              // (handled by useEffect now)
             }
           }}
         >
@@ -419,9 +481,11 @@ export default function Stock() {
                     Primary Unit <span className="text-red-500">*</span>
                   </Label>
                   <div className="flex gap-2 mt-1">
+                    {/* --- Modified: Make Primary Unit Select controlled --- */}
                     <Select
                       name="unitId"
-                      defaultValue={editingItem?.unitId?.toString() || ""}
+                      value={selectedPrimaryUnitId || ""} // Controlled by state
+                      onValueChange={(value) => setSelectedPrimaryUnitId(value)} // Update state
                       required
                     >
                       <SelectTrigger className="flex-1">
@@ -435,6 +499,7 @@ export default function Stock() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {/* --- End of modification --- */}
                   </div>
                 </div>
               </div>
@@ -442,28 +507,44 @@ export default function Stock() {
               {/* Secondary Unit Section */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="secondaryUnitId" className="text-sm font-medium">
+                  <Label
+                    htmlFor="secondaryUnitId"
+                    className="text-sm font-medium"
+                  >
                     Secondary Unit
                   </Label>
+                  {/* --- Modified: Make Secondary Unit Select controlled --- */}
                   <Select
                     name="secondaryUnitId"
-                    defaultValue={editingItem?.secondaryUnitId?.toString() || ""}
+                    value={selectedSecondaryUnitId || "none"} // Controlled by state
+                    onValueChange={(value) => setSelectedSecondaryUnitId(value)} // Update state
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select Secondary Unit" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No Secondary Unit</SelectItem>
+                      {/* Optional: Disable the primary unit as a secondary option */}
                       {activeUnits.map((unit: any) => (
-                        <SelectItem key={unit.id} value={unit.id.toString()}>
+                        <SelectItem
+                          key={unit.id}
+                          value={unit.id.toString()}
+                          disabled={
+                            unit.id.toString() === selectedPrimaryUnitId
+                          }
+                        >
                           {unit.name} ({unit.abbreviation})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {/* --- End of modification --- */}
                 </div>
                 <div>
-                  <Label htmlFor="conversionRate" className="text-sm font-medium">
+                  <Label
+                    htmlFor="conversionRate"
+                    className="text-sm font-medium"
+                  >
                     Conversion Rate
                   </Label>
                   <Input
@@ -472,18 +553,22 @@ export default function Stock() {
                     type="number"
                     step="0.000001"
                     min="0"
-                    placeholder="50 (1 secondary = 50 primary)"
+                    placeholder="e.g., 50"
                     defaultValue={editingItem?.conversionRate || "1"}
                     className="mt-1"
+                    required={
+                      selectedSecondaryUnitId &&
+                      selectedSecondaryUnitId !== "none"
+                    } // Make required if secondary unit selected
                   />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">
-                    Conversion Info
-                  </Label>
-                  <div className="mt-1 p-2 bg-blue-50 rounded text-sm text-blue-700">
-                    1 Secondary = X Primary units
+                  <Label className="text-sm font-medium">Conversion Info</Label>
+                  {/* --- Modified: Dynamic Conversion Info Display --- */}
+                  <div className="mt-1 p-2 bg-blue-50 rounded text-sm text-blue-700 min-h-[40px] flex items-center">
+                    {getConversionInfoText()}
                   </div>
+                  {/* --- End of modification --- */}
                 </div>
               </div>
 
@@ -614,9 +699,13 @@ export default function Stock() {
                         readOnly
                         className="pl-8 bg-gray-100"
                         defaultValue={
-                          editingItem?.openingValue || 
-                          (editingItem?.openingQuantity && editingItem?.openingRate 
-                            ? (parseFloat(editingItem.openingQuantity) * parseFloat(editingItem.openingRate)).toFixed(2)
+                          editingItem?.openingValue ||
+                          (editingItem?.openingQuantity &&
+                          editingItem?.openingRate
+                            ? (
+                                parseFloat(editingItem.openingQuantity) *
+                                parseFloat(editingItem.openingRate)
+                              ).toFixed(2)
                             : "0.00")
                         }
                       />
@@ -637,7 +726,9 @@ export default function Stock() {
                 >
                   Additional Details{" "}
                   <ChevronDown
-                    className={`h-4 w-4 ml-1 transition-transform ${showAdditionalDetails ? "rotate-180" : ""}`}
+                    className={`h-4 w-4 ml-1 transition-transform ${
+                      showAdditionalDetails ? "rotate-180" : ""
+                    }`}
                   />
                 </Button>
               </div>
@@ -671,7 +762,6 @@ export default function Stock() {
                       />
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="location" className="text-sm font-medium">
@@ -789,7 +879,8 @@ export default function Stock() {
                             </div>
                             {item.secondaryUnitId && (
                               <div className="text-xs text-muted-foreground">
-                                {getUnitName(item.secondaryUnitId)} (1:{item.conversionRate || 1})
+                                {getUnitName(item.secondaryUnitId)} (1:
+                                {item.conversionRate || 1})
                               </div>
                             )}
                           </div>
@@ -838,7 +929,9 @@ export default function Stock() {
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {item.lastRestocked
-                              ? `Updated: ${new Date(item.lastRestocked).toLocaleDateString()}`
+                              ? `Updated: ${new Date(
+                                  item.lastRestocked,
+                                ).toLocaleDateString()}`
                               : ""}
                           </div>
                         </TableCell>
