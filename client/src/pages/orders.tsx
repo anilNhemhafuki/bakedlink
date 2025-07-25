@@ -17,7 +17,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import OrderForm from "@/components/order-form";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import OrderForm from "@/components/order-form"; // Ensure OrderForm correctly saves data
 import SearchBar from "@/components/search-bar";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -37,18 +45,24 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showOrderForm, setShowOrderForm] = useState(false);
   const { formatCurrency } = useCurrency();
-
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null); // Ensure 'any' is replaced with a proper Order type
   const { toast } = useToast();
 
+  // --- Data Fetching ---
+  // Ensure your API endpoint /api/orders returns all necessary fields:
+  // id, orderNumber, customerName, customerEmail, customerPhone, orderDate,
+  // dueDate, totalAmount, status, notes, etc.
   const {
-    data: orders = [],
+    data: orders = [], // Type this properly, e.g., data: orders: Order[] = []
     isLoading,
     error,
   } = useQuery({
     queryKey: ["/api/orders"],
+    // Consider adding a staleTime if data doesn't change rapidly
+    // staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
+  // --- Mutation for Updating Status ---
   const updateStatusMutation = useMutation({
     mutationFn: async ({
       orderId,
@@ -57,9 +71,11 @@ export default function Orders() {
       orderId: number;
       status: string;
     }) => {
+      // Ensure your PUT /api/orders/:id endpoint correctly updates the status
       await apiRequest("PUT", `/api/orders/${orderId}`, { status });
     },
     onSuccess: () => {
+      // Invalidate relevant queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({
         queryKey: ["/api/dashboard/recent-orders"],
@@ -77,6 +93,7 @@ export default function Orders() {
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
+        // Consider using a more robust navigation method if available
         setTimeout(() => {
           window.location.href = "/api/login";
         }, 500);
@@ -90,24 +107,24 @@ export default function Orders() {
     },
   });
 
+  // --- Helper Function for Status Badges ---
   const getStatusBadge = (status: string) => {
+    // Maps status strings to Badge variants for color coding
     const variants: Record<
       string,
       "default" | "secondary" | "destructive" | "outline"
     > = {
-      completed: "default",
-      in_progress: "secondary",
-      pending: "outline",
-      cancelled: "destructive",
+      completed: "default", // Typically green
+      in_progress: "secondary", // Typically blue/gray
+      pending: "outline", // Typically gray border
+      cancelled: "destructive", // Typically red
     };
-
     const labels: Record<string, string> = {
       completed: "Completed",
       in_progress: "In Progress",
       pending: "Pending",
       cancelled: "Cancelled",
     };
-
     return (
       <Badge variant={variants[status] || "outline"}>
         {labels[status] || status}
@@ -115,9 +132,9 @@ export default function Orders() {
     );
   };
 
+  // --- Helper Function for Status Actions ---
   const getStatusActions = (currentStatus: string, orderId: number) => {
     const actions = [];
-
     if (currentStatus === "pending") {
       actions.push(
         <Button
@@ -133,7 +150,6 @@ export default function Orders() {
         </Button>,
       );
     }
-
     if (currentStatus === "in_progress") {
       actions.push(
         <Button
@@ -148,7 +164,7 @@ export default function Orders() {
         </Button>,
       );
     }
-
+    // Allow cancellation for pending or in_progress orders
     if (currentStatus !== "cancelled" && currentStatus !== "completed") {
       actions.push(
         <Button
@@ -164,30 +180,34 @@ export default function Orders() {
         </Button>,
       );
     }
-
     return actions;
   };
 
+  // --- Filtering Logic ---
   const filteredOrders = orders.filter((order: any) => {
     const matchesSearch =
       order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerEmail?.toLowerCase().includes(searchQuery.toLowerCase());
+      (order.customerEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ??
+        false); // Safer check
 
     const matchesStatus =
       statusFilter === "all" || order.status === statusFilter;
 
-    // Hide completed orders from the list (but show all statuses for filtering)
+    // As per original logic: Hide completed orders from the main list view
     const isNotCompleted = order.status !== "completed";
 
     return matchesSearch && matchesStatus && isNotCompleted;
   });
 
-  // Add sorting functionality
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredOrders, 'orderNumber');
+  // --- Sorting Logic ---
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredOrders,
+    "orderNumber", // Default sort by order number
+  );
 
-  // Add pagination
-  const pagination = usePagination(sortedData, 5);
+  // --- Pagination Logic ---
+  const pagination = usePagination(sortedData, 5); // Default page size 5
   const {
     currentPage,
     pageSize,
@@ -198,6 +218,7 @@ export default function Orders() {
     handlePageSizeChange,
   } = pagination;
 
+  // --- Loading State ---
   if (isLoading) {
     return (
       <div className="p-6">
@@ -213,18 +234,26 @@ export default function Orders() {
     );
   }
 
-  if (error && isUnauthorizedError(error)) {
-    toast({
-      title: "Unauthorized",
-      description: "You are logged out. Logging in again...",
-      variant: "destructive",
-    });
-    setTimeout(() => {
-      window.location.href = "/api/login";
-    }, 500);
-    return null;
+  // --- Error Handling ---
+  if (error) {
+    if (isUnauthorizedError(error)) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return null; // Prevent further rendering
+    } else {
+      // Handle other errors if needed, or let React Query's default error handling show
+      console.error("Error fetching orders:", error);
+      // Optionally, show a user-friendly error message here
+    }
   }
 
+  // --- Main Render ---
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -233,7 +262,7 @@ export default function Orders() {
           <p className="text-gray-600">Track and manage customer orders</p>
         </div>
         <Button onClick={() => setShowOrderForm(true)}>
-          <i className="fas fa-plus mr-2"></i>
+          <i className="fas fa-plus mr-2"></i> {/* Consider Lucide Icons */}
           New Order
         </Button>
       </div>
@@ -266,107 +295,105 @@ export default function Orders() {
         </CardContent>
       </Card>
 
-      {/* Orders List */}
-      <div className="space-y-4">
-        {filteredOrders.length > 0 ? (
-          paginatedOrders.map((order: any) => (
-            <Card key={order.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Order #{order.orderNumber}
-                      </h3>
-                      {getStatusBadge(order.status)}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 mb-4">
-                      <div>
-                        <span className="font-medium text-gray-700">
-                          Customer:
-                        </span>
-                        <div>{order.customerName}</div>
-                        {order.customerEmail && (
-                          <div className="text-xs">{order.customerEmail}</div>
-                        )}
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">
-                          Order Date:
-                        </span>
-                        <div>
-                          {new Date(order.orderDate).toLocaleDateString()}
-                        </div>
-                        {order.dueDate && (
-                          <div className="text-xs">
-                            Due: {new Date(order.dueDate).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">
-                          Total:
-                        </span>
-                        <div className="font-semibold text-gray-900 text-lg">
-                          {formatCurrency(Number(order.totalAmount))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {order.notes && (
-                      <div className="mb-4">
-                        <span className="font-medium text-gray-700 text-sm">
-                          Notes:
-                        </span>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {order.notes}
-                        </p>
+      {/* Orders List Table */}
+      <div className="overflow-x-auto bg-white rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Order ID</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Due Date</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedOrders.length > 0 ? (
+              paginatedOrders.map((order: any) => (
+                <TableRow key={order.id} className="hover:bg-muted/50">
+                  {/* Order ID */}
+                  <TableCell className="font-medium">
+                    #{order.orderNumber}
+                  </TableCell>
+                  {/* Customer Info */}
+                  <TableCell>
+                    <div>{order.customerName}</div>
+                    {order.customerEmail && (
+                      <div className="text-xs text-muted-foreground">
+                        {order.customerEmail}
                       </div>
                     )}
-                  </div>
-
-                  <div className="ml-6 flex flex-col space-y-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedOrder(order)}
-                    >
-                      <i className="fas fa-eye mr-1"></i>
-                      View Details
-                    </Button>
-
-                    <div className="flex space-x-1">
+                  </TableCell>
+                  {/* Order Date */}
+                  <TableCell>
+                    {new Date(order.orderDate).toLocaleDateString()}
+                  </TableCell>
+                  {/* Due Date */}
+                  <TableCell>
+                    {order.dueDate
+                      ? new Date(order.dueDate).toLocaleDateString()
+                      : "-"}
+                  </TableCell>
+                  {/* Phone - FIXED BUG HERE */}
+                  <TableCell>
+                    {order.customerPhone || "-"}{" "}
+                    {/* Display customerPhone correctly */}
+                  </TableCell>
+                  {/* Total Amount */}
+                  <TableCell className="text-right font-semibold">
+                    {formatCurrency(Number(order.totalAmount))}
+                  </TableCell>
+                  {/* Status with Color */}
+                  <TableCell>{getStatusBadge(order.status)}</TableCell>
+                  {/* Actions */}
+                  <TableCell className="text-right">
+                    <div className="flex justify-end space-x-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedOrder(order)} // Passes full order object
+                      >
+                        <i className="fas fa-eye mr-1"></i>{" "}
+                        {/* Consider Lucide Icons */}
+                        View
+                      </Button>
                       {getStatusActions(order.status, order.id)}
                     </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-12">
+                  <div className="flex flex-col items-center justify-center">
+                    <i className="fas fa-shopping-cart text-4xl text-gray-300 mb-4"></i>{" "}
+                    {/* Consider Lucide Icons */}
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                      No orders found
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      {searchQuery || statusFilter !== "all"
+                        ? "Try adjusting your search criteria"
+                        : "Start by creating your first order"}
+                    </p>
+                    <Button onClick={() => setShowOrderForm(true)}>
+                      <i className="fas fa-plus mr-2"></i>{" "}
+                      {/* Consider Lucide Icons */}
+                      Create Your First Order
+                    </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <Card>
-            <CardContent className="text-center py-12">
-              <i className="fas fa-shopping-cart text-6xl text-gray-300 mb-4"></i>
-              <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                No orders found
-              </h3>
-              <p className="text-gray-500 mb-4">
-                {searchQuery || statusFilter !== "all"
-                  ? "Try adjusting your search criteria"
-                  : "Start by creating your first order"}
-              </p>
-              <Button onClick={() => setShowOrderForm(true)}>
-                <i className="fas fa-plus mr-2"></i>
-                Create Your First Order
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
 
         {/* Pagination Controls */}
         {filteredOrders.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
             <PaginationInfo
               currentPage={currentPage}
               pageSize={pageSize}
@@ -388,20 +415,21 @@ export default function Orders() {
         )}
       </div>
 
-      {/* Order Form Modal */}
+      {/* Create Order Modal */}
       <Dialog open={showOrderForm} onOpenChange={setShowOrderForm}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Order</DialogTitle>
           </DialogHeader>
+          {/* Ensure OrderForm calls onSuccess correctly after saving */}
           <OrderForm onSuccess={() => setShowOrderForm(false)} />
         </DialogContent>
       </Dialog>
 
-      {/* Order Details Modal */}
+      {/* View Order Details Modal */}
       <Dialog
-        open={!!selectedOrder}
-        onOpenChange={() => setSelectedOrder(null)}
+        open={!!selectedOrder} // Opens if selectedOrder is not null
+        onOpenChange={() => setSelectedOrder(null)} // Clears selection on close
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -409,9 +437,11 @@ export default function Orders() {
               Order Details - #{selectedOrder?.orderNumber}
             </DialogTitle>
           </DialogHeader>
+          {/* Display details only if selectedOrder exists */}
           {selectedOrder && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Customer Information Section */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-2">
                     Customer Information
@@ -430,8 +460,11 @@ export default function Orders() {
                         <strong>Phone:</strong> {selectedOrder.customerPhone}
                       </div>
                     )}
+                    {/* Add other customer fields if needed */}
                   </div>
                 </div>
+
+                {/* Order Information Section */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-2">
                     Order Information
@@ -439,7 +472,8 @@ export default function Orders() {
                   <div className="space-y-1 text-sm">
                     <div>
                       <strong>Status:</strong>{" "}
-                      {getStatusBadge(selectedOrder.status)}
+                      {getStatusBadge(selectedOrder.status)}{" "}
+                      {/* Uses the badge helper */}
                     </div>
                     <div>
                       <strong>Order Date:</strong>{" "}
@@ -452,13 +486,15 @@ export default function Orders() {
                       </div>
                     )}
                     <div>
-                      <strong>Total:</strong>
+                      <strong>Total:</strong>{" "}
                       {formatCurrency(selectedOrder.totalAmount)}
                     </div>
+                    {/* Add other order fields if needed (e.g., items if stored) */}
                   </div>
                 </div>
               </div>
 
+              {/* Notes Section */}
               {selectedOrder.notes && (
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-2">Notes</h4>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react"; // Added useMemo
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationInfo,
+  PageSizeSelector,
+  usePagination,
+} from "@/components/ui/pagination";
 import { Plus, Receipt, Search, Filter, Eye, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -45,6 +59,19 @@ interface SaleItem {
   totalPrice: string;
 }
 
+// --- Helper function to fetch data ---
+const fetchData = async (url: string) => {
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}`);
+  }
+  return response.json();
+};
+
 export default function Sales() {
   const { toast } = useToast();
   const { formatCurrency, formatCurrencyWithCommas } = useCurrency();
@@ -54,17 +81,36 @@ export default function Sales() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
-  const { data: sales = [], isLoading } = useQuery({
+  // --- FIXED: Added queryFn and extracted isLoading for all queries ---
+  const { data: sales = [], isLoading: isSalesLoading } = useQuery({
     queryKey: ["/api/sales"],
+    queryFn: async () => {
+      const res = await fetch("/api/sales", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch sales");
+      return res.json();
+    },
   });
 
-  const { data: products = [] } = useQuery({
+  const { data: products = [], isLoading: isProductsLoading } = useQuery({
     queryKey: ["/api/products"],
+    queryFn: async () => {
+      const res = await fetch("/api/products", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch products");
+      return res.json();
+    },
   });
 
-  const { data: customers = [] } = useQuery({
+  const { data: customers = [], isLoading: isCustomersLoading } = useQuery({
     queryKey: ["/api/customers"],
+    queryFn: async () => {
+      const res = await fetch("/api/customers", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch customers");
+      return res.json();
+    },
   });
+
+  // --- FIXED: Now these variables are defined ---
+  const isLoading = isSalesLoading || isProductsLoading || isCustomersLoading;
 
   const [saleForm, setSaleForm] = useState({
     customerId: "",
@@ -101,26 +147,27 @@ export default function Sales() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     const totalAmount = saleForm.items.reduce((sum, item) => {
       const itemTotal = parseFloat(item.unitPrice) * item.quantity;
-      return sum + itemTotal;
+      return isNaN(itemTotal) ? sum : sum + itemTotal; // Handle potential NaN
     }, 0);
-
     const saleData = {
-      customerId: saleForm.customerId ? parseInt(saleForm.customerId) : null,
+      customerId: saleForm.customerId
+        ? parseInt(saleForm.customerId, 10)
+        : null,
       customerName: saleForm.customerName,
       totalAmount: totalAmount.toString(),
       paymentMethod: saleForm.paymentMethod,
       status: "completed",
-      items: saleForm.items.map((item) => ({
-        productId: parseInt(item.productId),
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
-      })),
+      items: saleForm.items
+        .map((item) => ({
+          productId: item.productId ? parseInt(item.productId, 10) : undefined, // Handle potential undefined if productId is ""
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
+        }))
+        .filter((item) => item.productId !== undefined), // Filter out items without a product ID if necessary
     };
-
     createSaleMutation.mutate(saleData);
   };
 
@@ -145,6 +192,7 @@ export default function Sales() {
   };
 
   const removeItem = (index: number) => {
+    if (saleForm.items.length <= 1) return; // Prevent removing the last item
     setSaleForm({
       ...saleForm,
       items: saleForm.items.filter((_, i) => i !== index),
@@ -155,7 +203,9 @@ export default function Sales() {
     const updatedItems = saleForm.items.map((item, i) => {
       if (i === index) {
         if (field === "productId") {
-          const product = products.find((p: any) => p.id === parseInt(value));
+          const product = products.find(
+            (p: any) => p.id === parseInt(value, 10),
+          );
           return {
             ...item,
             productId: value,
@@ -169,126 +219,171 @@ export default function Sales() {
     setSaleForm({ ...saleForm, items: updatedItems });
   };
 
-  const filteredSales = sales.filter((sale: Sale) => {
-    const matchesSearch = sale.customerName
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || sale.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // --- Improved filtering and sorting logic using useMemo ---
+  const filteredAndSortedSales = useMemo(() => {
+    // 1. Filter
+    const filtered = (sales || []).filter((sale: Sale) => {
+      // Ensure sale.customerName exists and is a string before calling toLowerCase
+      const customerName =
+        typeof sale.customerName === "string" ? sale.customerName : "";
+      const matchesSearch = customerName
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesStatus =
+        statusFilter === "all" || sale.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
 
-  // Add sorting functionality
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredSales, 'customerName');
+    // 2. Sort (using the hook on the filtered data)
+    const { filteredAndSortedSales } = useTableSort(filtered, "customerName");
+    return filteredAndSortedSales || []; // Ensure it's always an array
+  }, [sales, searchTerm, statusFilter]); // Recalculate when sales, searchTerm, or statusFilter change
 
-  const totalSales = sales.reduce(
-    (sum: number, sale: Sale) => sum + parseFloat(sale.totalAmount),
-    0,
-  );
+  // --- FIXED: Use filteredAndSortedSales for pagination and ensure stability ---
+  const pagination = usePagination(filteredAndSortedSales, 5); // Explicit initial page size
+  const {
+    currentPage,
+    pageSize,
+    totalPages,
+    totalItems,
+    paginatedData: paginatedSales, // Use this for the table body
+    handlePageChange,
+    handlePageSizeChange,
+  } = pagination;
+
+  // --- Memoized calculations for summary cards ---
+  const { totalSales, todaySales, averageSale, transactionCount } =
+    useMemo(() => {
+      const salesArray = sales || []; // Ensure sales is an array
+      const total = salesArray.reduce(
+        (sum: number, sale: Sale) => sum + (parseFloat(sale.totalAmount) || 0), // Handle potential NaN
+        0,
+      );
+
+      const today = new Date().toDateString();
+      const todayTotal = salesArray
+        .filter(
+          (sale: Sale) => new Date(sale.createdAt).toDateString() === today,
+        )
+        .reduce(
+          (sum: number, sale: Sale) =>
+            sum + (parseFloat(sale.totalAmount) || 0),
+          0,
+        ); // Handle potential NaN
+
+      const count = salesArray.length;
+      const avg = count > 0 ? total / count : 0;
+
+      return {
+        totalSales: total,
+        todaySales: todayTotal,
+        averageSale: avg,
+        transactionCount: count,
+      };
+    }, [sales]); // Recalculate only when sales data changes
 
   const printInvoice = (sale: Sale) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
-
     const invoiceHTML = `
       <!DOCTYPE html>
       <html>
         <head>
           <title>Sales Invoice - ${sale.id}</title>
           <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              margin: 0; 
-              padding: 20px; 
-              color: #333; 
+            body {
+              font-family: Arial, sans-serif;
+              margin: 0;
+              padding: 20px;
+              color: #333;
             }
-            .header { 
-              text-align: center; 
-              margin-bottom: 30px; 
-              border-bottom: 2px solid #333; 
-              padding-bottom: 20px; 
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #333;
+              padding-bottom: 20px;
             }
-            .company-name { 
-              font-size: 28px; 
-              font-weight: bold; 
-              color: #2563eb; 
-              margin-bottom: 5px; 
+            .company-name {
+              font-size: 28px;
+              font-weight: bold;
+              color: #2563eb;
+              margin-bottom: 5px;
             }
-            .company-tagline { 
-              font-size: 14px; 
-              color: #666; 
+            .company-tagline {
+              font-size: 14px;
+              color: #666;
             }
-            .invoice-title { 
-              font-size: 24px; 
-              font-weight: bold; 
-              margin: 20px 0; 
+            .invoice-title {
+              font-size: 24px;
+              font-weight: bold;
+              margin: 20px 0;
             }
-            .invoice-details { 
-              display: flex; 
-              justify-content: space-between; 
-              margin-bottom: 30px; 
+            .invoice-details {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 30px;
             }
-            .invoice-info, .customer-info { 
-              flex: 1; 
+            .invoice-info, .customer-info {
+              flex: 1;
             }
-            .invoice-info h3, .customer-info h3 { 
-              font-size: 16px; 
-              margin-bottom: 10px; 
-              color: #2563eb; 
+            .invoice-info h3, .customer-info h3 {
+              font-size: 16px;
+              margin-bottom: 10px;
+              color: #2563eb;
             }
-            .invoice-info p, .customer-info p { 
-              margin: 5px 0; 
-              font-size: 14px; 
+            .invoice-info p, .customer-info p {
+              margin: 5px 0;
+              font-size: 14px;
             }
-            .items-table { 
-              width: 100%; 
-              border-collapse: collapse; 
-              margin: 20px 0; 
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 20px 0;
             }
-            .items-table th, .items-table td { 
-              border: 1px solid #ddd; 
-              padding: 12px; 
-              text-align: left; 
+            .items-table th, .items-table td {
+              border: 1px solid #ddd;
+              padding: 12px;
+              text-align: left;
             }
-            .items-table th { 
-              background-color: #f8f9fa; 
-              font-weight: bold; 
-              color: #333; 
+            .items-table th {
+              background-color: #f8f9fa;
+              font-weight: bold;
+              color: #333;
             }
-            .items-table tr:nth-child(even) { 
-              background-color: #f9f9f9; 
+            .items-table tr:nth-child(even) {
+              background-color: #f9f9f9;
             }
-            .total-section { 
-              text-align: right; 
-              margin-top: 20px; 
+            .total-section {
+              text-align: right;
+              margin-top: 20px;
             }
-            .total-row { 
-              display: flex; 
-              justify-content: flex-end; 
-              margin: 5px 0; 
+            .total-row {
+              display: flex;
+              justify-content: flex-end;
+              margin: 5px 0;
             }
-            .total-label { 
-              width: 150px; 
-              font-weight: bold; 
+            .total-label {
+              width: 150px;
+              font-weight: bold;
             }
-            .total-amount { 
-              width: 100px; 
-              text-align: right; 
+            .total-amount {
+              width: 100px;
+              text-align: right;
             }
-            .grand-total { 
-              border-top: 2px solid #333; 
-              padding-top: 10px; 
-              font-size: 18px; 
-              font-weight: bold; 
-              color: #2563eb; 
+            .grand-total {
+              border-top: 2px solid #333;
+              padding-top: 10px;
+              font-size: 18px;
+              font-weight: bold;
+              color: #2563eb;
             }
-            .footer { 
-              margin-top: 40px; 
-              text-align: center; 
-              font-size: 12px; 
-              color: #666; 
-              border-top: 1px solid #ddd; 
-              padding-top: 20px; 
+            .footer {
+              margin-top: 40px;
+              text-align: center;
+              font-size: 12px;
+              color: #666;
+              border-top: 1px solid #ddd;
+              padding-top: 20px;
             }
             @media print {
               body { margin: 0; }
@@ -302,7 +397,6 @@ export default function Sales() {
             <div class="company-tagline">Delicious Moments, Sweet Memories</div>
             <div class="invoice-title">SALES INVOICE</div>
           </div>
-
           <div class="invoice-details">
             <div class="invoice-info">
               <h3>Invoice Information</h3>
@@ -318,7 +412,6 @@ export default function Sales() {
               <p><strong>Invoice Date:</strong> ${format(new Date(sale.createdAt), "MMMM dd, yyyy")}</p>
             </div>
           </div>
-
           <table class="items-table">
             <thead>
               <tr>
@@ -330,14 +423,14 @@ export default function Sales() {
             </thead>
             <tbody>
               ${
-                sale.items
-                  ?.map(
+                (sale.items || []) // Ensure items is an array
+                  .map(
                     (item) => `
                 <tr>
-                  <td>${item.productName}</td>
+                  <td>${item.productName || "N/A"}</td>
                   <td>${item.quantity}</td>
-                  <td>${formatCurrency(parseFloat(item.unitPrice))}</td>
-                  <td>${formatCurrency(parseFloat(item.totalPrice))}</td>
+                  <td>${formatCurrency(parseFloat(item.unitPrice) || 0)}</td>
+                  <td>${formatCurrency(parseFloat(item.totalPrice) || 0)}</td>
                 </tr>
               `,
                   )
@@ -345,14 +438,12 @@ export default function Sales() {
               }
             </tbody>
           </table>
-
           <div class="total-section">
             <div class="total-row grand-total">
               <div class="total-label">Grand Total:</div>
-              <div class="total-amount">${formatCurrency(parseFloat(sale.totalAmount))}</div>
+              <div class="total-amount">${formatCurrency(parseFloat(sale.totalAmount) || 0)}</div>
             </div>
           </div>
-
           <div class="footer">
             <p>Thank you for your business!</p>
             <p>Sweet Treats Bakery - Where every bite is a delight</p>
@@ -360,7 +451,6 @@ export default function Sales() {
         </body>
       </html>
     `;
-
     printWindow.document.write(invoiceHTML);
     printWindow.document.close();
     printWindow.focus();
@@ -379,6 +469,7 @@ export default function Sales() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <h1 className="text-2xl font-bold">Sales</h1> {/* Added Title */}
           <p className="text-gray-600">
             Record and track all sales transactions
           </p>
@@ -405,7 +496,7 @@ export default function Sales() {
                     value={saleForm.customerId}
                     onValueChange={(value) => {
                       const customer = customers.find(
-                        (c: any) => c.id === parseInt(value),
+                        (c: any) => c.id === parseInt(value, 10),
                       );
                       setSaleForm({
                         ...saleForm,
@@ -418,14 +509,18 @@ export default function Sales() {
                       <SelectValue placeholder="Select customer" />
                     </SelectTrigger>
                     <SelectContent>
-                      {customers.map((customer: any) => (
-                        <SelectItem
-                          key={customer.id}
-                          value={customer.id.toString()}
-                        >
-                          {customer.name}
-                        </SelectItem>
-                      ))}
+                      {(customers || []).map(
+                        (
+                          customer: any, // Ensure customers is an array
+                        ) => (
+                          <SelectItem
+                            key={customer.id}
+                            value={customer.id.toString()}
+                          >
+                            {customer.name}
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -438,11 +533,10 @@ export default function Sales() {
                       setSaleForm({ ...saleForm, customerName: e.target.value })
                     }
                     placeholder="Enter customer name"
-                    required
+                    // Removed required to allow manual entry without selection
                   />
                 </div>
               </div>
-
               <div>
                 <Label htmlFor="paymentMethod">Payment Method</Label>
                 <Select
@@ -462,7 +556,6 @@ export default function Sales() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label>Items</Label>
@@ -488,14 +581,18 @@ export default function Sales() {
                           <SelectValue placeholder="Select product" />
                         </SelectTrigger>
                         <SelectContent>
-                          {products.map((product: any) => (
-                            <SelectItem
-                              key={product.id}
-                              value={product.id.toString()}
-                            >
-                              {product.name}
-                            </SelectItem>
-                          ))}
+                          {(products || []).map(
+                            (
+                              product: any, // Ensure products is an array
+                            ) => (
+                              <SelectItem
+                                key={product.id}
+                                value={product.id.toString()}
+                              >
+                                {product.name}
+                              </SelectItem>
+                            ),
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -507,7 +604,7 @@ export default function Sales() {
                           updateItem(
                             index,
                             "quantity",
-                            parseInt(e.target.value),
+                            parseInt(e.target.value, 10) || 1, // Default to 1 if invalid
                           )
                         }
                         min="1"
@@ -538,7 +635,6 @@ export default function Sales() {
                   </div>
                 ))}
               </div>
-
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -548,14 +644,15 @@ export default function Sales() {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={createSaleMutation.isPending}>
-                  Record Sale
+                  {createSaleMutation.isPending
+                    ? "Recording..."
+                    : "Record Sale"}
                 </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
       </div>
-
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
@@ -574,7 +671,7 @@ export default function Sales() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{sales.length}</div>
+            <div className="text-2xl font-bold">{transactionCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -583,19 +680,7 @@ export default function Sales() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrencyWithCommas(
-                sales
-                  .filter(
-                    (sale: Sale) =>
-                      new Date(sale.createdAt).toDateString() ===
-                      new Date().toDateString(),
-                  )
-                  .reduce(
-                    (sum: number, sale: Sale) =>
-                      sum + parseFloat(sale.totalAmount),
-                    0,
-                  ),
-              )}
+              {formatCurrencyWithCommas(todaySales)}
             </div>
           </CardContent>
         </Card>
@@ -605,110 +690,148 @@ export default function Sales() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrencyWithCommas(
-                sales.length > 0 ? totalSales / sales.length : 0,
-              )}
+              {formatCurrencyWithCommas(averageSale)}
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Sales History</CardTitle>
-            <div className="flex gap-2">
-              <div className="w-[200px]">
-                <SearchBar
-                  placeholder="Search sales..."
-                  value={searchTerm}
-                  onChange={setSearchTerm}
-                  className="w-full"
+      <div className="space-y-4">
+        {/* Filters Section - Placed above the table */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <SearchBar
+              placeholder="Search sales..."
+              value={searchTerm}
+              onChange={setSearchTerm}
+              className="w-full"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {/* Sales Table */}
+        <div className="overflow-x-auto bg-white rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Payment Method</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedSales.length > 0 ? (
+                paginatedSales.map((sale: Sale) => {
+                  let statusClass = "bg-gray-100 text-gray-800";
+                  if (sale.status === "completed") {
+                    statusClass = "bg-green-100 text-green-800";
+                  } else if (sale.status === "pending") {
+                    statusClass = "bg-yellow-100 text-yellow-800";
+                  } else if (sale.status === "cancelled") {
+                    statusClass = "bg-red-100 text-red-800";
+                  }
+                  return (
+                    <TableRow key={sale.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Receipt className="h-4 w-4 text-muted-foreground" />
+                          {sale.customerName}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(sale.createdAt), "MMM dd, yyyy")}
+                      </TableCell>
+                      <TableCell>
+                        {sale.paymentMethod?.toUpperCase() ?? "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs ${statusClass}`}
+                        >
+                          {sale.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {formatCurrency(parseFloat(sale.totalAmount) || 0)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedSale(sale)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => printInvoice(sale)}
+                          >
+                            <Printer className="h-4 w-4 mr-1" />
+                            Print
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12">
+                    <div className="flex flex-col items-center justify-center">
+                      <Receipt className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-medium mb-2">
+                        No sales found
+                      </h3>
+                      <p className="text-muted-foreground">
+                        {searchTerm || statusFilter !== "all"
+                          ? "Try adjusting your filters"
+                          : "Start by recording your first sale"}
+                      </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+          {/* Pagination Controls */}
+          {filteredOrders.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
+              <PaginationInfo
+                currentPage={currentPage}
+                pageSize={pageSize}
+                totalItems={totalItems}
+              />
+              <div className="flex items-center gap-4">
+                <PageSizeSelector
+                  pageSize={pageSize}
+                  onPageSizeChange={handlePageSizeChange}
+                  options={[5, 10, 20, 50]}
+                />
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
                 />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {sortedData.map((sale: Sale) => (
-              <div key={sale.id} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Receipt className="h-4 w-4" />
-                    <span className="font-medium">{sale.customerName}</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold">
-                      {formatCurrency(parseFloat(sale.totalAmount))}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {format(new Date(sale.createdAt), "MMM dd, yyyy")}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <div className="flex items-center gap-4">
-                    <span>{sale.paymentMethod?.toUpperCase() ?? "N/A"}</span>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        sale.status === "completed"
-                          ? "bg-green-100 text-green-800"
-                          : sale.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {sale.status}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedSale(sale)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => printInvoice(sale)}
-                    >
-                      <Printer className="h-4 w-4 mr-1" />
-                      Print
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {sortedData.length === 0 && (
-            <div className="text-center py-8">
-              <Receipt className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">No sales found</h3>
-              <p className="text-muted-foreground">
-                {searchTerm || statusFilter !== "all"
-                  ? "Try adjusting your filters"
-                  : "Start by recording your first sale"}
-              </p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Sales Detail Modal */}
       <Dialog open={!!selectedSale} onOpenChange={() => setSelectedSale(null)}>
@@ -721,7 +844,6 @@ export default function Sales() {
           </DialogHeader>
           {selectedSale && (
             <div className="space-y-6">
-              {/* Invoice Header */}
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">
@@ -750,7 +872,7 @@ export default function Sales() {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Payment Method:</span>
                       <span className="font-medium">
-                        {selectedSale.paymentMethod?.toUpperCase()}
+                        {selectedSale.paymentMethod?.toUpperCase() || "N/A"}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -761,10 +883,12 @@ export default function Sales() {
                             ? "bg-green-100 text-green-800"
                             : selectedSale.status === "pending"
                               ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
+                              : selectedSale.status === "cancelled"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800" // Default
                         }`}
                       >
-                        {selectedSale.status?.toUpperCase()}
+                        {selectedSale.status?.toUpperCase() || "UNKNOWN"}
                       </span>
                     </div>
                   </div>
@@ -783,8 +907,6 @@ export default function Sales() {
                   </div>
                 </div>
               </div>
-
-              {/* Items Table */}
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">
                   Items Purchased
@@ -808,22 +930,24 @@ export default function Sales() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {selectedSale.items?.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            {item.productName}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-center">
-                            {item.quantity}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                            {formatCurrency(parseFloat(item.unitPrice))}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
-                            {formatCurrency(parseFloat(item.totalPrice))}
-                          </td>
-                        </tr>
-                      )) || (
+                      {selectedSale.items && selectedSale.items.length > 0 ? (
+                        selectedSale.items.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {item.productName || "N/A"}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-center">
+                              {item.quantity}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                              {formatCurrency(parseFloat(item.unitPrice) || 0)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
+                              {formatCurrency(parseFloat(item.totalPrice) || 0)}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
                         <tr>
                           <td
                             colSpan={4}
@@ -837,22 +961,20 @@ export default function Sales() {
                   </table>
                 </div>
               </div>
-
-              {/* Total Section */}
               <div className="border-t pt-4">
                 <div className="flex justify-end">
                   <div className="w-64">
                     <div className="flex justify-between items-center text-lg font-bold text-gray-900">
                       <span>Grand Total:</span>
                       <span>
-                        {formatCurrency(parseFloat(selectedSale.totalAmount))}
+                        {formatCurrency(
+                          parseFloat(selectedSale.totalAmount) || 0,
+                        )}
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
-
-              {/* Action Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <Button variant="outline" onClick={() => setSelectedSale(null)}>
                   Close
