@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,11 @@ export default function Units() {
     error,
   } = useQuery({
     queryKey: ["/api/units"],
-    queryFn: () => apiRequest("GET", "/api/units"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/units");
+      console.log("Units API response:", response);
+      return Array.isArray(response) ? response : [];
+    },
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
@@ -62,7 +66,8 @@ export default function Units() {
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/units", data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Unit created successfully:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
       setIsDialogOpen(false);
       toast({
@@ -70,7 +75,8 @@ export default function Units() {
         description: "Unit created successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Create unit error:", error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -82,9 +88,11 @@ export default function Units() {
         }, 500);
         return;
       }
+      
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to create unit";
       toast({
         title: "Error",
-        description: "Failed to create unit",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -229,13 +237,20 @@ export default function Units() {
     }
   };
 
-  // NEW (Fixed) Line 234-240:
-  const filteredUnits = (Array.isArray(units) ? units : []).filter(
-    (unit: any) =>
-      unit.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      unit.abbreviation?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      unit.type?.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  // Filter units based on search query
+  const filteredUnits = React.useMemo(() => {
+    console.log("Filtering units:", units);
+    const unitsArray = Array.isArray(units) ? units : [];
+    if (!searchQuery.trim()) {
+      return unitsArray;
+    }
+    return unitsArray.filter(
+      (unit: any) =>
+        unit.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        unit.abbreviation?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        unit.type?.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [units, searchQuery]);
 
   const getTypeBadge = (type: string) => {
     switch (type.toLowerCase()) {
@@ -265,6 +280,14 @@ export default function Units() {
         };
     }
   };
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log("Units data:", units);
+    console.log("Filtered units:", filteredUnits);
+    console.log("Is loading:", isLoading);
+    console.log("Error:", error);
+  }, [units, filteredUnits, isLoading, error]);
 
   if (error && isUnauthorizedError(error)) {
     toast({

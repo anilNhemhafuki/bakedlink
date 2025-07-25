@@ -452,13 +452,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const units = await storage.getUnits();
       // Ensure we always return an array
-      res.json(Array.isArray(units) ? units : []);
+      const unitsArray = Array.isArray(units) ? units : [];
+      console.log("Fetched units:", unitsArray.length, "units");
+      res.json(unitsArray);
     } catch (error) {
       console.error("Error fetching units:", error);
-      res.status(500).json({ 
-        message: "Failed to fetch units",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
+      res.status(500).json([]);
     }
   });
 
@@ -480,13 +479,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: req.body.name.trim(),
         abbreviation: req.body.abbreviation.trim(),
         type: req.body.type.trim(),
+        isActive: true,
       };
 
+      // Check if unit with same name already exists
+      const existingUnits = await storage.getUnits();
+      const duplicateUnit = existingUnits.find(
+        (unit: any) => unit.name.toLowerCase() === transformedData.name.toLowerCase()
+      );
+      
+      if (duplicateUnit) {
+        return res.status(400).json({ message: `Unit "${transformedData.name}" already exists` });
+      }
+
       const unit = await storage.createUnit(transformedData);
+      console.log("Unit created successfully:", unit);
       res.json(unit);
     } catch (error) {
       console.error("Error creating unit:", error);
-      res.status(500).json({ message: "Failed to create unit" });
+      if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+        res.status(400).json({ message: "A unit with this name already exists" });
+      } else {
+        res.status(500).json({ 
+          message: "Failed to create unit",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
     }
   });
 

@@ -535,7 +535,13 @@ export class Storage implements IStorage {
 
   // Unit operations
   async getUnits(): Promise<Unit[]> {
-    return await db.select().from(units).orderBy(units.name);
+    try {
+      const result = await db.select().from(units).orderBy(units.name);
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error("Error in getUnits:", error);
+      return [];
+    }
   }
 
   async createUnit(data: InsertUnit): Promise<Unit> {
