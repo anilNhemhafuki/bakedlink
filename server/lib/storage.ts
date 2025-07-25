@@ -548,7 +548,7 @@ export class Storage implements IStorage {
   async createUnit(data: InsertUnit): Promise<Unit> {
     try {
       console.log("Creating unit with data:", data);
-      
+
       // Validate required fields
       if (!data.name?.trim()) {
         throw new Error("Unit name is required");
@@ -567,7 +567,7 @@ export class Storage implements IStorage {
         type: data.type.trim(),
         isActive: data.isActive !== undefined ? data.isActive : true
       }).returning();
-      
+
       console.log("Unit created successfully:", newUnit);
       return newUnit;
     } catch (error) {
@@ -1576,25 +1576,55 @@ export class Storage implements IStorage {
     await db.delete(orders).where(eq(orders.id, id));
   }
 
-  async getOrderItems(orderId: number): Promise<any[]> {
-    return await db
-      .select({
-        id: orderItems.id,
-        orderId: orderItems.orderId,
-        productId: orderItems.productId,
-        quantity: orderItems.quantity,
-        unitPrice: orderItems.unitPrice,
-        totalPrice: orderItems.totalPrice,
-        productName: products.name,
-      })
-      .from(orderItems)
-      .leftJoin(products, eq(orderItems.productId, products.id))
-      .where(eq(orderItems.orderId, orderId));
+  async getOrderItems(orderId: number) {
+    try {
+      const items = await db
+        .select({
+          id: orderItems.id,
+          orderId: orderItems.orderId,
+          productId: orderItems.productId,
+          productName: products.name,
+          quantity: orderItems.quantity,
+          unit: orderItems.unit,
+          unitId: orderItems.unitId,
+          unitName: units.name,
+          unitAbbreviation: units.abbreviation,
+          unitPrice: orderItems.unitPrice,
+          totalPrice: orderItems.totalPrice,
+          createdAt: orderItems.createdAt,
+        })
+        .from(orderItems)
+        .leftJoin(products, eq(orderItems.productId, products.id))
+        .leftJoin(units, eq(orderItems.unitId, units.id))
+        .where(eq(orderItems.orderId, orderId))
+        .orderBy(orderItems.createdAt);
+
+      return items;
+    } catch (error) {
+      console.error("Error fetching order items:", error);
+      throw error;
+    }
   }
 
-  async createOrderItem(item: InsertOrderItem): Promise<OrderItem> {
-    const [newItem] = await db.insert(orderItems).values(item).returning();
-    return newItem;
+  async createOrderItem(data: any) {
+    try {
+      // Ensure unit data is properly handled
+      const orderItemData = {
+        orderId: data.orderId,
+        productId: data.productId,
+        quantity: data.quantity,
+        unit: data.unit || null,
+        unitId: data.unitId || null,
+        unitPrice: data.unitPrice,
+        totalPrice: data.totalPrice,
+      };
+
+      const result = await db.insert(orderItems).values(orderItemData).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error creating order item:", error);
+      throw error;
+    }
   }
 
   async getRecentOrders(limit: number): Promise<any[]> {

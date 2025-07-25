@@ -178,6 +178,8 @@ export const orderItems = pgTable("order_items", {
   orderId: integer("order_id").notNull(),
   productId: integer("product_id").notNull(),
   quantity: integer("quantity").notNull(),
+  unit: varchar("unit", { length: 50 }), // Unit name/abbreviation
+  unitId: integer("unit_id"), // Reference to units table
   unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),

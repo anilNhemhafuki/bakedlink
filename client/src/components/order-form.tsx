@@ -103,11 +103,16 @@ export default function OrderForm({ onSuccess }: OrderFormProps) {
         dueDate: data.dueDate || null,
         notes: data.notes && data.notes.trim() ? data.notes.trim() : null,
         status: "pending",
-        items: data.items.map((item: any) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-        })),
+        items: data.items.map((item: any) => {
+          const product = products.find((p: any) => p.id.toString() === item.productId);
+          return {
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            unit: product?.unit || null,
+            unitId: product?.unitId || null,
+          };
+        }),
       };
 
       console.log("Transformed order data:", transformedData);

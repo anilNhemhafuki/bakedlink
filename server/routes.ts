@@ -945,16 +945,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Creating order with data:", transformedData);
       const order = await storage.createOrder(transformedData);
 
-      // Add order items
+      // Add order items with unit information
       for (const item of items) {
         if (!item.productId || !item.quantity || !item.unitPrice) {
           throw new Error("Invalid order item data");
         }
 
+        // Get product details to fetch unit information
+        const product = await storage.getProductById(parseInt(item.productId));
+        
         await storage.createOrderItem({
           orderId: order.id,
           productId: parseInt(item.productId),
           quantity: parseInt(item.quantity),
+          unit: product?.unit || item.unit || null,
+          unitId: product?.unitId || item.unitId || null,
           unitPrice: parseFloat(item.unitPrice).toString(),
           totalPrice: (
             parseInt(item.quantity) * parseFloat(item.unitPrice)
