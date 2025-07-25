@@ -457,21 +457,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(unitsArray);
     } catch (error) {
       console.error("Error fetching units:", error);
-      res.status(500).json([]);
+      res.status(500).json({ 
+        message: "Failed to fetch units",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
   app.post("/api/units", isAuthenticated, async (req, res) => {
     try {
-      if (!req.body.name) {
+      if (!req.body.name?.trim()) {
         return res.status(400).json({ message: "Unit name is required" });
       }
-      if (!req.body.abbreviation) {
-        return res
-          .status(400)
-          .json({ message: "Unit abbreviation is required" });
+      if (!req.body.abbreviation?.trim()) {
+        return res.status(400).json({ message: "Unit abbreviation is required" });
       }
-      if (!req.body.type) {
+      if (!req.body.type?.trim()) {
         return res.status(400).json({ message: "Unit type is required" });
       }
 
@@ -482,23 +483,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
       };
 
-      // Check if unit with same name already exists
+      // Check if unit with same name or abbreviation already exists
       const existingUnits = await storage.getUnits();
-      const duplicateUnit = existingUnits.find(
+      const duplicateName = existingUnits.find(
         (unit: any) => unit.name.toLowerCase() === transformedData.name.toLowerCase()
       );
+      const duplicateAbbr = existingUnits.find(
+        (unit: any) => unit.abbreviation.toLowerCase() === transformedData.abbreviation.toLowerCase()
+      );
       
-      if (duplicateUnit) {
-        return res.status(400).json({ message: `Unit "${transformedData.name}" already exists` });
+      if (duplicateName) {
+        return res.status(400).json({ message: `Unit name "${transformedData.name}" already exists` });
+      }
+      if (duplicateAbbr) {
+        return res.status(400).json({ message: `Unit abbreviation "${transformedData.abbreviation}" already exists` });
       }
 
       const unit = await storage.createUnit(transformedData);
       console.log("Unit created successfully:", unit);
-      res.json(unit);
+      res.status(201).json(unit);
     } catch (error) {
       console.error("Error creating unit:", error);
       if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
-        res.status(400).json({ message: "A unit with this name already exists" });
+        res.status(400).json({ message: "A unit with this name or abbreviation already exists" });
       } else {
         res.status(500).json({ 
           message: "Failed to create unit",
@@ -643,31 +650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  app.post("/api/units", isAuthenticated, async (req, res) => {
-    try {
-      if (!req.body.name) {
-        return res.status(400).json({ message: "Unit name is required" });
-      }
-
-      const transformedData = {
-        name: req.body.name.trim(),
-        abbreviation: req.body.abbreviation
-          ? req.body.abbreviation.trim()
-          : req.body.name.slice(0, 3).toLowerCase(),
-        type: req.body.type || "count",
-        isActive: true,
-      };
-
-      const unit = await storage.createUnit(transformedData);
-      res.json(unit);
-    } catch (error) {
-      console.error("Error creating unit:", error);
-      res.status(500).json({
-        message: "Failed to create unit",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
+  
 
   // Unit Conversions
   app.get("/api/unit-conversions", isAuthenticated, async (req, res) => {

@@ -537,16 +537,43 @@ export class Storage implements IStorage {
   async getUnits(): Promise<Unit[]> {
     try {
       const result = await db.select().from(units).orderBy(units.name);
+      console.log("Storage getUnits result:", result.length, "units found");
       return Array.isArray(result) ? result : [];
     } catch (error) {
       console.error("Error in getUnits:", error);
-      return [];
+      throw error; // Let the caller handle the error
     }
   }
 
   async createUnit(data: InsertUnit): Promise<Unit> {
-    const [newUnit] = await db.insert(units).values(data).returning();
-    return newUnit;
+    try {
+      console.log("Creating unit with data:", data);
+      
+      // Validate required fields
+      if (!data.name?.trim()) {
+        throw new Error("Unit name is required");
+      }
+      if (!data.abbreviation?.trim()) {
+        throw new Error("Unit abbreviation is required");
+      }
+      if (!data.type?.trim()) {
+        throw new Error("Unit type is required");
+      }
+
+      const [newUnit] = await db.insert(units).values({
+        ...data,
+        name: data.name.trim(),
+        abbreviation: data.abbreviation.trim(),
+        type: data.type.trim(),
+        isActive: data.isActive !== undefined ? data.isActive : true
+      }).returning();
+      
+      console.log("Unit created successfully:", newUnit);
+      return newUnit;
+    } catch (error) {
+      console.error("Error creating unit in storage:", error);
+      throw error;
+    }
   }
 
   async updateUnit(id: number, data: Partial<InsertUnit>): Promise<Unit> {

@@ -25,7 +25,7 @@ async function initializeUnits() {
     // Check if units already exist
     const existingUnits = await db.select().from(units);
     if (existingUnits.length > 0) {
-      console.log("✅ Units already initialized");
+      console.log("✅ Units already initialized with", existingUnits.length, "units");
       return;
     }
 

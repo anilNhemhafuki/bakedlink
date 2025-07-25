@@ -53,28 +53,51 @@ export default function Units() {
     data: units = [],
     isLoading,
     error,
+    refetch: refetchUnits,
   } = useQuery({
     queryKey: ["/api/units"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/units");
-      console.log("Units API response:", response);
-      return Array.isArray(response) ? response : [];
+      try {
+        const response = await apiRequest("GET", "/api/units");
+        console.log("Units API response:", response);
+        
+        // Handle different response types
+        if (Array.isArray(response)) {
+          return response;
+        } else if (response && response.message) {
+          // Handle error response
+          throw new Error(response.message);
+        } else {
+          return [];
+        }
+      } catch (error) {
+        console.error("Failed to fetch units:", error);
+        throw error;
+      }
     },
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
     },
+    staleTime: 1000 * 60 * 5, // Consider data stale after 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
   });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/units", data),
     onSuccess: (data) => {
       console.log("Unit created successfully:", data);
-      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      
+      // Clear the form and close dialog first
       setIsDialogOpen(false);
+      
+      // Invalidate and refetch the units
+      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      refetchUnits();
+      
       toast({
         title: "Success",
-        description: "Unit created successfully",
+        description: `Unit "${data.name}" created successfully`,
       });
     },
     onError: (error: any) => {
@@ -229,10 +252,40 @@ export default function Units() {
       return;
     }
 
+    // Check for duplicates in the current units list
+    const duplicateName = units.find((unit: any) => 
+      unit.id !== editingUnit?.id && 
+      unit.name.toLowerCase() === name.trim().toLowerCase()
+    );
+    
+    const duplicateAbbr = units.find((unit: any) => 
+      unit.id !== editingUnit?.id && 
+      unit.abbreviation.toLowerCase() === abbreviation.trim().toLowerCase()
+    );
+
+    if (duplicateName) {
+      toast({
+        title: "Error",
+        description: `Unit name "${name}" already exists`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (duplicateAbbr) {
+      toast({
+        title: "Error",
+        description: `Abbreviation "${abbreviation}" already exists`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const data = {
       name: name.trim(),
       abbreviation: abbreviation.trim(),
       type: type.trim(),
+      isActive: true,
     };
 
     if (editingUnit) {
@@ -309,6 +362,24 @@ export default function Units() {
     return null;
   }
 
+  if (error && !isUnauthorizedError(error)) {
+    return (
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="text-center py-8">
+          <h3 className="text-lg font-semibold text-red-600 mb-2">
+            Error Loading Units
+          </h3>
+          <p className="text-muted-foreground mb-4">
+            {error instanceof Error ? error.message : "Failed to load units"}
+          </p>
+          <Button onClick={() => refetchUnits()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -323,6 +394,11 @@ export default function Units() {
             setIsDialogOpen(open);
             if (!open) {
               setEditingUnit(null);
+              // Reset form when closing
+              const form = document.querySelector('form') as HTMLFormElement;
+              if (form) {
+                form.reset();
+              }
             }
           }}
         >
@@ -344,7 +420,7 @@ export default function Units() {
                 Enter the unit details below
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSave} className="space-y-4">
+            <form onSubmit={handleSave} className="space-y-4" key={editingUnit?.id || 'new'}>
               <div>
                 <Label htmlFor="name">Unit Name</Label>
                 <Input
@@ -353,6 +429,7 @@ export default function Units() {
                   placeholder="e.g., Kilogram, Liter, Pieces"
                   defaultValue={editingUnit?.name || ""}
                   required
+                  autoComplete="off"
                 />
               </div>
               <div>
@@ -363,6 +440,7 @@ export default function Units() {
                   placeholder="e.g., kg, ltr, pcs"
                   defaultValue={editingUnit?.abbreviation || ""}
                   required
+                  autoComplete="off"
                 />
               </div>
               <div>
@@ -379,11 +457,18 @@ export default function Units() {
                     <SelectItem value="weight">Weight</SelectItem>
                     <SelectItem value="volume">Volume</SelectItem>
                     <SelectItem value="count">Count</SelectItem>
+                    <SelectItem value="length">Length</SelectItem>
+                    <SelectItem value="area">Area</SelectItem>
+                    <SelectItem value="temperature">Temperature</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full">
-                {editingUnit ? "Update Unit" : "Add Unit"}
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {createMutation.isPending || updateMutation.isPending ? "Saving..." : (editingUnit ? "Update Unit" : "Add Unit")}
               </Button>
             </form>
           </DialogContent>
