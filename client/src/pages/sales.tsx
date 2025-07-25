@@ -219,9 +219,9 @@ export default function Sales() {
     setSaleForm({ ...saleForm, items: updatedItems });
   };
 
-  // --- Improved filtering and sorting logic using useMemo ---
-  const filteredAndSortedSales = useMemo(() => {
-    // 1. Filter
+  // --- Improved filtering logic using useMemo ---
+  const filteredSales = useMemo(() => {
+    // Filter sales based on search term and status
     const filtered = (sales || []).filter((sale: Sale) => {
       // Ensure sale.customerName exists and is a string before calling toLowerCase
       const customerName =
@@ -234,13 +234,14 @@ export default function Sales() {
       return matchesSearch && matchesStatus;
     });
 
-    // 2. Sort (using the hook on the filtered data)
-    const { filteredAndSortedSales } = useTableSort(filtered, "customerName");
-    return filteredAndSortedSales || []; // Ensure it's always an array
+    return filtered;
   }, [sales, searchTerm, statusFilter]); // Recalculate when sales, searchTerm, or statusFilter change
 
-  // --- FIXED: Use filteredAndSortedSales for pagination and ensure stability ---
-  const pagination = usePagination(filteredAndSortedSales, 5); // Explicit initial page size
+  // --- Apply sorting to filtered sales ---
+  const { sortedData: sortedSales, sortConfig, requestSort } = useTableSort(filteredSales, "customerName");
+
+  // --- Use sortedSales for pagination ---
+  const pagination = usePagination(sortedSales, 5); // Explicit initial page size
   const {
     currentPage,
     pageSize,
@@ -723,11 +724,21 @@ export default function Sales() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Payment Method</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Total</TableHead>
+                <SortableTableHeader sortKey="customerName" sortConfig={sortConfig} onSort={requestSort}>
+                  Customer
+                </SortableTableHeader>
+                <SortableTableHeader sortKey="createdAt" sortConfig={sortConfig} onSort={requestSort}>
+                  Date
+                </SortableTableHeader>
+                <SortableTableHeader sortKey="paymentMethod" sortConfig={sortConfig} onSort={requestSort}>
+                  Payment Method
+                </SortableTableHeader>
+                <SortableTableHeader sortKey="status" sortConfig={sortConfig} onSort={requestSort}>
+                  Status
+                </SortableTableHeader>
+                <SortableTableHeader sortKey="totalAmount" sortConfig={sortConfig} onSort={requestSort} className="text-right">
+                  Total
+                </SortableTableHeader>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -809,7 +820,7 @@ export default function Sales() {
             </TableBody>
           </Table>
           {/* Pagination Controls */}
-          {filteredOrders.length > 0 && (
+          {sortedSales.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
               <PaginationInfo
                 currentPage={currentPage}
