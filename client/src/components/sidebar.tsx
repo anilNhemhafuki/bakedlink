@@ -5,7 +5,15 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown, ChevronRight, Settings, User, LogOut } from "lucide-react";
+import {
+  Menu,
+  X,
+  ChevronDown,
+  ChevronRight,
+  Settings,
+  User,
+  LogOut,
+} from "lucide-react";
 import { Receipt } from "lucide-react";
 import {
   Collapsible,
@@ -104,7 +112,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
     {
       id: "Stock",
-      title: "Stock",
+      title: "Product & Inventory",
       items: [
         {
           name: "Products",
@@ -113,7 +121,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           resource: "products",
         },
         {
-          name: "Stock",
+          name: "Stock & Ingredients",
           href: "/stock",
           icon: "fas fa-boxes",
           resource: "inventory",
@@ -322,8 +330,10 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                   )
                   .flatMap((section) =>
                     section.items
-                      .filter((item) =>
-                        isSuperAdmin() || canAccessSidebarItem(item.resource, "read"),
+                      .filter(
+                        (item) =>
+                          isSuperAdmin() ||
+                          canAccessSidebarItem(item.resource, "read"),
                       )
                       .map((item) => {
                         const active = isActive(item.href);
@@ -388,8 +398,10 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="mt-1 space-y-1">
                           {section.items
-                            .filter((item) =>
-                              isSuperAdmin() || canAccessSidebarItem(item.resource, "read"),
+                            .filter(
+                              (item) =>
+                                isSuperAdmin() ||
+                                canAccessSidebarItem(item.resource, "read"),
                             )
                             .map((item) => {
                               const active = isActive(item.href);
@@ -500,7 +512,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={async () => {
                   try {
                     await logout();
