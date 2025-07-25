@@ -493,6 +493,169 @@ export default function Parties() {
     console.error("Error loading parties:", error);
   }
 
+  const createPartyMutation = useMutation({
+    mutationFn: async (partyData: any) => {
+      console.log("Submitting party data:", partyData);
+      const response = await apiRequest("POST", "/api/parties", partyData);
+      return response;
+    },
+    onSuccess: (data) => {
+      console.log("Party created successfully:", data);
+      queryClient.invalidateQueries({ queryKey: ["/api/parties"] });
+      setIsDialogOpen(false);
+      setEditingParty(null);
+      setSelectedType("");
+      setFormErrors({});
+      toast({
+        title: "Success",
+        description: "Party created successfully",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Create party error:", error);
+
+      // Handle unauthorized errors
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors);
+        toast({
+          title: "Validation Error",
+          description: "Please check the form for errors",
+          variant: "destructive",
+        });
+      } else {
+        const errorMessage = error.response?.data?.message || error.message || "Failed to create party";
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    },
+  });
+
+  const updatePartyMutation = useMutation({
+    mutationFn: async ({ id, ...partyData }: { id: string; [key: string]: any }) => {
+      console.log(`Updating party with ID: ${id} and data:`, partyData);
+      const response = await apiRequest("PUT", `/api/parties/${id}`, partyData);
+      return response;
+    },
+    onSuccess: (data) => {
+      console.log("Party updated successfully:", data);
+      queryClient.invalidateQueries({ queryKey: ["/api/parties"] });
+      setIsDialogOpen(false);
+      setEditingParty(null);
+      setSelectedType("");
+      setFormErrors({});
+      toast({
+        title: "Success",
+        description: "Party updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Update party error:", error);
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors);
+        toast({
+          title: "Validation Error",
+          description: "Please check the form for errors",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.response?.data?.message || "Failed to update party",
+          variant: "destructive",
+        });
+      }
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    // Client-side validation
+    const errors: FormErrors = {};
+    const name = formData.get("name") as string;
+    const type = formData.get("type") as string;
+
+    if (!name?.trim()) {
+      errors.name = "Party name is required";
+    }
+    if (!type?.trim()) {
+      errors.type = "Party type is required";
+    }
+
+    // Validate email format if provided
+    const email = formData.get("email") as string;
+    if (email && email.trim() && !/\S+@\S+\.\S+/.test(email.trim())) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    // Validate opening balance if provided
+    const openingBalance = formData.get("openingBalance") as string;
+    if (openingBalance && openingBalance.trim() && isNaN(parseFloat(openingBalance))) {
+      errors.openingBalance = "Please enter a valid number";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors in the form",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Clear previous errors
+    setFormErrors({});
+
+    const partyData = {
+      name: name.trim(),
+      type: type.trim(),
+      contactPerson: (formData.get("contactPerson") as string)?.trim() || null,
+      email: email?.trim() || null,
+      phone: (formData.get("phone") as string)?.trim() || null,
+      address: (formData.get("address") as string)?.trim() || null,
+      taxId: (formData.get("taxId") as string)?.trim() || null,
+      notes: (formData.get("notes") as string)?.trim() || null,
+      openingBalance: openingBalance?.trim() || "0",
+    };
+
+    console.log("Form submission - Party data:", partyData);
+
+    if (editingParty) {
+      updatePartyMutation.mutate({ id: editingParty.id, ...partyData });
+    } else {
+      createPartyMutation.mutate(partyData);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -534,7 +697,7 @@ export default function Parties() {
                 </DialogTitle>
                 <DialogDescription>Enter party details below</DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSave} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Party Name *</Label>

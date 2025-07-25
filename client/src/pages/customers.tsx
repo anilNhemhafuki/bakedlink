@@ -110,15 +110,26 @@ export default function Customers() {
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/customers", data),
-    onSuccess: () => {
+  const createCustomerMutation = useMutation({
+    mutationFn: async (customerData: any) => {
+      console.log("Submitting customer data:", customerData);
+      return await apiRequest("POST", "/api/customers", customerData);
+    },
+    onSuccess: (data) => {
+      console.log("Customer created successfully:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       setIsDialogOpen(false);
       setEditingCustomer(null);
-      toast({ title: "Success", description: "Customer saved successfully" });
+      setFormErrors({});
+      toast({
+        title: "Success",
+        description: "Customer created successfully",
+      });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Create customer error:", error);
+
+      // Handle unauthorized errors
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -130,11 +141,23 @@ export default function Customers() {
         }, 500);
         return;
       }
-      toast({
-        title: "Error",
-        description: "Failed to save customer",
-        variant: "destructive",
-      });
+
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors);
+        toast({
+          title: "Validation Error",
+          description: "Please check the form for errors",
+          variant: "destructive",
+        });
+      } else {
+        const errorMessage = error.response?.data?.message || error.message || "Failed to create customer";
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -232,7 +255,7 @@ export default function Customers() {
     if (editingCustomer) {
       updateMutation.mutate({ id: editingCustomer.id, data });
     } else {
-      createMutation.mutate(data);
+      createCustomerMutation.mutate(data);
     }
   };
 
@@ -338,6 +361,8 @@ export default function Customers() {
     return null;
   }
 
+  const [formErrors, setFormErrors] = useState<any>({});
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -353,6 +378,7 @@ export default function Customers() {
               setIsDialogOpen(open);
               if (!open) {
                 setEditingCustomer(null);
+                setFormErrors({});
               }
             }}
           >
@@ -381,23 +407,35 @@ export default function Customers() {
                   defaultValue={editingCustomer?.name || ""}
                   required
                 />
+                  {formErrors.name && (
+                      <p className="text-red-500 text-sm">{formErrors.name}</p>
+                  )}
                 <Input
                   name="email"
                   type="email"
                   placeholder="Email Address"
                   defaultValue={editingCustomer?.email || ""}
                 />
+                  {formErrors.email && (
+                      <p className="text-red-500 text-sm">{formErrors.email}</p>
+                  )}
                 <Input
                   name="phone"
                   placeholder="Phone Number"
                   defaultValue={editingCustomer?.phone || ""}
                 />
+                  {formErrors.phone && (
+                      <p className="text-red-500 text-sm">{formErrors.phone}</p>
+                  )}
                 <Textarea
                   name="address"
                   placeholder="Address"
                   defaultValue={editingCustomer?.address || ""}
                   rows={3}
                 />
+                  {formErrors.address && (
+                      <p className="text-red-500 text-sm">{formErrors.address}</p>
+                  )}
                 <Input
                   name="openingBalance"
                   type="number"
@@ -405,6 +443,9 @@ export default function Customers() {
                   placeholder="Opening Balance"
                   defaultValue={editingCustomer?.openingBalance || "0"}
                 />
+                  {formErrors.openingBalance && (
+                      <p className="text-red-500 text-sm">{formErrors.openingBalance}</p>
+                  )}
                 <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                   <Button
                     type="button"
@@ -417,7 +458,7 @@ export default function Customers() {
                   <Button
                     type="submit"
                     disabled={
-                      createMutation.isPending || updateMutation.isPending
+                      createCustomerMutation.isPending || updateMutation.isPending
                     }
                     className="w-full sm:w-auto"
                   >

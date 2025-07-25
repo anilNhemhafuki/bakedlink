@@ -1087,32 +1087,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/customers", isAuthenticated, async (req, res) => {
     try {
       // Validate required fields
-      if (!req.body.name) {
-        return res.status(400).json({ message: "Customer name is required" });
+      if (!req.body.name || !req.body.name.trim()) {
+        return res.status(400).json({ 
+          message: "Customer name is required",
+          errors: { name: "Customer name is required" }
+        });
       }
 
-      // Transform the data
+      // Transform the data with proper field mapping
       const transformedData = {
         name: req.body.name.trim(),
         email: req.body.email ? req.body.email.trim() : null,
         phone: req.body.phone ? req.body.phone.trim() : null,
         address: req.body.address ? req.body.address.trim() : null,
-        remainingBalance: req.body.remainingBalance
-          ? parseFloat(req.body.remainingBalance).toString()
+        openingBalance: req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
+          ? parseFloat(req.body.openingBalance).toString()
           : "0.00",
+        currentBalance: req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
+          ? parseFloat(req.body.openingBalance).toString()
+          : "0.00",
+        totalOrders: 0,
+        totalSpent: "0.00",
         isActive: req.body.isActive !== undefined ? req.body.isActive : true,
       };
 
       console.log("Creating customer with data:", transformedData);
       const customer = await storage.createCustomer(transformedData);
       console.log("Customer created successfully:", customer);
-      res.json(customer);
+      res.status(201).json(customer);
     } catch (error) {
       console.error("Error creating customer:", error);
-      res.status(500).json({
-        message: "Failed to create customer",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+      
+      // Handle specific database errors
+      if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+        res.status(400).json({
+          message: "A customer with this name or email already exists",
+          error: "Duplicate entry"
+        });
+      } else if (error.message?.includes('not null constraint')) {
+        res.status(400).json({
+          message: "Required fields are missing",
+          error: error.message
+        });
+      } else {
+        res.status(500).json({
+          message: "Failed to create customer",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
     }
   });
 
@@ -1152,19 +1174,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/parties", isAuthenticated, async (req, res) => {
     try {
       // Validate required fields
-      if (!req.body.name) {
+      if (!req.body.name || !req.body.name.trim()) {
         return res.status(400).json({ 
+          message: "Party name is required",
           errors: { name: "Party name is required" }
         });
       }
 
-      if (!req.body.type) {
+      if (!req.body.type || !req.body.type.trim()) {
         return res.status(400).json({ 
+          message: "Party type is required",
           errors: { type: "Party type is required" }
         });
       }
 
-      // Transform the data
+      // Transform the data with proper field mapping
       const transformedData = {
         name: req.body.name.trim(),
         type: req.body.type.trim(),
@@ -1174,10 +1198,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         address: req.body.address ? req.body.address.trim() : null,
         taxId: req.body.taxId ? req.body.taxId.trim() : null,
         notes: req.body.notes ? req.body.notes.trim() : null,
-        openingBalance: req.body.openingBalance
+        openingBalance: req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
           ? parseFloat(req.body.openingBalance).toString()
           : "0.00",
-        currentBalance: req.body.openingBalance
+        currentBalance: req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
           ? parseFloat(req.body.openingBalance).toString()
           : "0.00",
         isActive: req.body.isActive !== undefined ? req.body.isActive : true,
@@ -1186,13 +1210,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Creating party with data:", transformedData);
       const party = await storage.createParty(transformedData);
       console.log("Party created successfully:", party);
-      res.json(party);
+      res.status(201).json(party);
     } catch (error) {
       console.error("Error creating party:", error);
-      res.status(500).json({
-        message: "Failed to create party",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+      
+      // Handle specific database errors
+      if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+        res.status(400).json({
+          message: "A party with this name already exists",
+          error: "Duplicate entry"
+        });
+      } else if (error.message?.includes('not null constraint')) {
+        res.status(400).json({
+          message: "Required fields are missing",
+          error: error.message
+        });
+      } else {
+        res.status(500).json({
+          message: "Failed to create party",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
     }
   });
 

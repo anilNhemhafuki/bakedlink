@@ -1025,8 +1025,7 @@ export class Storage implements IStorage {
       "dashboard",
       "products",
       "inventory",
-      "orders",
-      "production",
+      "orders",      "production",
       "customers",
       "parties",
       "assets",
@@ -1636,29 +1635,36 @@ export class Storage implements IStorage {
   }
 
   async getTodayProductionSchedule(): Promise<any[]> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    return await db
-      .select({
-        id: productionSchedule.id,
-        productId: productionSchedule.productId,
-        quantity: productionSchedule.quantity,
-        scheduledDate: productionSchedule.scheduledDate,
-        status: productionSchedule.status,
-        productName: products.name,
-      })
-      .from(productionSchedule)
-      .leftJoin(products, eq(productionSchedule.productId, products.id))
-      .where(
-        and(
-          gte(productionSchedule.scheduledDate, today),
-          lte(productionSchedule.scheduledDate, tomorrow)
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      return await db
+        .select({
+          id: productionSchedule.id,
+          productName: products.name,
+          quantity: productionSchedule.quantity,
+          scheduledDate: productionSchedule.scheduledDate,
+          status: productionSchedule.status,
+        })
+        .from(productionSchedule)
+        .leftJoin(products, eq(productionSchedule.productId, products.id))
+        .where(
+          and(
+            gte(productionSchedule.scheduledDate, today),
+            lt(productionSchedule.scheduledDate, tomorrow),
+            // Only include records with valid dates
+            sql`${productionSchedule.scheduledDate} IS NOT NULL`
+          )
         )
-      )
-      .orderBy(productionSchedule.scheduledDate);
+        .orderBy(productionSchedule.scheduledDate);
+    } catch (error) {
+      console.error("Error fetching today's production schedule:", error);
+      return []; // Return empty array if there's an error
+    }
   }
 
   async getProductionSchedule(): Promise<any[]> {
