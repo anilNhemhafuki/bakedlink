@@ -312,65 +312,75 @@ export default function Orders() {
           </TableHeader>
           <TableBody>
             {paginatedOrders.length > 0 ? (
-              paginatedOrders.map((order: any) => (
-                <TableRow key={order.id} className="hover:bg-muted/50">
-                  {/* Order ID */}
-                  <TableCell className="font-medium">
-                    #{order.orderNumber}
-                  </TableCell>
-                  {/* Customer Info */}
-                  <TableCell>
-                    <div>{order.customerName}</div>
-                    {order.customerEmail && (
-                      <div className="text-xs text-muted-foreground">
-                        {order.customerEmail}
-                      </div>
-                    )}
-                  </TableCell>
-                  {/* Order Date */}
-                  <TableCell>
-                    {new Date(order.orderDate).toLocaleDateString()}
-                  </TableCell>
-                  {/* Due Date */}
-                  <TableCell>
-                    {order.dueDate
-                      ? new Date(order.dueDate).toLocaleDateString()
-                      : "-"}
-                  </TableCell>
-                  {/* Phone - FIXED BUG HERE */}
-                  <TableCell>
-                    {order.customerPhone || "-"}{" "}
-                    {/* Display customerPhone correctly */}
-                  </TableCell>
-                  {/* Total Amount */}
-                  <TableCell className="text-right font-semibold">
-                    {formatCurrency(Number(order.totalAmount))}
-                  </TableCell>
-                  {/* Status with Color */}
-                  <TableCell>{getStatusBadge(order.status)}</TableCell>
-                  {/* Actions */}
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedOrder(order)} // Passes full order object
+              paginatedOrders.map((order: any) => {
+                // ✅ Move the logic here
+                let statusClass = "bg-gray-100 text-gray-800";
+                if (order.status === "completed") {
+                  statusClass = "bg-green-100 text-green-800";
+                } else if (order.status === "pending") {
+                  statusClass = "bg-yellow-100 text-yellow-800";
+                } else if (order.status === "cancelled") {
+                  statusClass = "bg-red-100 text-red-800";
+                }
+
+                return (
+                  <TableRow key={order.id} className="hover:bg-muted/50">
+                    {/* Order ID */}
+                    <TableCell className="font-medium">{order.id}</TableCell>
+                    {/* Customer Info */}
+                    <TableCell>
+                      <div>{order.customerName}</div>
+                      {order.customerEmail && (
+                        <div className="text-xs text-muted-foreground">
+                          {order.customerEmail}
+                        </div>
+                      )}
+                    </TableCell>
+                    {/* Order Date */}
+                    <TableCell>
+                      {new Date(order.orderDate).toLocaleDateString()}
+                    </TableCell>
+                    {/* Due Date */}
+                    <TableCell>
+                      {order.dueDate
+                        ? new Date(order.dueDate).toLocaleDateString()
+                        : "-"}
+                    </TableCell>
+                    {/* Phone */}
+                    <TableCell>{order.customerPhone || "-"}</TableCell>
+                    {/* Total Amount */}
+                    <TableCell className="text-right font-semibold">
+                      {formatCurrency(Number(order.totalAmount))}
+                    </TableCell>
+                    {/* Status with Color */}
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${statusClass}`}
                       >
-                        <i className="fas fa-eye mr-1"></i>{" "}
-                        {/* Consider Lucide Icons */}
-                        View
-                      </Button>
-                      {getStatusActions(order.status, order.id)}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                        {(order.status)}
+                      </span>
+                    </TableCell>
+                    {/* Actions */}
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          <i className="fas fa-eye mr-1"></i> View
+                        </Button>
+                        {getStatusActions(order.status, order.id)}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-12">
                   <div className="flex flex-col items-center justify-center">
-                    <i className="fas fa-shopping-cart text-4xl text-gray-300 mb-4"></i>{" "}
-                    {/* Consider Lucide Icons */}
+                    <i className="fas fa-shopping-cart text-4xl text-gray-300 mb-4"></i>
                     <h3 className="text-lg font-semibold text-gray-600 mb-2">
                       No orders found
                     </h3>
@@ -380,9 +390,8 @@ export default function Orders() {
                         : "Start by creating your first order"}
                     </p>
                     <Button onClick={() => setShowOrderForm(true)}>
-                      <i className="fas fa-plus mr-2"></i>{" "}
-                      {/* Consider Lucide Icons */}
-                      Create Your First Order
+                      <i className="fas fa-plus mr-2"></i> Create Your First
+                      Order
                     </Button>
                   </div>
                 </TableCell>

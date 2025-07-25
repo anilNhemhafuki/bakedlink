@@ -238,7 +238,11 @@ export default function Sales() {
   }, [sales, searchTerm, statusFilter]); // Recalculate when sales, searchTerm, or statusFilter change
 
   // --- Apply sorting to filtered sales ---
-  const { sortedData: sortedSales, sortConfig, requestSort } = useTableSort(filteredSales, "customerName");
+  const {
+    sortedData: sortedSales,
+    sortConfig,
+    requestSort,
+  } = useTableSort(filteredSales, "customerName");
 
   // --- Use sortedSales for pagination ---
   const pagination = usePagination(sortedSales, 5); // Explicit initial page size
@@ -724,19 +728,47 @@ export default function Sales() {
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableTableHeader sortKey="customerName" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="invoiceID"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
+                  Invoice ID
+                </SortableTableHeader>
+                <SortableTableHeader
+                  sortKey="customerName"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Customer
                 </SortableTableHeader>
-                <SortableTableHeader sortKey="createdAt" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="createdAt"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Date
                 </SortableTableHeader>
-                <SortableTableHeader sortKey="paymentMethod" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="paymentMethod"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Payment Method
                 </SortableTableHeader>
-                <SortableTableHeader sortKey="status" sortConfig={sortConfig} onSort={requestSort}>
+                <SortableTableHeader
+                  sortKey="status"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
                   Status
                 </SortableTableHeader>
-                <SortableTableHeader sortKey="totalAmount" sortConfig={sortConfig} onSort={requestSort} className="text-right">
+                <SortableTableHeader
+                  sortKey="totalAmount"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                  className="text-right"
+                >
                   Total
                 </SortableTableHeader>
                 <TableHead className="text-right">Actions</TableHead>
@@ -755,6 +787,12 @@ export default function Sales() {
                   }
                   return (
                     <TableRow key={sale.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Receipt className="h-4 w-4 text-muted-foreground" />
+                          INV-{sale.id}
+                        </div>
+                      </TableCell>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <Receipt className="h-4 w-4 text-muted-foreground" />
@@ -920,7 +958,7 @@ export default function Sales() {
               </div>
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">
-                  Items Purchased
+                  Items Sales
                 </h4>
                 <div className="border rounded-lg overflow-hidden">
                   <table className="w-full">
