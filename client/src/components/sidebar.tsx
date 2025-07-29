@@ -247,12 +247,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           icon: "fas fa-ruler text-base",
           resource: "settings",
         },
-        {
-          name: "Unit Conversion",
-          href: "/unit-conversion",
-          icon: "fas fa-exchange-alt text-base",
-          resource: "settings",
-        },
+
       ],
     },
   ];

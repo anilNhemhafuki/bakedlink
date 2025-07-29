@@ -57,14 +57,10 @@ export default function Stock() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
-  // --- Add state for selected units ---
-  const [selectedPrimaryUnitId, setSelectedPrimaryUnitId] = useState<
-    string | undefined
-  >(undefined);
-  const [selectedSecondaryUnitId, setSelectedSecondaryUnitId] = useState<
-    string | undefined
-  >(undefined);
-  // --- End of new state variables ---
+  // Unit conversion state management
+  const [selectedPrimaryUnitId, setSelectedPrimaryUnitId] = useState<string | undefined>(undefined);
+  const [selectedSecondaryUnitId, setSelectedSecondaryUnitId] = useState<string | undefined>(undefined);
+  const [conversionRate, setConversionRate] = useState<string>("");
   const { toast } = useToast();
   const { symbol } = useCurrency();
 
@@ -102,24 +98,22 @@ export default function Stock() {
   // Add sorting functionality
   const { sortedData, sortConfig, requestSort } = useTableSort(filteredItems, 'name');
 
-  // --- Add useEffect to handle unit selection state ---
+  // Unit selection state management
   useEffect(() => {
     if (isDialogOpen) {
       if (editingItem) {
-        // Pre-fill unit selections when editing
         setSelectedPrimaryUnitId(editingItem?.unitId?.toString());
-        setSelectedSecondaryUnitId(
-          editingItem?.secondaryUnitId?.toString() || "none",
-        );
+        setSelectedSecondaryUnitId(editingItem?.secondaryUnitId?.toString() || "none");
+        setConversionRate(editingItem?.conversionRate?.toString() || "1");
       } else {
-        // Reset selections for new item
         setSelectedPrimaryUnitId(undefined);
         setSelectedSecondaryUnitId(undefined);
+        setConversionRate("1");
       }
     } else {
-      // Clear selections when dialog closes
       setSelectedPrimaryUnitId(undefined);
       setSelectedSecondaryUnitId(undefined);
+      setConversionRate("1");
     }
   }, [isDialogOpen, editingItem]);
 
@@ -153,18 +147,20 @@ export default function Stock() {
       }
       // Calculate opening value
       const openingValue = data.currentStock * data.costPerUnit;
-      // Prepare stock data for API
+      // Prepare stock data for API including unit conversion
       const stockData = {
         name: data.name.trim(),
-        unitId: data.unitId,
+        unitId: parseInt(data.unitId),
         unit: data.unit || "pcs",
-        defaultPrice: data.defaultPrice,
+        secondaryUnitId: data.secondaryUnitId && data.secondaryUnitId !== "none" ? parseInt(data.secondaryUnitId) : null,
+        conversionRate: data.secondaryUnitId && data.secondaryUnitId !== "none" ? parseFloat(data.conversionRate || "1") : null,
+        defaultPrice: parseFloat(data.defaultPrice || "0"),
         group: data.group?.trim() || null,
-        currentStock: data.currentStock,
-        minLevel: data.minLevel || 0,
-        costPerUnit: data.costPerUnit,
-        openingQuantity: data.openingQuantity || data.currentStock,
-        openingRate: data.openingRate || data.costPerUnit,
+        currentStock: parseFloat(data.currentStock),
+        minLevel: parseFloat(data.minLevel || "0"),
+        costPerUnit: parseFloat(data.costPerUnit),
+        openingQuantity: parseFloat(data.openingQuantity || data.currentStock),
+        openingRate: parseFloat(data.openingRate || data.costPerUnit),
         openingValue: openingValue,
         supplier: data.supplier?.trim() || null,
         company: data.company?.trim() || null,
@@ -225,11 +221,11 @@ export default function Stock() {
       const updateData = {
         name: values.name.trim(),
         unitId: parseInt(values.unitId),
+        secondaryUnitId: values.secondaryUnitId && values.secondaryUnitId !== "none" ? parseInt(values.secondaryUnitId) : null,
+        conversionRate: values.secondaryUnitId && values.secondaryUnitId !== "none" ? parseFloat(values.conversionRate || "1") : null,
         defaultPrice: parseFloat(values.defaultPrice || 0),
         group: values.group?.trim() || null,
-        currentStock: parseFloat(
-          values.currentStock || values.openingQuantity || 0,
-        ),
+        currentStock: parseFloat(values.currentStock || values.openingQuantity || 0),
         minLevel: parseFloat(values.minLevel || 0),
         costPerUnit: parseFloat(values.costPerUnit || values.openingRate || 0),
         openingQuantity: parseFloat(values.openingQuantity || 0),

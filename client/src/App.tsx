@@ -36,7 +36,7 @@ import PublicOrderForm from "@/components/public-order-form";
 import Stock from "@/pages/stock";
 import Ingredients from "@/pages/ingredients";
 import Units from "@/pages/units";
-import UnitConversion from "@/pages/unit-conversion";
+
 import Staff from "@/pages/staff";
 import Attendance from "@/pages/attendance";
 import Salary from "@/pages/salary";
@@ -286,14 +286,7 @@ function AuthenticatedApp({
                   </ProtectedRoute>
                 )}
               />
-              <Route
-                path="/unit-conversion"
-                component={() => (
-                  <ProtectedRoute resource="units" action="read">
-                    <UnitConversion />
-                  </ProtectedRoute>
-                )}
-              />
+
               <Route
                 path="/staff"
                 component={() => (
