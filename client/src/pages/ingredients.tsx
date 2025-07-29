@@ -87,22 +87,25 @@ export default function Ingredients() {
     : [];
 
   // Filter ingredients (items that can be used as ingredients)
-  const ingredients = (items as any[]).filter(
-    (item: any) =>
-      item.name &&
-      (item.group === "raw-materials" ||
-        item.group === "ingredients" ||
-        !item.group ||
-        item.name.toLowerCase().includes("flour") ||
-        item.name.toLowerCase().includes("sugar") ||
-        item.name.toLowerCase().includes("butter") ||
-        item.name.toLowerCase().includes("milk") ||
-        item.name.toLowerCase().includes("egg") ||
-        item.name.toLowerCase().includes("chocolate") ||
-        item.name.toLowerCase().includes("vanilla") ||
-        item.name.toLowerCase().includes("salt") ||
-        item.name.toLowerCase().includes("baking")),
-  );
+  // Ensure items is an array before filtering to prevent runtime errors
+  const ingredients = Array.isArray(items)
+    ? items.filter(
+        (item: any) =>
+          item.name &&
+          (item.group === "raw-materials" ||
+            item.group === "ingredients" ||
+            !item.group ||
+            item.name.toLowerCase().includes("flour") ||
+            item.name.toLowerCase().includes("sugar") ||
+            item.name.toLowerCase().includes("butter") ||
+            item.name.toLowerCase().includes("milk") ||
+            item.name.toLowerCase().includes("egg") ||
+            item.name.toLowerCase().includes("chocolate") ||
+            item.name.toLowerCase().includes("vanilla") ||
+            item.name.toLowerCase().includes("salt") ||
+            item.name.toLowerCase().includes("baking")),
+      )
+    : [];
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {

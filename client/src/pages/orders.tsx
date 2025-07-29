@@ -368,7 +368,7 @@ export default function Orders() {
                           size="sm"
                           onClick={() => setSelectedOrder(order)}
                         >
-                          <i className="fas fa-eye mr-1"></i> View
+                          <i className="fas fa-eye mr-1"></i>
                         </Button>
                         {getStatusActions(order.status, order.id)}
                       </div>
