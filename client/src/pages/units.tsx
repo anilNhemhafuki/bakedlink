@@ -49,23 +49,23 @@ export default function Units() {
   const [editingUnit, setEditingUnit] = useState<any>(null);
   const { toast } = useToast();
 
+  // Fetch units using React Query with consistent key
   const {
     data: units = [],
     isLoading,
     error,
     refetch: refetchUnits,
   } = useQuery({
-    queryKey: ["/api/units"],
+    queryKey: ["/api/units"], // Ensure other components use this EXACT key
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/units");
-        console.log("Raw Units API response:", response); // Add this line
+        console.log("Raw Units API response:", response);
         console.log("Units API response:", response);
-        // Handle different response types
+        // Handle different response types - assumes API returns array directly
         if (Array.isArray(response)) {
           return response;
         } else if (response && response.message) {
-          // Handle error response
           throw new Error(response.message);
         } else {
           return [];
@@ -79,22 +79,29 @@ export default function Units() {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
     },
-    staleTime: 1000 * 60 * 5, // Consider data stale after 5 minutes
-    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
   });
+
+  // --- Example of Corrected Logic (Based on your previous error) ---
+  // If you had a helper function like this elsewhere, ensure correct syntax:
+  /*
+  const getUnitName = (unitId: number) => {
+    // CORRECT: Single 'const' declaration
+    const unit = (units as any[]).find((u: any) => u.id === unitId);
+    // INCORRECT (like your previous error): const const unit = ...
+    return unit ? `${unit.name} (${unit.abbreviation})` : "Unknown Unit";
+  };
+  */
+  // --- End Example ---
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/units", data),
     onSuccess: (data) => {
       console.log("Unit created successfully:", data);
-
-      // Clear the form and close dialog first
       setIsDialogOpen(false);
-
-      // Invalidate and refetch the units
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
       refetchUnits();
-
       toast({
         title: "Success",
         description: `Unit "${data.name}" created successfully`,
@@ -113,7 +120,6 @@ export default function Units() {
         }, 500);
         return;
       }
-
       const errorMessage =
         error?.response?.data?.message ||
         error?.message ||
@@ -219,7 +225,6 @@ export default function Units() {
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     const formData = new FormData(e.currentTarget);
     const name = formData.get("name") as string;
     const abbreviation = formData.get("abbreviation") as string;
@@ -239,8 +244,9 @@ export default function Units() {
       abbreviation: abbreviation.trim(),
       type: type.trim(),
       baseUnit: (formData.get("baseUnit") as string)?.trim() || null,
-      conversionFactor: formData.get("conversionFactor") ? 
-        parseFloat(formData.get("conversionFactor") as string) : 1,
+      conversionFactor: formData.get("conversionFactor")
+        ? parseFloat(formData.get("conversionFactor") as string)
+        : 1,
       isActive: true,
     };
 
@@ -251,7 +257,6 @@ export default function Units() {
     }
   };
 
-  // Filter units based on search query
   const filteredUnits = React.useMemo(() => {
     console.log("Filtering units:", units);
     const unitsArray = Array.isArray(units) ? units : [];
@@ -266,7 +271,6 @@ export default function Units() {
     );
   }, [units, searchQuery]);
 
-  // Add sorting functionality
   const { sortedData, sortConfig, requestSort } = useTableSort(
     filteredUnits,
     "name",
@@ -301,7 +305,6 @@ export default function Units() {
     }
   };
 
-  // Debug logging
   React.useEffect(() => {
     console.log("Units data:", units);
     console.log("Filtered units:", filteredUnits);
@@ -351,7 +354,6 @@ export default function Units() {
             setIsDialogOpen(open);
             if (!open) {
               setEditingUnit(null);
-              // Reset form when closing
               const form = document.querySelector("form") as HTMLFormElement;
               if (form) {
                 form.reset();
@@ -439,7 +441,6 @@ export default function Units() {
           </DialogContent>
         </Dialog>
       </div>
-
       <div className="flex items-center space-x-2">
         <div className="flex-1">
           <SearchBar
@@ -450,7 +451,6 @@ export default function Units() {
           />
         </div>
       </div>
-
       <Card>
         <CardContent>
           {isLoading ? (

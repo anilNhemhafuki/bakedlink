@@ -62,7 +62,11 @@ export default function StaffDirectory() {
 
   const { toast } = useToast();
 
-  const { data: staff = [], isLoading, error } = useQuery({
+  const {
+    data: staff = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["/api/staff"],
     queryFn: () => apiRequest("GET", "/api/staff"),
   });
@@ -158,7 +162,13 @@ export default function StaffDirectory() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.firstName || !formData.lastName || !formData.position || !formData.department || !formData.hireDate) {
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.position ||
+      !formData.department ||
+      !formData.hireDate
+    ) {
       const missingFields = [];
       if (!formData.firstName) missingFields.push("First Name");
       if (!formData.lastName) missingFields.push("Last Name");
@@ -178,7 +188,9 @@ export default function StaffDirectory() {
     let submitData = { ...formData };
     if (!editingStaff && !formData.staffId) {
       const timestamp = Date.now().toString().slice(-6);
-      const initials = (formData.firstName.charAt(0) + formData.lastName.charAt(0)).toUpperCase();
+      const initials = (
+        formData.firstName.charAt(0) + formData.lastName.charAt(0)
+      ).toUpperCase();
       submitData.staffId = `EMP${initials}${timestamp}`;
     }
 
@@ -198,8 +210,12 @@ export default function StaffDirectory() {
       email: staffMember.email || "",
       phone: staffMember.phone || "",
       address: staffMember.address || "",
-      dateOfBirth: staffMember.dateOfBirth ? new Date(staffMember.dateOfBirth).toISOString().split('T')[0] : "",
-      hireDate: staffMember.hireDate ? new Date(staffMember.hireDate).toISOString().split('T')[0] : "",
+      dateOfBirth: staffMember.dateOfBirth
+        ? new Date(staffMember.dateOfBirth).toISOString().split("T")[0]
+        : "",
+      hireDate: staffMember.hireDate
+        ? new Date(staffMember.hireDate).toISOString().split("T")[0]
+        : "",
       position: staffMember.position || "",
       department: staffMember.department || "",
       employmentType: staffMember.employmentType || "full-time",
@@ -224,18 +240,24 @@ export default function StaffDirectory() {
       terminated: { variant: "destructive" as const, label: "Terminated" },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
+    const config =
+      statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const filteredStaff = staff.filter((member: any) =>
+  // Ensure staff is an array before filtering
+  const staffArray = Array.isArray(staff) ? staff : [];
+  const filteredStaff = staffArray.filter((member: any) =>
     `${member.firstName} ${member.lastName} ${member.position} ${member.department}`
       .toLowerCase()
-      .includes(searchQuery.toLowerCase())
+      .includes(searchQuery.toLowerCase()),
   );
 
   // Add sorting functionality
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredStaff, 'firstName');
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredStaff,
+    "firstName",
+  );
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -246,7 +268,9 @@ export default function StaffDirectory() {
             <Users className="h-8 w-8" />
             Staff Directory
           </h1>
-          <p className="text-muted-foreground">Manage your bakery staff members</p>
+          <p className="text-muted-foreground">
+            Manage your bakery staff members
+          </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -264,12 +288,20 @@ export default function StaffDirectory() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="staffId">Staff ID {!editingStaff && "(Auto-generated if empty)"}</Label>
+                  <Label htmlFor="staffId">
+                    Staff ID {!editingStaff && "(Auto-generated if empty)"}
+                  </Label>
                   <Input
                     id="staffId"
                     value={formData.staffId}
-                    onChange={(e) => setFormData({ ...formData, staffId: e.target.value })}
-                    placeholder={editingStaff ? "Enter staff ID" : "Auto-generated if empty"}
+                    onChange={(e) =>
+                      setFormData({ ...formData, staffId: e.target.value })
+                    }
+                    placeholder={
+                      editingStaff
+                        ? "Enter staff ID"
+                        : "Auto-generated if empty"
+                    }
                     required={!!editingStaff}
                   />
                 </div>
@@ -277,7 +309,9 @@ export default function StaffDirectory() {
                   <Label htmlFor="employmentType">Employment Type *</Label>
                   <Select
                     value={formData.employmentType}
-                    onValueChange={(value) => setFormData({ ...formData, employmentType: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, employmentType: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -297,7 +331,9 @@ export default function StaffDirectory() {
                   <Input
                     id="firstName"
                     value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, firstName: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -306,7 +342,9 @@ export default function StaffDirectory() {
                   <Input
                     id="lastName"
                     value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lastName: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -319,7 +357,9 @@ export default function StaffDirectory() {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -327,7 +367,9 @@ export default function StaffDirectory() {
                   <Input
                     id="phone"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -337,7 +379,9 @@ export default function StaffDirectory() {
                 <Textarea
                   id="address"
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
                 />
               </div>
 
@@ -348,7 +392,9 @@ export default function StaffDirectory() {
                     id="dateOfBirth"
                     type="date"
                     value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dateOfBirth: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -357,7 +403,9 @@ export default function StaffDirectory() {
                     id="hireDate"
                     type="date"
                     value={formData.hireDate}
-                    onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, hireDate: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -369,7 +417,9 @@ export default function StaffDirectory() {
                   <Input
                     id="position"
                     value={formData.position}
-                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, position: e.target.value })
+                    }
                     placeholder="Baker, Cashier, Manager"
                     required
                   />
@@ -378,7 +428,9 @@ export default function StaffDirectory() {
                   <Label htmlFor="department">Department *</Label>
                   <Select
                     value={formData.department}
-                    onValueChange={(value) => setFormData({ ...formData, department: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, department: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
@@ -403,7 +455,9 @@ export default function StaffDirectory() {
                     type="number"
                     step="0.01"
                     value={formData.salary}
-                    onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, salary: e.target.value })
+                    }
                     placeholder="0.00"
                   />
                 </div>
@@ -414,7 +468,9 @@ export default function StaffDirectory() {
                     type="number"
                     step="0.01"
                     value={formData.hourlyRate}
-                    onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, hourlyRate: e.target.value })
+                    }
                     placeholder="0.00"
                   />
                 </div>
@@ -425,7 +481,9 @@ export default function StaffDirectory() {
                 <Input
                   id="bankAccount"
                   value={formData.bankAccount}
-                  onChange={(e) => setFormData({ ...formData, bankAccount: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, bankAccount: e.target.value })
+                  }
                   placeholder="Account number"
                 />
               </div>
@@ -436,7 +494,12 @@ export default function StaffDirectory() {
                   <Input
                     id="emergencyContact"
                     value={formData.emergencyContact}
-                    onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        emergencyContact: e.target.value,
+                      })
+                    }
                     placeholder="Contact name"
                   />
                 </div>
@@ -445,7 +508,12 @@ export default function StaffDirectory() {
                   <Input
                     id="emergencyPhone"
                     value={formData.emergencyPhone}
-                    onChange={(e) => setFormData({ ...formData, emergencyPhone: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        emergencyPhone: e.target.value,
+                      })
+                    }
                     placeholder="Phone number"
                   />
                 </div>
@@ -456,7 +524,9 @@ export default function StaffDirectory() {
                 <Textarea
                   id="notes"
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
                   placeholder="Additional notes"
                 />
               </div>
@@ -471,13 +541,15 @@ export default function StaffDirectory() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? "Saving..."
                     : editingStaff
-                    ? "Update"
-                    : "Create"}
+                      ? "Update"
+                      : "Create"}
                 </Button>
               </div>
             </form>
@@ -513,25 +585,53 @@ export default function StaffDirectory() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHeader sortKey="staffId" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="staffId"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Staff ID
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="firstName" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="firstName"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Name
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="position" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="position"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Position
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="department" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="department"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Department
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="email" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="email"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Contact
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="employmentType" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="employmentType"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Employment
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="status" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="status"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Status
                     </SortableTableHeader>
                     <TableHead>Actions</TableHead>
@@ -540,12 +640,17 @@ export default function StaffDirectory() {
                 <TableBody>
                   {sortedData.map((member: any) => (
                     <TableRow key={member.id}>
-                      <TableCell className="font-medium">{member.staffId}</TableCell>
+                      <TableCell className="font-medium">
+                        {member.staffId}
+                      </TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{member.firstName} {member.lastName}</div>
+                          <div className="font-medium">
+                            {member.firstName} {member.lastName}
+                          </div>
                           <div className="text-sm text-muted-foreground">
-                            Hired: {new Date(member.hireDate).toLocaleDateString()}
+                            Hired:{" "}
+                            {new Date(member.hireDate).toLocaleDateString()}
                           </div>
                         </div>
                       </TableCell>
@@ -569,10 +674,13 @@ export default function StaffDirectory() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {member.employmentType?.replace('-', ' ') || 'Full Time'}
+                          {member.employmentType?.replace("-", " ") ||
+                            "Full Time"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{getStatusBadge(member.status || 'active')}</TableCell>
+                      <TableCell>
+                        {getStatusBadge(member.status || "active")}
+                      </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button
@@ -584,10 +692,7 @@ export default function StaffDirectory() {
                           </Button>
                           <DeleteConfirmationDialog
                             trigger={
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                              >
+                              <Button variant="ghost" size="sm">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             }
