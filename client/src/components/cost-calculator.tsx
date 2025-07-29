@@ -178,11 +178,11 @@ export default function CostCalculator({ onSave }: CostCalculatorProps) {
           const quantity = parseFloat(ingredient.quantity);
           const pricePerUnit = parseFloat(item.costPerUnit);
           const amount = quantity * pricePerUnit;
-          
+
           // Use the selected unit from the ingredient form
           const selectedUnit = units.find((u: any) => u.id.toString() === ingredient.unitId);
           const unitAbbr = selectedUnit?.abbreviation || item.unit;
-          
+
           return {
             sn: index + 1,
             particular: item.name,
@@ -210,7 +210,7 @@ export default function CostCalculator({ onSave }: CostCalculatorProps) {
     // Total weight in grams
     const totalForProductionGm = ingredientDetails.reduce((sum, item) => {
       let qtyInGrams = item.qty;
-      
+
       // Convert to grams based on unit
       switch(item.unit.toLowerCase()) {
         case 'kg':
@@ -233,7 +233,7 @@ export default function CostCalculator({ onSave }: CostCalculatorProps) {
         default:
           qtyInGrams = item.qty; // Default to the quantity as-is
       }
-      
+
       return sum + qtyInGrams * scaleFactor;
     }, 0);
 
@@ -461,16 +461,16 @@ export default function CostCalculator({ onSave }: CostCalculatorProps) {
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    {(units as any[])
-                                      .filter((unit: any) => unit.isActive)
-                                      .map((unit: any) => (
-                                        <SelectItem
-                                          key={unit.id}
-                                          value={unit.id.toString()}
-                                        >
-                                          {unit.name} ({unit.abbreviation})
-                                        </SelectItem>
-                                      ))}
+                                    {Array.isArray(units) && units
+                      .filter((unit: any) => unit.isActive)
+                      .map((unit: any) => (
+                        <SelectItem
+                          key={unit.id}
+                          value={unit.id.toString()}
+                        >
+                          {unit.name} ({unit.abbreviation})
+                        </SelectItem>
+                      ))}
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
