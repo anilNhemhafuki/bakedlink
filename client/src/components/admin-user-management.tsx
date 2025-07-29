@@ -34,11 +34,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Users } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Activity, Shield, Settings, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAllPermissions, useRolePermissions } from "@/hooks/usePermissions";
+import AuditLogs from "@/pages/LoginLogs";
 
 export default function AdminUserManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -318,16 +325,49 @@ export default function AdminUserManagement() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                User Management
-              </CardTitle>
-              <CardDescription>Manage users and their roles</CardDescription>
-            </div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Shield className="h-8 w-8" />
+            System Administration
+          </h1>
+          <p className="text-muted-foreground">
+            Manage users, permissions, and monitor system activities
+          </p>
+        </div>
+      </div>
+
+      <Tabs defaultValue="users" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            User Management
+          </TabsTrigger>
+          <TabsTrigger value="permissions" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Role Permissions
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Audit Logs
+          </TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Security Monitor
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="users" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    User Management
+                  </CardTitle>
+                  <CardDescription>Manage users and their roles</CardDescription>
+                </div>
             <Dialog
               open={isDialogOpen}
               onOpenChange={(open) => {
@@ -524,16 +564,18 @@ export default function AdminUserManagement() {
             </div>
           )}
         </CardContent>
-      </Card>
+          </Card>
+        </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Role Permissions Management</CardTitle>
-          <CardDescription>
-            Configure permissions for each role. Select a role to manage its
-            permissions.
-          </CardDescription>
-        </CardHeader>
+        <TabsContent value="permissions" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Role Permissions Management</CardTitle>
+              <CardDescription>
+                Configure permissions for each role. Select a role to manage its
+                permissions.
+              </CardDescription>
+            </CardHeader>
         <CardContent className="space-y-6">
           <div>
             <Label htmlFor="roleSelect">Select Role</Label>
@@ -737,6 +779,175 @@ export default function AdminUserManagement() {
                   </TableBody>
                 </Table>
               </div>
+            </div>
+          )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="audit" className="space-y-6">
+        <AuditLogs />
+      </TabsContent>
+
+      <TabsContent value="security" className="space-y-6">
+        <SecurityMonitor />
+      </TabsContent>
+    </Tabs>
+    </div>
+  );
+}
+
+function SecurityMonitor() {
+  const { data: securityMetrics } = useQuery({
+    queryKey: ["/api/security/metrics"],
+    queryFn: () => apiRequest("/api/security/metrics", "GET"),
+  });
+
+  const { data: recentFailedLogins } = useQuery({
+    queryKey: ["/api/login-logs/failed"],
+    queryFn: () => apiRequest("/api/login-logs?status=failed&limit=10", "GET"),
+  });
+
+  const { data: suspiciousActivities } = useQuery({
+    queryKey: ["/api/audit-logs/suspicious"],
+    queryFn: () => apiRequest("/api/audit-logs?status=failed&limit=20", "GET"),
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Security Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-red-600">
+                  {recentFailedLogins?.loginLogs?.length || 0}
+                </div>
+                <p className="text-sm text-muted-foreground">Failed Logins (24h)</p>
+              </div>
+              <Shield className="h-8 w-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {suspiciousActivities?.auditLogs?.length || 0}
+                </div>
+                <p className="text-sm text-muted-foreground">Failed Operations</p>
+              </div>
+              <Activity className="h-8 w-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-green-600">
+                  {securityMetrics?.activeUsers || 0}
+                </div>
+                <p className="text-sm text-muted-foreground">Active Users</p>
+              </div>
+              <Users className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Failed Logins */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-red-500" />
+            Recent Failed Login Attempts
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentFailedLogins?.loginLogs?.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>IP Address</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Device</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentFailedLogins.loginLogs.map((log: any) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-medium">{log.email}</TableCell>
+                      <TableCell className="font-mono text-sm">{log.ipAddress}</TableCell>
+                      <TableCell>{log.location || 'Unknown'}</TableCell>
+                      <TableCell>{new Date(log.loginTime).toLocaleString()}</TableCell>
+                      <TableCell>{log.deviceType || 'Unknown'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Shield className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-green-700 mb-2">All Clear!</h3>
+              <p className="text-muted-foreground">No failed login attempts in the last 24 hours</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Suspicious Activities */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-orange-500" />
+            Recent Failed Operations
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {suspiciousActivities?.auditLogs?.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Resource</TableHead>
+                    <TableHead>IP Address</TableHead>
+                    <TableHead>Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {suspiciousActivities.auditLogs.map((log: any) => (
+                    <TableRow key={log.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{log.userName}</div>
+                          <div className="text-sm text-muted-foreground">{log.userEmail}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="destructive">{log.action}</Badge>
+                      </TableCell>
+                      <TableCell className="capitalize">{log.resource.replace('_', ' ')}</TableCell>
+                      <TableCell className="font-mono text-sm">{log.ipAddress}</TableCell>
+                      <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Activity className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-green-700 mb-2">All Operations Successful!</h3>
+              <p className="text-muted-foreground">No failed operations detected recently</p>
             </div>
           )}
         </CardContent>

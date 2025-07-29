@@ -3170,6 +3170,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/audit-logs/export", isAuthenticated, requireWrite("admin"), async (req, res) => {
+    try {
+      const logs = await storage.getAuditLogs();
+      
+      // Format logs for export
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        totalLogs: logs.length,
+        logs: logs.map(log => ({
+          ...log,
+          timestamp: new Date(log.timestamp).toISOString()
+        }))
+      };
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="audit-logs-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error exporting audit logs:", error);
+      res.status(500).json({ message: "Failed to export audit logs" });
+    }
+  });
+
+  app.get("/api/security/metrics", isAuthenticated, requireWrite("admin"), async (req, res) => {
+    try {
+      const last24Hours = new Date();
+      last24Hours.setHours(last24Hours.getHours() - 24);
+
+      // Get failed logins in last 24 hours
+      const failedLogins = await db
+        .select({ count: count() })
+        .from(loginLogs)
+        .where(sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${last24Hours}`);
+
+      // Get failed operations in last 24 hours
+      const failedOperations = await db
+        .select({ count: count() })
+        .from(auditLogs)
+        .where(sql`${auditLogs.status} = 'failed' AND ${auditLogs.timestamp} >= ${last24Hours}`);
+
+      // Get unique active users in last 24 hours
+      const activeUsers = await db
+        .select({ count: count() })
+        .from(auditLogs)
+        .where(sql`${auditLogs.timestamp} >= ${last24Hours}`)
+        .groupBy(auditLogs.userId);
+
+      res.json({
+        failedLogins: failedLogins[0]?.count || 0,
+        failedOperations: failedOperations[0]?.count || 0,
+        activeUsers: activeUsers.length || 0,
+      });
+    } catch (error) {
+      console.error("Error fetching security metrics:", error);
+      res.status(500).json({ message: "Failed to fetch security metrics" });
+    }
+  });
+
+  app.get("/api/audit-logs/suspicious", isAuthenticated, requireWrite("admin"), async (req, res) => {
+    try {
+      const last24Hours = new Date();
+      last24Hours.setHours(last24Hours.getHours() - 24);
+
+      const suspiciousLogs = await db
+        .select()
+        .from(auditLogs)
+        .where(sql`${auditLogs.status} = 'failed' AND ${auditLogs.timestamp} >= ${last24Hours}`)
+        .orderBy(desc(auditLogs.timestamp))
+        .limit(20);
+
+      res.json({ auditLogs: suspiciousLogs });
+    } catch (error) {
+      console.error("Error fetching suspicious activities:", error);
+      res.status(500).json({ message: "Failed to fetch suspicious activities" });
+    }
+  });
+
   app.get("/api/audit-logs/analytics", isAuthenticated, requireWrite("admin"), async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
