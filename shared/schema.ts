@@ -33,6 +33,8 @@ export const products = pgTable("products", {
   cost: numeric("cost", { precision: 10, scale: 2 }).notNull(),
   margin: numeric("margin", { precision: 5, scale: 2 }).notNull(),
   sku: varchar("sku", { length: 50 }).unique(),
+  unit: varchar("unit", { length: 50 }),
+  unitId: integer("unit_id"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -73,6 +75,7 @@ export const productIngredients = pgTable("product_ingredients", {
   inventoryItemId: integer("inventory_item_id").notNull(),
   quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
   unit: varchar("unit", { length: 50 }).notNull(),
+  unitId: integer("unit_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

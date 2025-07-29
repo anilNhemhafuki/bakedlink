@@ -107,6 +107,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           icon: "fas fa-receipt",
           resource: "expenses",
         },
+        {
+          name: "Assets",
+          href: "/assets",
+          icon: "fas fa-building",
+          resource: "assets",
+        },
       ],
     },
 
@@ -157,66 +163,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           icon: "fas fa-handshake",
           resource: "parties",
         },
-        {
-          name: "Assets",
-          href: "/assets",
-          icon: "fas fa-building",
-          resource: "assets",
-        },
-      ],
-    },
-    {
-      id: "reports",
-      title: "Reports & Analytics",
-      items: [
-        {
-          name: "Reports",
-          href: "/reports",
-          icon: "fas fa-chart-bar",
-          resource: "reports",
-        },
-        {
-          name: "Billing & Subscription",
-          href: "/billing",
-          icon: "fas fa-file-invoice-dollar",
-          resource: "billing",
-        },
-      ],
-    },
-    {
-      id: "administration",
-      title: "Administration",
-      items: [
-        {
-          name: "User Management",
-          href: "/admin/users",
-          icon: "fas fa-users-cog text-base",
-          resource: "users",
-        },
-        {
-          name: "Login Logs",
-          href: "/admin/login-logs",
-          icon: "fas fa-shield-alt text-base",
-          resource: "admin",
-        },
-        {
-          name: "Category Management",
-          href: "/category-management",
-          icon: "fas fa-tags text-base",
-          resource: "settings",
-        },
-        {
-          name: "Measuring Units",
-          href: "/units",
-          icon: "fas fa-ruler text-base",
-          resource: "settings",
-        },
-        {
-          name: "Unit Conversion",
-          href: "/unit-conversion",
-          icon: "fas fa-exchange-alt text-base",
-          resource: "settings",
-        },
       ],
     },
     {
@@ -252,6 +198,60 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           href: "/staff-schedules",
           icon: "fas fa-calendar-alt",
           resource: "staff",
+        },
+      ],
+    },
+    {
+      id: "reports",
+      title: "Reports & Analytics",
+      items: [
+        {
+          name: "Reports",
+          href: "/reports",
+          icon: "fas fa-chart-bar",
+          resource: "reports",
+        },
+        {
+          name: "Billing & Subscription",
+          href: "/billing",
+          icon: "fas fa-file-invoice-dollar",
+          resource: "billing",
+        },
+      ],
+    },
+    {
+      id: "administration",
+      title: "Administration",
+      items: [
+        {
+          name: "User Management",
+          href: "/admin/users",
+          icon: "fas fa-users-cog text-base",
+          resource: "users",
+        },
+        {
+          name: "Audit Logs",
+          href: "/admin/login-logs",
+          icon: "fas fa-shield-alt text-base",
+          resource: "admin",
+        },
+        {
+          name: "Category Management",
+          href: "/category-management",
+          icon: "fas fa-tags text-base",
+          resource: "settings",
+        },
+        {
+          name: "Measuring Units",
+          href: "/units",
+          icon: "fas fa-ruler text-base",
+          resource: "settings",
+        },
+        {
+          name: "Unit Conversion",
+          href: "/unit-conversion",
+          icon: "fas fa-exchange-alt text-base",
+          resource: "settings",
         },
       ],
     },
