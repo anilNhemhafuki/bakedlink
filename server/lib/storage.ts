@@ -1137,7 +1137,7 @@ export class Storage implements IStorage {
 
     // Super admin gets all permissions
     const superAdminPermissionIds = allPermissions.map((p) => p.id);
-    await this.setRolePermissions("super_admin", superadminPermissionIds);
+    await this.setRolePermissions("super_admin", superAdminPermissionIds);
 
     const adminPermissionIds = allPermissions
       .filter((p) => p.action === "read_write")
