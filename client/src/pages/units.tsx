@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useUnits } from "@/hooks/useUnits";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,40 +56,7 @@ export default function Units() {
     isLoading,
     error,
     refetch: refetchUnits,
-  } = useQuery({
-    queryKey: ["/api/units"], // Ensure other components use this EXACT key
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", "/api/units");
-        console.log("Full API Response:", response);
-
-        if (Array.isArray(response)) {
-          console.log("Returning raw array:", response);
-          return response;
-        }
-        if (response?.data && Array.isArray(response.data)) {
-          console.log("Returning response.data:", response.data);
-          return response.data;
-        }
-        if (response?.units && Array.isArray(response.units)) {
-          console.log("Returning response.units:", response.units);
-          return response.units;
-        }
-
-        console.warn("Unexpected response format, returning empty array");
-        return [];
-      } catch (error) {
-        console.error("Failed to fetch units:", error);
-        throw error;
-      }
-    },
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 10,
-  });
+  } = useUnits();
 
   // --- Example of Corrected Logic (Based on your previous error) ---
   // If you had a helper function like this elsewhere, ensure correct syntax:

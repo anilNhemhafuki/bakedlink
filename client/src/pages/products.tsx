@@ -85,12 +85,43 @@ export default function Products() {
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
-  const {
-    data: products = [],
-    isLoading,
-    error,
-  } = useQuery({
+  const { data: products = [], isLoading } = useQuery({
     queryKey: ["/api/products"],
+    queryFn: () => apiRequest("GET", "/api/products"),
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
+      return failureCount < 3;
+    },
+  });
+
+  const { data: units = [] } = useQuery({
+    queryKey: ["units"], // Use consistent key
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/units");
+
+        // Handle the new consistent API response format
+        if (response?.success && Array.isArray(response.data)) {
+          return response.data;
+        }
+
+        // Fallback for direct array response (backward compatibility)
+        if (Array.isArray(response)) {
+          return response;
+        }
+
+        return [];
+      } catch (error) {
+        console.error("Failed to fetch units in products.tsx:", error);
+        return [];
+      }
+    },
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
+      return failureCount < 3;
+    },
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
   });
 
   const { data: categories = [] } = useQuery({
@@ -291,9 +322,9 @@ export default function Products() {
               <div class="company-name">${labelData.companyName}</div>
               ${labelData.companyLocation ? `<div class="company-location">${labelData.companyLocation}</div>` : ""}
             </div>
-            
+
             <div class="product-name">${selectedProductForLabel?.name}</div>
-            
+
             <div class="fields">
               ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ""}
               ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ""}

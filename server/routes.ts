@@ -451,15 +451,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/units", isAuthenticated, async (req, res) => {
     try {
       const units = await storage.getUnits();
-      // Ensure we always return an array
+      // Ensure we always return an array with proper structure
       const unitsArray = Array.isArray(units) ? units : [];
       console.log("Fetched units:", unitsArray.length, "units");
-      res.json(unitsArray);
+      
+      // Return consistent response format
+      res.json({
+        success: true,
+        data: unitsArray,
+        count: unitsArray.length
+      });
     } catch (error) {
       console.error("Error fetching units:", error);
       res.status(500).json({ 
+        success: false,
         message: "Failed to fetch units",
-        error: error instanceof Error ? error.message : "Unknown error"
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: []
       });
     }
   });

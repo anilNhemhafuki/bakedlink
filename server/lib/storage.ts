@@ -539,7 +539,14 @@ export class Storage implements IStorage {
     try {
       const result = await db.select().from(units).orderBy(units.name);
       console.log(`Storage getUnits result: ${result.length} units found`);
-      return Array.isArray(result) ? result : [];
+      
+      // Ensure all units have the required properties
+      const validUnits = result.filter(unit => unit.id && unit.name && unit.abbreviation);
+      if (validUnits.length !== result.length) {
+        console.warn(`Filtered out ${result.length - validUnits.length} invalid units`);
+      }
+      
+      return validUnits;
     } catch (error) {
       console.error("Error in getUnits:", error);
       throw error; // Let the caller handle the error

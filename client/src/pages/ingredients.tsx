@@ -70,11 +70,35 @@ export default function Ingredients() {
   });
 
   const { data: units = [] } = useQuery({
-    queryKey: ["/api/units"],
+    queryKey: ["units"], // Use consistent key
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/units");
+        console.log("Units API response in ingredients.tsx:", response);
+        
+        // Handle the new consistent API response format
+        if (response?.success && Array.isArray(response.data)) {
+          return response.data;
+        }
+        
+        // Fallback for direct array response (backward compatibility)
+        if (Array.isArray(response)) {
+          return response;
+        }
+
+        console.warn("Unexpected units response format in ingredients.tsx");
+        return [];
+      } catch (error) {
+        console.error("Failed to fetch units in ingredients.tsx:", error);
+        throw error;
+      }
+    },
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
     },
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
   });
 
   const { data: categories = [] } = useQuery({

@@ -411,7 +411,7 @@ export default function Stock() {
     if (hasSecondaryUnit && finalConversionRate && finalConversionRate > 0) {
       const primaryUnitIdNum = parseInt(unitId);
       const secondaryUnitIdNum = parseInt(secondaryUnitId);
-      
+
       // Create bidirectional conversion
       createUnitConversion(secondaryUnitIdNum, primaryUnitIdNum, finalConversionRate);
       createUnitConversion(primaryUnitIdNum, secondaryUnitIdNum, 1 / finalConversionRate);
@@ -543,7 +543,7 @@ export default function Stock() {
                         <SelectValue placeholder="Select Primary Unit" />
                       </SelectTrigger>
                       <SelectContent>
-                        {activeUnits.map((unit: any) => (
+                        {units.map((unit: any) => (
                           <SelectItem key={unit.id} value={unit.id.toString()}>
                             {unit.name} ({unit.abbreviation})
                           </SelectItem>
@@ -576,7 +576,7 @@ export default function Stock() {
                     <SelectContent>
                       <SelectItem value="none">No Secondary Unit</SelectItem>
                       {/* Optional: Disable the primary unit as a secondary option */}
-                      {activeUnits.map((unit: any) => (
+                      {units.map((unit: any) => (
                         <SelectItem
                           key={unit.id}
                           value={unit.id.toString()}
@@ -928,7 +928,7 @@ export default function Stock() {
                 <TableBody>
                   {sortedData.map((item: any) => {
                     const stockInfo = getStockBadge(item);
-                    return (
+return (
                       <TableRow key={item.id}>
                         <TableCell>
                           <div className="flex items-center space-x-3">
