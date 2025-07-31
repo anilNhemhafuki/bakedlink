@@ -299,6 +299,20 @@ export default function Stock() {
     },
   });
 
+  // Function to create unit conversion in database
+  const createUnitConversion = async (fromUnitId: number, toUnitId: number, factor: number) => {
+    try {
+      await apiRequest("POST", "/api/unit-conversions", {
+        fromUnitId: fromUnitId,
+        toUnitId: toUnitId,
+        conversionFactor: factor,
+        isActive: true
+      });
+    } catch (error) {
+      console.warn("Failed to create unit conversion:", error);
+    }
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
@@ -340,15 +354,16 @@ export default function Stock() {
     // --- End of modification ---
     const conversionRate = formData.get("conversionRate") as string;
 
+    // Prepare conversion data for database storage
+    const hasSecondaryUnit = secondaryUnitId && secondaryUnitId !== "none";
+    const finalConversionRate = hasSecondaryUnit ? parseFloat(conversionRate || "1") : null;
+
     const data = {
       name: name.trim(),
       unitId: parseInt(unitId), // Parse the string ID from state
       unit: selectedUnit ? selectedUnit.abbreviation : "pcs", // Fallback unit
-      secondaryUnitId:
-        secondaryUnitId && secondaryUnitId !== "none"
-          ? parseInt(secondaryUnitId) // Parse the string ID from state
-          : null,
-      conversionRate: parseFloat(conversionRate || "1"),
+      secondaryUnitId: hasSecondaryUnit ? parseInt(secondaryUnitId) : null,
+      conversionRate: finalConversionRate,
       defaultPrice: parseFloat(defaultPrice || "0"),
       group: group,
       currentStock: parseFloat(openingQuantity || "0"),
@@ -366,6 +381,16 @@ export default function Stock() {
       updateMutation.mutate({ id: editingItem.id, values: data });
     } else {
       createMutation.mutate(data);
+    }
+
+    // Create unit conversion relationship if secondary unit is selected
+    if (hasSecondaryUnit && finalConversionRate && finalConversionRate > 0) {
+      const primaryUnitIdNum = parseInt(unitId);
+      const secondaryUnitIdNum = parseInt(secondaryUnitId);
+      
+      // Create bidirectional conversion
+      createUnitConversion(secondaryUnitIdNum, primaryUnitIdNum, finalConversionRate);
+      createUnitConversion(primaryUnitIdNum, secondaryUnitIdNum, 1 / finalConversionRate);
     }
   };
 
@@ -409,8 +434,9 @@ export default function Stock() {
       return "Selected unit not found";
     }
 
-    // Display the dynamic conversion info
-    return `1 ${secondaryUnit.name} = X ${primaryUnit.name}`;
+    const rate = conversionRate || "1";
+    // Display the conversion: 1 secondary unit = X primary units
+    return `1 ${secondaryUnit.name} = ${rate} ${primaryUnit.name}`;
   };
   // --- End of getConversionInfoText ---
 
@@ -554,8 +580,9 @@ export default function Stock() {
                     type="number"
                     step="0.000001"
                     min="0"
-                    placeholder="e.g., 50"
-                    defaultValue={editingItem?.conversionRate || "1"}
+                    placeholder="e.g., 50 (for 1 bag = 50 kg)"
+                    value={conversionRate}
+                    onChange={(e) => setConversionRate(e.target.value)}
                     className="mt-1"
                     required={Boolean(
                       selectedSecondaryUnitId &&
@@ -896,8 +923,7 @@ export default function Stock() {
                             </div>
                             {item.secondaryUnitId && (
                               <div className="text-xs text-muted-foreground">
-                                {getUnitName(item.secondaryUnitId)} (1:
-                                {item.conversionRate || 1})
+                                {getUnitName(item.secondaryUnitId)} (1 = {item.conversionRate || 1} {getUnitName(item.unitId).split(' ')[0]})
                               </div>
                             )}
                           </div>
