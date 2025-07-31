@@ -5,23 +5,25 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 
 export const useUnits = () => {
   return useQuery({
-    queryKey: ["units"],
+    queryKey: ["/api/units"],
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/units");
-        console.log("Units API response:", response);
+        console.log("Units API response in useUnits:", response);
         
         // Handle the consistent API response format
         if (response?.success && Array.isArray(response.data)) {
+          console.log("Using response.data:", response.data);
           return response.data;
         }
         
         // Fallback for direct array response (backward compatibility)
         if (Array.isArray(response)) {
+          console.log("Using direct array response:", response);
           return response;
         }
 
-        console.warn("Unexpected units response format");
+        console.warn("Unexpected units response format:", response);
         return [];
       } catch (error) {
         console.error("Failed to fetch units:", error);

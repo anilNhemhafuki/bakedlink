@@ -58,6 +58,11 @@ export default function Units() {
     refetch: refetchUnits,
   } = useUnits();
 
+  // Debug logging to understand the data structure
+  console.log("Units data in component:", units);
+  console.log("Units type:", typeof units);
+  console.log("Units is array:", Array.isArray(units));
+
   // --- Example of Corrected Logic (Based on your previous error) ---
   // If you had a helper function like this elsewhere, ensure correct syntax:
   /*
@@ -234,7 +239,18 @@ export default function Units() {
 
   const filteredUnits = React.useMemo(() => {
     console.log("Filtering units:", units);
-    const unitsArray = Array.isArray(units) ? units : [];
+    console.log("Units length:", units?.length);
+    
+    // Ensure we have a valid array
+    let unitsArray = [];
+    if (Array.isArray(units)) {
+      unitsArray = units;
+    } else if (units && typeof units === 'object' && Array.isArray(units.data)) {
+      unitsArray = units.data;
+    }
+    
+    console.log("Units array for filtering:", unitsArray);
+    
     if (!searchQuery.trim()) {
       return unitsArray;
     }
