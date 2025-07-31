@@ -83,11 +83,11 @@ export default function Stock() {
       try {
         const response = await apiRequest("GET", "/api/units");
         console.log("Units API response in stock.tsx:", response);
-        // Handle different response types - check if response has data property
+        // Handle different response types
         if (Array.isArray(response)) {
           return response;
-        } else if (response && Array.isArray(response.data)) {
-          return response.data;
+        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray((response as any).data)) {
+          return (response as any).data;
         } else {
           return [];
         }
@@ -431,7 +431,7 @@ export default function Stock() {
 
   // Get unit name by ID
   const getUnitName = (unitId: number) => {
-    const unit = (units as any[]).find((u: any) => u.id === unitId);
+    const unit = activeUnits.find((u: any) => u.id === unitId);
     return unit ? `${unit.name} (${unit.abbreviation})` : "Unknown Unit";
   };
 
@@ -543,7 +543,7 @@ export default function Stock() {
                         <SelectValue placeholder="Select Primary Unit" />
                       </SelectTrigger>
                       <SelectContent>
-                        {units.map((unit: any) => (
+                        {activeUnits.map((unit: any) => (
                           <SelectItem key={unit.id} value={unit.id.toString()}>
                             {unit.name} ({unit.abbreviation})
                           </SelectItem>
@@ -576,7 +576,7 @@ export default function Stock() {
                     <SelectContent>
                       <SelectItem value="none">No Secondary Unit</SelectItem>
                       {/* Optional: Disable the primary unit as a secondary option */}
-                      {units.map((unit: any) => (
+                      {activeUnits.map((unit: any) => (
                         <SelectItem
                           key={unit.id}
                           value={unit.id.toString()}
