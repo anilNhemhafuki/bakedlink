@@ -60,18 +60,23 @@ export default function Units() {
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/units");
-        console.log("Raw Units API response:", response);
-        console.log("Units API response:", response);
-        // Handle different response types - check if response has data property
+        console.log("Full API Response:", response);
+
         if (Array.isArray(response)) {
+          console.log("Returning raw array:", response);
           return response;
-        } else if (response && Array.isArray(response.data)) {
-          return response.data;
-        } else if (response && response.message) {
-          throw new Error(response.message);
-        } else {
-          return [];
         }
+        if (response?.data && Array.isArray(response.data)) {
+          console.log("Returning response.data:", response.data);
+          return response.data;
+        }
+        if (response?.units && Array.isArray(response.units)) {
+          console.log("Returning response.units:", response.units);
+          return response.units;
+        }
+
+        console.warn("Unexpected response format, returning empty array");
+        return [];
       } catch (error) {
         console.error("Failed to fetch units:", error);
         throw error;
@@ -334,7 +339,7 @@ export default function Units() {
             Error Loading Units
           </h3>
           <p className="text-muted-foreground mb-4">
-            {error instanceof Error ? error.message : "Failed to load units"}
+            {error instanceof Error ? error.message : JSON.stringify(error)}
           </p>
           <Button onClick={() => refetchUnits()}>Try Again</Button>
         </div>
