@@ -62,9 +62,11 @@ export default function Units() {
         const response = await apiRequest("GET", "/api/units");
         console.log("Raw Units API response:", response);
         console.log("Units API response:", response);
-        // Handle different response types - assumes API returns array directly
+        // Handle different response types - check if response has data property
         if (Array.isArray(response)) {
           return response;
+        } else if (response && Array.isArray(response.data)) {
+          return response.data;
         } else if (response && response.message) {
           throw new Error(response.message);
         } else {

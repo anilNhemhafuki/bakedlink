@@ -79,13 +79,37 @@ export default function Stock() {
 
   const { data: units = [] } = useQuery({
     queryKey: ["/api/units"],
-    queryFn: () => apiRequest("GET", "/api/units"),
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/units");
+        console.log("Units API response in stock.tsx:", response);
+        // Handle different response types - check if response has data property
+        if (Array.isArray(response)) {
+          return response;
+        } else if (response && Array.isArray(response.data)) {
+          return response.data;
+        } else {
+          return [];
+        }
+      } catch (error) {
+        console.error("Failed to fetch units in stock.tsx:", error);
+        throw error;
+      }
+    },
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
+      return failureCount < 3;
+    },
   });
 
   // --- Fix 1: Ensure units is an array before filtering ---
   const activeUnits = Array.isArray(units)
     ? (units as any[]).filter((unit: any) => unit.isActive)
     : [];
+
+  // Debug logging
+  console.log("Units in stock.tsx:", units);
+  console.log("Active units in stock.tsx:", activeUnits);
 
   // --- Fix 2: Ensure items is an array before filtering ---
   const filteredItems = (Array.isArray(items) ? items : []).filter(
