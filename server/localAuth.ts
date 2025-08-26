@@ -1,4 +1,3 @@
-
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
@@ -13,7 +12,7 @@ import { loginLogs } from "../shared/schema";
 async function logLoginAttempt(userId: string, email: string, ipAddress: string, userAgent: string | undefined, status: 'success' | 'failed', location?: string) {
   try {
     const deviceType = userAgent ? detectDeviceType(userAgent) : 'Unknown';
-    
+
     await db.insert(loginLogs).values({
       userId,
       email,
@@ -64,7 +63,7 @@ export function getSession() {
 export async function setupAuth(app: Express) {
   try {
     console.log("🔧 Setting up authentication...");
-    
+
     app.use(getSession());
     app.use(passport.initialize());
     app.use(passport.session());
@@ -76,25 +75,194 @@ export async function setupAuth(app: Express) {
     }, async (email, password, done) => {
       try {
         console.log('🔍 Attempting login for email:', email);
-        
+
         const user = await storage.getUserByEmail(email);
         if (!user) {
           console.log('❌ User not found:', email);
+          // Log failed login attempt
+          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
+                          req.headers['x-real-ip'] || 
+                          req.connection.remoteAddress || 
+                          req.socket.remoteAddress ||
+                          '127.0.0.1';
+          const userAgent = req.get('User-Agent') || '';
+          const deviceType = userAgent.includes('Mobile') ? 'mobile' :
+                            userAgent.includes('Tablet') ? 'tablet' : 'desktop';
+          const browser = userAgent.includes('Chrome') ? 'Chrome' :
+                         userAgent.includes('Firefox') ? 'Firefox' :
+                         userAgent.includes('Safari') ? 'Safari' :
+                         userAgent.includes('Edge') ? 'Edge' : 'Other';
+          const location = clientIP === '127.0.0.1' || clientIP === '::1' || 
+                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') || 
+                          clientIP.startsWith('172.') ? 'Local Network' : 'External';
+          
+          await storage.createLoginLog({
+            userId: 'unknown',
+            userEmail: email,
+            loginTime: new Date(),
+            ipAddress: clientIP,
+            userAgent: userAgent,
+            status: 'failed',
+            failureReason: 'Invalid email or password',
+            deviceType: deviceType,
+            browser: browser,
+            location: location,
+            sessionId: req.sessionID || null,
+            timestamp: new Date(),
+          });
+
+          console.warn('🚨 Failed Login Attempt:', {
+            email,
+            ip: clientIP,
+            userAgent: userAgent,
+            timestamp: new Date().toISOString(),
+          });
+
           return done(null, false, { message: 'Invalid email or password' });
         }
 
         if (!user.password) {
           console.log('❌ User has no password set:', email);
+          // Log failed login attempt
+          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
+                          req.headers['x-real-ip'] || 
+                          req.connection.remoteAddress || 
+                          req.socket.remoteAddress ||
+                          '127.0.0.1';
+          const userAgent = req.get('User-Agent') || '';
+          const deviceType = userAgent.includes('Mobile') ? 'mobile' :
+                            userAgent.includes('Tablet') ? 'tablet' : 'desktop';
+          const browser = userAgent.includes('Chrome') ? 'Chrome' :
+                         userAgent.includes('Firefox') ? 'Firefox' :
+                         userAgent.includes('Safari') ? 'Safari' :
+                         userAgent.includes('Edge') ? 'Edge' : 'Other';
+          const location = clientIP === '127.0.0.1' || clientIP === '::1' || 
+                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') || 
+                          clientIP.startsWith('172.') ? 'Local Network' : 'External';
+
+          await storage.createLoginLog({
+            userId: user.id,
+            userEmail: email,
+            loginTime: new Date(),
+            ipAddress: clientIP,
+            userAgent: userAgent,
+            status: 'failed',
+            failureReason: 'User has no password set',
+            deviceType: deviceType,
+            browser: browser,
+            location: location,
+            sessionId: req.sessionID || null,
+            timestamp: new Date(),
+          });
+
+          console.warn('🚨 Failed Login Attempt:', {
+            email,
+            ip: clientIP,
+            userAgent: userAgent,
+            timestamp: new Date().toISOString(),
+          });
+
           return done(null, false, { message: 'Invalid email or password' });
         }
 
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
           console.log('❌ Invalid password for user:', email);
+          // Log failed login attempt
+          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
+                          req.headers['x-real-ip'] || 
+                          req.connection.remoteAddress || 
+                          req.socket.remoteAddress ||
+                          '127.0.0.1';
+          const userAgent = req.get('User-Agent') || '';
+          const deviceType = userAgent.includes('Mobile') ? 'mobile' :
+                            userAgent.includes('Tablet') ? 'tablet' : 'desktop';
+          const browser = userAgent.includes('Chrome') ? 'Chrome' :
+                         userAgent.includes('Firefox') ? 'Firefox' :
+                         userAgent.includes('Safari') ? 'Safari' :
+                         userAgent.includes('Edge') ? 'Edge' : 'Other';
+          const location = clientIP === '127.0.0.1' || clientIP === '::1' || 
+                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') || 
+                          clientIP.startsWith('172.') ? 'Local Network' : 'External';
+
+          await storage.createLoginLog({
+            userId: user.id,
+            userEmail: email,
+            loginTime: new Date(),
+            ipAddress: clientIP,
+            userAgent: userAgent,
+            status: 'failed',
+            failureReason: 'Invalid password',
+            deviceType: deviceType,
+            browser: browser,
+            location: location,
+            sessionId: req.sessionID || null,
+            timestamp: new Date(),
+          });
+
+          console.warn('🚨 Failed Login Attempt:', {
+            email,
+            ip: clientIP,
+            userAgent: userAgent,
+            timestamp: new Date().toISOString(),
+          });
+
           return done(null, false, { message: 'Invalid email or password' });
         }
 
         console.log('✅ Login successful for user:', email);
+        // Enhanced login logging with geolocation and device tracking
+        try {
+          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
+                          req.headers['x-real-ip'] || 
+                          req.connection.remoteAddress || 
+                          req.socket.remoteAddress ||
+                          '127.0.0.1';
+
+          // Enhanced device detection
+          const userAgent = req.get('User-Agent') || '';
+          const deviceType = userAgent.includes('Mobile') ? 'mobile' :
+                            userAgent.includes('Tablet') ? 'tablet' : 'desktop';
+
+          const browser = userAgent.includes('Chrome') ? 'Chrome' :
+                         userAgent.includes('Firefox') ? 'Firefox' :
+                         userAgent.includes('Safari') ? 'Safari' :
+                         userAgent.includes('Edge') ? 'Edge' : 'Other';
+
+          // Basic geolocation (in production, use proper IP geolocation service)
+          const location = clientIP === '127.0.0.1' || clientIP === '::1' || 
+                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') || 
+                          clientIP.startsWith('172.') ? 'Local Network' : 'External';
+
+          const loginLogData = {
+            userId: user?.id || 'unknown',
+            userEmail: email,
+            loginTime: new Date(),
+            ipAddress: clientIP,
+            userAgent: userAgent,
+            status: user ? 'success' : 'failed',
+            failureReason: user ? null : 'Invalid email or password',
+            deviceType: deviceType,
+            browser: browser,
+            location: location,
+            sessionId: req.sessionID || null,
+            timestamp: new Date(),
+          };
+
+          await storage.createLoginLog(loginLogData);
+
+          // Log security events for failed attempts
+          if (!user) {
+            console.warn('🚨 Failed Login Attempt:', {
+              email,
+              ip: clientIP,
+              userAgent: userAgent,
+              timestamp: new Date().toISOString(),
+            });
+          }
+        } catch (logError) {
+          console.error('Failed to log login attempt:', logError);
+        }
         return done(null, user);
       } catch (error) {
         console.error('❌ Login error:', error);
@@ -122,27 +290,27 @@ export async function setupAuth(app: Express) {
       console.log('🔐 Login attempt for:', req.body.email);
       const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown';
       const userAgent = req.get('User-Agent');
-      
+
       passport.authenticate('local', async (err: any, user: any, info: any) => {
         if (err) {
           console.error('❌ Authentication error:', err);
           return res.status(500).json({ message: 'Authentication error' });
         }
-        
+
         if (!user) {
           console.log('❌ Authentication failed:', info?.message);
           // Log failed login attempt
           await logLoginAttempt('unknown', req.body.email, ipAddress, userAgent, 'failed');
           return res.status(401).json({ message: info?.message || 'Invalid credentials' });
         }
-        
+
         req.logIn(user, async (err) => {
           if (err) {
             console.error('❌ Login error:', err);
             await logLoginAttempt(user.id, user.email, ipAddress, userAgent, 'failed');
             return res.status(500).json({ message: 'Login error' });
           }
-          
+
           console.log('✅ User logged in successfully:', user.email);
           // Log successful login
           await logLoginAttempt(user.id, user.email, ipAddress, userAgent, 'success');

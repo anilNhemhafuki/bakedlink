@@ -39,14 +39,16 @@ import { db } from "./db";
 import { requirePermission, requireRead, requireWrite, requireReadWrite, requireSuperAdmin } from "./permissionMiddleware";
 import { unitConverter } from "./lib/unitConversion";
 
-// Audit logging middleware
+// Enhanced audit logging middleware with complete coverage
 const auditLogger = (action: string, resource: string) => {
   return async (req: any, res: any, next: any) => {
+    const startTime = Date.now();
     const originalSend = res.send;
     const originalJson = res.json;
     
     let responseData: any;
     let oldValues: any;
+    let errorMessage: string | null = null;
     
     // Capture old values for updates
     if (action === 'UPDATE' && req.params.id) {
@@ -62,6 +64,18 @@ const auditLogger = (action: string, resource: string) => {
           case 'customer':
             oldValues = await storage.getCustomerById(resourceId);
             break;
+          case 'party':
+            oldValues = await storage.getPartyById(resourceId);
+            break;
+          case 'inventory':
+            oldValues = await storage.getInventoryItemById(resourceId);
+            break;
+          case 'order':
+            oldValues = await storage.getOrderById(resourceId);
+            break;
+          case 'asset':
+            oldValues = await storage.getAssetById(resourceId);
+            break;
           // Add more resources as needed
         }
       } catch (error) {
@@ -69,42 +83,112 @@ const auditLogger = (action: string, resource: string) => {
       }
     }
 
-    // Override response methods to capture response data
+    // Override response methods to capture response data and errors
     res.send = function(data: any) {
       responseData = data;
+      if (res.statusCode >= 400) {
+        errorMessage = typeof data === 'string' ? data : data?.message || 'Unknown error';
+      }
       return originalSend.call(this, data);
     };
     
     res.json = function(data: any) {
       responseData = data;
+      if (res.statusCode >= 400) {
+        errorMessage = data?.message || data?.error || 'Unknown error';
+      }
       return originalJson.call(this, data);
     };
 
     // Continue with the request
     res.on('finish', async () => {
       try {
-        if (req.user && res.statusCode < 400) {
-          const auditLogData = {
-            userId: req.user.id,
-            userEmail: req.user.email,
-            userName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim(),
-            action,
-            resource,
-            resourceId: req.params.id || (responseData?.id ? responseData.id.toString() : null),
-            details: {
-              method: req.method,
-              url: req.originalUrl,
-              body: action !== 'READ' ? req.body : undefined,
-              query: req.query,
-            },
-            oldValues: oldValues || null,
-            newValues: action !== 'DELETE' ? responseData : null,
-            ipAddress: req.ip || req.connection.remoteAddress || '127.0.0.1',
-            userAgent: req.get('User-Agent') || null,
-            status: res.statusCode < 400 ? 'success' : 'failed',
-          };
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        
+        // Enhanced geolocation detection
+        const getLocationFromIP = (ip: string) => {
+          // Basic geolocation logic - in production, use a service like MaxMind GeoIP
+          if (ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+            return 'Local Network';
+          }
+          return 'External'; // In production, integrate with IP geolocation service
+        };
 
-          await storage.createAuditLog(auditLogData);
+        // Extract device information from User-Agent
+        const getUserAgentInfo = (userAgent: string) => {
+          if (!userAgent) return { browser: 'Unknown', os: 'Unknown', device: 'Unknown' };
+          
+          const browser = userAgent.includes('Chrome') ? 'Chrome' :
+                         userAgent.includes('Firefox') ? 'Firefox' :
+                         userAgent.includes('Safari') ? 'Safari' :
+                         userAgent.includes('Edge') ? 'Edge' : 'Other';
+          
+          const os = userAgent.includes('Windows') ? 'Windows' :
+                     userAgent.includes('Mac') ? 'macOS' :
+                     userAgent.includes('Linux') ? 'Linux' :
+                     userAgent.includes('Android') ? 'Android' :
+                     userAgent.includes('iOS') ? 'iOS' : 'Other';
+          
+          const device = userAgent.includes('Mobile') ? 'Mobile' :
+                        userAgent.includes('Tablet') ? 'Tablet' : 'Desktop';
+          
+          return { browser, os, device };
+        };
+
+        const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
+                        req.headers['x-real-ip'] || 
+                        req.connection.remoteAddress || 
+                        req.socket.remoteAddress ||
+                        '127.0.0.1';
+
+        const userAgentInfo = getUserAgentInfo(req.get('User-Agent'));
+        const location = getLocationFromIP(clientIP);
+
+        // Log all activities, including anonymous/failed attempts
+        const auditLogData = {
+          userId: req.user?.id || 'anonymous',
+          userEmail: req.user?.email || 'anonymous',
+          userName: req.user ? `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'Unknown User' : 'Anonymous',
+          action,
+          resource,
+          resourceId: req.params.id || (responseData?.id ? responseData.id.toString() : null),
+          details: {
+            method: req.method,
+            url: req.originalUrl,
+            body: action !== 'READ' && req.body ? sanitizeBody(req.body) : undefined,
+            query: req.query,
+            headers: {
+              'user-agent': req.get('User-Agent'),
+              'referer': req.get('Referer'),
+              'content-type': req.get('Content-Type'),
+            },
+            duration,
+            statusCode: res.statusCode,
+            browser: userAgentInfo.browser,
+            os: userAgentInfo.os,
+            device: userAgentInfo.device,
+            location,
+          },
+          oldValues: oldValues || null,
+          newValues: action !== 'DELETE' && res.statusCode < 400 ? responseData : null,
+          ipAddress: clientIP,
+          userAgent: req.get('User-Agent') || null,
+          status: res.statusCode < 400 ? 'success' : 'failed',
+          errorMessage: errorMessage,
+        };
+
+        await storage.createAuditLog(auditLogData);
+        
+        // Log critical security events separately
+        if (res.statusCode === 401 || res.statusCode === 403) {
+          console.warn('🚨 Security Event:', {
+            type: 'ACCESS_DENIED',
+            user: req.user?.email || 'anonymous',
+            ip: clientIP,
+            resource: `${req.method} ${req.originalUrl}`,
+            timestamp: new Date().toISOString(),
+          });
         }
       } catch (error) {
         console.error('Failed to create audit log:', error);
@@ -113,6 +197,22 @@ const auditLogger = (action: string, resource: string) => {
 
     next();
   };
+};
+
+// Sanitize request body to remove sensitive information
+const sanitizeBody = (body: any) => {
+  if (!body || typeof body !== 'object') return body;
+  
+  const sanitized = { ...body };
+  const sensitiveFields = ['password', 'token', 'secret', 'key', 'authorization'];
+  
+  Object.keys(sanitized).forEach(key => {
+    if (sensitiveFields.some(field => key.toLowerCase().includes(field))) {
+      sanitized[key] = '[REDACTED]';
+    }
+  });
+  
+  return sanitized;
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -2420,6 +2520,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Upload error:", error);
       res.status(500).json({ message: "Upload failed" });
+    }
+  });
+
+  // ============ Client Activity Tracking ============
+
+  app.post("/api/audit/client-activities", isAuthenticated, async (req: any, res) => {
+    try {
+      const { events } = req.body;
+      
+      if (!events || !Array.isArray(events)) {
+        return res.status(400).json({ error: "Invalid events data" });
+      }
+
+      // Process each client-side event
+      for (const event of events) {
+        const auditLogData = {
+          userId: req.user.id,
+          userEmail: req.user.email,
+          userName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim(),
+          action: event.action,
+          resource: event.resource,
+          resourceId: event.resourceId || null,
+          details: {
+            ...event.details,
+            source: 'client',
+            originalTimestamp: event.timestamp,
+          },
+          oldValues: null,
+          newValues: null,
+          ipAddress: req.headers['x-forwarded-for']?.split(',')[0] || 
+                    req.headers['x-real-ip'] || 
+                    req.connection.remoteAddress || 
+                    '127.0.0.1',
+          userAgent: req.get('User-Agent') || null,
+          status: 'success',
+        };
+
+        await storage.createAuditLog(auditLogData);
+      }
+
+      res.json({ success: true, processed: events.length });
+    } catch (error) {
+      console.error("Error processing client activities:", error);
+      res.status(500).json({ error: "Failed to process client activities" });
     }
   });
 

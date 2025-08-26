@@ -1,5 +1,14 @@
-import { createRoot } from "react-dom/client";
-import App from "./App";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App.tsx";
 import "./index.css";
+import { setupAutoTracking } from "./lib/activityTracker";
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Initialize automatic activity tracking
+setupAutoTracking();
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);

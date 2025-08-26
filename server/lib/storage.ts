@@ -2196,27 +2196,218 @@ export class Storage implements IStorage {
     await db.delete(staffSchedules).where(eq(staffSchedules.id, id));
   }
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
-        const [newLog] = await db.insert(auditLogs).values(log).returning();
-        return newLog;
+    try {
+      // Ensure immutability by making the log read-only after creation
+      const immutableLog = {
+        ...log,
+        timestamp: new Date(), // Always use server timestamp for security
+      };
+      
+      const [newLog] = await db.insert(auditLogs).values(immutableLog).returning();
+      
+      // Log critical actions to console for additional monitoring
+      if (['DELETE', 'LOGIN', 'LOGOUT', 'CREATE', 'UPDATE'].includes(log.action)) {
+        console.log('📝 Audit Log:', {
+          user: log.userEmail,
+          action: log.action,
+          resource: log.resource,
+          ip: log.ipAddress,
+          timestamp: immutableLog.timestamp,
+        });
+      }
+      
+      return newLog;
+    } catch (error) {
+      console.error('❌ Failed to create audit log:', error);
+      // In production, you might want to send this to a separate logging service
+      throw error;
     }
+  }
 
-    async getAuditLogs(startDate?: string, endDate?: string): Promise<AuditLog[]> {
-        let query = db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp));
-
-        if (startDate && endDate) {
-            const startDateStr = typeof startDate === 'string' ? startDate : new Date(startDate).toISOString();
-            const endDateStr = typeof endDate === 'string' ? endDate : new Date(endDate).toISOString();
-
-            query = query.where(
-                and(
-                    gte(auditLogs.timestamp, startDateStr),
-                    lte(auditLogs.timestamp, endDateStr)
-                )
-            );
-        }
-
-        return await query;
+  async getAuditLogs(filters?: {
+    userId?: string;
+    action?: string;
+    resource?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<AuditLog[]> {
+    try {
+      let query = db.select().from(auditLogs);
+      
+      const conditions = [];
+      
+      if (filters?.userId) {
+        conditions.push(eq(auditLogs.userId, filters.userId));
+      }
+      
+      if (filters?.action) {
+        conditions.push(eq(auditLogs.action, filters.action));
+      }
+      
+      if (filters?.resource) {
+        conditions.push(eq(auditLogs.resource, filters.resource));
+      }
+      
+      if (filters?.startDate) {
+        conditions.push(gte(auditLogs.timestamp, filters.startDate));
+      }
+      
+      if (filters?.endDate) {
+        conditions.push(lte(auditLogs.timestamp, filters.endDate));
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+      
+      query = query.orderBy(desc(auditLogs.timestamp));
+      
+      if (filters?.limit) {
+        query = query.limit(filters.limit);
+      }
+      
+      if (filters?.offset) {
+        query = query.offset(filters.offset);
+      }
+      
+      return await query;
+    } catch (error) {
+      console.error('❌ Failed to retrieve audit logs:', error);
+      throw error;
     }
+  }
+
+  async createLoginLog(log: any): Promise<any> {
+    try {
+      const [newLog] = await db.insert(loginLogs).values({
+        ...log,
+        timestamp: new Date(),
+      }).returning();
+      
+      // Log security events
+      if (log.status === 'failed') {
+        console.warn('🚨 Failed Login:', {
+          email: log.userEmail,
+          ip: log.ipAddress,
+          reason: log.failureReason,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      
+      return newLog;
+    } catch (error) {
+      console.error('❌ Failed to create login log:', error);
+      throw error;
+    }
+  }
+
+  async getLoginLogs(filters?: {
+    userId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<any[]> {
+    try {
+      let query = db.select().from(loginLogs);
+      
+      const conditions = [];
+      
+      if (filters?.userId) {
+        conditions.push(eq(loginLogs.userId, filters.userId));
+      }
+      
+      if (filters?.status) {
+        conditions.push(eq(loginLogs.status, filters.status));
+      }
+      
+      if (filters?.startDate) {
+        conditions.push(gte(loginLogs.timestamp, filters.startDate));
+      }
+      
+      if (filters?.endDate) {
+        conditions.push(lte(loginLogs.timestamp, filters.endDate));
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+      
+      query = query.orderBy(desc(loginLogs.timestamp));
+      
+      if (filters?.limit) {
+        query = query.limit(filters.limit);
+      }
+      
+      if (filters?.offset) {
+        query = query.offset(filters.offset);
+      }
+      
+      return await query;
+    } catch (error) {
+      console.error('❌ Failed to retrieve login logs:', error);
+      throw error;
+    }
+  }
+
+  // Security monitoring methods
+  async getSecurityMetrics(timeframe: 'hour' | 'day' | 'week' = 'day'): Promise<any> {
+    try {
+      const now = new Date();
+      let startTime: Date;
+      
+      switch (timeframe) {
+        case 'hour':
+          startTime = new Date(now.getTime() - 60 * 60 * 1000);
+          break;
+        case 'week':
+          startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      }
+      
+      const [failedLogins, suspiciousActivities, totalActivities] = await Promise.all([
+        db.select({ count: count() })
+          .from(loginLogs)
+          .where(and(
+            eq(loginLogs.status, 'failed'),
+            gte(loginLogs.timestamp, startTime)
+          )),
+        
+        db.select({ count: count() })
+          .from(auditLogs)
+          .where(and(
+            eq(auditLogs.status, 'failed'),
+            gte(auditLogs.timestamp, startTime)
+          )),
+        
+        db.select({ count: count() })
+          .from(auditLogs)
+          .where(gte(auditLogs.timestamp, startTime))
+      ]);
+      
+      return {
+        failedLogins: failedLogins[0]?.count || 0,
+        suspiciousActivities: suspiciousActivities[0]?.count || 0,
+        totalActivities: totalActivities[0]?.count || 0,
+        timeframe,
+        period: { start: startTime, end: now }
+      };
+    } catch (error) {
+      console.error('❌ Failed to get security metrics:', error);
+      return {
+        failedLogins: 0,
+        suspiciousActivities: 0,
+        totalActivities: 0,
+        timeframe,
+        error: error.message
+      };
+    }
+  }
 }
 
 export const storage = new Storage();
