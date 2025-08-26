@@ -45,11 +45,11 @@ const auditLogger = (action: string, resource: string) => {
     const startTime = Date.now();
     const originalSend = res.send;
     const originalJson = res.json;
-    
+
     let responseData: any;
     let oldValues: any;
     let errorMessage: string | null = null;
-    
+
     // Capture old values for updates
     if (action === 'UPDATE' && req.params.id) {
       try {
@@ -91,7 +91,7 @@ const auditLogger = (action: string, resource: string) => {
       }
       return originalSend.call(this, data);
     };
-    
+
     res.json = function(data: any) {
       responseData = data;
       if (res.statusCode >= 400) {
@@ -105,7 +105,7 @@ const auditLogger = (action: string, resource: string) => {
       try {
         const endTime = Date.now();
         const duration = endTime - startTime;
-        
+
         // Enhanced geolocation detection
         const getLocationFromIP = (ip: string) => {
           // Basic geolocation logic - in production, use a service like MaxMind GeoIP
@@ -118,21 +118,21 @@ const auditLogger = (action: string, resource: string) => {
         // Extract device information from User-Agent
         const getUserAgentInfo = (userAgent: string) => {
           if (!userAgent) return { browser: 'Unknown', os: 'Unknown', device: 'Unknown' };
-          
+
           const browser = userAgent.includes('Chrome') ? 'Chrome' :
                          userAgent.includes('Firefox') ? 'Firefox' :
                          userAgent.includes('Safari') ? 'Safari' :
                          userAgent.includes('Edge') ? 'Edge' : 'Other';
-          
+
           const os = userAgent.includes('Windows') ? 'Windows' :
                      userAgent.includes('Mac') ? 'macOS' :
                      userAgent.includes('Linux') ? 'Linux' :
                      userAgent.includes('Android') ? 'Android' :
                      userAgent.includes('iOS') ? 'iOS' : 'Other';
-          
+
           const device = userAgent.includes('Mobile') ? 'Mobile' :
                         userAgent.includes('Tablet') ? 'Tablet' : 'Desktop';
-          
+
           return { browser, os, device };
         };
 
@@ -179,7 +179,7 @@ const auditLogger = (action: string, resource: string) => {
         };
 
         await storage.createAuditLog(auditLogData);
-        
+
         // Log critical security events separately
         if (res.statusCode === 401 || res.statusCode === 403) {
           console.warn('🚨 Security Event:', {
@@ -202,16 +202,16 @@ const auditLogger = (action: string, resource: string) => {
 // Sanitize request body to remove sensitive information
 const sanitizeBody = (body: any) => {
   if (!body || typeof body !== 'object') return body;
-  
+
   const sanitized = { ...body };
   const sensitiveFields = ['password', 'token', 'secret', 'key', 'authorization'];
-  
+
   Object.keys(sanitized).forEach(key => {
     if (sensitiveFields.some(field => key.toLowerCase().includes(field))) {
       sanitized[key] = '[REDACTED]';
     }
   });
-  
+
   return sanitized;
 };
 
@@ -361,13 +361,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const { date } = req.query;
         let schedule;
-        
+
         if (date) {
           schedule = await storage.getProductionScheduleByDate(date as string);
         } else {
           schedule = await storage.getProductionSchedule();
         }
-        
+
         res.json(schedule);
       } catch (error) {
         console.error("Error fetching production schedule:", error);
@@ -577,7 +577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure we always return an array with proper structure
       const unitsArray = Array.isArray(units) ? units : [];
       console.log("Fetched units:", unitsArray.length, "units");
-      
+
       // Return consistent response format
       res.json({
         success: true,
@@ -622,7 +622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const duplicateAbbr = existingUnits.find(
         (unit: any) => unit.abbreviation.toLowerCase() === transformedData.abbreviation.toLowerCase()
       );
-      
+
       if (duplicateName) {
         return res.status(400).json({ message: `Unit name "${transformedData.name}" already exists` });
       }
@@ -781,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  
+
 
   // Unit Conversions
   app.get("/api/unit-conversions", isAuthenticated, async (req, res) => {
@@ -984,8 +984,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/inventory/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const item = await storage.updateInventoryItem(id, req.body);
-      res.json(item);
+      
+      // Fetch the item to check stock levels before update
+      const item = await storage.getInventoryItemById(id);
+      if (!item) {
+        return res.status(404).json({ message: "Inventory item not found" });
+      }
+      
+      const updateResult = await storage.updateInventoryItem(id, req.body);
+      const updatedItem = await storage.getInventoryItemById(id); // Re-fetch to get the latest data
+
+      // Check for low stock and trigger notification if needed
+      if (updatedItem) {
+        const newStock = parseFloat(updatedItem.currentStock);
+        const minLevel = parseFloat(updatedItem.minLevel || "0");
+        const criticalLevel = minLevel * 0.5; // Example: 50% of minLevel
+
+        if (newStock <= criticalLevel && newStock > 0) {
+          await storage.triggerBusinessNotification('critical_low_stock', {
+            itemName: updatedItem.name,
+            currentStock: newStock,
+            minLevel: minLevel,
+            unit: updatedItem.unit,
+            criticalLevel: criticalLevel
+          });
+        } else if (newStock <= minLevel && newStock > 0) {
+          await storage.triggerBusinessNotification('low_stock', {
+            itemName: updatedItem.name,
+            currentStock: newStock,
+            minLevel: minLevel,
+            unit: updatedItem.unit
+          });
+        } else if (newStock <= 0) {
+          await storage.triggerBusinessNotification('out_of_stock', {
+            itemName: updatedItem.name,
+            currentStock: newStock,
+            unit: updatedItem.unit
+          });
+        }
+      }
+
+      res.json(updateResult);
     } catch (error) {
       console.error("Error updating inventory item:", error);
       res.status(500).json({ message: "Failed to update inventory item" });
@@ -1084,7 +1123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get product details to fetch unit information
         const product = await storage.getProductById(parseInt(item.productId));
-        
+
         await storage.createOrderItem({
           orderId: order.id,
           productId: parseInt(item.productId),
@@ -1248,7 +1287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(customer);
     } catch (error) {
       console.error("Error creating customer:", error);
-      
+
       // Handle specific database errors
       if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
         res.status(400).json({
@@ -1344,7 +1383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(party);
     } catch (error) {
       console.error("Error creating party:", error);
-      
+
       // Handle specific database errors
       if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
         res.status(400).json({
@@ -2528,7 +2567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/audit/client-activities", isAuthenticated, async (req: any, res) => {
     try {
       const { events } = req.body;
-      
+
       if (!events || !Array.isArray(events)) {
         return res.status(400).json({ error: "Invalid events data" });
       }
@@ -3037,7 +3076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         updateData.salary = null;
       }
-      
+
       if (updateData.hourlyRate && !isNaN(parseFloat(updateData.hourlyRate))) {
         updateData.hourlyRate = parseFloat(updateData.hourlyRate).toString();
       } else {
@@ -3079,13 +3118,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/attendance", isAuthenticated, requireRead("staff"), async (req, res) => {
     try {
       const { staffId, startDate, endDate } = req.query;
-      
+
       const attendanceRecords = await storage.getAttendance(
         staffId ? parseInt(staffId as string) : undefined,
         startDate ? new Date(startDate as string) : undefined,
         endDate ? new Date(endDate as string) : undefined
       );
-      
+
       res.json(attendanceRecords);
     } catch (error) {
       console.error("Error fetching attendance:", error);
@@ -3096,7 +3135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/attendance", isAuthenticated, requireWrite("staff"), async (req, res) => {
     try {
       const attendanceData = req.body;
-      
+
       if (attendanceData.date) {
         attendanceData.date = new Date(attendanceData.date);
       }
@@ -3194,7 +3233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/salary-payments", isAuthenticated, requireWrite("staff"), async (req, res) => {
     try {
       const paymentData = req.body;
-      
+
       if (paymentData.payPeriodStart) {
         paymentData.payPeriodStart = new Date(paymentData.payPeriodStart);
       }
@@ -3260,7 +3299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/leave-requests", isAuthenticated, requireWrite("staff"), async (req, res) => {
     try {
       const requestData = req.body;
-      
+
       if (requestData.startDate) {
         requestData.startDate = new Date(requestData.startDate);
       }
@@ -3325,7 +3364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const auditLogs = await storage.getAuditLogs(filters);
-      
+
       // Get total count for pagination
       const totalResult = await db.select({ count: count() }).from(auditLogs);
       const total = totalResult[0]?.count || 0;
@@ -3348,7 +3387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/audit-logs/export", isAuthenticated, requireWrite("admin"), async (req, res) => {
     try {
       const logs = await storage.getAuditLogs();
-      
+
       // Format logs for export
       const exportData = {
         exportedAt: new Date().toISOString(),
@@ -3425,7 +3464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/audit-logs/analytics", isAuthenticated, requireWrite("admin"), async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
-      
+
       const filters = {
         startDate: startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         endDate: endDate ? new Date(endDate as string) : new Date(),
@@ -3476,7 +3515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/staff-schedules", isAuthenticated, requireWrite("staff"), async (req: any, res) => {
     try {
       const scheduleData = req.body;
-      
+
       if (scheduleData.date) {
         scheduleData.date = new Date(scheduleData.date);
       }

@@ -1833,32 +1833,258 @@ export class Storage implements IStorage {
     await this.deleteOrder(id);
   }
 
-  // Notification system stubs
-  async getNotifications(): Promise<any[]> {
-    return [];
+  // Enhanced notification system
+  async getNotifications(userId?: string): Promise<any[]> {
+    try {
+      // Return sample notifications for now - in production this would fetch from database
+      const sampleNotifications = [
+        {
+          id: "1",
+          type: "order",
+          title: "New Order Received",
+          description: "Order #1024 from John Doe - $125.50",
+          timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+          read: false,
+          priority: "high",
+          actionUrl: "/orders/1024",
+          data: { orderId: 1024, customerName: "John Doe", amount: 125.50 }
+        },
+        {
+          id: "2",
+          type: "inventory",
+          title: "Low Stock Alert",
+          description: "Flour inventory is running low (5kg remaining)",
+          timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+          read: false,
+          priority: "critical",
+          actionUrl: "/inventory",
+          data: { itemName: "Flour", currentStock: 5, minLevel: 10 }
+        },
+        {
+          id: "3",
+          type: "production",
+          title: "Production Completed",
+          description: "Chocolate cake batch #45 completed successfully",
+          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          read: false,
+          priority: "medium",
+          actionUrl: "/production",
+          data: { batchId: 45, product: "Chocolate Cake" }
+        },
+        {
+          id: "4",
+          type: "shipping",
+          title: "Delivery Dispatched",
+          description: "Order #1020 dispatched via Express Delivery",
+          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+          read: true,
+          priority: "medium",
+          actionUrl: "/orders/1020",
+          data: { orderId: 1020, carrier: "Express Delivery" }
+        },
+        {
+          id: "5",
+          type: "system",
+          title: "System Maintenance",
+          description: "Scheduled maintenance completed successfully",
+          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          read: true,
+          priority: "low",
+          actionUrl: "/settings",
+          data: { maintenanceType: "Database optimization" }
+        },
+        {
+          id: "6",
+          type: "order",
+          title: "Payment Received",
+          description: "Payment of $89.75 received for Order #1018",
+          timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+          read: false,
+          priority: "medium",
+          actionUrl: "/orders/1018",
+          data: { orderId: 1018, amount: 89.75 }
+        },
+        {
+          id: "7",
+          type: "production",
+          title: "Production Delay",
+          description: "Vanilla cupcake batch delayed due to ingredient shortage",
+          timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+          read: false,
+          priority: "high",
+          actionUrl: "/production",
+          data: { product: "Vanilla Cupcakes", reason: "Ingredient shortage" }
+        }
+      ];
+      
+      return sampleNotifications;
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      return [];
+    }
   }
 
   async markNotificationAsRead(
+    notificationId: string,
     userId: string,
-    notificationId: number,
-  ): Promise<void> {}
+  ): Promise<void> {
+    // In production, this would update the database
+    console.log(`Marking notification ${notificationId} as read for user ${userId}`);
+  }
 
-  async markAllNotificationsAsRead(userId: string): Promise<void> {}
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    // In production, this would update all unread notifications for the user
+    console.log(`Marking all notifications as read for user ${userId}`);
+  }
 
   async saveNotificationSubscription(
     userId: string,
     subscription: any,
-  ): Promise<void> {}
+  ): Promise<void> {
+    // In production, this would save push notification subscription
+    console.log(`Saving notification subscription for user ${userId}`);
+  }
 
-  async removeNotificationSubscription(userId: string): Promise<void> {}
+  async removeNotificationSubscription(userId: string): Promise<void> {
+    // In production, this would remove push notification subscription
+    console.log(`Removing notification subscription for user ${userId}`);
+  }
 
   async saveNotificationSettings(
     userId: string,
     settings: any,
-  ): Promise<void> {}
+  ): Promise<void> {
+    // In production, this would save notification preferences
+    console.log(`Saving notification settings for user ${userId}:`, settings);
+  }
 
-  async createNotification(userId: string, notification: any): Promise<any> {
-    return { id: Date.now(), ...notification };
+  async createNotification(notification: any): Promise<any> {
+    // In production, this would insert into notifications table
+    const newNotification = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      read: false,
+      ...notification,
+    };
+    console.log("Creating notification:", newNotification);
+    return newNotification;
+  }
+
+  async triggerBusinessNotification(event: string, data: any): Promise<void> {
+    try {
+      let notification;
+      
+      switch (event) {
+        case "order_created":
+          notification = {
+            type: "order",
+            title: "New Order Received",
+            description: `Order #${data.orderNumber} from ${data.customerName} - $${data.totalAmount}`,
+            priority: "high",
+            actionUrl: `/orders/${data.id}`,
+            data
+          };
+          break;
+          
+        case "low_stock":
+          notification = {
+            type: "inventory",
+            title: "Low Stock Alert",
+            description: `${data.itemName} is running low (${data.currentStock}${data.unit} remaining)`,
+            priority: data.currentStock <= data.criticalLevel ? "critical" : "high",
+            actionUrl: "/inventory",
+            data
+          };
+          break;
+          
+        case "production_completed":
+          notification = {
+            type: "production",
+            title: "Production Completed",
+            description: `${data.productName} batch #${data.batchId} completed successfully`,
+            priority: "medium",
+            actionUrl: "/production",
+            data
+          };
+          break;
+          
+        case "production_delayed":
+          notification = {
+            type: "production",
+            title: "Production Delay",
+            description: `${data.productName} batch delayed: ${data.reason}`,
+            priority: "high",
+            actionUrl: "/production",
+            data
+          };
+          break;
+          
+        case "shipment_dispatched":
+          notification = {
+            type: "shipping",
+            title: "Shipment Dispatched",
+            description: `Order #${data.orderNumber} dispatched via ${data.carrier}`,
+            priority: "medium",
+            actionUrl: `/orders/${data.orderId}`,
+            data
+          };
+          break;
+          
+        case "delivery_failed":
+          notification = {
+            type: "shipping",
+            title: "Delivery Failed",
+            description: `Failed to deliver Order #${data.orderNumber}: ${data.reason}`,
+            priority: "high",
+            actionUrl: `/orders/${data.orderId}`,
+            data
+          };
+          break;
+          
+        case "payment_received":
+          notification = {
+            type: "order",
+            title: "Payment Received",
+            description: `Payment of $${data.amount} received for Order #${data.orderNumber}`,
+            priority: "medium",
+            actionUrl: `/orders/${data.orderId}`,
+            data
+          };
+          break;
+          
+        case "system_alert":
+          notification = {
+            type: "system",
+            title: data.title || "System Alert",
+            description: data.description,
+            priority: data.priority || "medium",
+            actionUrl: data.actionUrl || "/settings",
+            data
+          };
+          break;
+          
+        default:
+          console.warn(`Unknown notification event: ${event}`);
+          return;
+      }
+      
+      // In production, broadcast to all relevant users based on their roles
+      const adminUsers = await this.getAllUsers();
+      const relevantUsers = adminUsers.filter(user => 
+        ["admin", "manager", "supervisor"].includes(user.role)
+      );
+      
+      for (const user of relevantUsers) {
+        await this.createNotification({
+          userId: user.id,
+          ...notification
+        });
+      }
+      
+      console.log(`Triggered ${event} notification for ${relevantUsers.length} users`);
+    } catch (error) {
+      console.error("Error triggering business notification:", error);
+    }
   }
 
   // Staff management operations
