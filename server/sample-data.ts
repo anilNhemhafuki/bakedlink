@@ -1,11 +1,11 @@
 import { db } from "./db";
-import { 
-  categories, 
-  products, 
-  inventoryItems, 
+import {
+  categories,
+  products,
+  inventoryItems,
   inventoryCategories,
-  customers, 
-  parties, 
+  customers,
+  parties,
   units,
   purchases,
   purchaseItems,
@@ -16,6 +16,7 @@ import {
   expenses,
   assets
 } from "../shared/schema";
+import bcrypt from "bcryptjs";
 
 export async function insertSampleData() {
   console.log("🎯 Inserting comprehensive sample data...");
@@ -61,7 +62,7 @@ export async function insertSampleData() {
         name: "Unsalted Butter",
         currentStock: 75,
         minLevel: 20,
-        unit: "kg", 
+        unit: "kg",
         costPerUnit: 8.50,
         supplier: "Dairy Fresh Co",
         categoryId: insertedInvCategories[1].id,
@@ -176,7 +177,7 @@ export async function insertSampleData() {
       { productId: insertedProducts[0].id, inventoryItemId: insertedInventory[1].id, quantity: 0.25, unit: "kg" },
       { productId: insertedProducts[0].id, inventoryItemId: insertedInventory[2].id, quantity: 0.3, unit: "kg" },
       { productId: insertedProducts[0].id, inventoryItemId: insertedInventory[3].id, quantity: 0.5, unit: "dozen" },
-      
+
       // Vanilla Cupcakes ingredients
       { productId: insertedProducts[1].id, inventoryItemId: insertedInventory[0].id, quantity: 0.2, unit: "kg" },
       { productId: insertedProducts[1].id, inventoryItemId: insertedInventory[1].id, quantity: 0.1, unit: "kg" },
@@ -200,7 +201,7 @@ export async function insertSampleData() {
       },
       {
         name: "Mike Chen",
-        email: "mike.chen@email.com", 
+        email: "mike.chen@email.com",
         phone: "+1-555-0124",
         address: "456 Oak Avenue, Midtown",
         totalOrders: 0,
@@ -210,7 +211,7 @@ export async function insertSampleData() {
       {
         name: "Emma Davis",
         email: "emma.davis@email.com",
-        phone: "+1-555-0125", 
+        phone: "+1-555-0125",
         address: "789 Pine Road, Uptown",
         totalOrders: 0,
         totalSpent: 0,
@@ -235,7 +236,7 @@ export async function insertSampleData() {
       },
       {
         name: "Dairy Fresh Co",
-        type: "supplier", 
+        type: "supplier",
         contactPerson: "Lisa Brown",
         email: "supply@dairyfresh.com",
         phone: "+1-555-1002",
@@ -248,7 +249,7 @@ export async function insertSampleData() {
         type: "supplier",
         contactPerson: "Robert Wilson",
         email: "sales@sweetsupply.com",
-        phone: "+1-555-1003", 
+        phone: "+1-555-1003",
         address: "300 Sugar Lane, Sweet Town",
         balance: 0,
         isActive: true
@@ -330,7 +331,7 @@ export async function insertSampleData() {
         purchaseDate: new Date()
       },
       {
-        supplierName: "Dairy Fresh Co", 
+        supplierName: "Dairy Fresh Co",
         partyId: insertedSuppliers[1].id,
         totalAmount: 637.50,
         paymentMethod: "credit",
@@ -354,7 +355,7 @@ export async function insertSampleData() {
         unitPrice: 2.50,
         totalPrice: 1250.00
       },
-      // Dairy Fresh purchase  
+      // Dairy Fresh purchase
       {
         purchaseId: insertedPurchases[1].id,
         inventoryItemId: insertedInventory[1].id,
@@ -413,7 +414,7 @@ export async function insertSampleData() {
       {
         description: "Insurance premium",
         amount: 450.00,
-        category: "insurance", 
+        category: "insurance",
         date: new Date(),
         paymentMethod: "credit_card",
         vendor: "Business Insurance Co"
@@ -436,7 +437,7 @@ export async function insertSampleData() {
         isActive: true
       },
       {
-        name: "Stand Mixer - Industrial KM500", 
+        name: "Stand Mixer - Industrial KM500",
         category: "equipment",
         purchasePrice: 2500.00,
         currentValue: 2000.00,
@@ -459,6 +460,31 @@ export async function insertSampleData() {
 
     await db.insert(assets).values(assetData);
     console.log("✅ Assets inserted");
+
+    // Add users with roles
+    const userData = [
+      {
+        email: "admin@bakery.com",
+        password: await bcrypt.hash("password123", 10),
+        role: "admin",
+        name: "Admin User"
+      },
+      {
+        email: "manager@bakery.com",
+        password: await bcrypt.hash("password123", 10),
+        role: "manager",
+        name: "Manager User"
+      },
+      {
+        email: "staff@bakery.com",
+        password: await bcrypt.hash("password123", 10),
+        role: "staff",
+        name: "Staff User"
+      }
+    ];
+
+    await db.insert(parties).values(userData); // Assuming 'parties' table can also store user info or you have a separate 'users' table
+    console.log("✅ Users inserted with roles");
 
     console.log("🎉 All sample data inserted successfully!");
 

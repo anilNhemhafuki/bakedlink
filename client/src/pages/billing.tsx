@@ -47,7 +47,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
-export default function Billing() {
+import { ProtectedRoute } from "@/components/protected-route";
+
+function BillingContent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<any>(null);
   const [selectedCustomer, setSelectedCustomer] = useState("");
@@ -281,6 +283,7 @@ export default function Billing() {
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
+          <h1 className="text-2xl font-bold">Billing & Invoices</h1>
           <p className="text-gray-600">Create and manage customer bills</p>
         </div>
         <Dialog
@@ -555,5 +558,13 @@ export default function Billing() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function Billing() {
+  return (
+    <ProtectedRoute resource="billing" action="read">
+      <BillingContent />
+    </ProtectedRoute>
   );
 }

@@ -191,6 +191,14 @@ function AuthenticatedApp({
                 )}
               />
               <Route
+                path="/billing"
+                component={() => (
+                  <ProtectedRoute resource="billing" action="read">
+                    <Billing />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
                 path="/day-book"
                 component={() => (
                   <ProtectedRoute resource="reports" action="read">
