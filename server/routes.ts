@@ -253,6 +253,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // Get production schedule by date
+  app.get(
+    "/api/production-schedule",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const { date } = req.query;
+        let schedule;
+        
+        if (date) {
+          schedule = await storage.getProductionScheduleByDate(date as string);
+        } else {
+          schedule = await storage.getProductionSchedule();
+        }
+        
+        res.json(schedule);
+      } catch (error) {
+        console.error("Error fetching production schedule:", error);
+        res.status(500).json({ message: "Failed to fetch production schedule" });
+      }
+    },
+  );
+
   // Low stock items
   app.get("/api/dashboard/low-stock", isAuthenticated, async (req, res) => {
     try {

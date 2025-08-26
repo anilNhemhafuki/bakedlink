@@ -43,6 +43,10 @@ import {
   AlertTriangle,
   Calendar,
   Plus,
+  Edit,
+  Trash2,
+  MoreHorizontal,
+  ArrowRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -274,11 +278,12 @@ export default function EnhancedDashboard() {
                   <TableHead>Quantity</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {upcomingProduction.length > 0 ? (
-                  upcomingProduction.slice(0, 5).map((item: any) => (
+                  upcomingProduction.slice(0, 5).map((item: ProductionItem) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">
                         {item.productName}
@@ -294,18 +299,159 @@ export default function EnhancedDashboard() {
                               ? "default"
                               : item.status === "in_progress"
                                 ? "secondary"
-                                : "outline"
+                                : item.status === "pending"
+                                  ? "outline"
+                                  : "secondary" // Default to secondary for any other status
                           }
                         >
                           {item.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Dialog
+                          open={
+                            isProductionDialogOpen && editingProduction?.id === item.id
+                          }
+                          onOpenChange={setIsProductionDialogOpen}
+                        >
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingProduction(item);
+                                setIsProductionDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                              <DialogTitle>Edit Production Schedule</DialogTitle>
+                              <DialogDescription>
+                                Make changes to this production item. Click save
+                                when you're done.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                // Handle update logic here
+                                toast({
+                                  title: "Production updated",
+                                  description: `Production for ${editingProduction?.productName} has been updated.`,
+                                  variant: "success",
+                                });
+                                setIsProductionDialogOpen(false);
+                                setEditingProduction(null);
+                              }}
+                            >
+                              <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <label htmlFor="productName" className="text-right">
+                                    Product Name
+                                  </label>
+                                  <Input
+                                    id="productName"
+                                    value={editingProduction?.productName || ""}
+                                    onChange={(e) =>
+                                      setEditingProduction((prev) =>
+                                        prev ? { ...prev, productName: e.target.value } : null
+                                      )
+                                    }
+                                    className="col-span-3"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <label htmlFor="quantity" className="text-right">
+                                    Quantity
+                                  </label>
+                                  <Input
+                                    id="quantity"
+                                    type="number"
+                                    value={editingProduction?.quantity || 0}
+                                    onChange={(e) =>
+                                      setEditingProduction((prev) =>
+                                        prev ? { ...prev, quantity: parseInt(e.target.value) } : null
+                                      )
+                                    }
+                                    className="col-span-3"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <label htmlFor="scheduledDate" className="text-right">
+                                    Scheduled Date
+                                  </label>
+                                  <Input
+                                    id="scheduledDate"
+                                    type="date"
+                                    value={
+                                      editingProduction?.scheduledDate
+                                        ? new Date(editingProduction.scheduledDate)
+                                            .toISOString()
+                                            .substr(0, 10)
+                                        : ""
+                                    }
+                                    onChange={(e) =>
+                                      setEditingProduction((prev) =>
+                                        prev ? { ...prev, scheduledDate: e.target.value } : null
+                                      )
+                                    }
+                                    className="col-span-3"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <label htmlFor="status" className="text-right">
+                                    Status
+                                  </label>
+                                  <Select
+                                    onValueChange={(value) =>
+                                      setEditingProduction((prev) =>
+                                        prev ? { ...prev, status: value } : null
+                                      )
+                                    }
+                                    value={editingProduction?.status}
+                                  >
+                                    <SelectTrigger className="col-span-3">
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="pending">Pending</SelectItem>
+                                      <SelectItem value="in_progress">In Progress</SelectItem>
+                                      <SelectItem value="completed">Completed</SelectItem>
+                                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button type="submit">Save Changes</Button>
+                              </DialogFooter>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            // Handle delete logic here
+                            toast({
+                              title: "Production deleted",
+                              description: `Production for ${item.productName} has been deleted.`,
+                              variant: "destructive",
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={4}
+                      colSpan={5}
                       className="text-center py-4 text-muted-foreground"
                     >
                       No upcoming production scheduled
@@ -317,6 +463,82 @@ export default function EnhancedDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Production Scheduling Dialog (for adding new items) */}
+      <Dialog
+        open={isProductionDialogOpen && !editingProduction}
+        onOpenChange={setIsProductionDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Schedule New Production</DialogTitle>
+            <DialogDescription>
+              Add a new item to the production schedule. Click save when you're
+              done.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              // Handle add logic here
+              const newItem: ProductionItem = {
+                id: Date.now(), // Simple unique ID for example
+                productName: (e.target as any).productName.value,
+                quantity: parseInt((e.target as any).quantity.value),
+                scheduledDate: (e.target as any).scheduledDate.value,
+                status: (e.target as any).status.value,
+              };
+              setProductionSchedule((prev) => [...prev, newItem]);
+              toast({
+                title: "Production scheduled",
+                description: `New production for ${newItem.productName} has been scheduled.`,
+                variant: "success",
+              });
+              setIsProductionDialogOpen(false);
+            }}
+          >
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="productName" className="text-right">
+                  Product Name
+                </label>
+                <Input id="productName" className="col-span-3" required />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="quantity" className="text-right">
+                  Quantity
+                </label>
+                <Input id="quantity" type="number" className="col-span-3" required />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="scheduledDate" className="text-right">
+                  Scheduled Date
+                </label>
+                <Input id="scheduledDate" type="date" className="col-span-3" required />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="status" className="text-right">
+                  Status
+                </label>
+                <Select name="status" defaultValue="pending">
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit">Schedule Production</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

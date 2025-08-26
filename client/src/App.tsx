@@ -42,6 +42,7 @@ import Attendance from "@/pages/attendance";
 import Salary from "@/pages/salary";
 import LeaveRequests from "@/pages/leave-requests";
 import { ProtectedRoute } from "@/components/protected-route";
+import ProductionPage from "@/pages/production";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -101,6 +102,22 @@ function AuthenticatedApp({
                     <Dashboard />
                   </ProtectedRoute>
                 )}
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute resource="dashboard" action="read">
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/production"
+                element={
+                  <ProtectedRoute resource="production" action="read">
+                    <ProductionPage />
+                  </ProtectedRoute>
+                }
               />
               <Route
                 path="/products"
