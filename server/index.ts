@@ -28,11 +28,15 @@ async function startServer() {
   try {
     console.log("🚀 Starting server...");
 
-    // Initialize database
+    // Initialize database (with graceful fallback)
     await initializeDatabase();
 
-    // Initialize default units
-    await initializeUnits();
+    // Initialize default units (gracefully handle DB failures)
+    try {
+      await initializeUnits();
+    } catch (error) {
+      console.warn("⚠️ Unit initialization failed, continuing without units:", error.message);
+    }
 
     // Setup authentication
     await setupAuth(app);
@@ -54,10 +58,17 @@ async function startServer() {
       console.log(`   Admin: admin@sweetreats.com / admin123`);
       console.log(`   Manager: manager@sweetreats.com / manager123`);
       console.log(`   Staff: staff@sweetreats.com / staff123`);
+      
+      console.log(`\n🔍 To fix database issues:`);
+      console.log(`   1. The Neon database endpoint is disabled`);
+      console.log(`   2. Enable it using the Neon API or create a new database`);
+      console.log(`   3. Run: npm run db:push to sync schema`);
     });
 
   } catch (error) {
     console.error("❌ Failed to start server:", error);
+    console.error("❌ This appears to be a database connectivity issue.");
+    console.error("❌ Please check the DATABASE_URL and ensure the database is accessible.");
     process.exit(1);
   }
 }

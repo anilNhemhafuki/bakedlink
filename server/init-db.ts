@@ -1,4 +1,4 @@
-import { db } from "./db.js";
+import { testDatabaseConnection } from "./db.js";
 import { storage } from "./lib/storage.js";
 
 if (!process.env.DATABASE_URL) {
@@ -10,8 +10,21 @@ if (!process.env.DATABASE_URL) {
 export async function initializeDatabase() {
   try {
     console.log("🔄 Initializing database...");
+    
+    // Test database connection first
+    const isConnected = await testDatabaseConnection();
+    if (!isConnected) {
+      console.warn("⚠️ Database connection failed. Running in offline mode with limited functionality.");
+      console.warn("⚠️ The Neon database endpoint appears to be disabled. Please enable it via the Neon API.");
+      
+      console.log("📝 Note: Some features may not work without database connection:");
+      console.log("   - User authentication may be limited");
+      console.log("   - Data persistence will be temporary");
+      console.log("   - Please fix database connection for full functionality");
+      return;
+    }
 
-    // Ensure default users exist
+    // Only initialize if database is connected
     console.log("🔄 Ensuring default users exist...");
     await storage.ensureDefaultAdmin();
 
@@ -29,7 +42,7 @@ export async function initializeDatabase() {
     console.log("✅ Database initialization completed");
   } catch (error) {
     console.error("❌ Database initialization failed:", error);
-    throw error;
+    console.warn("⚠️ Running in offline mode. Please fix database connection for full functionality.");
   }
 }
 

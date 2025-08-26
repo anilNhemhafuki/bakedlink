@@ -17,3 +17,14 @@ const client = postgres(process.env.DATABASE_URL, {
 });
 
 export const db = drizzle(client);
+
+// Test database connection
+export async function testDatabaseConnection(): Promise<boolean> {
+  try {
+    await client`SELECT 1`;
+    return true;
+  } catch (error) {
+    console.warn("⚠️ Database connection failed:", error.message);
+    return false;
+  }
+}

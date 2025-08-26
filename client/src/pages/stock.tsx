@@ -58,8 +58,12 @@ export default function Stock() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
   // Unit conversion state management
-  const [selectedPrimaryUnitId, setSelectedPrimaryUnitId] = useState<string | undefined>(undefined);
-  const [selectedSecondaryUnitId, setSelectedSecondaryUnitId] = useState<string | undefined>(undefined);
+  const [selectedPrimaryUnitId, setSelectedPrimaryUnitId] = useState<
+    string | undefined
+  >(undefined);
+  const [selectedSecondaryUnitId, setSelectedSecondaryUnitId] = useState<
+    string | undefined
+  >(undefined);
   const [conversionRate, setConversionRate] = useState<string>("");
   const { toast } = useToast();
   const { symbol } = useCurrency();
@@ -82,29 +86,44 @@ export default function Stock() {
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/units");
-        console.log("Units API response in stock.tsx:", response);
-        // Handle different response types
+        console.log("Units API response:", response);
+
         if (Array.isArray(response)) {
           return response;
-        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray((response as any).data)) {
-          return (response as any).data;
-        } else {
-          return [];
         }
+        if (response?.data && Array.isArray(response.data)) {
+          return response.data;
+        }
+        if (response?.results && Array.isArray(response.results)) {
+          return response.results; // Common alternate key
+        }
+
+        console.warn("Unexpected units response format:", response);
+        return [];
       } catch (error) {
-        console.error("Failed to fetch units in stock.tsx:", error);
-        throw error;
+        console.error("Failed to fetch units:", error);
+        return []; // ✅ Fallback
       }
     },
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    cacheTime: 1000 * 60 * 10,
   });
 
   // --- Fix 1: Ensure units is an array before filtering ---
   const activeUnits = Array.isArray(units)
-    ? (units as any[]).filter((unit: any) => unit.isActive)
+    ? (units as any[]).filter((unit: any) => {
+        return (
+          unit &&
+          typeof unit === "object" &&
+          typeof unit.id !== "undefined" &&
+          unit.id !== null &&
+          unit.isActive === true &&
+          unit.name &&
+          typeof unit.name === "string" &&
+          unit.abbreviation &&
+          typeof unit.abbreviation === "string"
+        );
+      })
     : [];
 
   // Debug logging
@@ -120,14 +139,19 @@ export default function Stock() {
   );
 
   // Add sorting functionality
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredItems, 'name');
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredItems,
+    "name",
+  );
 
   // Unit selection state management
   useEffect(() => {
     if (isDialogOpen) {
       if (editingItem) {
         setSelectedPrimaryUnitId(editingItem?.unitId?.toString());
-        setSelectedSecondaryUnitId(editingItem?.secondaryUnitId?.toString() || "none");
+        setSelectedSecondaryUnitId(
+          editingItem?.secondaryUnitId?.toString() || "none",
+        );
         setConversionRate(editingItem?.conversionRate?.toString() || "1");
       } else {
         setSelectedPrimaryUnitId(undefined);
@@ -176,8 +200,14 @@ export default function Stock() {
         name: data.name.trim(),
         unitId: parseInt(data.unitId),
         unit: data.unit || "pcs",
-        secondaryUnitId: data.secondaryUnitId && data.secondaryUnitId !== "none" ? parseInt(data.secondaryUnitId) : null,
-        conversionRate: data.secondaryUnitId && data.secondaryUnitId !== "none" ? parseFloat(data.conversionRate || "1") : null,
+        secondaryUnitId:
+          data.secondaryUnitId && data.secondaryUnitId !== "none"
+            ? parseInt(data.secondaryUnitId)
+            : null,
+        conversionRate:
+          data.secondaryUnitId && data.secondaryUnitId !== "none"
+            ? parseFloat(data.conversionRate || "1")
+            : null,
         defaultPrice: parseFloat(data.defaultPrice || "0"),
         group: data.group?.trim() || null,
         currentStock: parseFloat(data.currentStock),
@@ -245,11 +275,19 @@ export default function Stock() {
       const updateData = {
         name: values.name.trim(),
         unitId: parseInt(values.unitId),
-        secondaryUnitId: values.secondaryUnitId && values.secondaryUnitId !== "none" ? parseInt(values.secondaryUnitId) : null,
-        conversionRate: values.secondaryUnitId && values.secondaryUnitId !== "none" ? parseFloat(values.conversionRate || "1") : null,
+        secondaryUnitId:
+          values.secondaryUnitId && values.secondaryUnitId !== "none"
+            ? parseInt(values.secondaryUnitId)
+            : null,
+        conversionRate:
+          values.secondaryUnitId && values.secondaryUnitId !== "none"
+            ? parseFloat(values.conversionRate || "1")
+            : null,
         defaultPrice: parseFloat(values.defaultPrice || 0),
         group: values.group?.trim() || null,
-        currentStock: parseFloat(values.currentStock || values.openingQuantity || 0),
+        currentStock: parseFloat(
+          values.currentStock || values.openingQuantity || 0,
+        ),
         minLevel: parseFloat(values.minLevel || 0),
         costPerUnit: parseFloat(values.costPerUnit || values.openingRate || 0),
         openingQuantity: parseFloat(values.openingQuantity || 0),
@@ -324,13 +362,17 @@ export default function Stock() {
   });
 
   // Function to create unit conversion in database
-  const createUnitConversion = async (fromUnitId: number, toUnitId: number, factor: number) => {
+  const createUnitConversion = async (
+    fromUnitId: number,
+    toUnitId: number,
+    factor: number,
+  ) => {
     try {
       await apiRequest("POST", "/api/unit-conversions", {
         fromUnitId: fromUnitId,
         toUnitId: toUnitId,
         conversionFactor: factor,
-        isActive: true
+        isActive: true,
       });
     } catch (error) {
       console.warn("Failed to create unit conversion:", error);
@@ -380,7 +422,9 @@ export default function Stock() {
 
     // Prepare conversion data for database storage
     const hasSecondaryUnit = secondaryUnitId && secondaryUnitId !== "none";
-    const finalConversionRate = hasSecondaryUnit ? parseFloat(conversionRate || "1") : null;
+    const finalConversionRate = hasSecondaryUnit
+      ? parseFloat(conversionRate || "1")
+      : null;
 
     const data = {
       name: name.trim(),
@@ -413,8 +457,16 @@ export default function Stock() {
       const secondaryUnitIdNum = parseInt(secondaryUnitId);
 
       // Create bidirectional conversion
-      createUnitConversion(secondaryUnitIdNum, primaryUnitIdNum, finalConversionRate);
-      createUnitConversion(primaryUnitIdNum, secondaryUnitIdNum, 1 / finalConversionRate);
+      createUnitConversion(
+        secondaryUnitIdNum,
+        primaryUnitIdNum,
+        finalConversionRate,
+      );
+      createUnitConversion(
+        primaryUnitIdNum,
+        secondaryUnitIdNum,
+        1 / finalConversionRate,
+      );
     }
   };
 
@@ -431,22 +483,45 @@ export default function Stock() {
 
   // Get unit name by ID
   const getUnitName = (unitId: number) => {
+    if (!unitId || !Array.isArray(activeUnits)) return "Unknown Unit";
     const unit = activeUnits.find((u: any) => u.id === unitId);
     return unit ? `${unit.name} (${unit.abbreviation})` : "Unknown Unit";
   };
 
   // --- Add function to generate dynamic conversion info text ---
   const getConversionInfoText = () => {
-    // Helper function to find unit details by ID
-    const findUnit = (id: string | undefined) =>
-      activeUnits.find((u: any) => u.id.toString() === id);
+    // 🔒 Double guard: ensure activeUnits is an array
+    if (!Array.isArray(activeUnits)) {
+      console.warn("activeUnits is not an array:", activeUnits);
+      return "Loading units...";
+    }
 
+    if (activeUnits.length === 0) {
+      return "No units available";
+    }
+
+    // Safe helper to find unit by ID
+    const findUnit = (id: string | undefined) => {
+      if (!id || id === "none") return null;
+      return (
+        activeUnits.find((unit: any) => {
+          // Ensure unit and unit.id exist
+          return unit?.id?.toString() === id;
+        }) || null
+      );
+    };
+
+    // Case: No primary unit selected
     if (!selectedPrimaryUnitId) {
       return "Select a Primary Unit";
     }
+
+    // Case: No secondary unit selected
     if (!selectedSecondaryUnitId || selectedSecondaryUnitId === "none") {
       return "No Secondary Unit Selected";
     }
+
+    // Case: Same unit selected
     if (selectedPrimaryUnitId === selectedSecondaryUnitId) {
       return "Units must be different";
     }
@@ -454,13 +529,26 @@ export default function Stock() {
     const primaryUnit = findUnit(selectedPrimaryUnitId);
     const secondaryUnit = findUnit(selectedSecondaryUnitId);
 
-    if (!primaryUnit || !secondaryUnit) {
-      return "Selected unit not found";
+    if (!primaryUnit) {
+      return "Primary unit not found";
+    }
+    if (!secondaryUnit) {
+      return "Secondary unit not found";
     }
 
-    const rate = conversionRate || "1";
-    // Display the conversion: 1 secondary unit = X primary units
-    return `1 ${secondaryUnit.name} = ${rate} ${primaryUnit.name}`;
+    // Validate conversion rate
+    const rate = conversionRate?.trim();
+    if (!rate) {
+      return "Enter a conversion rate";
+    }
+
+    const numRate = parseFloat(rate);
+    if (isNaN(numRate) || numRate <= 0) {
+      return "Enter a valid positive number";
+    }
+
+    // ✅ Final output
+    return `1 ${primaryUnit.name} = ${numRate} ${secondaryUnit.name}`;
   };
   // --- End of getConversionInfoText ---
 
@@ -567,26 +655,39 @@ export default function Stock() {
                   {/* --- Modified: Make Secondary Unit Select controlled --- */}
                   <Select
                     name="secondaryUnitId"
-                    value={selectedSecondaryUnitId || "none"} // Controlled by state
-                    onValueChange={(value) => setSelectedSecondaryUnitId(value)} // Update state
+                    value={selectedSecondaryUnitId || "none"}
+                    onValueChange={(value) => setSelectedSecondaryUnitId(value)}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select Secondary Unit" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No Secondary Unit</SelectItem>
-                      {/* Optional: Disable the primary unit as a secondary option */}
-                      {activeUnits.map((unit: any) => (
-                        <SelectItem
-                          key={unit.id}
-                          value={unit.id.toString()}
-                          disabled={
-                            unit.id.toString() === selectedPrimaryUnitId
+                      {activeUnits.length > 0 ? (
+                        activeUnits.map((unit: any) => {
+                          if (!unit?.id || !unit?.name || !unit?.abbreviation) {
+                            console.warn("Skipping invalid unit:", unit);
+                            return null;
                           }
-                        >
-                          {unit.name} ({unit.abbreviation})
+                          return (
+                            <SelectItem
+                              key={unit.id}
+                              value={unit.id.toString()}
+                              disabled={
+                                selectedPrimaryUnitId
+                                  ? unit.id.toString() === selectedPrimaryUnitId
+                                  : false
+                              }
+                            >
+                              {unit.name} ({unit.abbreviation})
+                            </SelectItem>
+                          );
+                        })
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          No units available
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                   {/* --- End of modification --- */}
@@ -610,7 +711,7 @@ export default function Stock() {
                     className="mt-1"
                     required={Boolean(
                       selectedSecondaryUnitId &&
-                      selectedSecondaryUnitId !== "none"
+                        selectedSecondaryUnitId !== "none",
                     )} // Make required if secondary unit selected
                   />
                 </div>
@@ -618,7 +719,14 @@ export default function Stock() {
                   <Label className="text-sm font-medium">Conversion Info</Label>
                   {/* --- Modified: Dynamic Conversion Info Display --- */}
                   <div className="mt-1 p-2 bg-blue-50 rounded text-sm text-blue-700 min-h-[40px] flex items-center">
-                    {getConversionInfoText()}
+                    {(() => {
+                      try {
+                        return getConversionInfoText();
+                      } catch (err) {
+                        console.error("Error in getConversionInfoText:", err);
+                        return "Error loading unit info";
+                      }
+                    })()}
                   </div>
                   {/* --- End of modification --- */}
                 </div>
@@ -892,34 +1000,76 @@ export default function Stock() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="name"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Item
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="unitId" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="unitId"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Unit
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="currentStock" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="currentStock"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Stock
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="minLevel" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="minLevel"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Min Level
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="costPerUnit" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="costPerUnit"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Cost/Unit
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="previousQuantity" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="previousQuantity"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Previous Qty
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="previousAmount" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="previousAmount"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Previous Amt
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="group" sortConfig={sortConfig} onSort={requestSort} className="hidden md:table-cell">
+                    <SortableTableHeader
+                      sortKey="group"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                      className="hidden md:table-cell"
+                    >
                       Group
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="dateAdded" sortConfig={sortConfig} onSort={requestSort} className="hidden lg:table-cell">
+                    <SortableTableHeader
+                      sortKey="dateAdded"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                      className="hidden lg:table-cell"
+                    >
                       Date Added
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="currentStock" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="currentStock"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Status
                     </SortableTableHeader>
                     <TableHead>Actions</TableHead>
@@ -928,7 +1078,7 @@ export default function Stock() {
                 <TableBody>
                   {sortedData.map((item: any) => {
                     const stockInfo = getStockBadge(item);
-return (
+                    return (
                       <TableRow key={item.id}>
                         <TableCell>
                           <div className="flex items-center space-x-3">
@@ -947,7 +1097,9 @@ return (
                             </div>
                             {item.secondaryUnitId && (
                               <div className="text-xs text-muted-foreground">
-                                {getUnitName(item.secondaryUnitId)} (1 = {item.conversionRate || 1} {getUnitName(item.unitId).split(' ')[0]})
+                                {getUnitName(item.secondaryUnitId)} (1 ={" "}
+                                {item.conversionRate || 1}{" "}
+                                {getUnitName(item.unitId).split(" ")[0]})
                               </div>
                             )}
                           </div>

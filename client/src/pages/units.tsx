@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useUnits } from "@/hooks/useUnits";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -50,7 +50,7 @@ export default function Units() {
   const [editingUnit, setEditingUnit] = useState<any>(null);
   const { toast } = useToast();
 
-  // Fetch units using React Query with consistent key
+  // Fetch units using the custom hook
   const {
     data: units = [],
     isLoading,
@@ -58,55 +58,69 @@ export default function Units() {
     refetch: refetchUnits,
   } = useUnits();
 
-  // Debug logging to understand the data structure
+  // Debug: Log actual data
   console.log("Units data in component:", units);
-  console.log("Units type:", typeof units);
-  console.log("Units is array:", Array.isArray(units));
+  console.log("Is units array?", Array.isArray(units));
+  console.log("Loading:", isLoading, "Error:", error);
 
-  // --- Example of Corrected Logic (Based on your previous error) ---
-  // If you had a helper function like this elsewhere, ensure correct syntax:
-  /*
-  const getUnitName = (unitId: number) => {
-    // CORRECT: Single 'const' declaration
-    const unit = (units as any[]).find((u: any) => u.id === unitId);
-    // INCORRECT (like your previous error): const const unit = ...
-    return unit ? `${unit.name} (${unit.abbreviation})` : "Unknown Unit";
-  };
-  */
-  // --- End Example ---
+  // Ensure units is always an array
+  const unitsArray = useMemo(() => {
+    if (Array.isArray(units)) return units;
+    console.warn("Units is not an array, using empty fallback:", units);
+    return [];
+  }, [units]);
 
+  // Filter units by search query
+  const filteredUnits = useMemo(() => {
+    if (!searchQuery.trim()) return unitsArray;
+
+    return unitsArray.filter(
+      (unit: any) =>
+        unit.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        unit.abbreviation?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        unit.type?.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [unitsArray, searchQuery]);
+
+  // Sort the filtered units
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredUnits,
+    "name",
+  );
+
+  // Debug sorting
+  console.log("Filtered units count:", filteredUnits.length);
+  console.log("Sorted data count:", sortedData.length);
+  console.log("Current sort config:", sortConfig);
+
+  // Mutation hooks
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/units", data),
     onSuccess: (data) => {
-      console.log("Unit created successfully:", data);
       setIsDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
-      refetchUnits();
       toast({
         title: "Success",
         description: `Unit "${data.name}" created successfully`,
       });
     },
     onError: (error: any) => {
-      console.error("Create unit error:", error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          description: "Session expired. Redirecting to login...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
+        setTimeout(() => (window.location.href = "/api/login"), 500);
         return;
       }
-      const errorMessage =
+      const message =
         error?.response?.data?.message ||
         error?.message ||
         "Failed to create unit";
       toast({
         title: "Error",
-        description: errorMessage,
+        description: message,
         variant: "destructive",
       });
     },
@@ -124,16 +138,14 @@ export default function Units() {
         description: "Unit updated successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          description: "Session expired. Redirecting to login...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
+        setTimeout(() => (window.location.href = "/api/login"), 500);
         return;
       }
       toast({
@@ -153,16 +165,14 @@ export default function Units() {
         description: "Unit deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          description: "Session expired. Redirecting to login...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
+        setTimeout(() => (window.location.href = "/api/login"), 500);
         return;
       }
       toast({
@@ -180,30 +190,29 @@ export default function Units() {
       queryClient.invalidateQueries({ queryKey: ["/api/units"] });
       toast({
         title: "Success",
-        description: "Unit status updated successfully",
+        description: "Unit status updated",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          description: "Session expired. Redirecting to login...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
+        setTimeout(() => (window.location.href = "/api/login"), 500);
         return;
       }
       toast({
         title: "Error",
-        description: "Failed to update unit status",
+        description: "Failed to update status",
         variant: "destructive",
       });
     },
   });
 
-  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Handle form submission
+  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get("name") as string;
@@ -224,9 +233,8 @@ export default function Units() {
       abbreviation: abbreviation.trim(),
       type: type.trim(),
       baseUnit: (formData.get("baseUnit") as string)?.trim() || null,
-      conversionFactor: formData.get("conversionFactor")
-        ? parseFloat(formData.get("conversionFactor") as string)
-        : 1,
+      conversionFactor:
+        parseFloat(formData.get("conversionFactor") as string) || 1,
       isActive: true,
     };
 
@@ -237,106 +245,73 @@ export default function Units() {
     }
   };
 
-  const filteredUnits = React.useMemo(() => {
-    console.log("Filtering units:", units);
-    console.log("Units length:", units?.length);
-    
-    // Ensure we have a valid array
-    let unitsArray = [];
-    if (Array.isArray(units)) {
-      unitsArray = units;
-    } else if (units && typeof units === 'object' && Array.isArray(units.data)) {
-      unitsArray = units.data;
-    }
-    
-    console.log("Units array for filtering:", unitsArray);
-    
-    if (!searchQuery.trim()) {
-      return unitsArray;
-    }
-    return unitsArray.filter(
-      (unit: any) =>
-        unit.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        unit.abbreviation?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        unit.type?.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-  }, [units, searchQuery]);
-
-  const { sortedData, sortConfig, requestSort } = useTableSort(
-    filteredUnits,
-    "name",
-  );
-
+  // Badge type helper
   const getTypeBadge = (type: string) => {
-    switch (type.toLowerCase()) {
+    switch (type?.toLowerCase()) {
       case "weight":
         return {
-          variant: "default" as const,
+          variant: "default",
           text: "Weight",
           color: "bg-blue-100 text-blue-800",
         };
       case "volume":
         return {
-          variant: "secondary" as const,
+          variant: "secondary",
           text: "Volume",
           color: "bg-green-100 text-green-800",
         };
       case "count":
         return {
-          variant: "outline" as const,
+          variant: "outline",
           text: "Count",
           color: "bg-gray-100 text-gray-800",
         };
+      case "length":
+        return {
+          variant: "outline",
+          text: "Length",
+          color: "bg-purple-100 text-purple-800",
+        };
+      case "area":
+        return {
+          variant: "outline",
+          text: "Area",
+          color: "bg-yellow-100 text-yellow-800",
+        };
+      case "temperature":
+        return {
+          variant: "outline",
+          text: "Temperature",
+          color: "bg-red-100 text-red-800",
+        };
       default:
         return {
-          variant: "outline" as const,
-          text: type,
+          variant: "outline",
+          text: type || "Unknown",
           color: "bg-gray-100 text-gray-800",
         };
     }
   };
 
-  React.useEffect(() => {
-    console.log("Units data:", units);
-    console.log("Filtered units:", filteredUnits);
-    console.log("Is loading:", isLoading);
-    console.log("Error:", error);
-  }, [units, filteredUnits, isLoading, error]);
-
+  // Unauthorized redirect
   if (error && isUnauthorizedError(error)) {
     toast({
-      title: "Unauthorized",
-      description: "You are logged out. Logging in again...",
+      title: "Session Expired",
+      description: "Redirecting to login...",
       variant: "destructive",
     });
-    setTimeout(() => {
-      window.location.href = "/api/login";
-    }, 500);
+    setTimeout(() => (window.location.href = "/api/login"), 500);
     return null;
-  }
-
-  if (error && !isUnauthorizedError(error)) {
-    return (
-      <div className="p-4 sm:p-6 space-y-6">
-        <div className="text-center py-8">
-          <h3 className="text-lg font-semibold text-red-600 mb-2">
-            Error Loading Units
-          </h3>
-          <p className="text-muted-foreground mb-4">
-            {error instanceof Error ? error.message : JSON.stringify(error)}
-          </p>
-          <Button onClick={() => refetchUnits()}>Try Again</Button>
-        </div>
-      </div>
-    );
   }
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
+          <h2 className="text-xl font-semibold">Units of Measurement</h2>
           <p className="text-gray-600">
-            Manage units of measurement for your inventory
+            Manage units for inventory and products
           </p>
         </div>
         <Dialog
@@ -345,10 +320,6 @@ export default function Units() {
             setIsDialogOpen(open);
             if (!open) {
               setEditingUnit(null);
-              const form = document.querySelector("form") as HTMLFormElement;
-              if (form) {
-                form.reset();
-              }
             }
           }}
         >
@@ -366,24 +337,21 @@ export default function Units() {
               <DialogTitle>
                 {editingUnit ? "Edit Unit" : "Add New Unit"}
               </DialogTitle>
-              <DialogDescription>
-                Enter the unit details below
-              </DialogDescription>
+              <DialogDescription>Enter unit details below</DialogDescription>
             </DialogHeader>
             <form
               onSubmit={handleSave}
-              className="space-y-4"
               key={editingUnit?.id || "new"}
+              className="space-y-4"
             >
               <div>
                 <Label htmlFor="name">Unit Name</Label>
                 <Input
                   id="name"
                   name="name"
-                  placeholder="e.g., Kilogram, Liter, Pieces"
+                  placeholder="e.g., Kilogram, Liter"
                   defaultValue={editingUnit?.name || ""}
                   required
-                  autoComplete="off"
                 />
               </div>
               <div>
@@ -391,10 +359,9 @@ export default function Units() {
                 <Input
                   id="abbreviation"
                   name="abbreviation"
-                  placeholder="e.g., kg, ltr, pcs"
+                  placeholder="e.g., kg, ltr"
                   defaultValue={editingUnit?.abbreviation || ""}
                   required
-                  autoComplete="off"
                 />
               </div>
               <div>
@@ -405,7 +372,7 @@ export default function Units() {
                   required
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select unit type" />
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="weight">Weight</SelectItem>
@@ -432,16 +399,20 @@ export default function Units() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Search */}
       <div className="flex items-center space-x-2">
         <div className="flex-1">
           <SearchBar
-            placeholder="Search units..."
+            placeholder="Search units by name, abbr, or type..."
             value={searchQuery}
             onChange={setSearchQuery}
             className="w-full"
           />
         </div>
       </div>
+
+      {/* Table */}
       <Card>
         <CardContent>
           {isLoading ? (
@@ -449,8 +420,18 @@ export default function Units() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               <p className="text-muted-foreground mt-2">Loading units...</p>
             </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <h3 className="text-lg font-semibold text-red-600 mb-2">
+                Error Loading Units
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {error instanceof Error ? error.message : "Unknown error"}
+              </p>
+              <Button onClick={refetchUnits}>Retry</Button>
+            </div>
           ) : (
-            <div className="space-y-4">
+            <>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -486,104 +467,98 @@ export default function Units() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedData.map((unit: any) => {
-                    const typeBadge = getTypeBadge(unit.type);
-                    return (
-                      <TableRow key={unit.id}>
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                              <Ruler className="h-4 w-4 text-primary" />
+                  {sortedData.length > 0 ? (
+                    sortedData.map((unit: any) => {
+                      const typeBadge = getTypeBadge(unit.type);
+                      return (
+                        <TableRow key={unit.id}>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                                <Ruler className="h-4 w-4 text-primary" />
+                              </div>
+                              <div className="font-medium">{unit.name}</div>
                             </div>
-                            <div className="font-medium">{unit.name}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <code className="px-2 py-1 bg-gray-100 rounded text-sm">
-                            {unit.abbreviation}
-                          </code>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={typeBadge.variant}>
-                            {typeBadge.text}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={unit.isActive ? "default" : "secondary"}
-                          >
-                            {unit.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingUnit(unit);
-                                setIsDialogOpen(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 focus:outline-none"
-                              title="Edit"
+                          </TableCell>
+                          <TableCell>
+                            <code className="px-2 py-1 bg-gray-100 rounded text-sm">
+                              {unit.abbreviation}
+                            </code>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={typeBadge.variant}>
+                              {typeBadge.text}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={unit.isActive ? "default" : "secondary"}
                             >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant={
-                                unit.isActive ? "destructive" : "default"
-                              }
-                              size="sm"
-                              onClick={() =>
-                                toggleActiveMutation.mutate({
-                                  id: unit.id,
-                                  isActive: !unit.isActive,
-                                })
-                              }
-                            >
-                              {unit.isActive ? "Deactivate" : "Activate"}
-                            </Button>
-                            <DeleteConfirmationDialog
-                              trigger={
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-800 focus:outline-none"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              }
-                              title="Delete Unit"
-                              itemName={unit.name}
-                              onConfirm={() => deleteMutation.mutate(unit.id)}
-                              isLoading={deleteMutation.isPending}
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                              {unit.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingUnit(unit);
+                                  setIsDialogOpen(true);
+                                }}
+                                title="Edit"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant={
+                                  unit.isActive ? "destructive" : "default"
+                                }
+                                size="sm"
+                                onClick={() =>
+                                  toggleActiveMutation.mutate({
+                                    id: unit.id,
+                                    isActive: !unit.isActive,
+                                  })
+                                }
+                              >
+                                {unit.isActive ? "Deactivate" : "Activate"}
+                              </Button>
+                              <DeleteConfirmationDialog
+                                trigger={
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                }
+                                title="Delete Unit"
+                                itemName={unit.name}
+                                onConfirm={() => deleteMutation.mutate(unit.id)}
+                                isLoading={deleteMutation.isPending}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center">
+                        <Ruler className="h-12 w-12 text-muted-foreground mx-auto mb-2 opacity-50" />
+                        <p className="text-muted-foreground">
+                          {searchQuery
+                            ? "No matching units found. Try a different search."
+                            : "No units available. Add your first unit."}
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
-              {filteredUnits.length === 0 && (
-                <div className="text-center py-8">
-                  <Ruler className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                    No units found
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchQuery
-                      ? "Try adjusting your search criteria"
-                      : "Start by adding your first measuring unit"}
-                  </p>
-                  <Button onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Unit
-                  </Button>
-                </div>
-              )}
-            </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -646,5 +646,5 @@ export const insertAssetSchema = createInsertSchema(assets).omit({
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   id: true,
-  createdAt: true,
+  timestamp: true,
 });
