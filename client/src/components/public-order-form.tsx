@@ -76,6 +76,22 @@ const simulateFileUpload = async (file: File): Promise<{ name: string; size: num
 // Function to handle queuing and retrying submissions
 const submitOrderWithRetry = async (orderData: any, maxRetries: number = 3) => {
   let retries = 0;
+  
+  // Add enhanced security and tracking data
+  const submissionData = {
+    ...orderData,
+    referenceId: `PUB-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+    formVersion: "2.0",
+    submissionTimestamp: new Date().toISOString(),
+    submissionStart: Date.now(),
+    source: "public_order_form",
+    clientInfo: {
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }
+  };
+
   while (retries < maxRetries) {
     try {
       const response = await fetch("/api/public/orders", {
@@ -84,7 +100,7 @@ const submitOrderWithRetry = async (orderData: any, maxRetries: number = 3) => {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
-        body: JSON.stringify(orderData),
+        body: JSON.stringify(submissionData),
       });
 
       const responseData = await response.json();
@@ -96,10 +112,11 @@ const submitOrderWithRetry = async (orderData: any, maxRetries: number = 3) => {
       retries++;
       console.error(`Submission attempt ${retries} failed:`, error.message);
       if (retries >= maxRetries) {
-        throw error; // Throw the last error if all retries fail
+        throw error;
       }
-      // Wait before retrying
-      await new Promise(resolve => setTimeout(resolve, 2000 * retries)); // Exponential backoff
+      // Exponential backoff with jitter
+      const delay = Math.min(1000 * Math.pow(2, retries) + Math.random() * 1000, 10000);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 };
@@ -223,10 +240,11 @@ function CustomerInfoSection() {
   };
 
   const onSubmit = (data: OrderFormData) => {
+    // Comprehensive validation
     if (orderItems.length === 0) {
       toast({
-        title: "No Items Selected",
-        description: "Please add at least one item to your order.",
+        title: "❌ No Items Selected",
+        description: "Please add at least one item to your order to proceed.",
         variant: "destructive",
       });
       return;
@@ -238,22 +256,32 @@ function CustomerInfoSection() {
 
     if (deliveryDate < minDeliveryDate) {
       toast({
-        title: "Invalid Delivery Date",
-        description: "Delivery date must be at least 24 hours from now.",
+        title: "⏰ Invalid Delivery Date",
+        description: "Delivery date must be at least 24 hours from now to ensure proper preparation time.",
         variant: "destructive",
       });
       return;
     }
 
-    // The Zod schema already handles validation for required fields, but we can add custom checks here if needed.
-    // For example, ensuring all required fields from the form are present.
-    const validationErrors = orderFormSchema.safeParse(data);
-    if (!validationErrors.success) {
-      // Zod handles errors, but we can show a general message if needed
-      console.error("Zod validation failed:", validationErrors.error.errors);
+    // Enhanced validation
+    const validationResult = orderFormSchema.safeParse(data);
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
       toast({
-        title: "Validation Error",
-        description: "Please check all fields for errors.",
+        title: "📋 Please Check Your Information",
+        description: firstError.message,
+        variant: "destructive",
+      });
+      console.error("Validation errors:", validationResult.error.errors);
+      return;
+    }
+
+    // Validate total amount
+    const calculatedTotal = orderItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    if (calculatedTotal <= 0) {
+      toast({
+        title: "💰 Invalid Order Total",
+        description: "Order total must be greater than zero.",
         variant: "destructive",
       });
       return;

@@ -71,8 +71,9 @@ export async function setupAuth(app: Express) {
     // Configure local strategy
     passport.use(new LocalStrategy({
       usernameField: 'email',
-      passwordField: 'password'
-    }, async (email, password, done) => {
+      passwordField: 'password',
+      passReqToCallback: true
+    }, async (req, email, password, done) => {
       try {
         console.log('🔍 Attempting login for email:', email);
 
@@ -124,7 +125,7 @@ export async function setupAuth(app: Express) {
         if (!user.password) {
           console.log('❌ User has no password set:', email);
           // Log failed login attempt
-          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
+          const clientIPAddr = req.headers['x-forwarded-for']?.split(',')[0] || 
                           req.headers['x-real-ip'] || 
                           req.connection.remoteAddress || 
                           req.socket.remoteAddress ||
@@ -169,7 +170,7 @@ export async function setupAuth(app: Express) {
         if (!isValidPassword) {
           console.log('❌ Invalid password for user:', email);
           // Log failed login attempt
-          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
+          const clientIPAddr = req.headers['x-forwarded-for']?.split(',')[0] || 
                           req.headers['x-real-ip'] || 
                           req.connection.remoteAddress || 
                           req.socket.remoteAddress ||

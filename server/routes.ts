@@ -7,8 +7,16 @@ import { storage } from "./lib/storage";
 import { setupAuth, isAuthenticated } from "./localAuth";
 
 // Enhanced rate limiting and sanitization utilities
-import { rateLimitStore, rateLimitKey, submissionStart, submissionTimestamp, clientIP, userAgent, referenceId, formVersion, attachments } from "./rateLimiter"; // Assuming these are defined in rateLimiter
-import { sanitizeInput } from "./utils"; // Assuming sanitizeInput is in utils
+import { rateLimitStore, rateLimitKey, submissionStart, submissionTimestamp, clientIP, userAgent, referenceId, formVersion, attachments, checkRateLimit } from "./rateLimiter";
+
+// Input sanitization utility
+function sanitizeInput(input: string): string {
+  if (!input) return '';
+  return input.replace(/<script[^>]*>.*?<\/script>/gi, '')
+              .replace(/<[^>]*>/g, '')
+              .trim()
+              .substring(0, 1000); // Limit length
+}
 
 // Define authenticated request interface
 interface AuthenticatedRequest extends Request {
@@ -2347,25 +2355,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deliveryAddress,
         specialInstructions,
         items,
-        totalAmount, // Added for validation
+        totalAmount,
         referenceId,
         formVersion,
-        attachments,
+        attachments = [],
         source,
         submissionTimestamp,
-        submissionStart
+        submissionStart,
+        clientInfo
       } = req.body;
 
-      // Basic rate limiting check (implement actual rate limiting logic)
-      const rateLimitKey = `public_order_${req.ip}`;
-      const lastSubmissionTime = rateLimitStore.get(rateLimitKey);
-      const now = Date.now();
-      const submissionInterval = 5000; // 5 seconds
+      // Get client IP for rate limiting and logging
+      const clientIPAddr = clientIP(req);
+      const userAgentStr = userAgent(req);
 
-      if (lastSubmissionTime && (now - lastSubmissionTime < submissionInterval)) {
+      // Enhanced rate limiting
+      const rateLimitKeyStr = `public_order_${clientIPAddr}`;
+      if (!checkRateLimit(rateLimitKeyStr, 60000, 3)) { // 3 requests per minute
+        console.warn('🚨 Rate limit exceeded for public order:', {
+          ip: clientIPAddr,
+          userAgent: userAgentStr,
+          timestamp: new Date().toISOString()
+        });
+
         return res.status(429).json({
           success: false,
-          message: "Too many submissions. Please try again later.",
+          message: "Too many order submissions. Please wait a minute before trying again.",
+          field: "rate_limit"
         });
       }
 

@@ -40,12 +40,36 @@ import {
   usePagination,
 } from "@/components/ui/pagination";
 
+interface Order {
+  id: number;
+  orderNumber: string;
+  customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  orderDate: string;
+  dueDate?: string;
+  totalAmount: string;
+  status: string;
+  notes?: string;
+  items?: OrderItem[];
+}
+
+interface OrderItem {
+  id: number;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+  totalPrice: string;
+  unit?: string;
+  unitAbbreviation?: string;
+}
+
 export default function Orders() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showOrderForm, setShowOrderForm] = useState(false);
   const { formatCurrency } = useCurrency();
-  const [selectedOrder, setSelectedOrder] = useState<any>(null); // Ensure 'any' is replaced with a proper Order type
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const { toast } = useToast();
 
   // --- Data Fetching ---

@@ -26,16 +26,42 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 async function startServer() {
   try {
-    console.log("🚀 Starting server...");
+    console.log("🚀 Starting bakery management server...");
+    
+    let dbConnected = false;
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    // Initialize database (with graceful fallback)
-    await initializeDatabase();
+    // Retry database connection
+    while (!dbConnected && retryCount < maxRetries) {
+      try {
+        await initializeDatabase();
+        dbConnected = true;
+        console.log("✅ Database connected successfully");
+      } catch (error) {
+        retryCount++;
+        console.error(`❌ Database connection attempt ${retryCount} failed:`, error.message);
+        
+        if (retryCount < maxRetries) {
+          console.log(`🔄 Retrying database connection in 5 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      }
+    }
 
-    // Initialize default units (gracefully handle DB failures)
-    try {
-      await initializeUnits();
-    } catch (error) {
-      console.warn("⚠️ Unit initialization failed, continuing without units:", error.message);
+    if (!dbConnected) {
+      console.error("❌ Failed to connect to database after maximum retries");
+      console.error("❌ Server starting in limited mode without database features");
+    }
+
+    // Initialize default units only if database is connected
+    if (dbConnected) {
+      try {
+        await initializeUnits();
+        console.log("✅ Units initialized successfully");
+      } catch (error) {
+        console.warn("⚠️ Unit initialization failed, continuing without default units:", error.message);
+      }
     }
 
     // Setup authentication
