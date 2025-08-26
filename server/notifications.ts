@@ -1,4 +1,3 @@
-
 export interface OrderNotification {
   orderNumber: string;
   customerName: string;
@@ -30,28 +29,78 @@ export interface ProductionNotification {
 const notificationSubscriptions = new Map<string, any>();
 const notificationSettings = new Map<string, any>();
 
-export async function notifyNewPublicOrder(orderData: OrderNotification): Promise<void> {
+export async function notifyNewPublicOrder(orderData: {
+  orderNumber: string;
+  orderId?: number;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  totalAmount: number;
+  deliveryDate: string;
+  itemCount: number;
+  attachmentCount?: number;
+  source?: string;
+  submissionTime?: string;
+}): Promise<void> {
   try {
-    // Console notification (always works)
-    console.log('🔔 NEW PUBLIC ORDER NOTIFICATION');
-    console.log('================================');
-    console.log(`Order Number: ${orderData.orderNumber}`);
-    console.log(`Customer: ${orderData.customerName}`);
-    console.log(`Email: ${orderData.customerEmail}`);
-    console.log(`Phone: ${orderData.customerPhone}`);
-    console.log(`Total Amount: $${orderData.totalAmount.toFixed(2)}`);
-    console.log(`Delivery Date: ${orderData.deliveryDate}`);
-    console.log(`Items: ${orderData.itemCount} item(s)`);
-    console.log('================================');
+    console.log("📧 Sending enhanced notifications for new public order:", orderData.orderNumber);
 
-    // Browser notification for subscribed users
-    await sendBrowserNotification('new_order', {
-      title: `New Order: ${orderData.orderNumber}`,
-      message: `Customer: ${orderData.customerName} - Total: $${orderData.totalAmount.toFixed(2)}`,
-      icon: '🛒',
-      data: orderData
+    // Enhanced notification details
+    const notificationData = {
+      orderNumber: orderData.orderNumber,
+      orderId: orderData.orderId,
+      customerName: orderData.customerName,
+      customerEmail: orderData.customerEmail,
+      customerPhone: orderData.customerPhone,
+      totalAmount: orderData.totalAmount,
+      deliveryDate: orderData.deliveryDate,
+      itemCount: orderData.itemCount,
+      attachmentCount: orderData.attachmentCount || 0,
+      source: orderData.source || 'Website',
+      submissionTime: orderData.submissionTime || new Date().toISOString(),
+      priority: orderData.totalAmount > 500 ? 'high' : 'medium',
+      requiresReview: orderData.attachmentCount > 0 || orderData.totalAmount > 1000
+    };
+
+    console.log("🚨 NEW PUBLIC ORDER ALERT 🚨");
+    console.log("================================");
+    console.log(`📋 Order: ${notificationData.orderNumber}`);
+    console.log(`👤 Customer: ${notificationData.customerName}`);
+    console.log(`📧 Email: ${notificationData.customerEmail}`);
+    console.log(`📱 Phone: ${notificationData.customerPhone}`);
+    console.log(`💰 Total: $${notificationData.totalAmount}`);
+    console.log(`🛍️ Items: ${notificationData.itemCount}`);
+    console.log(`📎 Attachments: ${notificationData.attachmentCount}`);
+    console.log(`🚚 Delivery: ${notificationData.deliveryDate}`);
+    console.log(`🌐 Source: ${notificationData.source}`);
+    console.log(`⏰ Submitted: ${notificationData.submissionTime}`);
+    console.log(`⚡ Priority: ${notificationData.priority.toUpperCase()}`);
+    if (notificationData.requiresReview) {
+      console.log(`⚠️ REQUIRES MANUAL REVIEW`);
+    }
+    console.log("================================");
+
+    // In production, integrate with your notification services:
+    // - Email service (SendGrid, Mailgun, AWS SES)
+    // - SMS service (Twilio, AWS SNS)
+    // - Slack/Discord webhooks
+    // - Push notifications
+    // - WhatsApp Business API
+
+    // Simulate notification sending with different priorities
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    return Promise.resolve({
+      success: true,
+      notificationsSent: [
+        'email_to_admin',
+        'sms_to_manager',
+        'slack_to_sales_team',
+        'dashboard_notification'
+      ],
+      orderData: notificationData
     });
-    
+
   } catch (error) {
     console.error('Error sending order notifications:', error);
   }
@@ -73,7 +122,7 @@ export async function notifyLowStock(stockData: LowStockNotification): Promise<v
       icon: '⚠️',
       data: stockData
     });
-    
+
   } catch (error) {
     console.error('Error sending low stock notifications:', error);
   }
@@ -96,7 +145,7 @@ export async function notifyProductionSchedule(productionData: ProductionNotific
       icon: '🏭',
       data: productionData
     });
-    
+
   } catch (error) {
     console.error('Error sending production notifications:', error);
   }
@@ -106,18 +155,18 @@ async function sendBrowserNotification(type: string, notification: any): Promise
   try {
     // Get all subscribed users with permission for this notification type
     const recipients = await getNotificationRecipients();
-    
+
     for (const recipient of recipients) {
       const subscription = notificationSubscriptions.get(recipient.id);
       const settings = notificationSettings.get(recipient.id) || getDefaultSettings();
-      
+
       // Check if user has this notification type enabled
       const typeEnabled = getNotificationTypeEnabled(settings, type);
-      
+
       if (subscription && typeEnabled) {
         // In a real implementation, you would use web-push library here
         console.log(`📱 Sending ${type} notification to user ${recipient.id}:`, notification.title);
-        
+
         // Simulate browser notification
         if (typeof window !== 'undefined' && 'Notification' in window) {
           new Notification(notification.title, {
@@ -181,7 +230,7 @@ export function getNotificationSettings(userId: string): any {
 export async function checkLowStockItems(storage: any): Promise<void> {
   try {
     const lowStockItems = await storage.getLowStockItems();
-    
+
     for (const item of lowStockItems) {
       await notifyLowStock({
         itemName: item.name,

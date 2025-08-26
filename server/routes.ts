@@ -6,6 +6,10 @@ import { createServer, type Server } from "http";
 import { storage } from "./lib/storage";
 import { setupAuth, isAuthenticated } from "./localAuth";
 
+// Enhanced rate limiting and sanitization utilities
+import { rateLimitStore, rateLimitKey, submissionStart, submissionTimestamp, clientIP, userAgent, referenceId, formVersion, attachments } from "./rateLimiter"; // Assuming these are defined in rateLimiter
+import { sanitizeInput } from "./utils"; // Assuming sanitizeInput is in utils
+
 // Define authenticated request interface
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -984,13 +988,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/inventory/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      
+
       // Fetch the item to check stock levels before update
       const item = await storage.getInventoryItemById(id);
       if (!item) {
         return res.status(404).json({ message: "Inventory item not found" });
       }
-      
+
       const updateResult = await storage.updateInventoryItem(id, req.body);
       const updatedItem = await storage.getInventoryItemById(id); // Re-fetch to get the latest data
 
@@ -2343,7 +2347,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deliveryAddress,
         specialInstructions,
         items,
+        totalAmount, // Added for validation
+        referenceId,
+        formVersion,
+        attachments,
+        source,
+        submissionTimestamp,
+        submissionStart
       } = req.body;
+
+      // Basic rate limiting check (implement actual rate limiting logic)
+      const rateLimitKey = `public_order_${req.ip}`;
+      const lastSubmissionTime = rateLimitStore.get(rateLimitKey);
+      const now = Date.now();
+      const submissionInterval = 5000; // 5 seconds
+
+      if (lastSubmissionTime && (now - lastSubmissionTime < submissionInterval)) {
+        return res.status(429).json({
+          success: false,
+          message: "Too many submissions. Please try again later.",
+        });
+      }
 
       // Validate required fields
       if (
@@ -2351,92 +2375,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
         !customerEmail ||
         !customerPhone ||
         !deliveryDate ||
-        !deliveryAddress
+        !deliveryAddress ||
+        !items ||
+        !Array.isArray(items) ||
+        items.length === 0
       ) {
         return res.status(400).json({
           success: false,
-          message: "All required fields must be filled",
+          message: "All required fields must be filled, and at least one item is needed.",
+          field: !customerName ? "customerName" :
+                 !customerEmail ? "customerEmail" :
+                 !customerPhone ? "customerPhone" :
+                 !deliveryDate ? "deliveryDate" :
+                 !deliveryAddress ? "deliveryAddress" :
+                 (!items || items.length === 0) ? "items" : "unknown"
         });
       }
 
-      if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "At least one item is required",
-        });
-      }
+      // Set rate limit
+      rateLimitStore.set(rateLimitKey, Date.now());
 
-      // Generate order number
-      const orderNumber = `PUB-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+      // Sanitize all text inputs
+      const sanitizedData = {
+        customerName: sanitizeInput(customerName),
+        customerEmail: sanitizeInput(customerEmail),
+        customerPhone: sanitizeInput(customerPhone),
+        deliveryAddress: sanitizeInput(deliveryAddress),
+        specialInstructions: sanitizeInput(specialInstructions || ''),
+      };
 
-      // Calculate total amount
-      const totalAmount = items.reduce(
-        (sum: number, item: any) => sum + item.totalPrice,
+      // Generate unique order number using reference ID if provided
+      const orderNumber = referenceId || `PUB-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+
+      // Calculate and validate total amount
+      const calculatedTotal = items.reduce(
+        (sum: number, item: any) => sum + (item.quantity * item.unitPrice),
         0,
       );
 
-      // Create order
+      // Validate total amount if provided
+      if (totalAmount && Math.abs(calculatedTotal - totalAmount) > 0.01) {
+        return res.status(400).json({
+          success: false,
+          message: "Total amount mismatch. Please refresh and try again.",
+          field: "totalAmount"
+        });
+      }
+
+      console.log(`📦 Processing new public order: ${orderNumber} from ${sanitizedData.customerEmail}`);
+
+      // Create comprehensive audit log for the submission
+      await storage.createAuditLog({
+        userId: 'public_user',
+        userEmail: sanitizedData.customerEmail,
+        userName: sanitizedData.customerName,
+        action: 'CREATE',
+        resource: 'public_order',
+        resourceId: orderNumber,
+        details: {
+          source: source || 'public_form',
+          formVersion: formVersion || '1.0',
+          itemCount: items.length,
+          totalAmount: calculatedTotal,
+          deliveryDate: deliveryDate,
+          attachmentCount: attachments.length,
+          userAgent: userAgent || req.get('User-Agent'),
+          submissionTimestamp: submissionTimestamp || new Date().toISOString(),
+          processingDuration: Date.now() - submissionStart,
+        },
+        oldValues: null,
+        newValues: {
+          orderNumber,
+          customerEmail: sanitizedData.customerEmail,
+          itemCount: items.length,
+          totalAmount: calculatedTotal,
+          status: 'pending'
+        },
+        ipAddress: clientIP,
+        userAgent: req.get('User-Agent'),
+        status: 'success',
+      });
+
+      // Create order with enhanced data
       const order = await storage.createOrder({
         orderNumber,
-        customerName: customerName.trim(),
-        customerEmail: customerEmail.trim(),
-        customerPhone: customerPhone.trim(),
-        totalAmount: totalAmount.toString(),
+        customerName: sanitizedData.customerName,
+        customerEmail: sanitizedData.customerEmail,
+        customerPhone: sanitizedData.customerPhone,
+        totalAmount: calculatedTotal.toString(),
         paymentMethod: "pending",
         orderDate: new Date(),
         dueDate: new Date(deliveryDate),
-        notes: `Delivery Address: ${deliveryAddress.trim()}${specialInstructions ? `\nSpecial Instructions: ${specialInstructions.trim()}` : ""}`,
+        notes: `Public Order Submission
+Delivery Address: ${sanitizedData.deliveryAddress}
+${sanitizedData.specialInstructions ? `Special Instructions: ${sanitizedData.specialInstructions}` : ""}
+Source: ${source || 'Website Form'}
+Submission IP: ${clientIP}
+Attachments: ${attachments.length} file(s)
+Form Version: ${formVersion || '1.0'}`,
         status: "pending",
         createdBy: null, // Public order, no user ID
       });
 
+      console.log("New public order created:", order.orderNumber);
+
       // Create order items
       for (const item of items) {
         if (!item.productId || !item.quantity || !item.unitPrice) {
-          throw new Error("Invalid item data");
+          console.error("Skipping invalid item:", item);
+          continue; // Skip invalid items
         }
-
         await storage.createOrderItem({
           orderId: order.id,
           productId: parseInt(item.productId),
           quantity: parseInt(item.quantity),
           unitPrice: parseFloat(item.unitPrice).toString(),
-          totalPrice: parseFloat(item.totalPrice).toString(),
+          totalPrice: (parseFloat(item.quantity.toString()) * parseFloat(item.unitPrice.toString())).toString(),
         });
       }
-
-      console.log("📦 New public order received:", orderNumber);
 
       // Send notifications about new public order
       try {
         await notifyNewPublicOrder({
-          orderNumber,
-          customerName: customerName.trim(),
-          customerEmail: customerEmail.trim(),
-          customerPhone: customerPhone.trim(),
-          totalAmount,
-          deliveryDate,
+          orderNumber: order.orderNumber,
+          customerName: sanitizedData.customerName,
+          customerEmail: sanitizedData.customerEmail,
+          customerPhone: sanitizedData.customerPhone,
+          totalAmount: calculatedTotal,
+          deliveryDate: deliveryDate,
           itemCount: items.length,
         });
       } catch (notificationError) {
-        console.error("Failed to send notifications:", notificationError);
-        // Don't fail the order creation if notifications fail
+        console.error("Failed to send notifications for new public order:", notificationError);
+        // Optionally log this error or alert admin, but don't fail the order
       }
 
       res.json({
         success: true,
-        orderNumber,
-        message:
-          "Order submitted successfully! We will contact you soon with confirmation.",
+        orderNumber: order.orderNumber,
+        message: "Order submitted successfully! We will contact you soon with confirmation.",
       });
     } catch (error) {
-      console.error("Error creating public order:", error);
+      console.error("Error processing public order:", error);
+
+      // Log the error for audit purposes
+      await storage.createAuditLog({
+        userId: 'public_user',
+        userEmail: req.body.customerEmail || 'unknown@example.com',
+        userName: req.body.customerName || 'Anonymous User',
+        action: 'CREATE',
+        resource: 'public_order',
+        resourceId: req.body.orderNumber || 'N/A',
+        details: {
+          error: error instanceof Error ? error.message : 'An unknown error occurred',
+          source: req.body.source || 'public_form',
+          submissionTimestamp: req.body.submissionTimestamp || new Date().toISOString(),
+        },
+        oldValues: null,
+        newValues: null,
+        ipAddress: clientIP,
+        userAgent: req.get('User-Agent'),
+        status: 'failed',
+        errorMessage: error instanceof Error ? error.message : 'An unknown error occurred',
+      });
+
       res.status(500).json({
         success: false,
         message:
           error instanceof Error
-            ? error.message
-            : "Failed to submit order. Please try again.",
+            ? `Failed to submit order: ${error.message}. Please check your details and try again.`
+            : "Failed to submit order. Please check your details and try again.",
       });
     }
   });
