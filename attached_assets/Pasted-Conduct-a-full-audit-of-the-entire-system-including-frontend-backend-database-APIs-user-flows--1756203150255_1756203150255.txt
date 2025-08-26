@@ -1,0 +1,33 @@
+Conduct a full audit of the entire system — including frontend, backend, database, APIs, user flows, and third-party integrations — to identify and resolve all existing bugs, performance bottlenecks, security vulnerabilities, and usability issues.
+
+Scope of Review:
+Functionality 
+Test all core features (e.g., user registration, login, form submissions, order processing, notifications).
+Verify data flows correctly between components (e.g., public form → internal order system).
+Ensure all buttons, links, forms, and modals work as intended.
+User Experience (UX) & UI Consistency 
+Check for visual inconsistencies (typography, spacing, alignment, color usage).
+Confirm responsive design works across devices (mobile, tablet, desktop).
+Fix broken layouts, overlapping elements, or missing content.
+Performance 
+Identify slow-loading pages, large assets, or inefficient queries.
+Optimize front-end and back-end performance (e.g., lazy loading, caching, code splitting).
+Security 
+Scan for common vulnerabilities (XSS, CSRF, SQL injection, insecure authentication).
+Ensure form inputs are sanitized and validated.
+Confirm secure handling of user data and compliance with privacy standards.
+Data Integrity & Logging 
+Verify that all user actions (e.g., form submissions, edits, deletions) are logged appropriately.
+Ensure no data loss occurs during transfers (e.g., from public form to internal system).
+Error Handling 
+Improve user-facing error messages (clear, helpful, not technical).
+Ensure proper logging of server/client errors for debugging.
+Browser & Device Compatibility 
+Test across major browsers (Chrome, Firefox, Safari, Edge) and fix rendering issues.
+Deliverables:
+
+A detailed report listing all identified issues (categorized by severity: critical, high, medium, low).
+Fix all critical and high-priority bugs.
+Refactor or remove outdated, redundant, or unused code.
+Document any system changes made.
+Goal: Ensure the system is stable, secure, fast, and user-friendly — delivering a seamless and professional experience across all pages and workflows.
