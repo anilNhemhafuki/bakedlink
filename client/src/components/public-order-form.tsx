@@ -35,7 +35,7 @@ const orderFormSchema = z.object({
   deliveryAddress: z
     .string()
     .min(10, "Please provide complete delivery address"),
-  specialInstructions: z.string().optional().max(1000, "Instructions cannot exceed 1000 characters"),
+  specialInstructions: z.string().max(1000, "Instructions cannot exceed 1000 characters").optional(),
   items: z
     .array(
       z.object({

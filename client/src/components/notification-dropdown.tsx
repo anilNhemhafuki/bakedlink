@@ -25,7 +25,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { trackActivity } from "@/lib/activityTracker";
+import { activityTracker } from "@/lib/activityTracker";
 
 interface Notification {
   id: string;
@@ -152,10 +152,11 @@ export default function NotificationDropdown() {
   });
 
   // Calculate unread count
-  const unreadCount = notifications.filter((n: Notification) => !n.read).length;
+  const notificationData = (notifications as Notification[]) || [];
+  const unreadCount = notificationData.filter((n: Notification) => !n.read).length;
 
   // Sort notifications by priority and timestamp
-  const sortedNotifications = [...notifications].sort((a: Notification, b: Notification) => {
+  const sortedNotifications = [...notificationData].sort((a: Notification, b: Notification) => {
     const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
     
     // First sort by priority
@@ -198,8 +199,7 @@ export default function NotificationDropdown() {
     }
 
     // Track activity
-    trackActivity("CLICK", "notification", {
-      notificationId: notification.id,
+    activityTracker.track("CLICK", "notification", notification.id, {
       type: notification.type,
       priority: notification.priority,
     });
@@ -223,7 +223,7 @@ export default function NotificationDropdown() {
   };
 
   // Critical notifications count for extra highlighting
-  const criticalCount = notifications.filter(
+  const criticalCount = notificationData.filter(
     (n: Notification) => !n.read && n.priority === "critical"
   ).length;
 

@@ -216,7 +216,7 @@ class ActivityTracker {
 
     if (formData instanceof FormData) {
       const result: any = {};
-      for (const [key, value] of formData.entries()) {
+      for (const [key, value] of Array.from(formData.entries())) {
         result[key] = this.isSensitiveField(key) ? '[REDACTED]' : value;
       }
       return result;
