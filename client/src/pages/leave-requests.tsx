@@ -63,7 +63,7 @@ export default function LeaveRequests() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("/api/leave-requests", "POST", data);
+      await apiRequest("POST", "/api/leave-requests", data);
     },
     onSuccess: () => {
       toast({
@@ -85,7 +85,7 @@ export default function LeaveRequests() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest(`/api/leave-requests/${editingRequest.id}`, "PUT", data);
+      await apiRequest("PUT", `/api/leave-requests/${editingRequest.id}`, data);
     },
     onSuccess: () => {
       toast({
@@ -108,7 +108,7 @@ export default function LeaveRequests() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest(`/api/leave-requests/${id}`, "DELETE");
+      await apiRequest("DELETE", `/api/leave-requests/${id}`);
     },
     onSuccess: () => {
       toast({

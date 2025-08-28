@@ -101,7 +101,7 @@ export default function StaffDirectory() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest(`/api/staff/${editingStaff?.id}`, "PUT", data);
+      await apiRequest("PUT", `/api/staff/${editingStaff?.id}`, data);
     },
     onSuccess: () => {
       toast({
@@ -123,7 +123,7 @@ export default function StaffDirectory() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest(`/api/staff/${id}`, "DELETE");
+      await apiRequest("DELETE", `/api/staff/${id}`);
     },
     onSuccess: () => {
       toast({
