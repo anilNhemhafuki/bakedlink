@@ -59,6 +59,7 @@ import {
   Download,
   Upload,
 } from "lucide-react";
+import { useUnits } from "@/hooks/useUnits";
 
 export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -113,33 +114,7 @@ export default function Products() {
   });
 
   // Fetch units
-  const { data: units = [] } = useQuery({
-    queryKey: ["units"],
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", "/api/units");
-        if (response?.success && Array.isArray(response.data)) {
-          return response.data;
-        }
-        if (Array.isArray(response)) {
-          return response;
-        }
-        return [];
-      } catch (error) {
-        if (isUnauthorizedError(error)) {
-          window.location.href = "/api/login";
-        }
-        console.error("Failed to fetch units:", error);
-        return [];
-      }
-    },
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 10,
-  });
+  const { data: units = [] } = useUnits();
 
   // Fetch categories
   const { data: categories = [], error: categoriesError } = useQuery({

@@ -84,26 +84,7 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
     queryKey: ["/api/categories"],
   });
 
-  const { data: units = [] } = useQuery({
-    queryKey: ["units"],
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", "/api/units");
-
-        // Handle different possible response formats
-        if (Array.isArray(response)) {
-          return response;
-        }
-        if (response?.success && Array.isArray(response.data)) {
-          return response.data;
-        }
-        return [];
-      } catch (error) {
-        console.error("Failed to fetch units:", error);
-        return [];
-      }
-    },
-  });
+  const { data: units = [], isLoading: unitsLoading } = useUnits();
 
   const { data: inventoryItems = [] } = useQuery({
     queryKey: ["/api/ingredients"],
@@ -357,16 +338,26 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {(units as any[])
-                              .filter((unit: any) => unit.isActive)
-                              .map((unit: any) => (
-                                <SelectItem
-                                  key={unit.id}
-                                  value={unit.id.toString()}
-                                >
-                                  {unit.name} ({unit.abbreviation})
-                                </SelectItem>
-                              ))}
+                            {unitsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading units...
+                              </SelectItem>
+                            ) : Array.isArray(units) && units.length > 0 ? (
+                              units
+                                .filter((unit: any) => unit.isActive)
+                                .map((unit: any) => (
+                                  <SelectItem
+                                    key={unit.id}
+                                    value={unit.id.toString()}
+                                  >
+                                    {unit.name} ({unit.abbreviation})
+                                  </SelectItem>
+                                ))
+                            ) : (
+                              <SelectItem value="none" disabled>
+                                No units available
+                              </SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />

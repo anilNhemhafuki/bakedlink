@@ -339,14 +339,20 @@ export default function ProductFormEnhanced({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {(units as any[]).map((unit: any) => (
-                              <SelectItem
-                                key={unit.id}
-                                value={unit.id.toString()}
-                              >
-                                {unit.name} ({unit.abbreviation})
+                            {Array.isArray(units) && units.length > 0 ? (
+                              units.map((unit: any) => (
+                                <SelectItem
+                                  key={unit.id}
+                                  value={unit.id.toString()}
+                                >
+                                  {unit.name} ({unit.abbreviation})
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="none" disabled>
+                                No units available
                               </SelectItem>
-                            ))}
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />

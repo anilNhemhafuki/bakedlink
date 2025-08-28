@@ -63,12 +63,8 @@ export default function Units() {
   console.log("Is units array?", Array.isArray(units));
   console.log("Loading:", isLoading, "Error:", error);
 
-  // Ensure units is always an array
-  const unitsArray = useMemo(() => {
-    if (Array.isArray(units)) return units;
-    console.warn("Units is not an array, using empty fallback:", units);
-    return [];
-  }, [units]);
+  // units is now guaranteed to be an array from useUnits hook
+  const unitsArray = units;
 
   // Filter units by search query
   const filteredUnits = useMemo(() => {

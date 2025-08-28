@@ -48,6 +48,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useUnits } from "@/hooks/useUnits"; // Import useUnits
 
 export default function Ingredients() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,45 +70,17 @@ export default function Ingredients() {
     },
   });
 
-  const { data: units = [] } = useQuery({
-    queryKey: ["units"], // Use consistent key
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", "/api/units");
-        console.log("Units API response in ingredients.tsx:", response);
-        
-        // Handle the new consistent API response format
-        if (response?.success && Array.isArray(response.data)) {
-          return response.data;
-        }
-        
-        // Fallback for direct array response (backward compatibility)
-        if (Array.isArray(response)) {
-          return response;
-        }
-
-        console.warn("Unexpected units response format in ingredients.tsx");
-        return [];
-      } catch (error) {
-        console.error("Failed to fetch units in ingredients.tsx:", error);
-        throw error;
-      }
-    },
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 10,
-  });
+  // Use the useUnits hook to fetch units
+  const { units = [] } = useUnits();
 
   const { data: categories = [] } = useQuery({
     queryKey: ["/api/inventory-categories"],
   });
 
   // Filter only active units for the dropdown
+  // The useUnits hook now ensures units is always an array, so Array.isArray check is implicitly handled.
   const activeUnits = Array.isArray(units)
-    ? (units as any[]).filter((unit: any) => unit.isActive)
+    ? units.filter((unit: any) => unit.isActive)
     : [];
 
   // Filter ingredients (items that can be used as ingredients)
@@ -349,8 +322,9 @@ export default function Ingredients() {
 
   // Get unit name by ID
   const getUnitName = (unitId: number) => {
+    // Ensure units is an array before calling find
     if (!Array.isArray(units) || !unitId) return "Unknown Unit";
-    const unit = (units as any[]).find((u: any) => u.id === unitId);
+    const unit = units.find((u: any) => u.id === unitId);
     return unit ? `${unit.name} (${unit.abbreviation})` : "Unknown Unit";
   };
 

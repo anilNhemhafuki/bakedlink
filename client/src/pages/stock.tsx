@@ -663,7 +663,7 @@ export default function Stock() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No Secondary Unit</SelectItem>
-                      {activeUnits.length > 0 ? (
+                      {Array.isArray(activeUnits) && activeUnits.length > 0 ? (
                         activeUnits.map((unit: any) => {
                           if (!unit?.id || !unit?.name || !unit?.abbreviation) {
                             console.warn("Skipping invalid unit:", unit);
@@ -672,8 +672,7 @@ export default function Stock() {
                           return (
                             <SelectItem
                               key={unit.id}
-                              value={unit.id.toString()}
-                              disabled={
+                              value={unit.id.toString()}abled={
                                 selectedPrimaryUnitId
                                   ? unit.id.toString() === selectedPrimaryUnitId
                                   : false

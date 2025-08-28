@@ -6,7 +6,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 
 export const useUnits = () => {
   return useQuery({
-    queryKey: ["/api/units"],
+    queryKey: ["units"], // Consistent key for better cache management
     queryFn: async () => {
       try {
         const rawResponse = await apiRequest("GET", "/api/units");
@@ -39,7 +39,7 @@ export const useUnits = () => {
           return rawResponse.data.units;
         }
 
-        // Unexpected format
+        // Unexpected format - always return empty array as fallback
         console.warn(
           "[useUnits] Unexpected response format, returning empty array:",
           rawResponse,
@@ -47,7 +47,8 @@ export const useUnits = () => {
         return [];
       } catch (error) {
         console.error("[useUnits] Failed to fetch units:", error);
-        throw error;
+        // Return empty array on error instead of throwing
+        return [];
       }
     },
     retry: (failureCount, error) => {
@@ -64,9 +65,9 @@ export const useUnits = () => {
 export const useActiveUnits = () => {
   const { data: units = [], ...rest } = useUnits();
 
-  const activeUnits = Array.isArray(units)
-    ? units.filter((unit) => unit.isActive !== false)
-    : [];
+  // Ensure units is always an array before filtering
+  const safeUnits = Array.isArray(units) ? units : [];
+  const activeUnits = safeUnits.filter((unit) => unit.isActive !== false);
 
   return {
     data: activeUnits,

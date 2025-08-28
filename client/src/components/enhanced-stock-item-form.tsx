@@ -26,6 +26,7 @@ import {
 import { ChevronDown, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useUnits } from "@/hooks/useUnits";
 
 interface StockItemFormProps {
   isOpen: boolean;
@@ -158,18 +159,7 @@ export function EnhancedStockItemForm({
     company: "",
   });
 
-  const { data: units = [] } = useQuery({
-    queryKey: ["units"],
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", "/api/units");
-        return Array.isArray(response) ? response : response?.data || [];
-      } catch (error) {
-        console.error("Failed to load units:", error);
-        return [];
-      }
-    },
-  });
+  const { data: units = [], isLoading: unitsLoading } = useUnits();
 
   const { data: categories = [] } = useQuery({
     queryKey: ["/api/inventory-categories"],
@@ -339,7 +329,11 @@ export function EnhancedStockItemForm({
                       <SelectValue placeholder="Select Measuring Unit of the item" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.isArray(units) ? (
+                      {unitsLoading ? (
+                        <SelectItem value="loading" disabled>
+                          Loading units...
+                        </SelectItem>
+                      ) : Array.isArray(units) && units.length > 0 ? (
                         units
                           .filter(unit => unit.isActive)
                           .map(unit => (
@@ -349,7 +343,7 @@ export function EnhancedStockItemForm({
                           ))
                       ) : (
                         <SelectItem value="none" disabled>
-                          Loading units...
+                          No units available
                         </SelectItem>
                       )}
                     </SelectContent>
