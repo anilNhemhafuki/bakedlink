@@ -233,6 +233,7 @@ export interface IStorage {
 
   // Party operations
   getParties(): Promise<Party[]>;
+  getPartyById(id: number): Promise<Party | undefined>;
   createParty(party: InsertParty): Promise<Party>;
   updateParty(id: number, party: Partial<InsertParty>): Promise<Party>;
   deleteParty(id: number): Promise<void>;
@@ -252,6 +253,7 @@ export interface IStorage {
 
   // Asset operations
   getAssets(): Promise<Asset[]>;
+  getAssetById(id: number): Promise<Asset | undefined>;
   createAsset(asset: InsertAsset): Promise<Asset>;
   updateAsset(id: number, asset: Partial<InsertAsset>): Promise<Asset>;
   deleteAsset(id: number): Promise<void>;
@@ -1386,6 +1388,15 @@ export class Storage implements IStorage {
       .where(eq(assets.id, id))
       .returning();
     return updatedAsset;
+  }
+
+  async getAssetById(id: number): Promise<Asset | undefined> {
+    const result = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.id, id))
+      .limit(1);
+    return result[0];
   }
 
   async deleteAsset(id: number): Promise<void> {

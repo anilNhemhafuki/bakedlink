@@ -21,7 +21,7 @@ function sanitizeInput(input: string): string {
 // Define authenticated request interface
 interface AuthenticatedRequest extends Request {
   user?: {
-    id: string;
+    id: number;
     email: string;
     role: string;
     firstName?: string;
@@ -257,7 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: "Database test failed",
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   });

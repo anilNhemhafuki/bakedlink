@@ -105,19 +105,19 @@ function AuthenticatedApp({
               />
               <Route
                 path="/dashboard"
-                element={
+                component={() => (
                   <ProtectedRoute resource="dashboard" action="read">
                     <Dashboard />
                   </ProtectedRoute>
-                }
+                )}
               />
               <Route
                 path="/production"
-                element={
+                component={() => (
                   <ProtectedRoute resource="production" action="read">
                     <ProductionPage />
                   </ProtectedRoute>
-                }
+                )}
               />
               <Route
                 path="/products"

@@ -28,12 +28,21 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Calendar, Edit, Trash2, Clock, CheckCircle, XCircle } from "lucide-react";
+import {
+  Plus,
+  Calendar,
+  Edit,
+  Trash2,
+  Clock,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SearchBar from "@/components/search-bar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { format } from "date-fns";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function LeaveRequests() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,28 +62,148 @@ export default function LeaveRequests() {
 
   const { toast } = useToast();
 
-  const { data: staff = [] } = useQuery({
-    queryKey: ["/api/staff"],
+  // Fetch staff with proper handling
+  const {
+    staff = [],
+    isLoading: staffLoading,
+    error: staffError,
+  } = useQuery({
+    queryKey: ["staff"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/staff");
+
+        // Handle different API response formats
+        let staffList: any[] = [];
+
+        if (Array.isArray(response)) {
+          staffList = response;
+        } else if (response?.success && Array.isArray(response.data)) {
+          staffList = response.data;
+        } else {
+          console.warn("Unexpected staff API response:", response);
+          return [];
+        }
+
+        // Normalize field names (e.g., first_name → firstName)
+        return staffList.map((member) => ({
+          id: member.id || member.staff_id,
+          firstName: member.firstName || member.first_name || "Unknown",
+          lastName: member.lastName || member.last_name || "",
+          position: member.position || member.role || "",
+          staffName:
+            `${member.firstName || member.first_name || "Unknown"} ${member.lastName || member.last_name || ""}`.trim(),
+        }));
+      } catch (err) {
+        if (isUnauthorizedError(err)) {
+          toast({
+            title: "Unauthorized",
+            description: "Session expired. Redirecting to login...",
+            variant: "destructive",
+          });
+          setTimeout(() => {
+            window.location.href = "/api/login";
+          }, 500);
+          return [];
+        }
+        console.error("Failed to fetch staff:", err);
+        toast({
+          title: "Error",
+          description: "Failed to load staff list. Please try again.",
+          variant: "destructive",
+        });
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes
   });
 
-  const { data: leaveRequests = [], isLoading } = useQuery({
-    queryKey: ["/api/leave-requests", selectedStaff, filterStatus],
+  // Fetch leave requests
+  const {
+    leaveRequests = [],
+    isLoading: requestsLoading,
+    error: requestsError,
+  } = useQuery({
+    queryKey: ["leave-requests", selectedStaff, filterStatus],
+    queryFn: async () => {
+      try {
+        const params = new URLSearchParams();
+        if (selectedStaff !== "all") params.append("staffId", selectedStaff);
+        if (filterStatus !== "all") params.append("status", filterStatus);
+
+        const url = `/api/leave-requests?${params}`;
+        const response = await apiRequest("GET", url);
+
+        let requests: any[] = [];
+
+        if (Array.isArray(response)) {
+          requests = response;
+        } else if (response?.success && Array.isArray(response.data)) {
+          requests = response.data;
+        } else {
+          return [];
+        }
+
+        // Normalize leave request data
+        return requests.map((req) => ({
+          ...req,
+          staffName: req.staffName || "Unknown Staff",
+          leaveType: req.leaveType || "vacation",
+          status: req.status || "pending",
+        }));
+      } catch (err) {
+        if (isUnauthorizedError(err)) {
+          toast({
+            title: "Unauthorized",
+            description: "Session expired. Redirecting to login...",
+            variant: "destructive",
+          });
+          setTimeout(() => {
+            window.location.href = "/api/login";
+          }, 500);
+          return [];
+        }
+        console.error("Failed to fetch leave requests:", err);
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 2,
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
+      return failureCount < 3;
+    },
   });
 
+  // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("POST", "/api/leave-requests", data);
+      if (!data.staffId || !data.startDate || !data.endDate || !data.reason) {
+        throw new Error("Required fields missing");
+      }
+      return apiRequest("POST", "/api/leave-requests", data);
     },
     onSuccess: () => {
       toast({
         title: "Success",
         description: "Leave request created successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["leave-requests"] });
       setIsDialogOpen(false);
       resetForm();
     },
     onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "Session expired. Redirecting to login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to create leave request",
@@ -83,21 +212,37 @@ export default function LeaveRequests() {
     },
   });
 
+  // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async (data: any) => {
-      await apiRequest("PUT", `/api/leave-requests/${editingRequest.id}`, data);
+    mutationFn: (data: any) => {
+      return apiRequest(
+        "PUT",
+        `/api/leave-requests/${editingRequest.id}`,
+        data,
+      );
     },
     onSuccess: () => {
       toast({
         title: "Success",
         description: "Leave request updated successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["leave-requests"] });
       setIsDialogOpen(false);
       setEditingRequest(null);
       resetForm();
     },
     onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "Session expired. Redirecting to login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to update leave request",
@@ -106,18 +251,29 @@ export default function LeaveRequests() {
     },
   });
 
+  // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/leave-requests/${id}`);
-    },
+    mutationFn: (id: number) =>
+      apiRequest("DELETE", `/api/leave-requests/${id}`),
     onSuccess: () => {
       toast({
         title: "Success",
         description: "Leave request deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["leave-requests"] });
     },
     onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "Session expired. Redirecting to login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to delete leave request",
@@ -140,9 +296,13 @@ export default function LeaveRequests() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate required fields
-    if (!formData.staffId || !formData.startDate || !formData.endDate || !formData.reason) {
+
+    if (
+      !formData.staffId ||
+      !formData.startDate ||
+      !formData.endDate ||
+      !formData.reason
+    ) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -151,7 +311,6 @@ export default function LeaveRequests() {
       return;
     }
 
-    // Validate date range
     if (new Date(formData.startDate) > new Date(formData.endDate)) {
       toast({
         title: "Error",
@@ -165,7 +324,7 @@ export default function LeaveRequests() {
       ...formData,
       staffId: parseInt(formData.staffId),
     };
-    
+
     if (editingRequest) {
       updateMutation.mutate(submitData);
     } else {
@@ -178,8 +337,8 @@ export default function LeaveRequests() {
     setFormData({
       staffId: request.staffId.toString(),
       leaveType: request.leaveType,
-      startDate: request.startDate ? request.startDate.split('T')[0] : "",
-      endDate: request.endDate ? request.endDate.split('T')[0] : "",
+      startDate: request.startDate ? request.startDate.split("T")[0] : "",
+      endDate: request.endDate ? request.endDate.split("T")[0] : "",
       reason: request.reason || "",
       notes: request.notes || "",
       status: request.status,
@@ -194,13 +353,22 @@ export default function LeaveRequests() {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { variant: "outline" as const, label: "Pending", icon: Clock },
-      approved: { variant: "default" as const, label: "Approved", icon: CheckCircle },
-      rejected: { variant: "destructive" as const, label: "Rejected", icon: XCircle },
+      approved: {
+        variant: "default" as const,
+        label: "Approved",
+        icon: CheckCircle,
+      },
+      rejected: {
+        variant: "destructive" as const,
+        label: "Rejected",
+        icon: XCircle,
+      },
     };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+
+    const config =
+      statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     const Icon = config.icon;
-    
+
     return (
       <Badge variant={config.variant} className="flex items-center gap-1">
         <Icon className="h-3 w-3" />
@@ -218,20 +386,26 @@ export default function LeaveRequests() {
       maternity: { variant: "secondary" as const, label: "Maternity" },
       paternity: { variant: "secondary" as const, label: "Paternity" },
     };
-    
-    const config = typeConfig[type as keyof typeof typeConfig] || typeConfig.vacation;
+
+    const config =
+      typeConfig[type as keyof typeof typeConfig] || typeConfig.vacation;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const filteredRequests = leaveRequests.filter((request: any) => {
-    const matchesSearch = `${request.staffName} ${request.leaveType} ${request.reason}`
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesStaff = selectedStaff === "all" || request.staffId.toString() === selectedStaff;
-    const matchesStatus = filterStatus === "all" || request.status === filterStatus;
-    
+  const filteredRequests = (leaveRequests || []).filter((request: any) => {
+    const matchesSearch =
+      `${request.staffName} ${request.leaveType} ${request.reason}`
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+    const matchesStaff =
+      selectedStaff === "all" || request.staffId.toString() === selectedStaff;
+    const matchesStatus =
+      filterStatus === "all" || request.status === filterStatus;
+
     return matchesSearch && matchesStaff && matchesStatus;
   });
+
+  const isLoading = staffLoading || requestsLoading;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -242,11 +416,13 @@ export default function LeaveRequests() {
             <Calendar className="h-8 w-8" />
             Leave Requests
           </h1>
-          <p className="text-muted-foreground">Manage employee leave requests and approvals</p>
+          <p className="text-muted-foreground">
+            Manage employee leave requests and approvals
+          </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
+            <Button onClick={resetForm}>
               <Plus className="h-4 w-4 mr-2" />
               New Leave Request
             </Button>
@@ -261,14 +437,23 @@ export default function LeaveRequests() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="staffId">Staff Member *</Label>
-                  <Select value={formData.staffId || undefined} onValueChange={(value) => setFormData({ ...formData, staffId: value })}>
+                  <Select
+                    value={formData.staffId}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, staffId: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select staff member" />
                     </SelectTrigger>
                     <SelectContent>
                       {staff.map((member: any) => (
-                        <SelectItem key={member.id} value={member.id.toString()}>
-                          {member.firstName} {member.lastName}
+                        <SelectItem
+                          key={member.id}
+                          value={member.id.toString()}
+                        >
+                          {member.firstName} {member.lastName} -{" "}
+                          {member.position}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -276,7 +461,12 @@ export default function LeaveRequests() {
                 </div>
                 <div>
                   <Label htmlFor="leaveType">Leave Type *</Label>
-                  <Select value={formData.leaveType || undefined} onValueChange={(value) => setFormData({ ...formData, leaveType: value })}>
+                  <Select
+                    value={formData.leaveType || undefined}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, leaveType: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select leave type" />
                     </SelectTrigger>
@@ -298,7 +488,9 @@ export default function LeaveRequests() {
                     id="startDate"
                     type="date"
                     value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, startDate: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -308,7 +500,9 @@ export default function LeaveRequests() {
                     id="endDate"
                     type="date"
                     value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, endDate: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -318,7 +512,9 @@ export default function LeaveRequests() {
                 <Textarea
                   id="reason"
                   value={formData.reason}
-                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, reason: e.target.value })
+                  }
                   placeholder="Please provide a reason for the leave request"
                   required
                 />
@@ -328,13 +524,20 @@ export default function LeaveRequests() {
                 <Textarea
                   id="notes"
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
                   placeholder="Any additional notes or comments"
                 />
               </div>
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status || undefined} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                <Select
+                  value={formData.status || undefined}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, status: value })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -346,11 +549,25 @@ export default function LeaveRequests() {
                 </Select>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {editingRequest ? "Update" : "Create"} Request
+                <Button
+                  type="submit"
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
+                >
+                  {createMutation.isPending || updateMutation.isPending
+                    ? "Saving..."
+                    : editingRequest
+                      ? "Update"
+                      : "Create"}{" "}
+                  Request
                 </Button>
               </div>
             </form>
@@ -413,7 +630,9 @@ export default function LeaveRequests() {
           {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading leave requests...</p>
+              <p className="text-muted-foreground mt-2">
+                Loading leave requests...
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -431,51 +650,73 @@ export default function LeaveRequests() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRequests.map((request: any) => (
-                    <TableRow key={request.id}>
-                      <TableCell className="font-medium">{request.staffName}</TableCell>
-                      <TableCell>{getLeaveTypeBadge(request.leaveType)}</TableCell>
-                      <TableCell>{request.startDate ? format(new Date(request.startDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
-                      <TableCell>{request.endDate ? format(new Date(request.endDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
-                      <TableCell>
-                        {request.startDate && request.endDate
-                          ? `${Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24) + 1)} days`
-                          : 'N/A'
-                        }
-                      </TableCell>
-                      <TableCell>{getStatusBadge(request.status)}</TableCell>
-                      <TableCell className="max-w-xs truncate">{request.reason}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(request)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <DeleteConfirmationDialog
-                            trigger={
-                              <Button
-                                variant="outline"
-                                size="sm"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            }
-                            title="Delete Leave Request"
-                            itemName={`${request.staffName}'s ${request.leaveType} request`}
-                            onConfirm={() => handleDelete(request.id)}
-                            isLoading={deleteMutation.isPending}
-                          />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredRequests.length === 0 && (
+                  {filteredRequests.length > 0 ? (
+                    filteredRequests.map((request: any) => (
+                      <TableRow key={request.id}>
+                        <TableCell className="font-medium">
+                          {request.staffName}
+                        </TableCell>
+                        <TableCell>
+                          {getLeaveTypeBadge(request.leaveType)}
+                        </TableCell>
+                        <TableCell>
+                          {request.startDate
+                            ? format(
+                                new Date(request.startDate),
+                                "MMM dd, yyyy",
+                              )
+                            : "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          {request.endDate
+                            ? format(new Date(request.endDate), "MMM dd, yyyy")
+                            : "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          {request.startDate && request.endDate
+                            ? `${Math.ceil(
+                                (new Date(request.endDate).getTime() -
+                                  new Date(request.startDate).getTime()) /
+                                  (1000 * 60 * 60 * 24) +
+                                  1,
+                              )} days`
+                            : "N/A"}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(request.status)}</TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {request.reason}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(request)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <DeleteConfirmationDialog
+                              trigger={
+                                <Button variant="outline" size="sm">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              }
+                              title="Delete Leave Request"
+                              itemName={`${request.staffName}'s ${request.leaveType} request`}
+                              onConfirm={() => handleDelete(request.id)}
+                              isLoading={deleteMutation.isPending}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
-                        <p className="text-muted-foreground">No leave requests found</p>
+                      <TableCell
+                        colSpan={8}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        No leave requests found.
                       </TableCell>
                     </TableRow>
                   )}
