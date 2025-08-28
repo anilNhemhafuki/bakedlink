@@ -94,6 +94,11 @@ export default function EnhancedDashboard() {
     queryKey: ["/api/dashboard/production-schedule"],
   });
 
+  const { data: activeProducts = [] } = useQuery({
+    queryKey: ["/api/products"],
+    select: (data: any) => data.filter((p: any) => p.isActive),
+  });
+
   const { formatCurrencyWithCommas } = useCurrency();
 
   const statsCards = [
@@ -545,9 +550,26 @@ export default function EnhancedDashboard() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <label htmlFor="productName" className="text-right">
-                  Product Name
+                  Product
                 </label>
-                <Input id="productName" className="col-span-3" required />
+                <Select name="productName" required>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select Product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeProducts.length > 0 ? (
+                      activeProducts.map((product: any) => (
+                        <SelectItem key={product.id} value={product.name}>
+                          {product.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No products available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <label htmlFor="quantity" className="text-right">
