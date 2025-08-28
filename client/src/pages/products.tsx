@@ -82,37 +82,54 @@ export default function Products() {
     manufactureDate: "",
     expireDate: "",
   });
+
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["/api/products"],
+  // Fetch products
+  const {
+    data: products = [],
+    isLoading,
+    error: productsError,
+  } = useQuery({
+    queryKey: ["products"],
     queryFn: () => apiRequest("GET", "/api/products"),
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
     },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "Session expired. Redirecting to login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+      }
+    },
   });
 
+  // Fetch units
   const { data: units = [] } = useQuery({
-    queryKey: ["units"], // Use consistent key
+    queryKey: ["units"],
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/units");
-
-        // Handle the new consistent API response format
         if (response?.success && Array.isArray(response.data)) {
           return response.data;
         }
-
-        // Fallback for direct array response (backward compatibility)
         if (Array.isArray(response)) {
           return response;
         }
-
         return [];
       } catch (error) {
-        console.error("Failed to fetch units in products.tsx:", error);
+        if (isUnauthorizedError(error)) {
+          window.location.href = "/api/login";
+        }
+        console.error("Failed to fetch units:", error);
         return [];
       }
     },
@@ -124,22 +141,59 @@ export default function Products() {
     gcTime: 1000 * 60 * 10,
   });
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ["/api/categories"],
+  // Fetch categories
+  const { data: categories = [], error: categoriesError } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => apiRequest("GET", "/api/categories"),
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
+      return failureCount < 3;
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "Redirecting to login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+      }
+    },
   });
 
-  const { data: settingsResponse = {} } = useQuery({
-    queryKey: ["/api/settings"],
+  // Fetch settings
+  const { data: settingsResponse = {}, error: settingsError } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => apiRequest("GET", "/api/settings"),
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
+      return failureCount < 3;
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "Redirecting to login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+      }
+    },
   });
 
   const settings = settingsResponse?.settings || {};
 
+  // Delete mutation
   const deleteProductMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/products/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
       toast({
         title: "Success",
         description: "Product deleted successfully",
@@ -149,7 +203,7 @@ export default function Products() {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          description: "Session expired. Redirecting to login...",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -165,6 +219,7 @@ export default function Products() {
     },
   });
 
+  // Filter products
   const filteredProducts = products.filter((product: any) => {
     const matchesSearch =
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -179,13 +234,13 @@ export default function Products() {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  // Add sorting functionality
+  // Sorting
   const { sortedData, sortConfig, requestSort } = useTableSort(
     filteredProducts,
     "name",
   );
 
-  // Add pagination
+  // Pagination
   const pagination = usePagination(sortedData, 10);
   const {
     currentPage,
@@ -197,6 +252,7 @@ export default function Products() {
     handlePageSizeChange,
   } = pagination;
 
+  // Handle label print
   const handleLabelPrint = (product: any) => {
     setSelectedProductForLabel(product);
     setLabelData({
@@ -214,13 +270,13 @@ export default function Products() {
     setShowLabelPrint(true);
   };
 
+  // Print label
   const printLabel = () => {
     const printWindow = window.open("", "_blank");
     const labelSize = settings.labelSize || "small";
     const orientation = settings.labelOrientation || "portrait";
     const margin = settings.labelMargin || "2";
 
-    // Size configurations
     const sizeConfig = {
       small: { width: "200px", height: "120px" },
       medium: { width: "280px", height: "200px" },
@@ -322,9 +378,7 @@ export default function Products() {
               <div class="company-name">${labelData.companyName}</div>
               ${labelData.companyLocation ? `<div class="company-location">${labelData.companyLocation}</div>` : ""}
             </div>
-
             <div class="product-name">${selectedProductForLabel?.name}</div>
-
             <div class="fields">
               ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ""}
               ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ""}
@@ -356,18 +410,7 @@ export default function Products() {
     );
   }
 
-  if (error && isUnauthorizedError(error)) {
-    toast({
-      title: "Unauthorized",
-      description: "You are logged out. Logging in again...",
-      variant: "destructive",
-    });
-    setTimeout(() => {
-      window.location.href = "/api/login";
-    }, 500);
-    return null;
-  }
-
+  // No need to manually check error here — handled in `onError`
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -539,7 +582,6 @@ export default function Products() {
                     <TableCell>{product.categoryName || "—"}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        {/* Edit Button */}
                         <button
                           onClick={() => {
                             setEditingProduct(product);
@@ -550,8 +592,6 @@ export default function Products() {
                         >
                           <Edit className="h-4 w-4" />
                         </button>
-
-                        {/* Label Print Button */}
                         <button
                           onClick={() => handleLabelPrint(product)}
                           className="text-green-600 hover:text-green-800 focus:outline-none"
@@ -559,8 +599,6 @@ export default function Products() {
                         >
                           <Printer className="h-4 w-4" />
                         </button>
-
-                        {/* Delete Button */}
                         <DeleteConfirmationDialog
                           trigger={
                             <button
@@ -630,12 +668,12 @@ export default function Products() {
         </div>
       )}
 
-      {/* Product Form Modal */}
+      {/* Modals */}
       <Dialog
         open={showProductForm}
         onOpenChange={(open) => {
-          setShowProductForm(open);
           if (!open) setEditingProduct(null);
+          setShowProductForm(open);
         }}
       >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -654,7 +692,6 @@ export default function Products() {
         </DialogContent>
       </Dialog>
 
-      {/* Cost Calculator Modal */}
       <Dialog open={showCostCalculator} onOpenChange={setShowCostCalculator}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -670,7 +707,6 @@ export default function Products() {
         </DialogContent>
       </Dialog>
 
-      {/* Label Print Modal */}
       <Dialog open={showLabelPrint} onOpenChange={setShowLabelPrint}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -680,7 +716,7 @@ export default function Products() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Label Data Form */}
+            {/* Left: Form */}
             <div className="space-y-4">
               <div className="border rounded-lg p-4">
                 <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
@@ -896,7 +932,7 @@ export default function Products() {
               </div>
             </div>
 
-            {/* Label Preview */}
+            {/* Right: Preview */}
             <div className="space-y-4">
               <div className="border rounded-lg p-4">
                 <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
@@ -914,11 +950,9 @@ export default function Products() {
                       <div className="text-xs">{labelData.companyLocation}</div>
                     )}
                   </div>
-
                   <div className="font-bold text-center text-sm border border-gray-300 p-1 mb-2">
                     {selectedProductForLabel?.name}
                   </div>
-
                   <div className="space-y-1 text-xs">
                     {labelData.regNo && (
                       <div className="flex justify-between">

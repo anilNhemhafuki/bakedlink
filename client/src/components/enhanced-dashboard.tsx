@@ -16,6 +16,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogFooter,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -310,7 +311,8 @@ export default function EnhancedDashboard() {
                       <TableCell className="text-right">
                         <Dialog
                           open={
-                            isProductionDialogOpen && editingProduction?.id === item.id
+                            isProductionDialogOpen &&
+                            editingProduction?.id === item.id
                           }
                           onOpenChange={setIsProductionDialogOpen}
                         >
@@ -328,7 +330,9 @@ export default function EnhancedDashboard() {
                           </DialogTrigger>
                           <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
-                              <DialogTitle>Edit Production Schedule</DialogTitle>
+                              <DialogTitle>
+                                Edit Production Schedule
+                              </DialogTitle>
                               <DialogDescription>
                                 Make changes to this production item. Click save
                                 when you're done.
@@ -349,7 +353,10 @@ export default function EnhancedDashboard() {
                             >
                               <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                  <label htmlFor="productName" className="text-right">
+                                  <label
+                                    htmlFor="productName"
+                                    className="text-right"
+                                  >
                                     Product Name
                                   </label>
                                   <Input
@@ -357,14 +364,22 @@ export default function EnhancedDashboard() {
                                     value={editingProduction?.productName || ""}
                                     onChange={(e) =>
                                       setEditingProduction((prev) =>
-                                        prev ? { ...prev, productName: e.target.value } : null
+                                        prev
+                                          ? {
+                                              ...prev,
+                                              productName: e.target.value,
+                                            }
+                                          : null,
                                       )
                                     }
                                     className="col-span-3"
                                   />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                  <label htmlFor="quantity" className="text-right">
+                                  <label
+                                    htmlFor="quantity"
+                                    className="text-right"
+                                  >
                                     Quantity
                                   </label>
                                   <Input
@@ -373,14 +388,24 @@ export default function EnhancedDashboard() {
                                     value={editingProduction?.quantity || 0}
                                     onChange={(e) =>
                                       setEditingProduction((prev) =>
-                                        prev ? { ...prev, quantity: parseInt(e.target.value) } : null
+                                        prev
+                                          ? {
+                                              ...prev,
+                                              quantity: parseInt(
+                                                e.target.value,
+                                              ),
+                                            }
+                                          : null,
                                       )
                                     }
                                     className="col-span-3"
                                   />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                  <label htmlFor="scheduledDate" className="text-right">
+                                  <label
+                                    htmlFor="scheduledDate"
+                                    className="text-right"
+                                  >
                                     Scheduled Date
                                   </label>
                                   <Input
@@ -388,27 +413,39 @@ export default function EnhancedDashboard() {
                                     type="date"
                                     value={
                                       editingProduction?.scheduledDate
-                                        ? new Date(editingProduction.scheduledDate)
+                                        ? new Date(
+                                            editingProduction.scheduledDate,
+                                          )
                                             .toISOString()
                                             .substr(0, 10)
                                         : ""
                                     }
                                     onChange={(e) =>
                                       setEditingProduction((prev) =>
-                                        prev ? { ...prev, scheduledDate: e.target.value } : null
+                                        prev
+                                          ? {
+                                              ...prev,
+                                              scheduledDate: e.target.value,
+                                            }
+                                          : null,
                                       )
                                     }
                                     className="col-span-3"
                                   />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                  <label htmlFor="status" className="text-right">
+                                  <label
+                                    htmlFor="status"
+                                    className="text-right"
+                                  >
                                     Status
                                   </label>
                                   <Select
                                     onValueChange={(value) =>
                                       setEditingProduction((prev) =>
-                                        prev ? { ...prev, status: value } : null
+                                        prev
+                                          ? { ...prev, status: value }
+                                          : null,
                                       )
                                     }
                                     value={editingProduction?.status}
@@ -417,10 +454,18 @@ export default function EnhancedDashboard() {
                                       <SelectValue placeholder="Select status" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="pending">Pending</SelectItem>
-                                      <SelectItem value="in_progress">In Progress</SelectItem>
-                                      <SelectItem value="completed">Completed</SelectItem>
-                                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                                      <SelectItem value="pending">
+                                        Pending
+                                      </SelectItem>
+                                      <SelectItem value="in_progress">
+                                        In Progress
+                                      </SelectItem>
+                                      <SelectItem value="completed">
+                                        Completed
+                                      </SelectItem>
+                                      <SelectItem value="cancelled">
+                                        Cancelled
+                                      </SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
@@ -508,13 +553,23 @@ export default function EnhancedDashboard() {
                 <label htmlFor="quantity" className="text-right">
                   Quantity
                 </label>
-                <Input id="quantity" type="number" className="col-span-3" required />
+                <Input
+                  id="quantity"
+                  type="number"
+                  className="col-span-3"
+                  required
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <label htmlFor="scheduledDate" className="text-right">
                   Scheduled Date
                 </label>
-                <Input id="scheduledDate" type="date" className="col-span-3" required />
+                <Input
+                  id="scheduledDate"
+                  type="date"
+                  className="col-span-3"
+                  required
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <label htmlFor="status" className="text-right">

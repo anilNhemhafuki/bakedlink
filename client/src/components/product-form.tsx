@@ -85,7 +85,24 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
   });
 
   const { data: units = [] } = useQuery({
-    queryKey: ["/api/units"],
+    queryKey: ["units"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/units");
+
+        // Handle different possible response formats
+        if (Array.isArray(response)) {
+          return response;
+        }
+        if (response?.success && Array.isArray(response.data)) {
+          return response.data;
+        }
+        return [];
+      } catch (error) {
+        console.error("Failed to fetch units:", error);
+        return [];
+      }
+    },
   });
 
   const { data: inventoryItems = [] } = useQuery({

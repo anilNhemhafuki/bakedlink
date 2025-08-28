@@ -18,7 +18,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { ChevronDown, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -35,7 +39,11 @@ interface CategoryDialogProps {
   onCategoryCreated: () => void;
 }
 
-function CategoryDialog({ isOpen, onClose, onCategoryCreated }: CategoryDialogProps) {
+function CategoryDialog({
+  isOpen,
+  onClose,
+  onCategoryCreated,
+}: CategoryDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,7 +51,9 @@ function CategoryDialog({ isOpen, onClose, onCategoryCreated }: CategoryDialogPr
     mutationFn: (data: { name: string; description?: string }) =>
       apiRequest("POST", "/api/inventory-categories", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory-categories"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/inventory-categories"],
+      });
       toast({
         title: "Success",
         description: "Category created successfully",
@@ -78,7 +88,10 @@ function CategoryDialog({ isOpen, onClose, onCategoryCreated }: CategoryDialogPr
       return;
     }
 
-    createCategoryMutation.mutate({ name: name.trim(), description: description.trim() });
+    createCategoryMutation.mutate({
+      name: name.trim(),
+      description: description.trim(),
+    });
     setIsSubmitting(false);
   };
 
@@ -120,7 +133,11 @@ function CategoryDialog({ isOpen, onClose, onCategoryCreated }: CategoryDialogPr
   );
 }
 
-export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockItemFormProps) {
+export function EnhancedStockItemForm({
+  isOpen,
+  onClose,
+  editingItem,
+}: StockItemFormProps) {
   const { toast } = useToast();
   const { symbol } = useCurrency();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,7 +159,16 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
   });
 
   const { data: units = [] } = useQuery({
-    queryKey: ["/api/units"],
+    queryKey: ["units"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/units");
+        return Array.isArray(response) ? response : response?.data || [];
+      } catch (error) {
+        console.error("Failed to load units:", error);
+        return [];
+      }
+    },
   });
 
   const { data: categories = [] } = useQuery({
@@ -183,7 +209,9 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
 
   const saveMutation = useMutation({
     mutationFn: (data: any) => {
-      const url = editingItem ? `/api/inventory/${editingItem.id}` : "/api/inventory";
+      const url = editingItem
+        ? `/api/inventory/${editingItem.id}`
+        : "/api/inventory";
       const method = editingItem ? "PUT" : "POST";
       return apiRequest(method, url, data);
     },
@@ -205,7 +233,10 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
   });
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const calculateValue = () => {
@@ -238,13 +269,15 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
       return;
     }
 
-    const selectedUnit = units.find((u: any) => u.id.toString() === formData.unitId);
+    const selectedUnit = units.find(
+      (u: any) => u.id.toString() === formData.unitId,
+    );
 
     const submitData = {
       name: formData.name.trim(),
       categoryId: formData.categoryId ? parseInt(formData.categoryId) : null,
       unitId: parseInt(formData.unitId),
-      unit: selectedUnit?.abbreviation || "pcs",
+      unit: selectedUnit?.abbreviation || "kg",
       currentStock: parseFloat(formData.currentStock) || 0,
       minLevel: parseFloat(formData.minLevel) || 0,
       costPerUnit: parseFloat(formData.costPerUnit) || 0,
@@ -297,21 +330,33 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                 <div className="flex gap-2 mt-1">
                   <Select
                     value={formData.unitId}
-                    onValueChange={(value) => handleInputChange("unitId", value)}
+                    onValueChange={(value) =>
+                      handleInputChange("unitId", value)
+                    }
                     required
                   >
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Select Measuring Unit of the item" />
                     </SelectTrigger>
                     <SelectContent>
-                      {units.map((unit: any) => (
-                        <SelectItem key={unit.id} value={unit.id.toString()}>
-                          {unit.name} ({unit.abbreviation})
+                      {Array.isArray(units) ? (
+                        units
+                          .filter(unit => unit.isActive)
+                          .map(unit => (
+                            <SelectItem key={unit.id} value={unit.id.toString()}>
+                              {unit.name} ({unit.abbreviation})
+                            </SelectItem>
+                          ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          Loading units...
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
-                  <span className="text-sm text-muted-foreground self-center">Multiple Unit</span>
+                  <span className="text-sm text-muted-foreground self-center">
+                    Multiple Unit
+                  </span>
                 </div>
               </div>
             </div>
@@ -331,7 +376,9 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                     type="number"
                     step="0.01"
                     value={formData.costPerUnit}
-                    onChange={(e) => handleInputChange("costPerUnit", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("costPerUnit", e.target.value)
+                    }
                     placeholder="0"
                     className="rounded-l-none"
                   />
@@ -345,14 +392,19 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                 <div className="flex gap-2 mt-1">
                   <Select
                     value={formData.categoryId}
-                    onValueChange={(value) => handleInputChange("categoryId", value)}
+                    onValueChange={(value) =>
+                      handleInputChange("categoryId", value)
+                    }
                   >
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Select Group for Item" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((category: any) => (
-                        <SelectItem key={category.id} value={category.id.toString()}>
+                        <SelectItem
+                          key={category.id}
+                          value={category.id.toString()}
+                        >
                           {category.name}
                         </SelectItem>
                       ))}
@@ -386,7 +438,9 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                       type="number"
                       step="0.01"
                       value={formData.currentStock}
-                      onChange={(e) => handleInputChange("currentStock", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("currentStock", e.target.value)
+                      }
                       placeholder="12"
                       className="mt-1"
                     />
@@ -405,7 +459,9 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                         type="number"
                         step="0.01"
                         value={formData.costPerUnit}
-                        onChange={(e) => handleInputChange("costPerUnit", e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("costPerUnit", e.target.value)
+                        }
                         placeholder="1200"
                         className="rounded-l-none"
                       />
@@ -445,7 +501,9 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                   className="w-full justify-between p-0 h-auto font-normal text-blue-600 hover:text-blue-700"
                 >
                   Additional Details
-                  <ChevronDown className={`h-4 w-4 transition-transform ${showAdditionalDetails ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${showAdditionalDetails ? "rotate-180" : ""}`}
+                  />
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4 mt-4">
@@ -458,7 +516,9 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                     type="number"
                     step="0.01"
                     value={formData.minLevel}
-                    onChange={(e) => handleInputChange("minLevel", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("minLevel", e.target.value)
+                    }
                     placeholder="Enter minimum stock level"
                     className="mt-1"
                   />
@@ -466,7 +526,10 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="currentStock" className="text-sm font-medium">
+                    <Label
+                      htmlFor="currentStock"
+                      className="text-sm font-medium"
+                    >
                       Quantity
                     </Label>
                     <Input
@@ -474,7 +537,9 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                       type="number"
                       step="0.01"
                       value={formData.currentStock}
-                      onChange={(e) => handleInputChange("currentStock", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("currentStock", e.target.value)
+                      }
                       placeholder="12"
                       className="mt-1"
                     />
@@ -489,7 +554,9 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                       type="number"
                       step="0.01"
                       value={formData.minLevel}
-                      onChange={(e) => handleInputChange("minLevel", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("minLevel", e.target.value)
+                      }
                       placeholder="Enter minimum stock level"
                       className="mt-1"
                     />
@@ -498,26 +565,40 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="previousQuantity" className="text-sm font-medium">Previous Quantity</Label>
+                    <Label
+                      htmlFor="previousQuantity"
+                      className="text-sm font-medium"
+                    >
+                      Previous Quantity
+                    </Label>
                     <Input
                       id="previousQuantity"
                       type="number"
                       step="0.01"
                       value={formData.previousQuantity || ""}
-                      onChange={(e) => handleInputChange("previousQuantity", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("previousQuantity", e.target.value)
+                      }
                       placeholder="Previous stock quantity"
                       disabled={!!editingItem}
                       className="mt-1"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="previousAmount" className="text-sm font-medium">Previous Amount</Label>
+                    <Label
+                      htmlFor="previousAmount"
+                      className="text-sm font-medium"
+                    >
+                      Previous Amount
+                    </Label>
                     <Input
                       id="previousAmount"
                       type="number"
                       step="0.01"
                       value={formData.previousAmount || ""}
-                      onChange={(e) => handleInputChange("previousAmount", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("previousAmount", e.target.value)
+                      }
                       placeholder="Previous cost amount"
                       disabled={!!editingItem}
                       className="mt-1"
@@ -532,7 +613,9 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                   <Input
                     id="supplier"
                     value={formData.supplier}
-                    onChange={(e) => handleInputChange("supplier", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("supplier", e.target.value)
+                    }
                     placeholder="Enter supplier name"
                     className="mt-1"
                   />
@@ -545,7 +628,9 @@ export function EnhancedStockItemForm({ isOpen, onClose, editingItem }: StockIte
                   <Input
                     id="company"
                     value={formData.company}
-                    onChange={(e) => handleInputChange("company", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("company", e.target.value)
+                    }
                     placeholder="Enter company name"
                     className="mt-1"
                   />
