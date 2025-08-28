@@ -89,7 +89,7 @@ export default function Products() {
 
   // Fetch products
   const {
-    data: products = [],
+    data: productsData,
     isLoading,
     error: productsError,
   } = useQuery({
@@ -109,15 +109,26 @@ export default function Products() {
         setTimeout(() => {
           window.location.href = "/api/login";
         }, 500);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to load products.",
+          variant: "destructive",
+        });
       }
     },
   });
+
+  // Extract products array safely
+  const products = Array.isArray(productsData)
+    ? productsData
+    : productsData?.products || [];
 
   // Fetch units
   const { data: units = [] } = useUnits();
 
   // Fetch categories
-  const { data: categories = [], error: categoriesError } = useQuery({
+  const { data: categoriesData = [], error: categoriesError } = useQuery({
     queryKey: ["categories"],
     queryFn: () => apiRequest("GET", "/api/categories"),
     retry: (failureCount, error) => {
@@ -138,8 +149,12 @@ export default function Products() {
     },
   });
 
+  const categories = Array.isArray(categoriesData)
+    ? categoriesData
+    : categoriesData?.categories || [];
+
   // Fetch settings
-  const { data: settingsResponse = {}, error: settingsError } = useQuery({
+  const { data: settingsData = {}, error: settingsError } = useQuery({
     queryKey: ["settings"],
     queryFn: () => apiRequest("GET", "/api/settings"),
     retry: (failureCount, error) => {
@@ -160,7 +175,7 @@ export default function Products() {
     },
   });
 
-  const settings = settingsResponse?.settings || {};
+  const settings = settingsData?.settings || {};
 
   // Delete mutation
   const deleteProductMutation = useMutation({
@@ -194,29 +209,33 @@ export default function Products() {
     },
   });
 
-  // Filter products
-  const filteredProducts = products.filter((product: any) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" ||
-      product.categoryId?.toString() === selectedCategory;
-    const matchesStatus =
-      selectedStatus === "all" ||
-      (selectedStatus === "active" && product.isActive) ||
-      (selectedStatus === "inactive" && !product.isActive);
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  // Ensure filteredProducts is array
+  const filteredProducts = Array.isArray(products)
+    ? products.filter((product: any) => {
+        const matchesSearch =
+          product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory =
+          selectedCategory === "all" ||
+          product.categoryId?.toString() === selectedCategory;
+        const matchesStatus =
+          selectedStatus === "all" ||
+          (selectedStatus === "active" && product.isActive) ||
+          (selectedStatus === "inactive" && !product.isActive);
+        return matchesSearch && matchesCategory && matchesStatus;
+      })
+    : [];
 
-  // Sorting
+  // Safely sort
   const { sortedData, sortConfig, requestSort } = useTableSort(
-    filteredProducts,
+    filteredProducts || [],
     "name",
   );
 
-  // Pagination
-  const pagination = usePagination(sortedData, 10);
+  // Safely paginate
+  const pagination = usePagination(sortedData || [], 10);
+
+  // Destructure
   const {
     currentPage,
     pageSize,
@@ -262,116 +281,120 @@ export default function Products() {
       sizeConfig[labelSize as keyof typeof sizeConfig] || sizeConfig.small;
 
     const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Product Label - ${selectedProductForLabel?.name}</title>
-          <style>
-            body { 
-              font-family: 'Arial', sans-serif; 
-              margin: ${margin}mm; 
-              font-size: 10px;
-              background: white;
-            }
-            .label {
-              border: 2px solid #000;
-              padding: 8px;
-              width: ${currentSize.width};
-              height: ${currentSize.height};
-              margin: 0 auto;
-              box-sizing: border-box;
-              display: flex;
-              flex-direction: column;
-              ${orientation === "landscape" ? "transform: rotate(90deg); transform-origin: center;" : ""}
-            }
-            .header {
-              text-align: center;
-              border-bottom: 1px solid #000;
-              padding-bottom: 6px;
-              margin-bottom: 6px;
-              flex-shrink: 0;
-            }
-            .company-name {
-              font-size: 12px;
-              font-weight: bold;
-              margin-bottom: 2px;
-              line-height: 1.2;
-            }
-            .company-location {
-              font-size: 8px;
-              line-height: 1.1;
-            }
-            .product-name {
-              font-size: 11px;
-              font-weight: bold;
-              text-align: center;
-              margin: 4px 0;
-              border: 1px solid #000;
-              padding: 3px;
-              background: #f9f9f9;
-              flex-shrink: 0;
-            }
-            .fields {
-              flex: 1;
-              display: flex;
-              flex-direction: column;
-              gap: 2px;
-            }
-            .field {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              line-height: 1.2;
-            }
-            .field-label {
-              font-weight: bold;
-              width: 35%;
-              font-size: 9px;
-            }
-            .field-value {
-              width: 60%;
-              text-align: right;
-              font-size: 9px;
-              word-wrap: break-word;
-            }
-            .ingredients .field-value {
-              font-size: 7px;
-              line-height: 1.1;
-            }
-            @media print {
-              body { margin: 0; }
-              .label { 
-                page-break-inside: avoid;
-                break-inside: avoid;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="label">
-            <div class="header">
-              <div class="company-name">${labelData.companyName}</div>
-              ${labelData.companyLocation ? `<div class="company-location">${labelData.companyLocation}</div>` : ""}
-            </div>
-            <div class="product-name">${selectedProductForLabel?.name}</div>
-            <div class="fields">
-              ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ""}
-              ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ""}
-              ${labelData.batchNo ? `<div class="field"><span class="field-label">Batch No:</span><span class="field-value">${labelData.batchNo}</span></div>` : ""}
-              ${labelData.netWeight ? `<div class="field"><span class="field-label">Net Weight:</span><span class="field-value">${labelData.netWeight}</span></div>` : ""}
-              ${labelData.ingredients ? `<div class="field ingredients"><span class="field-label">Ingredients:</span><span class="field-value">${labelData.ingredients}</span></div>` : ""}
-              <div class="field"><span class="field-label">MRP:</span><span class="field-value">${labelData.mrp}</span></div>
-              ${labelData.manufactureDate ? `<div class="field"><span class="field-label">Mfg. Date:</span><span class="field-value">${new Date(labelData.manufactureDate).toLocaleDateString()}</span></div>` : ""}
-              ${labelData.expireDate ? `<div class="field"><span class="field-label">Exp. Date:</span><span class="field-value">${new Date(labelData.expireDate).toLocaleDateString()}</span></div>` : ""}
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
+                                  <!DOCTYPE html>
+                                  <html>
+                                    <head>
+                                      <title>Product Label - ${selectedProductForLabel?.name}</title>
+                                      <style>
+                                        body { 
+                                          font-family: 'Arial', sans-serif; 
+                                          margin: ${margin}mm; 
+                                          font-size: 10px;
+                                          background: white;
+                                        }
+                                        .label {
+                                          border: 2px solid #000;
+                                          padding: 8px;
+                                          width: ${currentSize.width};
+                                          height: ${currentSize.height};
+                                          margin: 0 auto;
+                                          box-sizing: border-box;
+                                          display: flex;
+                                          flex-direction: column;
+                                          ${orientation === "landscape" ? "transform: rotate(90deg); transform-origin: center;" : ""}
+                                        }
+                                        .header {
+                                          text-align: center;
+                                          border-bottom: 1px solid #000;
+                                          padding-bottom: 6px;
+                                          margin-bottom: 6px;
+                                          flex-shrink: 0;
+                                        }
+                                        .company-name {
+                                          font-size: 12px;
+                                          font-weight: bold;
+                                          margin-bottom: 2px;
+                                          line-height: 1.2;
+                                        }
+                                        .company-location {
+                                          font-size: 8px;
+                                          line-height: 1.1;
+                                        }
+                                        .product-name {
+                                          font-size: 11px;
+                                          font-weight: bold;
+                                          text-align: center;
+                                          margin: 4px 0;
+                                          border: 1px solid #000;
+                                          padding: 3px;
+                                          background: #f9f9f9;
+                                          flex-shrink: 0;
+                                        }
+                                        .fields {
+                                          flex: 1;
+                                          display: flex;
+                                          flex-direction: column;
+                                          gap: 2px;
+                                        }
+                                        .field {
+                                          display: flex;
+                                          justify-content: space-between;
+                                          align-items: flex-start;
+                                          line-height: 1.2;
+                                        }
+                                        .field-label {
+                                          font-weight: bold;
+                                          width: 35%;
+                                          font-size: 9px;
+                                        }
+                                        .field-value {
+                                          width: 60%;
+                                          text-align: right;
+                                          font-size: 9px;
+                                          word-wrap: break-word;
+                                        }
+                                        .ingredients .field-value {
+                                          font-size: 7px;
+                                          line-height: 1.1;
+                                        }
+                                        @media print {
+                                          body { margin: 0; }
+                                          .label { 
+                                            page-break-inside: avoid;
+                                            break-inside: avoid;
+                                          }
+                                        }
+                                      </style>
+                                    </head>
+                                    <body>
+                                      <div class="label">
+                                        <div class="header">
+                                          <div class="company-name">${labelData.companyName}</div>
+                                          ${labelData.companyLocation ? `<div class="company-location">${labelData.companyLocation}</div>` : ""}
+                                        </div>
+                                        <div class="product-name">${selectedProductForLabel?.name}</div>
+                                        <div class="fields">
+                                          ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ""}
+                                          ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ""}
+                                          ${labelData.batchNo ? `<div class="field"><span class="field-label">Batch No:</span><span class="field-value">${labelData.batchNo}</span></div>` : ""}
+                                          ${labelData.netWeight ? `<div class="field"><span class="field-label">Net Weight:</span><span class="field-value">${labelData.netWeight}</span></div>` : ""}
+                                          ${labelData.ingredients ? `<div class="field ingredients"><span class="field-label">Ingredients:</span><span class="field-value">${labelData.ingredients}</span></div>` : ""}
+                                          <div class="field"><span class="field-label">MRP:</span><span class="field-value">${labelData.mrp}</span></div>
+                                          ${labelData.manufactureDate ? `<div class="field"><span class="field-label">Mfg. Date:</span><span class="field-value">${new Date(labelData.manufactureDate).toLocaleDateString()}</span></div>` : ""}
+                                          ${labelData.expireDate ? `<div class="field"><span class="field-label">Exp. Date:</span><span class="field-value">${new Date(labelData.expireDate).toLocaleDateString()}</span></div>` : ""}
+                                        </div>
+                                      </div>
+                                    </body>
+                                  </html>
+                                `;
 
     printWindow?.document.write(printContent);
     printWindow?.document.close();
+    printWindow?.focus();
     printWindow?.print();
+    if (printWindow) {
+      printWindow.onafterprint = () => printWindow.close();
+    }
   };
 
   if (isLoading) {
@@ -385,7 +408,15 @@ export default function Products() {
     );
   }
 
-  // No need to manually check error here — handled in `onError`
+  if (productsError) {
+    return (
+      <div className="p-6 text-center text-red-500">
+        <h2>Error loading products</h2>
+        <p>{(productsError as Error).message}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -485,18 +516,18 @@ export default function Products() {
                   Code
                 </SortableTableHeader>
                 <SortableTableHeader
+                  sortKey="cost"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                >
+                  Cost
+                </SortableTableHeader>
+                <SortableTableHeader
                   sortKey="price"
                   sortConfig={sortConfig}
                   onSort={requestSort}
                 >
                   Regular Price
-                </SortableTableHeader>
-                <SortableTableHeader
-                  sortKey="salePrice"
-                  sortConfig={sortConfig}
-                  onSort={requestSort}
-                >
-                  Sales Price
                 </SortableTableHeader>
                 <SortableTableHeader
                   sortKey="isActive"
@@ -524,7 +555,7 @@ export default function Products() {
             </TableHeader>
             <TableBody>
               {paginatedProducts.length > 0 ? (
-                paginatedProducts.map((product: any) => (
+                paginatedProducts.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-2">

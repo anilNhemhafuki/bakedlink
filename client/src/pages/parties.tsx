@@ -118,7 +118,7 @@ export default function Parties() {
   // Check URL parameters for auto-opening ledger
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const viewLedgerParam = urlParams.get('viewLedger');
+    const viewLedgerParam = urlParams.get("viewLedger");
 
     if (viewLedgerParam && parties.length > 0) {
       const partyId = parseInt(viewLedgerParam);
@@ -128,11 +128,10 @@ export default function Parties() {
         setSelectedParty(party);
         setIsLedgerDialogOpen(true);
         // Clear the URL parameter
-        window.history.replaceState({}, '', window.location.pathname);
+        window.history.replaceState({}, "", window.location.pathname);
       }
     }
   }, [parties]);
-
 
   const { data: ledgerTransactions = [] } = useQuery({
     queryKey: ["/api/ledger/party", selectedParty?.id],
@@ -238,7 +237,7 @@ export default function Parties() {
       });
     },
   });
-
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
   const transactionMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/ledger", data),
     onSuccess: () => {
@@ -453,7 +452,10 @@ export default function Parties() {
   });
 
   // Add sorting functionality
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredParties, 'name');
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredParties,
+    "name",
+  );
 
   const getTypeBadge = (type: string) => {
     const variants: Record<
@@ -555,7 +557,10 @@ export default function Parties() {
           variant: "destructive",
         });
       } else {
-        const errorMessage = error.response?.data?.message || error.message || "Failed to create party";
+        const errorMessage =
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to create party";
         toast({
           title: "Error",
           description: errorMessage,
@@ -566,7 +571,13 @@ export default function Parties() {
   });
 
   const updatePartyMutation = useMutation({
-    mutationFn: async ({ id, ...partyData }: { id: string; [key: string]: any }) => {
+    mutationFn: async ({
+      id,
+      ...partyData
+    }: {
+      id: string;
+      [key: string]: any;
+    }) => {
       console.log(`Updating party with ID: ${id} and data:`, partyData);
       const response = await apiRequest("PUT", `/api/parties/${id}`, partyData);
       return response;
@@ -606,7 +617,8 @@ export default function Parties() {
       } else {
         toast({
           title: "Error",
-          description: error.response?.data?.message || "Failed to update party",
+          description:
+            error.response?.data?.message || "Failed to update party",
           variant: "destructive",
         });
       }
@@ -637,7 +649,11 @@ export default function Parties() {
 
     // Validate opening balance if provided
     const openingBalance = formData.get("openingBalance") as string;
-    if (openingBalance && openingBalance.trim() && isNaN(parseFloat(openingBalance))) {
+    if (
+      openingBalance &&
+      openingBalance.trim() &&
+      isNaN(parseFloat(openingBalance))
+    ) {
       errors.openingBalance = "Please enter a valid number";
     }
 
@@ -937,16 +953,33 @@ export default function Parties() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="name"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Party Details
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="type" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="type"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Type
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="email" sortConfig={sortConfig} onSort={requestSort} className="hidden sm:table-cell">
+                    <SortableTableHeader
+                      sortKey="email"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                      className="hidden sm:table-cell"
+                    >
                       Contact Info
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="currentBalance" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="currentBalance"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Account Balance
                     </SortableTableHeader>
                     <TableHead>Actions</TableHead>
@@ -1050,7 +1083,9 @@ export default function Parties() {
                                 }
                                 title="Delete Party"
                                 itemName={party.name}
-                                onConfirm={() => deleteMutation.mutate(party.id)}
+                                onConfirm={() =>
+                                  deleteMutation.mutate(party.id)
+                                }
                                 isLoading={deleteMutation.isPending}
                               />
                             </PermissionWrapper>
