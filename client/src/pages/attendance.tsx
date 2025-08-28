@@ -79,13 +79,13 @@ export default function AttendanceManagement() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       
-      return apiRequest(`/api/attendance?${params.toString()}`, "GET");
+      return apiRequest("GET", `/api/attendance?${params.toString()}`);
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("/api/attendance", "POST", data);
+      await apiRequest("POST", "/api/attendance", data);
     },
     onSuccess: () => {
       toast({
@@ -100,7 +100,7 @@ export default function AttendanceManagement() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest(`/api/attendance/${editingRecord?.id}`, "PUT", data);
+      await apiRequest("PUT", `/api/attendance/${editingRecord?.id}`, data);
     },
     onSuccess: () => {
       toast({
@@ -115,7 +115,7 @@ export default function AttendanceManagement() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest(`/api/attendance/${id}`, "DELETE");
+      await apiRequest("DELETE", `/api/attendance/${id}`);
     },
     onSuccess: () => {
       toast({
@@ -128,7 +128,7 @@ export default function AttendanceManagement() {
 
   const clockInMutation = useMutation({
     mutationFn: async (staffId: number) => {
-      await apiRequest("/api/attendance/clock-in", "POST", { staffId });
+      await apiRequest("POST", "/api/attendance/clock-in", { staffId });
     },
     onSuccess: () => {
       toast({
@@ -148,7 +148,7 @@ export default function AttendanceManagement() {
 
   const clockOutMutation = useMutation({
     mutationFn: async (staffId: number) => {
-      await apiRequest("/api/attendance/clock-out", "POST", { staffId });
+      await apiRequest("POST", "/api/attendance/clock-out", { staffId });
     },
     onSuccess: () => {
       toast({
