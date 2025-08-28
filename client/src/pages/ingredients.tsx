@@ -80,7 +80,7 @@ export default function Ingredients() {
   // Filter only active units for the dropdown
   // The useUnits hook now ensures units is always an array, so Array.isArray check is implicitly handled.
   const activeUnits = Array.isArray(units)
-    ? units.filter((unit: any) => unit.isActive)
+    ? units.filter((unit: any) => unit.isActive !== false) // show unless explicitly inactive
     : [];
 
   // Filter ingredients (items that can be used as ingredients)
@@ -407,12 +407,18 @@ export default function Ingredients() {
                       <SelectValue placeholder="Select unit of measurement" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.isArray(activeUnits) &&
+                      {activeUnits.length > 0 ? (
                         activeUnits.map((unit: any) => (
                           <SelectItem key={unit.id} value={unit.id.toString()}>
-                            {unit.name} ({unit.abbreviation})
+                            {unit.name} (
+                            {unit.abbreviation || unit.unit || "unit"})
                           </SelectItem>
-                        ))}
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          No units available. Please add one in settings.
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
