@@ -1446,13 +1446,13 @@ export class Storage implements IStorage {
         .select({
           id: purchaseItems.id,
           inventoryItemId: purchaseItems.inventoryItemId,
-          inventoryItemName: inventory.name,
+          inventoryItemName: inventoryItems.name,
           quantity: purchaseItems.quantity,
           unitPrice: purchaseItems.unitPrice,
           totalPrice: purchaseItems.totalPrice,
         })
         .from(purchaseItems)
-        .leftJoin(inventory, eq(purchaseItems.inventoryItemId, inventory.id))
+        .leftJoin(inventoryItems, eq(purchaseItems.inventoryItemId, inventoryItems.id))
         .where(eq(purchaseItems.purchaseId, purchase.id));
       
       purchase.items = items;
@@ -1494,13 +1494,19 @@ export class Storage implements IStorage {
     // Create ledger transaction if party is involved
     if (purchaseData.partyId) {
       await this.createLedgerTransaction({
+        customerOrPartyId: purchaseData.partyId,
         entityType: 'party',
-        entityId: purchaseData.partyId,
-        type: 'debit',
-        amount: purchaseData.totalAmount,
+        transactionDate: new Date(),
         description: `Purchase from ${purchaseData.supplierName}${purchaseData.invoiceNumber ? ` - Invoice: ${purchaseData.invoiceNumber}` : ''}`,
-        reference: `Purchase #${newPurchase.id}`,
-        date: new Date(),
+        referenceNumber: purchaseData.invoiceNumber || `PUR-${newPurchase.id}`,
+        debitAmount: purchaseData.totalAmount,
+        creditAmount: "0",
+        transactionType: 'purchase',
+        relatedPurchaseId: newPurchase.id,
+        paymentMethod: purchaseData.paymentMethod,
+        notes: purchaseData.notes,
+        createdBy: purchaseData.createdBy,
+        runningBalance: "0", // Will be calculated by recalculateRunningBalance
       });
 
       // Recalculate running balance

@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import {
   PermissionWrapper,
@@ -88,19 +88,19 @@ interface TransactionFormErrors {
 }
 
 export default function Parties() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingParty, setEditingParty] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
-  const [isLedgerDialogOpen, setIsLedgerDialogOpen] = useState(false);
-  const [editingParty, setEditingParty] = useState<any>(null);
   const [selectedParty, setSelectedParty] = useState<any>(null);
+  const [isLedgerDialogOpen, setIsLedgerDialogOpen] = useState(false);
   const [selectedType, setSelectedType] = useState("");
   const [transactionType, setTransactionType] = useState("");
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [transactionErrors, setTransactionErrors] =
     useState<TransactionFormErrors>({});
-  const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
   const {
@@ -114,6 +114,25 @@ export default function Parties() {
       return failureCount < 3;
     },
   });
+
+  // Check URL parameters for auto-opening ledger
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const viewLedgerParam = urlParams.get('viewLedger');
+
+    if (viewLedgerParam && parties.length > 0) {
+      const partyId = parseInt(viewLedgerParam);
+      const party = parties.find((p: any) => p.id === partyId);
+
+      if (party) {
+        setSelectedParty(party);
+        setIsLedgerDialogOpen(true);
+        // Clear the URL parameter
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [parties]);
+
 
   const { data: ledgerTransactions = [] } = useQuery({
     queryKey: ["/api/ledger/party", selectedParty?.id],
