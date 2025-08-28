@@ -1,584 +1,4 @@
-
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Plus, DollarSign, Edit, Trash2, CreditCard, Calculator } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import SearchBar from "@/components/search-bar";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
-import { format } from "date-fns";
-
-export default function SalaryManagement() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStaff, setSelectedStaff] = useState<string>("all");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPayment, setEditingPayment] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    staffId: "",
-    payPeriodStart: "",
-    payPeriodEnd: "",
-    basicSalary: "",
-    overtimePay: "0",
-    bonus: "0",
-    allowances: "0",
-    deductions: "0",
-    tax: "0",
-    paymentMethod: "bank_transfer",
-    notes: "",
-  });
-
-  const { toast } = useToast();
-
-  const { data: staff = [] } = useQuery({
-    queryKey: ["/api/staff"],
-  });
-
-  const { data: salaryPayments = [], isLoading } = useQuery({
-    queryKey: ["/api/salary-payments", selectedStaff],
-    queryFn: () => {
-      const params = new URLSearchParams();
-      if (selectedStaff && selectedStaff !== "all") params.append('staffId', selectedStaff);
-      
-      return apiRequest(`/api/salary-payments?${params.toString()}`, "GET");
-    },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      await apiRequest("/api/salary-payments", "POST", data);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Salary payment created successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/salary-payments"] });
-      setIsDialogOpen(false);
-      resetForm();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: any) => {
-      await apiRequest(`/api/salary-payments/${editingPayment?.id}`, "PUT", data);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Salary payment updated successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/salary-payments"] });
-      setIsDialogOpen(false);
-      resetForm();
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest(`/api/salary-payments/${id}`, "DELETE");
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Salary payment deleted successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/salary-payments"] });
-    },
-  });
-
-  const resetForm = () => {
-    setFormData({
-      staffId: "",
-      payPeriodStart: "",
-      payPeriodEnd: "",
-      basicSalary: "",
-      overtimePay: "0",
-      bonus: "0",
-      allowances: "0",
-      deductions: "0",
-      tax: "0",
-      paymentMethod: "bank_transfer",
-      notes: "",
-    });
-    setEditingPayment(null);
-  };
-
-  const calculateNetPay = () => {
-    const basic = parseFloat(formData.basicSalary) || 0;
-    const overtime = parseFloat(formData.overtimePay) || 0;
-    const bonus = parseFloat(formData.bonus) || 0;
-    const allowances = parseFloat(formData.allowances) || 0;
-    const deductions = parseFloat(formData.deductions) || 0;
-    const tax = parseFloat(formData.tax) || 0;
-    
-    return basic + overtime + bonus + allowances - deductions - tax;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.staffId || !formData.payPeriodStart || !formData.payPeriodEnd || !formData.basicSalary) {
-      toast({
-        title: "Error",
-        description: "Please fill in required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const netPay = calculateNetPay();
-    const submitData = {
-      ...formData,
-      netPay: netPay.toString(),
-    };
-
-    if (editingPayment) {
-      updateMutation.mutate(submitData);
-    } else {
-      createMutation.mutate(submitData);
-    }
-  };
-
-  const handleEdit = (payment: any) => {
-    setEditingPayment(payment);
-    setFormData({
-      staffId: payment.staffId?.toString() || "",
-      payPeriodStart: format(new Date(payment.payPeriodStart), 'yyyy-MM-dd'),
-      payPeriodEnd: format(new Date(payment.payPeriodEnd), 'yyyy-MM-dd'),
-      basicSalary: payment.basicSalary || "",
-      overtimePay: payment.overtimePay || "0",
-      bonus: payment.bonus || "0",
-      allowances: payment.allowances || "0",
-      deductions: payment.deductions || "0",
-      tax: payment.tax || "0",
-      paymentMethod: payment.paymentMethod || "bank_transfer",
-      notes: payment.notes || "",
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    deleteMutation.mutate(id);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { variant: "secondary" as const, label: "Pending" },
-      paid: { variant: "default" as const, label: "Paid" },
-      cancelled: { variant: "destructive" as const, label: "Cancelled" },
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const filteredPayments = salaryPayments.filter((payment: any) =>
-    payment.staffName?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <DollarSign className="h-8 w-8" />
-            Salary Management
-          </h1>
-          <p className="text-muted-foreground">Manage staff salary payments and payroll</p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Salary Payment
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingPayment ? "Edit Salary Payment" : "Add Salary Payment"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="staffId">Staff Member *</Label>
-                <Select
-                  value={formData.staffId}
-                  onValueChange={(value) => setFormData({ ...formData, staffId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select staff member" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {staff.map((member: any) => (
-                      <SelectItem key={member.id} value={member.id.toString()}>
-                        {member.firstName} {member.lastName} - {member.position}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="payPeriodStart">Pay Period Start *</Label>
-                  <Input
-                    id="payPeriodStart"
-                    type="date"
-                    value={formData.payPeriodStart}
-                    onChange={(e) => setFormData({ ...formData, payPeriodStart: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="payPeriodEnd">Pay Period End *</Label>
-                  <Input
-                    id="payPeriodEnd"
-                    type="date"
-                    value={formData.payPeriodEnd}
-                    onChange={(e) => setFormData({ ...formData, payPeriodEnd: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="basicSalary">Basic Salary *</Label>
-                  <Input
-                    id="basicSalary"
-                    type="number"
-                    step="0.01"
-                    value={formData.basicSalary}
-                    onChange={(e) => setFormData({ ...formData, basicSalary: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="overtimePay">Overtime Pay</Label>
-                  <Input
-                    id="overtimePay"
-                    type="number"
-                    step="0.01"
-                    value={formData.overtimePay}
-                    onChange={(e) => setFormData({ ...formData, overtimePay: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="bonus">Bonus</Label>
-                  <Input
-                    id="bonus"
-                    type="number"
-                    step="0.01"
-                    value={formData.bonus}
-                    onChange={(e) => setFormData({ ...formData, bonus: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="allowances">Allowances</Label>
-                  <Input
-                    id="allowances"
-                    type="number"
-                    step="0.01"
-                    value={formData.allowances}
-                    onChange={(e) => setFormData({ ...formData, allowances: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="deductions">Deductions</Label>
-                  <Input
-                    id="deductions"
-                    type="number"
-                    step="0.01"
-                    value={formData.deductions}
-                    onChange={(e) => setFormData({ ...formData, deductions: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="tax">Tax</Label>
-                  <Input
-                    id="tax"
-                    type="number"
-                    step="0.01"
-                    value={formData.tax}
-                    onChange={(e) => setFormData({ ...formData, tax: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="p-4 bg-muted rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Net Pay:</span>
-                  <span className="text-lg font-bold">${calculateNetPay().toFixed(2)}</span>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="paymentMethod">Payment Method</Label>
-                <Select
-                  value={formData.paymentMethod}
-                  onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="check">Check</SelectItem>
-                    <SelectItem value="mobile_payment">Mobile Payment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Optional notes"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                >
-                  {createMutation.isPending || updateMutation.isPending
-                    ? "Saving..."
-                    : editingPayment
-                    ? "Update"
-                    : "Create"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <Calculator className="h-8 w-8 text-muted-foreground" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Payroll</p>
-                <p className="text-2xl font-bold">
-                  ${salaryPayments.reduce((sum: number, payment: any) => sum + parseFloat(payment.netPay || 0), 0).toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <CreditCard className="h-8 w-8 text-muted-foreground" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Pending Payments</p>
-                <p className="text-2xl font-bold">
-                  {salaryPayments.filter((payment: any) => payment.status === 'pending').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <DollarSign className="h-8 w-8 text-muted-foreground" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Paid This Month</p>
-                <p className="text-2xl font-bold">
-                  {salaryPayments.filter((payment: any) => {
-                    const paymentDate = new Date(payment.payPeriodEnd);
-                    const now = new Date();
-                    return paymentDate.getMonth() === now.getMonth() && 
-                           paymentDate.getFullYear() === now.getFullYear() &&
-                           payment.status === 'paid';
-                  }).length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Average Salary</p>
-                <p className="text-2xl font-bold">
-                  ${salaryPayments.length > 0 ? 
-                    (salaryPayments.reduce((sum: number, payment: any) => sum + parseFloat(payment.basicSalary || 0), 0) / salaryPayments.length).toFixed(2) :
-                    '0.00'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="staffFilter">Staff Member</Label>
-              <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All staff" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All staff</SelectItem>
-                  {staff.map((member: any) => (
-                    <SelectItem key={member.id} value={member.id.toString()}>
-                      {member.firstName} {member.lastName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="search">Search</Label>
-              <SearchBar
-                placeholder="Search salary payments..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Salary Payments Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Salary Payments ({filteredPayments.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading salary payments...</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Staff Member</TableHead>
-                    <TableHead>Pay Period</TableHead>
-                    <TableHead>Basic Salary</TableHead>
-                    <TableHead>Overtime</TableHead>
-                    <TableHead>Bonus</TableHead>
-                    <TableHead>Deductions</TableHead>
-                    <TableHead>Net Pay</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPayments.map((payment: any) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{payment.staffName}</div>
-                          <div className="text-sm text-muted-foreground">{payment.staffPosition}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {format(new Date(payment.payPeriodStart), 'MMM dd')} - {format(new Date(payment.payPeriodEnd), 'MMM dd, yyyy')}
-                        </div>
-                      </TableCell>
-                      <TableCell>${parseFloat(payment.basicSalary || 0).toFixed(2)}</TableCell>
-                      <TableCell>${parseFloat(payment.overtimePay || 0).toFixed(2)}</TableCell>
-                      <TableCell>${parseFloat(payment.bonus || 0).toFixed(2)}</TableCell>
-                      <TableCell>${(parseFloat(payment.deductions || 0) + parseFloat(payment.tax || 0)).toFixed(2)}</TableCell>
-                      <TableCell className="font-medium">${parseFloat(payment.netPay || 0).toFixed(2)}</TableCell>
-                      <TableCell>{getStatusBadge(payment.status || 'pending')}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(payment)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <DeleteConfirmationDialog
-                            trigger={
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            }
-                            title="Delete Salary Payment"
-                            itemName={`Payment for ${payment.staffName}`}
-                            onConfirm={() => handleDelete(payment.id)}
-                            isLoading={deleteMutation.isPending}
-                          />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -629,10 +49,10 @@ export default function SalaryPayments() {
     bonus: "",
     allowances: "",
     deductions: "",
-    taxPercentage: "",
-    taxAmount: "",
-    netPay: "",
-    paymentDate: "",
+    taxPercentage: "0",
+    taxAmount: "0",
+    netPay: "0",
+    paymentDate: new Date().toISOString().split("T")[0], // default today
     paymentMethod: "bank_transfer",
     status: "pending",
     notes: "",
@@ -640,16 +60,13 @@ export default function SalaryPayments() {
 
   const { toast } = useToast();
 
-  const { data: staff = [] } = useQuery({
-    queryKey: ["/api/staff"],
+  const { data: staff = [], isLoading: staffLoading } = useQuery({
+    queryKey: ["staff"],
     queryFn: () => apiRequest("GET", "/api/staff"),
   });
 
-  const {
-    data: salaryPayments = [],
-    isLoading,
-  } = useQuery({
-    queryKey: ["/api/salary-payments", selectedStaff],
+  const { data: salaryPayments = [], isLoading: paymentsLoading } = useQuery({
+    queryKey: ["salary-payments", selectedStaff],
     queryFn: () => {
       const params = selectedStaff ? `?staffId=${selectedStaff}` : "";
       return apiRequest("GET", `/api/salary-payments${params}`);
@@ -658,15 +75,14 @@ export default function SalaryPayments() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/salary-payments", data);
-      return response;
+      return apiRequest("POST", "/api/salary-payments", data);
     },
     onSuccess: () => {
       toast({
         title: "Success",
         description: "Salary payment created successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/salary-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["salary-payments"] });
       setIsDialogOpen(false);
       resetForm();
     },
@@ -681,14 +97,18 @@ export default function SalaryPayments() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("PUT", `/api/salary-payments/${editingPayment?.id}`, data);
+      return apiRequest(
+        "PUT",
+        `/api/salary-payments/${editingPayment?.id}`,
+        data,
+      );
     },
     onSuccess: () => {
       toast({
         title: "Success",
         description: "Salary payment updated successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/salary-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["salary-payments"] });
       setIsDialogOpen(false);
       resetForm();
     },
@@ -711,10 +131,10 @@ export default function SalaryPayments() {
       bonus: "",
       allowances: "",
       deductions: "",
-      taxPercentage: "",
-      taxAmount: "",
-      netPay: "",
-      paymentDate: "",
+      taxPercentage: "0",
+      taxAmount: "0",
+      netPay: "0",
+      paymentDate: new Date().toISOString().split("T")[0],
       paymentMethod: "bank_transfer",
       status: "pending",
       notes: "",
@@ -722,11 +142,8 @@ export default function SalaryPayments() {
     setEditingPayment(null);
   };
 
-  const calculateTaxAmount = (grossPay: number, taxPercentage: number) => {
-    return (grossPay * taxPercentage) / 100;
-  };
-
-  const calculateNetPay = () => {
+  // Auto-calculate tax and net pay whenever financial fields change
+  useEffect(() => {
     const basicSalary = parseFloat(formData.basicSalary) || 0;
     const overtimePay = parseFloat(formData.overtimePay) || 0;
     const bonus = parseFloat(formData.bonus) || 0;
@@ -735,50 +152,33 @@ export default function SalaryPayments() {
     const taxPercentage = parseFloat(formData.taxPercentage) || 0;
 
     const grossPay = basicSalary + overtimePay + bonus + allowances;
-    const taxAmount = calculateTaxAmount(grossPay, taxPercentage);
+    const taxAmount = (grossPay * taxPercentage) / 100;
     const netPay = grossPay - deductions - taxAmount;
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       taxAmount: taxAmount.toFixed(2),
       netPay: netPay.toFixed(2),
     }));
-  };
+  }, [
+    formData.basicSalary,
+    formData.overtimePay,
+    formData.bonus,
+    formData.allowances,
+    formData.deductions,
+    formData.taxPercentage,
+  ]);
 
   const handleFormChange = (field: string, value: string) => {
-    setFormData(prev => {
-      const newData = { ...prev, [field]: value };
-      
-      // Auto-calculate when financial fields change
-      if (['basicSalary', 'overtimePay', 'bonus', 'allowances', 'deductions', 'taxPercentage'].includes(field)) {
-        setTimeout(() => {
-          const basicSalary = parseFloat(newData.basicSalary) || 0;
-          const overtimePay = parseFloat(newData.overtimePay) || 0;
-          const bonus = parseFloat(newData.bonus) || 0;
-          const allowances = parseFloat(newData.allowances) || 0;
-          const deductions = parseFloat(newData.deductions) || 0;
-          const taxPercentage = parseFloat(newData.taxPercentage) || 0;
-
-          const grossPay = basicSalary + overtimePay + bonus + allowances;
-          const taxAmount = calculateTaxAmount(grossPay, taxPercentage);
-          const netPay = grossPay - deductions - taxAmount;
-
-          setFormData(current => ({
-            ...current,
-            taxAmount: taxAmount.toFixed(2),
-            netPay: netPay.toFixed(2),
-          }));
-        }, 100);
-      }
-      
-      return newData;
-    });
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.staffId || !formData.payPeriodStart || !formData.payPeriodEnd || !formData.basicSalary) {
+    const { staffId, payPeriodStart, payPeriodEnd, basicSalary } = formData;
+
+    if (!staffId || !payPeriodStart || !payPeriodEnd || !basicSalary) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -787,9 +187,26 @@ export default function SalaryPayments() {
       return;
     }
 
+    if (new Date(payPeriodStart) > new Date(payPeriodEnd)) {
+      toast({
+        title: "Error",
+        description: "Pay period start must be before end date",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const submitData = {
       ...formData,
-      staffId: parseInt(formData.staffId),
+      staffId: parseInt(staffId),
+      basicSalary: parseFloat(formData.basicSalary) || 0,
+      overtimePay: parseFloat(formData.overtimePay) || 0,
+      bonus: parseFloat(formData.bonus) || 0,
+      allowances: parseFloat(formData.allowances) || 0,
+      deductions: parseFloat(formData.deductions) || 0,
+      taxPercentage: parseFloat(formData.taxPercentage) || 0,
+      taxAmount: parseFloat(formData.taxAmount) || 0,
+      netPay: parseFloat(formData.netPay) || 0,
     };
 
     if (editingPayment) {
@@ -803,17 +220,23 @@ export default function SalaryPayments() {
     setEditingPayment(payment);
     setFormData({
       staffId: payment.staffId?.toString() || "",
-      payPeriodStart: payment.payPeriodStart ? new Date(payment.payPeriodStart).toISOString().split("T")[0] : "",
-      payPeriodEnd: payment.payPeriodEnd ? new Date(payment.payPeriodEnd).toISOString().split("T")[0] : "",
-      basicSalary: payment.basicSalary || "",
-      overtimePay: payment.overtimePay || "",
-      bonus: payment.bonus || "",
-      allowances: payment.allowances || "",
-      deductions: payment.deductions || "",
-      taxPercentage: payment.taxPercentage || "",
-      taxAmount: payment.taxAmount || "",
-      netPay: payment.netPay || "",
-      paymentDate: payment.paymentDate ? new Date(payment.paymentDate).toISOString().split("T")[0] : "",
+      payPeriodStart: payment.payPeriodStart
+        ? new Date(payment.payPeriodStart).toISOString().split("T")[0]
+        : "",
+      payPeriodEnd: payment.payPeriodEnd
+        ? new Date(payment.payPeriodEnd).toISOString().split("T")[0]
+        : "",
+      basicSalary: payment.basicSalary?.toString() || "0",
+      overtimePay: payment.overtimePay?.toString() || "0",
+      bonus: payment.bonus?.toString() || "0",
+      allowances: payment.allowances?.toString() || "0",
+      deductions: payment.deductions?.toString() || "0",
+      taxPercentage: payment.taxPercentage?.toString() || "0",
+      taxAmount: payment.taxAmount?.toString() || "0",
+      netPay: payment.netPay?.toString() || "0",
+      paymentDate: payment.paymentDate
+        ? new Date(payment.paymentDate).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0],
       paymentMethod: payment.paymentMethod || "bank_transfer",
       status: payment.status || "pending",
       notes: payment.notes || "",
@@ -828,15 +251,19 @@ export default function SalaryPayments() {
       cancelled: { variant: "destructive" as const, label: "Cancelled" },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const config =
+      statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const filteredPayments = salaryPayments.filter((payment: any) =>
-    payment.staffName?.toLowerCase().includes(searchQuery.toLowerCase())
+    payment.staffName?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredPayments, "paymentDate");
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredPayments,
+    "paymentDate",
+  );
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -847,11 +274,13 @@ export default function SalaryPayments() {
             <DollarSign className="h-8 w-8" />
             Salary Payments
           </h1>
-          <p className="text-muted-foreground">Manage staff salary payments and payroll</p>
+          <p className="text-muted-foreground">
+            Manage staff salary payments and payroll
+          </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
+            <Button onClick={resetForm}>
               <Plus className="h-4 w-4 mr-2" />
               Add Salary Payment
             </Button>
@@ -859,7 +288,9 @@ export default function SalaryPayments() {
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingPayment ? "Edit Salary Payment" : "Add New Salary Payment"}
+                {editingPayment
+                  ? "Edit Salary Payment"
+                  : "Add New Salary Payment"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -868,15 +299,22 @@ export default function SalaryPayments() {
                   <Label htmlFor="staffId">Staff Member *</Label>
                   <Select
                     value={formData.staffId}
-                    onValueChange={(value) => handleFormChange("staffId", value)}
+                    onValueChange={(value) =>
+                      handleFormChange("staffId", value)
+                    }
+                    disabled={!!editingPayment} // prevent changing staff when editing
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select staff member" />
                     </SelectTrigger>
                     <SelectContent>
                       {staff.map((member: any) => (
-                        <SelectItem key={member.id} value={member.id.toString()}>
-                          {member.firstName} {member.lastName} - {member.position}
+                        <SelectItem
+                          key={member.id}
+                          value={member.id.toString()}
+                        >
+                          {member.firstName} {member.lastName} -{" "}
+                          {member.position}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -886,13 +324,17 @@ export default function SalaryPayments() {
                   <Label htmlFor="paymentMethod">Payment Method</Label>
                   <Select
                     value={formData.paymentMethod}
-                    onValueChange={(value) => handleFormChange("paymentMethod", value)}
+                    onValueChange={(value) =>
+                      handleFormChange("paymentMethod", value)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="bank_transfer">
+                        Bank Transfer
+                      </SelectItem>
                       <SelectItem value="cash">Cash</SelectItem>
                       <SelectItem value="check">Check</SelectItem>
                     </SelectContent>
@@ -907,7 +349,9 @@ export default function SalaryPayments() {
                     id="payPeriodStart"
                     type="date"
                     value={formData.payPeriodStart}
-                    onChange={(e) => handleFormChange("payPeriodStart", e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange("payPeriodStart", e.target.value)
+                    }
                     required
                   />
                 </div>
@@ -917,7 +361,9 @@ export default function SalaryPayments() {
                     id="payPeriodEnd"
                     type="date"
                     value={formData.payPeriodEnd}
-                    onChange={(e) => handleFormChange("payPeriodEnd", e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange("payPeriodEnd", e.target.value)
+                    }
                     required
                   />
                 </div>
@@ -931,7 +377,9 @@ export default function SalaryPayments() {
                     type="number"
                     step="0.01"
                     value={formData.basicSalary}
-                    onChange={(e) => handleFormChange("basicSalary", e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange("basicSalary", e.target.value)
+                    }
                     placeholder="0.00"
                     required
                   />
@@ -943,7 +391,9 @@ export default function SalaryPayments() {
                     type="number"
                     step="0.01"
                     value={formData.overtimePay}
-                    onChange={(e) => handleFormChange("overtimePay", e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange("overtimePay", e.target.value)
+                    }
                     placeholder="0.00"
                   />
                 </div>
@@ -968,7 +418,9 @@ export default function SalaryPayments() {
                     type="number"
                     step="0.01"
                     value={formData.allowances}
-                    onChange={(e) => handleFormChange("allowances", e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange("allowances", e.target.value)
+                    }
                     placeholder="0.00"
                   />
                 </div>
@@ -982,7 +434,9 @@ export default function SalaryPayments() {
                     type="number"
                     step="0.01"
                     value={formData.deductions}
-                    onChange={(e) => handleFormChange("deductions", e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange("deductions", e.target.value)
+                    }
                     placeholder="0.00"
                   />
                 </div>
@@ -995,7 +449,9 @@ export default function SalaryPayments() {
                     min="0"
                     max="100"
                     value={formData.taxPercentage}
-                    onChange={(e) => handleFormChange("taxPercentage", e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange("taxPercentage", e.target.value)
+                    }
                     placeholder="0.00"
                   />
                 </div>
@@ -1003,9 +459,8 @@ export default function SalaryPayments() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="taxAmount">Tax Amount (Auto-calculated)</Label>
+                  <Label>Tax Amount (Auto-calculated)</Label>
                   <Input
-                    id="taxAmount"
                     type="number"
                     step="0.01"
                     value={formData.taxAmount}
@@ -1014,9 +469,8 @@ export default function SalaryPayments() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="netPay">Net Pay (Auto-calculated)</Label>
+                  <Label>Net Pay (Auto-calculated)</Label>
                   <Input
-                    id="netPay"
                     type="number"
                     step="0.01"
                     value={formData.netPay}
@@ -1033,7 +487,9 @@ export default function SalaryPayments() {
                     id="paymentDate"
                     type="date"
                     value={formData.paymentDate}
-                    onChange={(e) => handleFormChange("paymentDate", e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange("paymentDate", e.target.value)
+                    }
                   />
                 </div>
                 <div>
@@ -1064,7 +520,7 @@ export default function SalaryPayments() {
                 />
               </div>
 
-              <div className="flex justify-end space-x-2">
+              <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
                   variant="outline"
@@ -1074,13 +530,20 @@ export default function SalaryPayments() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
                 >
-                  {createMutation.isPending || updateMutation.isPending
-                    ? "Saving..."
-                    : editingPayment
-                      ? "Update"
-                      : "Create"}
+                  {createMutation.isPending || updateMutation.isPending ? (
+                    <>
+                      <Calendar className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : editingPayment ? (
+                    "Update"
+                  ) : (
+                    "Create"
+                  )}
                 </Button>
               </div>
             </form>
@@ -1119,10 +582,12 @@ export default function SalaryPayments() {
           <CardTitle>Salary Payments ({sortedData.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {paymentsLoading || staffLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading salary payments...</p>
+              <p className="text-muted-foreground mt-2">
+                Loading salary payments...
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1170,42 +635,66 @@ export default function SalaryPayments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedData.map((payment: any) => (
-                    <TableRow key={payment.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <div>{payment.staffName}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {payment.staffPosition}
+                  {sortedData.length > 0 ? (
+                    sortedData.map((payment: any) => (
+                      <TableRow key={payment.id}>
+                        <TableCell className="font-medium">
+                          <div>
+                            <div>{payment.staffName}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {payment.staffPosition}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div>{new Date(payment.payPeriodStart).toLocaleDateString()}</div>
-                          <div className="text-muted-foreground">
-                            to {new Date(payment.payPeriodEnd).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div>
+                              {new Date(
+                                payment.payPeriodStart,
+                              ).toLocaleDateString()}
+                            </div>
+                            <div className="text-muted-foreground">
+                              to{" "}
+                              {new Date(
+                                payment.payPeriodEnd,
+                              ).toLocaleDateString()}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>Rs. {parseFloat(payment.basicSalary || 0).toFixed(2)}</TableCell>
-                      <TableCell>{payment.taxPercentage || 0}%</TableCell>
-                      <TableCell>Rs. {parseFloat(payment.taxAmount || 0).toFixed(2)}</TableCell>
-                      <TableCell className="font-bold">
-                        Rs. {parseFloat(payment.netPay || 0).toFixed(2)}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(payment.status || "pending")}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(payment)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        </TableCell>
+                        <TableCell>
+                          Rs. {parseFloat(payment.basicSalary || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell>{payment.taxPercentage || 0}%</TableCell>
+                        <TableCell>
+                          Rs. {parseFloat(payment.taxAmount || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="font-bold">
+                          Rs. {parseFloat(payment.netPay || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(payment.status || "pending")}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(payment)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={8}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        No salary payments found.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
