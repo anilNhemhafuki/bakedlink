@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,7 +61,7 @@ export default function AttendanceManagement() {
     startOfWeek.setDate(today.getDate() - today.getDay());
     const endOfWeek = new Date(today);
     endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
-    
+
     setStartDate(startOfWeek.toISOString().split('T')[0]);
     setEndDate(endOfWeek.toISOString().split('T')[0]);
   }, []);
@@ -78,7 +77,7 @@ export default function AttendanceManagement() {
       if (selectedStaff && selectedStaff !== "all") params.append('staffId', selectedStaff);
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
-      
+
       return apiRequest("GET", `/api/attendance?${params.toString()}`);
     },
   });
@@ -246,7 +245,7 @@ export default function AttendanceManagement() {
       sick: { variant: "secondary" as const, label: "Sick" },
       vacation: { variant: "outline" as const, label: "Vacation" },
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.present;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };

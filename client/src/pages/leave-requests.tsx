@@ -141,10 +141,35 @@ export default function LeaveRequests() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate required fields
+    if (!formData.staffId || !formData.startDate || !formData.endDate || !formData.reason) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate date range
+    if (new Date(formData.startDate) > new Date(formData.endDate)) {
+      toast({
+        title: "Error",
+        description: "Start date must be before or equal to end date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const submitData = {
+      ...formData,
+      staffId: parseInt(formData.staffId),
+    };
+    
     if (editingRequest) {
-      updateMutation.mutate(formData);
+      updateMutation.mutate(submitData);
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(submitData);
     }
   };
 
@@ -236,7 +261,7 @@ export default function LeaveRequests() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="staffId">Staff Member *</Label>
-                  <Select value={formData.staffId} onValueChange={(value) => setFormData({ ...formData, staffId: value })}>
+                  <Select value={formData.staffId || undefined} onValueChange={(value) => setFormData({ ...formData, staffId: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select staff member" />
                     </SelectTrigger>
@@ -251,7 +276,7 @@ export default function LeaveRequests() {
                 </div>
                 <div>
                   <Label htmlFor="leaveType">Leave Type *</Label>
-                  <Select value={formData.leaveType} onValueChange={(value) => setFormData({ ...formData, leaveType: value })}>
+                  <Select value={formData.leaveType || undefined} onValueChange={(value) => setFormData({ ...formData, leaveType: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select leave type" />
                     </SelectTrigger>
@@ -309,7 +334,7 @@ export default function LeaveRequests() {
               </div>
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                <Select value={formData.status || undefined} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>

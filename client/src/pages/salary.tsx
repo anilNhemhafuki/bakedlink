@@ -298,7 +298,7 @@ export default function SalaryPayments() {
                 <div>
                   <Label htmlFor="staffId">Staff Member *</Label>
                   <Select
-                    value={formData.staffId}
+                    value={formData.staffId || undefined}
                     onValueChange={(value) =>
                       handleFormChange("staffId", value)
                     }
@@ -323,13 +323,13 @@ export default function SalaryPayments() {
                 <div>
                   <Label htmlFor="paymentMethod">Payment Method</Label>
                   <Select
-                    value={formData.paymentMethod}
+                    value={formData.paymentMethod || undefined}
                     onValueChange={(value) =>
                       handleFormChange("paymentMethod", value)
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select payment method" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="bank_transfer">
@@ -495,11 +495,11 @@ export default function SalaryPayments() {
                 <div>
                   <Label htmlFor="status">Status</Label>
                   <Select
-                    value={formData.status}
+                    value={formData.status || undefined}
                     onValueChange={(value) => handleFormChange("status", value)}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">Pending</SelectItem>
@@ -561,12 +561,12 @@ export default function SalaryPayments() {
             className="w-full"
           />
         </div>
-        <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+        <Select value={selectedStaff || undefined} onValueChange={setSelectedStaff}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Filter by staff" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Staff</SelectItem>
+            <SelectItem value="all">All Staff</SelectItem>
             {staff.map((member: any) => (
               <SelectItem key={member.id} value={member.id.toString()}>
                 {member.firstName} {member.lastName}
