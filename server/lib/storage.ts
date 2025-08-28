@@ -91,6 +91,8 @@ import {
   type InsertStaffSchedule,
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
+import fs from 'fs';
+import path from 'path';
 
 export interface IStorage {
   // User operations
@@ -260,6 +262,21 @@ export interface IStorage {
 }
 
 export class Storage implements IStorage {
+  private uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+
+  constructor() {
+    // Ensure directories exist
+    if (!fs.existsSync(this.uploadsDir)) {
+      fs.mkdirSync(this.uploadsDir, { recursive: true });
+    }
+
+    // Ensure staff documents directory exists
+    const staffDocumentsDir = path.join(this.uploadsDir, 'staff-documents');
+    if (!fs.existsSync(staffDocumentsDir)) {
+      fs.mkdirSync(staffDocumentsDir, { recursive: true });
+    }
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const result = await db
       .select()
@@ -539,13 +556,13 @@ export class Storage implements IStorage {
     try {
       const result = await db.select().from(units).orderBy(units.name);
       console.log(`Storage getUnits result: ${result.length} units found`);
-      
+
       // Ensure all units have the required properties
       const validUnits = result.filter(unit => unit.id && unit.name && unit.abbreviation);
       if (validUnits.length !== result.length) {
         console.warn(`Filtered out ${result.length - validUnits.length} invalid units`);
       }
-      
+
       return validUnits;
     } catch (error) {
       console.error("Error in getUnits:", error);
@@ -978,10 +995,10 @@ export class Storage implements IStorage {
         })
         .from(permissions)
         .innerJoin(
-          this.rolePermissions,
-          eq(permissions.id, this.rolePermissions.permissionId),
+          rolePermissions,
+          eq(permissions.id, rolePermissions.permissionId),
         )
-        .where(eq(this.rolePermissions.role, user.role))
+        .where(eq(rolePermissions.role, user.role))
         .orderBy(permissions.resource, permissions.action);
 
       // Get user-specific permission overrides
@@ -992,14 +1009,14 @@ export class Storage implements IStorage {
           resource: permissions.resource,
           action: permissions.action,
           description: permissions.description,
-          granted: this.userPermissions.granted,
+          granted: userPermissions.granted,
         })
         .from(permissions)
         .innerJoin(
-          this.userPermissions,
-          eq(permissions.id, this.userPermissions.permissionId),
+          userPermissions,
+          eq(permissions.id, userPermissions.permissionId),
         )
-        .where(eq(this.userPermissions.userId, userId))
+        .where(eq(userPermissions.userId, userId))
         .orderBy(permissions.resource, permissions.action);
 
       // Merge permissions (user-specific overrides take precedence)
@@ -1916,7 +1933,7 @@ export class Storage implements IStorage {
           data: { product: "Vanilla Cupcakes", reason: "Ingredient shortage" }
         }
       ];
-      
+
       return sampleNotifications;
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -1973,7 +1990,7 @@ export class Storage implements IStorage {
   async triggerBusinessNotification(event: string, data: any): Promise<void> {
     try {
       let notification;
-      
+
       switch (event) {
         case "order_created":
           notification = {
@@ -1985,7 +2002,7 @@ export class Storage implements IStorage {
             data
           };
           break;
-          
+
         case "low_stock":
           notification = {
             type: "inventory",
@@ -1996,7 +2013,7 @@ export class Storage implements IStorage {
             data
           };
           break;
-          
+
         case "production_completed":
           notification = {
             type: "production",
@@ -2007,7 +2024,7 @@ export class Storage implements IStorage {
             data
           };
           break;
-          
+
         case "production_delayed":
           notification = {
             type: "production",
@@ -2018,7 +2035,7 @@ export class Storage implements IStorage {
             data
           };
           break;
-          
+
         case "shipment_dispatched":
           notification = {
             type: "shipping",
@@ -2029,7 +2046,7 @@ export class Storage implements IStorage {
             data
           };
           break;
-          
+
         case "delivery_failed":
           notification = {
             type: "shipping",
@@ -2040,7 +2057,7 @@ export class Storage implements IStorage {
             data
           };
           break;
-          
+
         case "payment_received":
           notification = {
             type: "order",
@@ -2051,7 +2068,7 @@ export class Storage implements IStorage {
             data
           };
           break;
-          
+
         case "system_alert":
           notification = {
             type: "system",
@@ -2062,25 +2079,25 @@ export class Storage implements IStorage {
             data
           };
           break;
-          
+
         default:
           console.warn(`Unknown notification event: ${event}`);
           return;
       }
-      
+
       // In production, broadcast to all relevant users based on their roles
       const adminUsers = await this.getAllUsers();
-      const relevantUsers = adminUsers.filter(user => 
+      const relevantUsers = adminUsers.filter(user =>
         ["admin", "manager", "supervisor"].includes(user.role)
       );
-      
+
       for (const user of relevantUsers) {
         await this.createNotification({
           userId: user.id,
           ...notification
         });
       }
-      
+
       console.log(`Triggered ${event} notification for ${relevantUsers.length} users`);
     } catch (error) {
       console.error("Error triggering business notification:", error);
@@ -2428,9 +2445,9 @@ export class Storage implements IStorage {
         ...log,
         timestamp: new Date(), // Always use server timestamp for security
       };
-      
+
       const [newLog] = await db.insert(auditLogs).values(immutableLog).returning();
-      
+
       // Log critical actions to console for additional monitoring
       if (['DELETE', 'LOGIN', 'LOGOUT', 'CREATE', 'UPDATE'].includes(log.action)) {
         console.log('📝 Audit Log:', {
@@ -2441,7 +2458,7 @@ export class Storage implements IStorage {
           timestamp: immutableLog.timestamp,
         });
       }
-      
+
       return newLog;
     } catch (error) {
       console.error('❌ Failed to create audit log:', error);
@@ -2461,43 +2478,43 @@ export class Storage implements IStorage {
   }): Promise<AuditLog[]> {
     try {
       let query = db.select().from(auditLogs);
-      
+
       const conditions = [];
-      
+
       if (filters?.userId) {
         conditions.push(eq(auditLogs.userId, filters.userId));
       }
-      
+
       if (filters?.action) {
         conditions.push(eq(auditLogs.action, filters.action));
       }
-      
+
       if (filters?.resource) {
         conditions.push(eq(auditLogs.resource, filters.resource));
       }
-      
+
       if (filters?.startDate) {
         conditions.push(gte(auditLogs.timestamp, filters.startDate));
       }
-      
+
       if (filters?.endDate) {
         conditions.push(lte(auditLogs.timestamp, filters.endDate));
       }
-      
+
       if (conditions.length > 0) {
         query = query.where(and(...conditions));
       }
-      
+
       query = query.orderBy(desc(auditLogs.timestamp));
-      
+
       if (filters?.limit) {
         query = query.limit(filters.limit);
       }
-      
+
       if (filters?.offset) {
         query = query.offset(filters.offset);
       }
-      
+
       return await query;
     } catch (error) {
       console.error('❌ Failed to retrieve audit logs:', error);
@@ -2511,7 +2528,7 @@ export class Storage implements IStorage {
         ...log,
         timestamp: new Date(),
       }).returning();
-      
+
       // Log security events
       if (log.status === 'failed') {
         console.warn('🚨 Failed Login:', {
@@ -2521,7 +2538,7 @@ export class Storage implements IStorage {
           timestamp: new Date().toISOString(),
         });
       }
-      
+
       return newLog;
     } catch (error) {
       console.error('❌ Failed to create login log:', error);
@@ -2539,39 +2556,39 @@ export class Storage implements IStorage {
   }): Promise<any[]> {
     try {
       let query = db.select().from(loginLogs);
-      
+
       const conditions = [];
-      
+
       if (filters?.userId) {
         conditions.push(eq(loginLogs.userId, filters.userId));
       }
-      
+
       if (filters?.status) {
         conditions.push(eq(loginLogs.status, filters.status));
       }
-      
+
       if (filters?.startDate) {
         conditions.push(gte(loginLogs.timestamp, filters.startDate));
       }
-      
+
       if (filters?.endDate) {
         conditions.push(lte(loginLogs.timestamp, filters.endDate));
       }
-      
+
       if (conditions.length > 0) {
         query = query.where(and(...conditions));
       }
-      
+
       query = query.orderBy(desc(loginLogs.timestamp));
-      
+
       if (filters?.limit) {
         query = query.limit(filters.limit);
       }
-      
+
       if (filters?.offset) {
         query = query.offset(filters.offset);
       }
-      
+
       return await query;
     } catch (error) {
       console.error('❌ Failed to retrieve login logs:', error);
@@ -2584,7 +2601,7 @@ export class Storage implements IStorage {
     try {
       const now = new Date();
       let startTime: Date;
-      
+
       switch (timeframe) {
         case 'hour':
           startTime = new Date(now.getTime() - 60 * 60 * 1000);
@@ -2595,7 +2612,7 @@ export class Storage implements IStorage {
         default:
           startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       }
-      
+
       const [failedLogins, suspiciousActivities, totalActivities] = await Promise.all([
         db.select({ count: count() })
           .from(loginLogs)
@@ -2603,19 +2620,19 @@ export class Storage implements IStorage {
             eq(loginLogs.status, 'failed'),
             gte(loginLogs.timestamp, startTime)
           )),
-        
+
         db.select({ count: count() })
           .from(auditLogs)
           .where(and(
             eq(auditLogs.status, 'failed'),
             gte(auditLogs.timestamp, startTime)
           )),
-        
+
         db.select({ count: count() })
           .from(auditLogs)
           .where(gte(auditLogs.timestamp, startTime))
       ]);
-      
+
       return {
         failedLogins: failedLogins[0]?.count || 0,
         suspiciousActivities: suspiciousActivities[0]?.count || 0,

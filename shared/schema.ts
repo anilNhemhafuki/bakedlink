@@ -372,7 +372,11 @@ export const staff = pgTable("staff", {
   bankAccount: varchar("bank_account", { length: 100 }),
   emergencyContact: varchar("emergency_contact", { length: 200 }),
   emergencyPhone: varchar("emergency_phone", { length: 20 }),
+  citizenshipNumber: varchar("citizenship_number", { length: 50 }),
+  panNumber: varchar("pan_number", { length: 50 }),
   profilePhoto: varchar("profile_photo", { length: 500 }),
+  identityCardUrl: varchar("identity_card_url", { length: 500 }),
+  agreementPaperUrl: varchar("agreement_paper_url", { length: 500 }),
   documents: jsonb("documents"), // Store document URLs/paths
   status: varchar("status", { length: 20 }).default("active"), // active, inactive, terminated
   terminationDate: timestamp("termination_date"),

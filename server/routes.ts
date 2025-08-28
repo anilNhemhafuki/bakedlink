@@ -2686,6 +2686,62 @@ Form Version: ${formVersion || '1.0'}`,
     }
   });
 
+  // Staff document upload endpoint
+  app.post("/api/staff/upload-document", isAuthenticated, upload.single("document"), (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No document uploaded" });
+      }
+
+      // Validate file type - allow images and PDFs
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "application/pdf",
+      ];
+      if (!allowedTypes.includes(req.file.mimetype)) {
+        return res
+          .status(400)
+          .json({ message: "Invalid file type. Only images and PDF files are allowed." });
+      }
+
+      // Validate file size (10MB limit for documents)
+      if (req.file.size > 10 * 1024 * 1024) {
+        return res
+          .status(400)
+          .json({ message: "File size must be less than 10MB" });
+      }
+
+      const { documentType, staffId } = req.body;
+      
+      // Create staff documents folder if it doesn't exist
+      const staffDocumentsPath = `uploads/staff-documents/${staffId}`;
+      const fs = require('fs');
+      const path = require('path');
+      
+      if (!fs.existsSync(staffDocumentsPath)) {
+        fs.mkdirSync(staffDocumentsPath, { recursive: true });
+      }
+
+      // Move file to staff documents folder
+      const fileName = `${documentType}_${Date.now()}_${req.file.filename}`;
+      const newPath = path.join(staffDocumentsPath, fileName);
+      fs.renameSync(req.file.path, newPath);
+
+      const fileUrl = `/uploads/staff-documents/${staffId}/${fileName}`;
+      res.json({ 
+        url: fileUrl, 
+        filename: fileName,
+        documentType: documentType 
+      });
+    } catch (error) {
+      console.error("Document upload error:", error);
+      res.status(500).json({ message: "Document upload failed" });
+    }
+  });
+
   // ============ Client Activity Tracking ============
 
   app.post("/api/audit/client-activities", isAuthenticated, async (req: any, res) => {

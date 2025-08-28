@@ -57,6 +57,11 @@ export default function StaffDirectory() {
     bankAccount: "",
     emergencyContact: "",
     emergencyPhone: "",
+    citizenshipNumber: "",
+    panNumber: "",
+    profilePhoto: "",
+    identityCardUrl: "",
+    agreementPaperUrl: "",
     notes: "",
   });
 
@@ -136,6 +141,39 @@ export default function StaffDirectory() {
     },
   });
 
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async ({ file, documentType, staffId }: { file: File; documentType: string; staffId: string }) => {
+      const formData = new FormData();
+      formData.append("document", file);
+      formData.append("documentType", documentType);
+      formData.append("staffId", staffId);
+
+      const response = await fetch("/api/staff/upload-document", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload document");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      toast({
+        title: "Success",
+        description: `${variables.documentType} uploaded successfully`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload document",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       staffId: "",
@@ -154,6 +192,11 @@ export default function StaffDirectory() {
       bankAccount: "",
       emergencyContact: "",
       emergencyPhone: "",
+      citizenshipNumber: "",
+      panNumber: "",
+      profilePhoto: "",
+      identityCardUrl: "",
+      agreementPaperUrl: "",
       notes: "",
     });
     setEditingStaff(null);
@@ -224,6 +267,11 @@ export default function StaffDirectory() {
       bankAccount: staffMember.bankAccount || "",
       emergencyContact: staffMember.emergencyContact || "",
       emergencyPhone: staffMember.emergencyPhone || "",
+      citizenshipNumber: staffMember.citizenshipNumber || "",
+      panNumber: staffMember.panNumber || "",
+      profilePhoto: staffMember.profilePhoto || "",
+      identityCardUrl: staffMember.identityCardUrl || "",
+      agreementPaperUrl: staffMember.agreementPaperUrl || "",
       notes: staffMember.notes || "",
     });
     setIsDialogOpen(true);
@@ -231,6 +279,27 @@ export default function StaffDirectory() {
 
   const handleDelete = async (id: number) => {
     deleteMutation.mutate(id);
+  };
+
+  const handleFileUpload = async (file: File, documentType: string) => {
+    const staffId = formData.staffId || `temp_${Date.now()}`;
+    
+    try {
+      const result = await uploadDocumentMutation.mutateAsync({
+        file,
+        documentType,
+        staffId,
+      });
+
+      // Update form data with the uploaded file URL
+      setFormData(prev => ({
+        ...prev,
+        [documentType === 'profile_photo' ? 'profilePhoto' : 
+         documentType === 'identity_card' ? 'identityCardUrl' : 'agreementPaperUrl']: result.url
+      }));
+    } catch (error) {
+      console.error('File upload failed:', error);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -519,6 +588,84 @@ export default function StaffDirectory() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="citizenshipNumber">Citizenship Number</Label>
+                  <Input
+                    id="citizenshipNumber"
+                    value={formData.citizenshipNumber}
+                    onChange={(e) =>
+                      setFormData({ ...formData, citizenshipNumber: e.target.value })
+                    }
+                    placeholder="Citizenship number"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="panNumber">PAN Number</Label>
+                  <Input
+                    id="panNumber"
+                    value={formData.panNumber}
+                    onChange={(e) =>
+                      setFormData({ ...formData, panNumber: e.target.value })
+                    }
+                    placeholder="PAN number"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="profilePhoto">Profile Photo</Label>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'profile_photo');
+                      }}
+                    />
+                    {formData.profilePhoto && (
+                      <span className="text-sm text-green-600">✓ Uploaded</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="identityCard">Identity Card (Image/PDF)</Label>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'identity_card');
+                      }}
+                    />
+                    {formData.identityCardUrl && (
+                      <span className="text-sm text-green-600">✓ Uploaded</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="agreementPaper">Agreement Paper (Image/PDF)</Label>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'agreement_paper');
+                      }}
+                    />
+                    {formData.agreementPaperUrl && (
+                      <span className="text-sm text-green-600">✓ Uploaded</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
@@ -634,6 +781,7 @@ export default function StaffDirectory() {
                     >
                       Status
                     </SortableTableHeader>
+                    <TableHead>Documents</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -644,13 +792,27 @@ export default function StaffDirectory() {
                         {member.staffId}
                       </TableCell>
                       <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {member.firstName} {member.lastName}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Hired:{" "}
-                            {new Date(member.hireDate).toLocaleDateString()}
+                        <div className="flex items-center space-x-3">
+                          {member.profilePhoto && (
+                            <img 
+                              src={member.profilePhoto} 
+                              alt="Profile"
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                          )}
+                          <div>
+                            <div className="font-medium">
+                              {member.firstName} {member.lastName}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Hired:{" "}
+                              {new Date(member.hireDate).toLocaleDateString()}
+                            </div>
+                            {member.citizenshipNumber && (
+                              <div className="text-xs text-muted-foreground">
+                                Citizenship: {member.citizenshipNumber}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -680,6 +842,19 @@ export default function StaffDirectory() {
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(member.status || "active")}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-1">
+                          {member.identityCardUrl && (
+                            <Badge variant="outline" className="text-xs">ID</Badge>
+                          )}
+                          {member.agreementPaperUrl && (
+                            <Badge variant="outline" className="text-xs">Agreement</Badge>
+                          )}
+                          {member.profilePhoto && (
+                            <Badge variant="outline" className="text-xs">Photo</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
