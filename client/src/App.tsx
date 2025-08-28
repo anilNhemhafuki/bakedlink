@@ -32,6 +32,7 @@ import NotificationSettings from "@/components/notification-settings";
 import CategoryManagement from "@/pages/category-management";
 import Sales from "@/pages/sales";
 import Purchases from "@/pages/purchases";
+import PurchaseHistory from "@/pages/purchase-history";
 import PublicOrderForm from "@/components/public-order-form";
 import Stock from "@/pages/stock";
 import Ingredients from "@/pages/ingredients";
@@ -300,6 +301,14 @@ function AuthenticatedApp({
                 component={() => (
                   <ProtectedRoute resource="purchases" action="read">
                     <Purchases />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/purchase-history"
+                component={() => (
+                  <ProtectedRoute resource="purchases" action="read">
+                    <PurchaseHistory />
                   </ProtectedRoute>
                 )}
               />

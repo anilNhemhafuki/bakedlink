@@ -1414,6 +1414,7 @@ export class Storage implements IStorage {
         paymentMethod: purchases.paymentMethod,
         status: purchases.status,
         purchaseDate: purchases.purchaseDate,
+        invoiceNumber: purchases.invoiceNumber,
         notes: purchases.notes,
         createdAt: purchases.createdAt,
       })
@@ -1421,11 +1422,91 @@ export class Storage implements IStorage {
       .orderBy(desc(purchases.purchaseDate));
   }
 
+  async getPurchasesWithItems(): Promise<any[]> {
+    // Get all purchases with their associated items
+    const purchaseList = await db
+      .select({
+        id: purchases.id,
+        supplierName: purchases.supplierName,
+        partyId: purchases.partyId,
+        totalAmount: purchases.totalAmount,
+        paymentMethod: purchases.paymentMethod,
+        status: purchases.status,
+        purchaseDate: purchases.purchaseDate,
+        invoiceNumber: purchases.invoiceNumber,
+        notes: purchases.notes,
+        createdAt: purchases.createdAt,
+      })
+      .from(purchases)
+      .orderBy(desc(purchases.createdAt));
+
+    // Get items for each purchase
+    for (const purchase of purchaseList) {
+      const items = await db
+        .select({
+          id: purchaseItems.id,
+          inventoryItemId: purchaseItems.inventoryItemId,
+          inventoryItemName: inventory.name,
+          quantity: purchaseItems.quantity,
+          unitPrice: purchaseItems.unitPrice,
+          totalPrice: purchaseItems.totalPrice,
+        })
+        .from(purchaseItems)
+        .leftJoin(inventory, eq(purchaseItems.inventoryItemId, inventory.id))
+        .where(eq(purchaseItems.purchaseId, purchase.id));
+      
+      purchase.items = items;
+    }
+
+    return purchaseList;
+  }
+
   async createPurchase(purchaseData: any): Promise<any> {
     const [newPurchase] = await db
       .insert(purchases)
       .values(purchaseData)
       .returning();
+    return newPurchase;
+  }
+
+  async createPurchaseWithLedger(purchaseData: any): Promise<any> {
+    const { items, ...mainPurchaseData } = purchaseData;
+    
+    // Create main purchase record
+    const [newPurchase] = await db
+      .insert(purchases)
+      .values(mainPurchaseData)
+      .returning();
+
+    // Create purchase items
+    if (items && items.length > 0) {
+      for (const item of items) {
+        await db.insert(purchaseItems).values({
+          purchaseId: newPurchase.id,
+          inventoryItemId: item.inventoryItemId,
+          quantity: item.quantity.toString(),
+          unitPrice: item.unitPrice.toString(),
+          totalPrice: item.totalPrice.toString(),
+        });
+      }
+    }
+
+    // Create ledger transaction if party is involved
+    if (purchaseData.partyId) {
+      await this.createLedgerTransaction({
+        entityType: 'party',
+        entityId: purchaseData.partyId,
+        type: 'debit',
+        amount: purchaseData.totalAmount,
+        description: `Purchase from ${purchaseData.supplierName}${purchaseData.invoiceNumber ? ` - Invoice: ${purchaseData.invoiceNumber}` : ''}`,
+        reference: `Purchase #${newPurchase.id}`,
+        date: new Date(),
+      });
+
+      // Recalculate running balance
+      await this.recalculateRunningBalance(purchaseData.partyId, 'party');
+    }
+
     return newPurchase;
   }
 

@@ -102,6 +102,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           resource: "purchases",
         },
         {
+          name: "Purchase History",
+          href: "/purchase-history",
+          icon: "fas fa-history",
+          resource: "purchases",
+        },
+        {
           name: "Income & Expenses",
           href: "/expenses",
           icon: "fas fa-receipt",

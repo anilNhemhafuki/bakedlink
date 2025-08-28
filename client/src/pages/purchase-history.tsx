@@ -1,10 +1,12 @@
-
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import SearchBar from "@/components/search-bar";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import {
   Select,
   SelectContent,
@@ -12,6 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -21,688 +32,608 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Pagination,
+  PaginationInfo,
+  PageSizeSelector,
+  usePagination,
+} from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, ShoppingCart, Receipt, Calendar } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import SearchBar from "@/components/search-bar";
-import { useTableSort } from "@/hooks/useTableSort";
-import { SortableTableHeader } from "@/components/ui/sortable-table-header";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
-import { useCurrency } from "@/hooks/useCurrency";
+import { Plus, Edit, Trash2, Package, Calendar, Receipt, Filter, Search, Eye, FileText, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { useCurrency } from "@/hooks/useCurrency";
+
+interface Purchase {
+  id: number;
+  supplierName: string;
+  partyId?: number;
+  totalAmount: string;
+  paymentMethod: string;
+  status: string;
+  purchaseDate: string;
+  invoiceNumber?: string;
+  notes?: string;
+  createdAt: string;
+  items?: PurchaseItem[];
+}
+
+interface PurchaseItem {
+  id: number;
+  inventoryItemId: number;
+  inventoryItemName: string;
+  quantity: string;
+  unitPrice: string;
+  totalPrice: string;
+}
+
+interface Party {
+  id: number;
+  name: string;
+  type: string;
+  currentBalance: string;
+}
 
 export default function PurchaseHistory() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSupplier, setSelectedSupplier] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPurchase, setEditingPurchase] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    supplierId: "",
-    invoiceNumber: "",
-    purchaseDate: "",
-    totalAmount: "",
-    paidAmount: "",
-    paymentStatus: "pending",
-    paymentMethod: "cash",
-    notes: "",
-    items: [] as any[],
-  });
-
   const { toast } = useToast();
-  const { symbol } = useCurrency();
+  const { formatCurrency, formatCurrencyWithCommas } = useCurrency();
+  const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [supplierFilter, setSupplierFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Set default date range (current month)
-  useEffect(() => {
-    const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    
-    setStartDate(startOfMonth.toISOString().split('T')[0]);
-    setEndDate(endOfMonth.toISOString().split('T')[0]);
-  }, []);
-
-  const { data: suppliers = [] } = useQuery({
-    queryKey: ["/api/parties"],
-    queryFn: () => apiRequest("GET", "/api/parties?type=supplier"),
+  // Fetch data
+  const { data: purchases = [], isLoading: isPurchasesLoading } = useQuery({
+    queryKey: ["/api/purchases"],
   });
 
-  const { data: inventory = [] } = useQuery({
+  const { data: parties = [] } = useQuery({
+    queryKey: ["/api/parties"],
+  });
+
+  const { data: inventoryItems = [] } = useQuery({
     queryKey: ["/api/inventory"],
   });
 
-  const { data: purchases = [], isLoading } = useQuery({
-    queryKey: ["/api/purchases", selectedSupplier, startDate, endDate],
-    queryFn: () => {
-      const params = new URLSearchParams();
-      if (selectedSupplier && selectedSupplier !== "all") params.append('supplierId', selectedSupplier);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-      
-      return apiRequest("GET", `/api/purchases?${params.toString()}`);
-    },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return apiRequest("POST", "/api/purchases", data);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Purchase record created successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
-      setIsDialogOpen(false);
-      resetForm();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create purchase record",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return apiRequest("PUT", `/api/purchases/${editingPurchase?.id}`, data);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Purchase record updated successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
-      setIsDialogOpen(false);
-      resetForm();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update purchase record",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
+  // Delete mutation
+  const deletePurchaseMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest("DELETE", `/api/purchases/${id}`);
+      const response = await fetch(`/api/purchases/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to delete purchase");
+      return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/parties"] });
       toast({
         title: "Success",
-        description: "Purchase record deleted successfully",
+        description: "Purchase deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
     },
-    onError: (error: any) => {
+    onError: () => {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete purchase record",
+        description: "Failed to delete purchase",
         variant: "destructive",
       });
     },
   });
 
-  const resetForm = () => {
-    setFormData({
-      supplierId: "",
-      invoiceNumber: "",
-      purchaseDate: "",
-      totalAmount: "",
-      paidAmount: "",
-      paymentStatus: "pending",
-      paymentMethod: "cash",
-      notes: "",
-      items: [],
+  // Filter and search logic
+  const filteredPurchases = useMemo(() => {
+    return purchases.filter((purchase: Purchase) => {
+      const supplierName = purchase.supplierName?.toLowerCase() || "";
+      const invoiceNumber = purchase.invoiceNumber?.toLowerCase() || "";
+      const searchLower = searchTerm.toLowerCase();
+      
+      const matchesSearch = 
+        supplierName.includes(searchLower) ||
+        invoiceNumber.includes(searchLower) ||
+        purchase.totalAmount.includes(searchLower);
+
+      const matchesStatus = 
+        statusFilter === "all" || purchase.status === statusFilter;
+
+      const matchesSupplier = 
+        supplierFilter === "all" || purchase.supplierName === supplierFilter;
+
+      const purchaseDate = new Date(purchase.purchaseDate || purchase.createdAt);
+      const matchesDateFrom = 
+        !dateFrom || purchaseDate >= new Date(dateFrom);
+      const matchesDateTo = 
+        !dateTo || purchaseDate <= new Date(dateTo + "T23:59:59");
+
+      return matchesSearch && matchesStatus && matchesSupplier && matchesDateFrom && matchesDateTo;
     });
-    setEditingPurchase(null);
+  }, [purchases, searchTerm, statusFilter, supplierFilter, dateFrom, dateTo]);
+
+  // Sorting
+  const { sortedData, sortConfig, requestSort } = useTableSort(filteredPurchases, 'purchaseDate');
+
+  // Pagination
+  const {
+    currentItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setPageSize,
+    goToPage,
+    totalItems,
+  } = usePagination(sortedData, 10);
+
+  // Get unique suppliers for filter
+  const uniqueSuppliers = useMemo(() => {
+    const suppliers = [...new Set(purchases.map((p: Purchase) => p.supplierName))];
+    return suppliers.filter(Boolean);
+  }, [purchases]);
+
+  // Summary calculations
+  const totalPurchases = filteredPurchases.reduce(
+    (sum: number, purchase: Purchase) => sum + parseFloat(purchase.totalAmount),
+    0
+  );
+
+  const statusCounts = useMemo(() => {
+    return filteredPurchases.reduce((acc: any, purchase: Purchase) => {
+      acc[purchase.status] = (acc[purchase.status] || 0) + 1;
+      return acc;
+    }, {});
+  }, [filteredPurchases]);
+
+  const handleViewDetails = (purchase: Purchase) => {
+    setSelectedPurchase(purchase);
+    setIsDetailDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.supplierId || !formData.purchaseDate || !formData.totalAmount) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const submitData = {
-      ...formData,
-      supplierId: parseInt(formData.supplierId),
-      totalAmount: parseFloat(formData.totalAmount),
-      paidAmount: parseFloat(formData.paidAmount) || 0,
-      items: formData.items.map(item => ({
-        ...item,
-        inventoryItemId: parseInt(item.inventoryItemId),
-        quantity: parseFloat(item.quantity),
-        unitPrice: parseFloat(item.unitPrice),
-        totalPrice: parseFloat(item.totalPrice),
-      })),
-    };
-
-    if (editingPurchase) {
-      updateMutation.mutate(submitData);
-    } else {
-      createMutation.mutate(submitData);
-    }
-  };
-
-  const handleEdit = (purchase: any) => {
-    setEditingPurchase(purchase);
-    setFormData({
-      supplierId: purchase.supplierId?.toString() || "",
-      invoiceNumber: purchase.invoiceNumber || "",
-      purchaseDate: purchase.purchaseDate ? new Date(purchase.purchaseDate).toISOString().split('T')[0] : "",
-      totalAmount: purchase.totalAmount?.toString() || "",
-      paidAmount: purchase.paidAmount?.toString() || "",
-      paymentStatus: purchase.paymentStatus || "pending",
-      paymentMethod: purchase.paymentMethod || "cash",
-      notes: purchase.notes || "",
-      items: purchase.items || [],
-    });
-    setIsDialogOpen(true);
+  const handleEdit = (purchase: Purchase) => {
+    setSelectedPurchase(purchase);
+    setIsEditDialogOpen(true);
   };
 
   const handleDelete = (id: number) => {
-    deleteMutation.mutate(id);
-  };
-
-  const addItem = () => {
-    setFormData(prev => ({
-      ...prev,
-      items: [...prev.items, {
-        inventoryItemId: "",
-        quantity: "",
-        unitPrice: "",
-        totalPrice: "0",
-      }],
-    }));
-  };
-
-  const removeItem = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    }));
-  };
-
-  const updateItem = (index: number, field: string, value: string) => {
-    const items = [...formData.items];
-    items[index] = { ...items[index], [field]: value };
-    
-    // Auto-calculate total price
-    if (field === 'quantity' || field === 'unitPrice') {
-      const quantity = parseFloat(items[index].quantity) || 0;
-      const unitPrice = parseFloat(items[index].unitPrice) || 0;
-      items[index].totalPrice = (quantity * unitPrice).toFixed(2);
+    if (confirm("Are you sure you want to delete this purchase? This action cannot be undone.")) {
+      deletePurchaseMutation.mutate(id);
     }
-    
-    setFormData(prev => ({ ...prev, items }));
-    
-    // Update total amount
-    const total = items.reduce((sum, item) => sum + (parseFloat(item.totalPrice) || 0), 0);
-    setFormData(prev => ({ ...prev, totalAmount: total.toFixed(2) }));
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { variant: "secondary" as const, label: "Pending" },
-      partial: { variant: "outline" as const, label: "Partially Paid" },
-      paid: { variant: "default" as const, label: "Paid" },
-      overdue: { variant: "destructive" as const, label: "Overdue" },
+    const variants: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
+      completed: "default",
+      pending: "secondary",
+      cancelled: "destructive",
+      partial: "outline",
     };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return (
+      <Badge variant={variants[status] || "outline"}>
+        {status?.charAt(0).toUpperCase() + status?.slice(1)}
+      </Badge>
+    );
   };
 
-  const filteredPurchases = purchases.filter((purchase: any) =>
-    `${purchase.supplierName} ${purchase.invoiceNumber} ${purchase.notes}`
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
+  const viewSupplierLedger = (partyId: number) => {
+    if (partyId) {
+      window.open(`/parties?viewLedger=${partyId}`, '_blank');
+    }
+  };
 
-  const { sortedData, sortConfig, requestSort } = useTableSort(
-    filteredPurchases,
-    "purchaseDate",
-  );
+  if (isPurchasesLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">Loading purchase history...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <ShoppingCart className="h-8 w-8" />
-            Purchase History
-          </h1>
-          <p className="text-muted-foreground">
-            Track all purchase transactions and supplier payments
+          <h1 className="text-3xl font-bold">Purchase History</h1>
+          <p className="text-gray-600">
+            Complete record of all purchase transactions with supplier ledger integration
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Purchase Record
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingPurchase ? "Edit Purchase Record" : "Add Purchase Record"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="supplierId">Supplier *</Label>
-                  <Select
-                    value={formData.supplierId || undefined}
-                    onValueChange={(value) => setFormData({ ...formData, supplierId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select supplier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map((supplier: any) => (
-                        <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                          {supplier.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="invoiceNumber">Invoice Number</Label>
-                  <Input
-                    id="invoiceNumber"
-                    value={formData.invoiceNumber}
-                    onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-                    placeholder="Invoice/Bill number"
-                  />
-                </div>
-              </div>
+        <Button asChild>
+          <a href="/purchases">
+            <Plus className="h-4 w-4 mr-2" />
+            Record New Purchase
+          </a>
+        </Button>
+      </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="purchaseDate">Purchase Date *</Label>
-                  <Input
-                    id="purchaseDate"
-                    type="date"
-                    value={formData.purchaseDate}
-                    onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="paymentMethod">Payment Method</Label>
-                  <Select
-                    value={formData.paymentMethod || undefined}
-                    onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                      <SelectItem value="check">Check</SelectItem>
-                      <SelectItem value="credit">Credit</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Purchases</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrencyWithCommas(totalPurchases)}</div>
+            <p className="text-xs text-muted-foreground">{filteredPurchases.length} transactions</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{statusCounts.completed || 0}</div>
+            <p className="text-xs text-muted-foreground">Successfully processed</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{statusCounts.pending || 0}</div>
+            <p className="text-xs text-muted-foreground">Awaiting completion</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Unique Suppliers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{uniqueSuppliers.length}</div>
+            <p className="text-xs text-muted-foreground">Active vendors</p>
+          </CardContent>
+        </Card>
+      </div>
 
-              {/* Purchase Items */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <Label>Purchase Items</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Item
-                  </Button>
-                </div>
-                
-                {formData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-5 gap-2 items-end p-4 border rounded">
-                    <div>
-                      <Label>Item</Label>
-                      <Select
-                        value={item.inventoryItemId || undefined}
-                        onValueChange={(value) => updateItem(index, 'inventoryItemId', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select item" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {inventory.map((inventoryItem: any) => (
-                            <SelectItem key={inventoryItem.id} value={inventoryItem.id.toString()}>
-                              {inventoryItem.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Quantity</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', e.target.value)}
-                        placeholder="Qty"
-                      />
-                    </div>
-                    <div>
-                      <Label>Unit Price</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.unitPrice}
-                        onChange={(e) => updateItem(index, 'unitPrice', e.target.value)}
-                        placeholder="Price"
-                      />
-                    </div>
-                    <div>
-                      <Label>Total</Label>
-                      <Input
-                        value={item.totalPrice}
-                        readOnly
-                        className="bg-gray-50"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeItem(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="totalAmount">Total Amount *</Label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                      {symbol}
-                    </span>
-                    <Input
-                      id="totalAmount"
-                      type="number"
-                      step="0.01"
-                      value={formData.totalAmount}
-                      onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                      className="rounded-l-none"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="paidAmount">Paid Amount</Label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                      {symbol}
-                    </span>
-                    <Input
-                      id="paidAmount"
-                      type="number"
-                      step="0.01"
-                      value={formData.paidAmount}
-                      onChange={(e) => setFormData({ ...formData, paidAmount: e.target.value })}
-                      className="rounded-l-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
+      {/* Filters and Search */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            Filters & Search
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <SearchBar
+                value={searchTerm}
+                onChange={setSearchTerm}
+                placeholder="Search by supplier, invoice number, or amount..."
+                className="w-full"
+              />
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="paymentStatus">Payment Status</Label>
-                <Select
-                  value={formData.paymentStatus || undefined}
-                  onValueChange={(value) => setFormData({ ...formData, paymentStatus: value })}
-                >
+                <Label htmlFor="status-filter">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="partial">Partially Paid</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="overdue">Overdue</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="partial">Partial</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Additional notes"
+                <Label htmlFor="supplier-filter">Supplier</Label>
+                <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All suppliers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All suppliers</SelectItem>
+                    {uniqueSuppliers.map((supplier) => (
+                      <SelectItem key={supplier} value={supplier}>
+                        {supplier}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="date-from">From Date</Label>
+                <Input
+                  id="date-from"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
                 />
               </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                >
-                  {createMutation.isPending || updateMutation.isPending
-                    ? "Saving..."
-                    : editingPurchase
-                    ? "Update"
-                    : "Create"}
-                </Button>
+              <div>
+                <Label htmlFor="date-to">To Date</Label>
+                <Input
+                  id="date-to"
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
               </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label htmlFor="supplierFilter">Supplier</Label>
-              <Select value={selectedSupplier || undefined} onValueChange={setSelectedSupplier}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All suppliers" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All suppliers</SelectItem>
-                  {suppliers.map((supplier: any) => (
-                    <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                      {supplier.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="endDate">End Date</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="search">Search</Label>
-              <SearchBar
-                placeholder="Search purchases..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-              />
             </div>
           </div>
+          {(searchTerm || statusFilter !== "all" || supplierFilter !== "all" || dateFrom || dateTo) && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm("");
+                  setStatusFilter("all");
+                  setSupplierFilter("all");
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+              >
+                Clear Filters
+              </Button>
+              <span className="text-sm text-muted-foreground self-center">
+                Showing {filteredPurchases.length} of {purchases.length} purchases
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Purchase History Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            Purchase Records ({sortedData.length})
-          </CardTitle>
+          <CardTitle>Purchase Records</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading purchases...</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
                     <SortableTableHeader
+                      label="Date"
                       sortKey="purchaseDate"
                       sortConfig={sortConfig}
                       onSort={requestSort}
-                    >
-                      Date
-                    </SortableTableHeader>
+                    />
+                  </TableHead>
+                  <TableHead>
                     <SortableTableHeader
+                      label="Supplier Name"
                       sortKey="supplierName"
                       sortConfig={sortConfig}
                       onSort={requestSort}
-                    >
-                      Supplier
-                    </SortableTableHeader>
+                    />
+                  </TableHead>
+                  <TableHead>
                     <SortableTableHeader
+                      label="Invoice Number"
                       sortKey="invoiceNumber"
                       sortConfig={sortConfig}
                       onSort={requestSort}
-                    >
-                      Invoice #
-                    </SortableTableHeader>
+                    />
+                  </TableHead>
+                  <TableHead>Items Purchased</TableHead>
+                  <TableHead>
                     <SortableTableHeader
+                      label="Total Amount"
                       sortKey="totalAmount"
                       sortConfig={sortConfig}
                       onSort={requestSort}
-                    >
-                      Total Amount
-                    </SortableTableHeader>
+                    />
+                  </TableHead>
+                  <TableHead>
                     <SortableTableHeader
-                      sortKey="paidAmount"
+                      label="Payment Status"
+                      sortKey="status"
                       sortConfig={sortConfig}
                       onSort={requestSort}
-                    >
-                      Paid Amount
-                    </SortableTableHeader>
-                    <SortableTableHeader
-                      sortKey="paymentStatus"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
-                      Status
-                    </SortableTableHeader>
-                    <TableHead>Payment Method</TableHead>
-                    <TableHead>Actions</TableHead>
+                    />
+                  </TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentItems.map((purchase: Purchase) => (
+                  <TableRow key={purchase.id}>
+                    <TableCell>
+                      {format(new Date(purchase.purchaseDate || purchase.createdAt), 'MMM dd, yyyy')}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {purchase.supplierName}
+                      {purchase.partyId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-2 h-6 px-2"
+                          onClick={() => viewSupplierLedger(purchase.partyId!)}
+                          title="View Supplier Ledger"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {purchase.invoiceNumber || (
+                        <span className="text-muted-foreground">No invoice</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewDetails(purchase)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <Package className="h-4 w-4 mr-1" />
+                        View Items
+                      </Button>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {formatCurrencyWithCommas(parseFloat(purchase.totalAmount))}
+                    </TableCell>
+                    <TableCell>
+                      {getStatusBadge(purchase.status)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetails(purchase)}
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(purchase)}
+                          title="Edit Purchase"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(purchase.id)}
+                          title="Delete Purchase"
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedData.map((purchase: any) => (
-                    <TableRow key={purchase.id}>
-                      <TableCell>
-                        {format(new Date(purchase.purchaseDate), 'MMM dd, yyyy')}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {purchase.supplierName}
-                      </TableCell>
-                      <TableCell>{purchase.invoiceNumber || 'N/A'}</TableCell>
-                      <TableCell>
-                        {symbol}{parseFloat(purchase.totalAmount || 0).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        {symbol}{parseFloat(purchase.paidAmount || 0).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(purchase.paymentStatus)}
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        {purchase.paymentMethod?.replace('_', ' ')}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(purchase)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <DeleteConfirmationDialog
-                            trigger={
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            }
-                            title="Delete Purchase Record"
-                            itemName={`Purchase from ${purchase.supplierName}`}
-                            onConfirm={() => handleDelete(purchase.id)}
-                            isLoading={deleteMutation.isPending}
-                          />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {sortedData.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
-                        <p className="text-muted-foreground">No purchase records found</p>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-4">
+            <PaginationInfo
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+            />
+            <div className="flex items-center gap-4">
+              <PageSizeSelector
+                pageSize={pageSize}
+                onPageSizeChange={setPageSize}
+              />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={goToPage}
+              />
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Purchase Details Dialog */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Purchase Details</DialogTitle>
+            <DialogDescription>
+              Complete information for purchase #{selectedPurchase?.id}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPurchase && (
+            <div className="space-y-6">
+              {/* Purchase Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Supplier</Label>
+                  <p className="text-sm">{selectedPurchase.supplierName}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Purchase Date</Label>
+                  <p className="text-sm">
+                    {format(new Date(selectedPurchase.purchaseDate || selectedPurchase.createdAt), 'PPP')}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Invoice Number</Label>
+                  <p className="text-sm">{selectedPurchase.invoiceNumber || "Not provided"}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Payment Method</Label>
+                  <p className="text-sm capitalize">{selectedPurchase.paymentMethod}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Status</Label>
+                  <div className="mt-1">{getStatusBadge(selectedPurchase.status)}</div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Total Amount</Label>
+                  <p className="text-lg font-semibold">
+                    {formatCurrencyWithCommas(parseFloat(selectedPurchase.totalAmount))}
+                  </p>
+                </div>
+              </div>
+
+              {/* Purchase Items */}
+              {selectedPurchase.items && selectedPurchase.items.length > 0 && (
+                <div>
+                  <Label className="text-sm font-medium">Items Purchased</Label>
+                  <div className="mt-2 border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead>Quantity</TableHead>
+                          <TableHead>Unit Price</TableHead>
+                          <TableHead>Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedPurchase.items.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.inventoryItemName}</TableCell>
+                            <TableCell>{item.quantity}</TableCell>
+                            <TableCell>{formatCurrency(parseFloat(item.unitPrice))}</TableCell>
+                            <TableCell className="font-medium">
+                              {formatCurrency(parseFloat(item.totalPrice))}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {selectedPurchase.notes && (
+                <div>
+                  <Label className="text-sm font-medium">Notes</Label>
+                  <p className="text-sm text-muted-foreground">{selectedPurchase.notes}</p>
+                </div>
+              )}
+
+              {/* Supplier Ledger Link */}
+              {selectedPurchase.partyId && (
+                <div className="border-t pt-4">
+                  <Button
+                    onClick={() => viewSupplierLedger(selectedPurchase.partyId!)}
+                    className="w-full"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    View Supplier Ledger & Transaction History
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

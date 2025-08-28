@@ -2,6 +2,7 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PaginationProps {
   currentPage: number;
@@ -131,31 +132,26 @@ export function Pagination({
   );
 }
 
-// Pagination info component
 interface PaginationInfoProps {
   currentPage: number;
-  pageSize: number;
+  totalPages: number;
   totalItems: number;
   className?: string;
 }
 
 export function PaginationInfo({
   currentPage,
-  pageSize,
+  totalPages,
   totalItems,
   className,
 }: PaginationInfoProps) {
-  const startItem = (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalItems);
-
   return (
     <div className={cn("text-sm text-muted-foreground", className)}>
-      Showing {startItem} to {endItem} of {totalItems} results
+      Page {currentPage} of {totalPages} ({totalItems} total items)
     </div>
   );
 }
 
-// Page size selector component
 interface PageSizeSelectorProps {
   pageSize: number;
   onPageSizeChange: (size: number) => void;
@@ -166,60 +162,83 @@ interface PageSizeSelectorProps {
 export function PageSizeSelector({
   pageSize,
   onPageSizeChange,
-  options = [10, 25, 50, 100],
+  options = [10, 20, 50, 100],
   className,
 }: PageSizeSelectorProps) {
   return (
     <div className={cn("flex items-center space-x-2", className)}>
       <span className="text-sm text-muted-foreground">Show</span>
-      <select
-        value={pageSize}
-        onChange={(e) => onPageSizeChange(Number(e.target.value))}
-        className="border border-input bg-background px-3 py-1 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-      >
-        {options.map((size) => (
-          <option key={size} value={size}>
-            {size}
-          </option>
-        ))}
-      </select>
-      <span className="text-sm text-muted-foreground">per page</span>
+      <Select value={pageSize.toString()} onValueChange={(value) => onPageSizeChange(Number(value))}>
+        <SelectTrigger className="w-20">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option} value={option.toString()}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <span className="text-sm text-muted-foreground">items</span>
     </div>
   );
 }
 
-// Hook for pagination logic
-export function usePagination<T>(data: T[], initialPageSize: number = 10) {
+export function usePagination<T>(
+  data: T[],
+  initialPageSize = 10
+) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(initialPageSize);
 
-  const totalPages = Math.ceil(data.length / pageSize);
-  const paginatedData = data.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  );
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setCurrentPage(1); // Reset to first page
-  };
+  const totalItems = data.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
 
   // Reset to first page when data changes
   React.useEffect(() => {
     setCurrentPage(1);
   }, [data.length]);
 
+  // Reset to last page if current page exceeds total pages
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentItems = data.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const nextPage = () => {
+    goToPage(currentPage + 1);
+  };
+
+  const previousPage = () => {
+    goToPage(currentPage - 1);
+  };
+
+  const onPageSizeChange = (newSize: number) => {
+    const currentStartIndex = (currentPage - 1) * pageSize;
+    const newPage = Math.floor(currentStartIndex / newSize) + 1;
+    setPageSize(newSize);
+    setCurrentPage(newPage);
+  };
+
   return {
+    currentItems,
     currentPage,
-    pageSize,
     totalPages,
-    totalItems: data.length,
-    paginatedData,
-    handlePageChange,
-    handlePageSizeChange,
+    pageSize,
+    totalItems,
+    setPageSize: onPageSizeChange,
+    goToPage,
+    nextPage,
+    previousPage,
   };
 }

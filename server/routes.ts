@@ -2298,10 +2298,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Purchases routes (using expenses as purchases)
+  // Enhanced Purchases routes with comprehensive data
   app.get("/api/purchases", isAuthenticated, async (req, res) => {
     try {
-      const purchases = await storage.getPurchases();
+      const purchases = await storage.getPurchasesWithItems();
       res.json(purchases);
     } catch (error) {
       console.error("Error fetching purchases:", error);
@@ -2317,6 +2317,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalAmount,
         paymentMethod,
         status,
+        invoiceNumber,
+        notes,
         items,
       } = req.body;
 
@@ -2325,22 +2327,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Purchase items are required" });
       }
 
-      // Create expense record for the purchase
+      // Create comprehensive purchase record
       const purchaseData = {
         partyId: partyId || null,
         supplierName,
         totalAmount,
         paymentMethod,
-        status: "completed",
+        status: status || "completed",
+        invoiceNumber,
+        notes,
         items,
         createdBy: req.user?.id,
       };
 
-      const purchase = await storage.createPurchase(purchaseData);
+      const purchase = await storage.createPurchaseWithLedger(purchaseData);
+      
+      // Update inventory for each item
+      for (const item of items) {
+        await storage.createInventoryTransaction({
+          inventoryItemId: item.inventoryItemId,
+          type: 'in',
+          quantity: item.quantity.toString(),
+          reason: 'Purchase',
+          reference: `Purchase #${purchase.id}${invoiceNumber ? ` - Invoice: ${invoiceNumber}` : ''}`
+        });
+      }
+
       res.json(purchase);
     } catch (error) {
       console.error("Error creating purchase:", error);
       res.status(500).json({ message: "Failed to create purchase" });
+    }
+  });
+
+  app.put("/api/purchases/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const purchaseData = req.body;
+      
+      const purchase = await storage.updatePurchase(id, purchaseData);
+      res.json(purchase);
+    } catch (error) {
+      console.error("Error updating purchase:", error);
+      res.status(500).json({ message: "Failed to update purchase" });
+    }
+  });
+
+  app.delete("/api/purchases/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deletePurchase(id);
+      res.json({ message: "Purchase deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting purchase:", error);
+      res.status(500).json({ message: "Failed to delete purchase" });
     }
   });
 
