@@ -73,7 +73,7 @@ export default function StaffDirectory() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("/api/staff", "POST", data);
+      const response = await apiRequest("POST", "/api/staff", data);
       return response;
     },
     onSuccess: (data) => {
