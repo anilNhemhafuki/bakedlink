@@ -40,7 +40,7 @@ async function startServer() {
         console.log("✅ Database connected successfully");
       } catch (error) {
         retryCount++;
-        console.error(`❌ Database connection attempt ${retryCount} failed:`, error.message);
+        console.error(`❌ Database connection attempt ${retryCount} failed:`, (error as Error).message);
         
         if (retryCount < maxRetries) {
           console.log(`🔄 Retrying database connection in 5 seconds...`);
@@ -60,7 +60,7 @@ async function startServer() {
         await initializeUnits();
         console.log("✅ Units initialized successfully");
       } catch (error) {
-        console.warn("⚠️ Unit initialization failed, continuing without default units:", error.message);
+        console.warn("⚠️ Unit initialization failed, continuing without default units:", (error as Error).message);
       }
     }
 

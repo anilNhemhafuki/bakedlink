@@ -224,7 +224,7 @@ export const productionSchedule = pgTable("production_schedule", {
   scheduledDate: date("scheduled_date").notNull(),
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
-  assignedTo: integer("assigned_to").references(() => users.id),
+  assignedTo: varchar("assigned_to").references(() => users.id),
   notes: text("notes"),
   status: varchar("status", { length: 50 }).default("scheduled").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -509,7 +509,7 @@ export type InsertAttendance = typeof attendance.$inferInsert;
 export type SalaryPayment = typeof salaryPayments.$inferSelect;
 export type InsertSalaryPayment = typeof salaryPayments.$inferInsert;
 export type LeaveRequest = typeof leaveRequests.$inferSelect;
-export type InsertLeaveRequest = typeof leaveRequests.$insert;
+export type InsertLeaveRequest = typeof leaveRequests.$inferInsert;
 export type StaffSchedule = typeof staffSchedules.$inferSelect;
 export type InsertStaffSchedule = typeof staffSchedules.$inferInsert;
 
