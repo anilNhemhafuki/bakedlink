@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import multer from "multer";
-import { eq, desc, count, sql } from "drizzle-orm";
+import { eq, desc, count, sql, isNotNull, and } from "drizzle-orm";
 
 import { createServer, type Server } from "http";
 import { storage } from "./lib/storage";
@@ -41,6 +41,8 @@ import {
   loginLogs,
   ledgerTransactions,
   auditLogs,
+  products,
+  productionSchedule,
 } from "@shared/schema";
 import {
   notifyNewPublicOrder,
@@ -996,7 +998,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/inventory/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-
       // Fetch the item to check stock levels before update
       const item = await storage.getInventoryItemById(id);
       if (!item) {
@@ -1172,15 +1173,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Production schedule
-  app.get("/api/production", isAuthenticated, async (req, res) => {
-    try {
-      const schedule = await storage.getProductionSchedule();
-      res.json(schedule);
-    } catch (error) {
-      console.error("Error fetching production schedule:", error);
-      res.status(500).json({ message: "Failed to fetch production schedule" });
-    }
-  });
+  app.get(
+    "/api/production",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const schedule = await storage.getProductionSchedule();
+        res.json(schedule);
+      } catch (error) {
+        console.error("Error fetching production schedule:", error);
+        res.status(500).json({ message: "Failed to fetch production schedule" });
+      }
+    },
+  );
 
   app.post("/api/production", isAuthenticated, async (req: any, res) => {
     try {
@@ -2341,7 +2346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const purchase = await storage.createPurchaseWithLedger(purchaseData);
-      
+
       // Update inventory for each item
       for (const item of items) {
         await storage.createInventoryTransaction({
@@ -2364,7 +2369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const purchaseData = req.body;
-      
+
       const purchase = await storage.updatePurchase(id, purchaseData);
       res.json(purchase);
     } catch (error) {
@@ -2755,12 +2760,12 @@ Form Version: ${formVersion || '1.0'}`,
       }
 
       const { documentType, staffId } = req.body;
-      
+
       // Create staff documents folder if it doesn't exist
       const staffDocumentsPath = `uploads/staff-documents/${staffId}`;
       const fs = require('fs');
       const path = require('path');
-      
+
       if (!fs.existsSync(staffDocumentsPath)) {
         fs.mkdirSync(staffDocumentsPath, { recursive: true });
       }

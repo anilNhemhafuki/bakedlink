@@ -96,28 +96,17 @@ export default function Products() {
     error: productsError,
   } = useQuery({
     queryKey: ["products"],
-    queryFn: () =>
-      apiRequest("GET", "/api/products").then((res) =>
-        Array.isArray(res) ? res : res.products || [],
-      ),
-    retry: (failureCount, error) =>
-      !isUnauthorizedError(error) && failureCount < 3,
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "Session expired. Redirecting to login...",
-          variant: "destructive",
-        });
-        setTimeout(() => (window.location.href = "/api/login"), 500);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to load products.",
-          variant: "destructive",
-        });
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", "/api/products");
+        return Array.isArray(res) ? res : res.products || [];
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+        throw error;
       }
     },
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
   });
 
   const products = Array.isArray(productsData) ? productsData : [];
@@ -128,22 +117,17 @@ export default function Products() {
   // Fetch categories
   const { data: categoriesData = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: () =>
-      apiRequest("GET", "/api/categories").then((res) =>
-        Array.isArray(res) ? res : res.categories || [],
-      ),
-    retry: (failureCount, error) =>
-      !isUnauthorizedError(error) && failureCount < 3,
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "Redirecting to login...",
-          variant: "destructive",
-        });
-        setTimeout(() => (window.location.href = "/api/login"), 500);
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", "/api/categories");
+        return Array.isArray(res) ? res : res.categories || [];
+      } catch (error) {
+        console.error("Failed to fetch categories:", error);
+        return [];
       }
     },
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
   });
 
   const categories = Array.isArray(categoriesData) ? categoriesData : [];
@@ -151,19 +135,17 @@ export default function Products() {
   // Fetch settings
   const { data: settingsData = {} } = useQuery({
     queryKey: ["settings"],
-    queryFn: () => apiRequest("GET", "/api/settings"),
-    retry: (failureCount, error) =>
-      !isUnauthorizedError(error) && failureCount < 3,
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "Redirecting to login...",
-          variant: "destructive",
-        });
-        setTimeout(() => (window.location.href = "/api/login"), 500);
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", "/api/settings");
+        return res || {};
+      } catch (error) {
+        console.error("Failed to fetch settings:", error);
+        return {};
       }
     },
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
   });
 
   const settings = settingsData?.settings || {};

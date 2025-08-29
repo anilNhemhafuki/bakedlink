@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, numeric, boolean, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, numeric, boolean, timestamp, integer, jsonb, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -218,19 +218,15 @@ export const purchaseItems = pgTable("purchase_items", {
 // Production Schedule table
 export const productionSchedule = pgTable("production_schedule", {
   id: serial("id").primaryKey(),
-  productId: integer("product_id").notNull(),
-  quantity: integer("quantity").notNull(),
-  targetQuantity: integer("target_quantity"),
-  targetAmount: numeric("target_amount", { precision: 10, scale: 2 }),
-  unit: varchar("unit", { length: 20 }).default("kg"),
-  targetPackets: integer("target_packets"),
-  priority: varchar("priority", { length: 20 }).default("medium"),
-  scheduledDate: timestamp("scheduled_date").notNull(),
+  productId: integer("product_id").references(() => products.id).notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
+  actualQuantity: numeric("actual_quantity", { precision: 10, scale: 2 }),
+  scheduledDate: date("scheduled_date").notNull(),
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
-  status: varchar("status", { length: 50 }).notNull().default("scheduled"),
-  assignedTo: varchar("assigned_to"),
+  assignedTo: integer("assigned_to").references(() => users.id),
   notes: text("notes"),
+  status: varchar("status", { length: 50 }).default("scheduled").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -513,7 +509,7 @@ export type InsertAttendance = typeof attendance.$inferInsert;
 export type SalaryPayment = typeof salaryPayments.$inferSelect;
 export type InsertSalaryPayment = typeof salaryPayments.$inferInsert;
 export type LeaveRequest = typeof leaveRequests.$inferSelect;
-export type InsertLeaveRequest = typeof leaveRequests.$inferInsert;
+export type InsertLeaveRequest = typeof leaveRequests.$insert;
 export type StaffSchedule = typeof staffSchedules.$inferSelect;
 export type InsertStaffSchedule = typeof staffSchedules.$inferInsert;
 
