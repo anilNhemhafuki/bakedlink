@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,8 @@ import {
   Trash2,
   Download,
   Upload,
+  Cookie,
+  Calculator,
 } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
 
@@ -94,11 +96,12 @@ export default function Products() {
     error: productsError,
   } = useQuery({
     queryKey: ["products"],
-    queryFn: () => apiRequest("GET", "/api/products"),
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
+    queryFn: () =>
+      apiRequest("GET", "/api/products").then((res) =>
+        Array.isArray(res) ? res : res.products || [],
+      ),
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({
@@ -106,9 +109,7 @@ export default function Products() {
           description: "Session expired. Redirecting to login...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
+        setTimeout(() => (window.location.href = "/api/login"), 500);
       } else {
         toast({
           title: "Error",
@@ -119,22 +120,20 @@ export default function Products() {
     },
   });
 
-  // Extract products array safely
-  const products = Array.isArray(productsData)
-    ? productsData
-    : productsData?.products || [];
+  const products = Array.isArray(productsData) ? productsData : [];
 
   // Fetch units
   const { data: units = [] } = useUnits();
 
   // Fetch categories
-  const { data: categoriesData = [], error: categoriesError } = useQuery({
+  const { data: categoriesData = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: () => apiRequest("GET", "/api/categories"),
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
+    queryFn: () =>
+      apiRequest("GET", "/api/categories").then((res) =>
+        Array.isArray(res) ? res : res.categories || [],
+      ),
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({
@@ -142,25 +141,19 @@ export default function Products() {
           description: "Redirecting to login...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
+        setTimeout(() => (window.location.href = "/api/login"), 500);
       }
     },
   });
 
-  const categories = Array.isArray(categoriesData)
-    ? categoriesData
-    : categoriesData?.categories || [];
+  const categories = Array.isArray(categoriesData) ? categoriesData : [];
 
   // Fetch settings
-  const { data: settingsData = {}, error: settingsError } = useQuery({
+  const { data: settingsData = {} } = useQuery({
     queryKey: ["settings"],
     queryFn: () => apiRequest("GET", "/api/settings"),
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({
@@ -168,9 +161,7 @@ export default function Products() {
           description: "Redirecting to login...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
+        setTimeout(() => (window.location.href = "/api/login"), 500);
       }
     },
   });
@@ -184,10 +175,7 @@ export default function Products() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast({
-        title: "Success",
-        description: "Product deleted successfully",
-      });
+      toast({ title: "Success", description: "Product deleted successfully" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -196,9 +184,7 @@ export default function Products() {
           description: "Session expired. Redirecting to login...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
+        setTimeout(() => (window.location.href = "/api/login"), 500);
         return;
       }
       toast({
@@ -209,33 +195,26 @@ export default function Products() {
     },
   });
 
-  // Ensure filteredProducts is array
-  const filteredProducts = Array.isArray(products)
-    ? products.filter((product: any) => {
-        const matchesSearch =
-          product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesCategory =
-          selectedCategory === "all" ||
-          product.categoryId?.toString() === selectedCategory;
-        const matchesStatus =
-          selectedStatus === "all" ||
-          (selectedStatus === "active" && product.isActive) ||
-          (selectedStatus === "inactive" && !product.isActive);
-        return matchesSearch && matchesCategory && matchesStatus;
-      })
-    : [];
+  const filteredProducts = products.filter((product: any) => {
+    const matchesSearch =
+      product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "all" ||
+      product.categoryId?.toString() === selectedCategory;
+    const matchesStatus =
+      selectedStatus === "all" ||
+      (selectedStatus === "active" && product.isActive) ||
+      (selectedStatus === "inactive" && !product.isActive);
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
 
-  // Safely sort
   const { sortedData, sortConfig, requestSort } = useTableSort(
-    filteredProducts || [],
+    filteredProducts,
     "name",
   );
+  const pagination = usePagination(sortedData, 10);
 
-  // Safely paginate
-  const pagination = usePagination(sortedData || [], 10);
-
-  // Destructure
   const {
     currentPage,
     pageSize,
@@ -246,27 +225,52 @@ export default function Products() {
     handlePageSizeChange,
   } = pagination;
 
-  // Handle label print
-  const handleLabelPrint = (product: any) => {
-    setSelectedProductForLabel(product);
-    setLabelData({
+  // Update MRP when product or currency changes
+  useEffect(() => {
+    if (selectedProductForLabel) {
+      setLabelData((prev) => ({
+        ...prev,
+        mrp: formatCurrency(Number(selectedProductForLabel.price)),
+      }));
+    }
+  }, [selectedProductForLabel, formatCurrency]);
+
+  // Initialize label data when settings load
+  useEffect(() => {
+    setLabelData((prev) => ({
+      ...prev,
       companyName: settings.companyName || "Baked Link",
       companyLocation: settings.companyAddress || "",
       regNo: settings.companyRegNo || "",
       dtqocNo: settings.companyDtqocNo || "",
-      batchNo: "",
-      netWeight: "",
-      ingredients: "",
-      mrp: formatCurrency(Number(product.price)),
-      manufactureDate: new Date().toISOString().split("T")[0],
-      expireDate: "",
-    });
+    }));
+  }, [settings]);
+
+  const handleLabelPrint = (product: any) => {
+    setSelectedProductForLabel(product);
     setShowLabelPrint(true);
   };
 
-  // Print label
   const printLabel = () => {
+    if (!labelData.companyName || !selectedProductForLabel) {
+      toast({
+        title: "Missing Info",
+        description: "Please ensure company name and product are set.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast({
+        title: "Blocked",
+        description: "Please allow pop-ups to print labels.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const labelSize = settings.labelSize || "small";
     const orientation = settings.labelOrientation || "portrait";
     const margin = settings.labelMargin || "2";
@@ -281,120 +285,56 @@ export default function Products() {
       sizeConfig[labelSize as keyof typeof sizeConfig] || sizeConfig.small;
 
     const printContent = `
-                                  <!DOCTYPE html>
-                                  <html>
-                                    <head>
-                                      <title>Product Label - ${selectedProductForLabel?.name}</title>
-                                      <style>
-                                        body { 
-                                          font-family: 'Arial', sans-serif; 
-                                          margin: ${margin}mm; 
-                                          font-size: 10px;
-                                          background: white;
-                                        }
-                                        .label {
-                                          border: 2px solid #000;
-                                          padding: 8px;
-                                          width: ${currentSize.width};
-                                          height: ${currentSize.height};
-                                          margin: 0 auto;
-                                          box-sizing: border-box;
-                                          display: flex;
-                                          flex-direction: column;
-                                          ${orientation === "landscape" ? "transform: rotate(90deg); transform-origin: center;" : ""}
-                                        }
-                                        .header {
-                                          text-align: center;
-                                          border-bottom: 1px solid #000;
-                                          padding-bottom: 6px;
-                                          margin-bottom: 6px;
-                                          flex-shrink: 0;
-                                        }
-                                        .company-name {
-                                          font-size: 12px;
-                                          font-weight: bold;
-                                          margin-bottom: 2px;
-                                          line-height: 1.2;
-                                        }
-                                        .company-location {
-                                          font-size: 8px;
-                                          line-height: 1.1;
-                                        }
-                                        .product-name {
-                                          font-size: 11px;
-                                          font-weight: bold;
-                                          text-align: center;
-                                          margin: 4px 0;
-                                          border: 1px solid #000;
-                                          padding: 3px;
-                                          background: #f9f9f9;
-                                          flex-shrink: 0;
-                                        }
-                                        .fields {
-                                          flex: 1;
-                                          display: flex;
-                                          flex-direction: column;
-                                          gap: 2px;
-                                        }
-                                        .field {
-                                          display: flex;
-                                          justify-content: space-between;
-                                          align-items: flex-start;
-                                          line-height: 1.2;
-                                        }
-                                        .field-label {
-                                          font-weight: bold;
-                                          width: 35%;
-                                          font-size: 9px;
-                                        }
-                                        .field-value {
-                                          width: 60%;
-                                          text-align: right;
-                                          font-size: 9px;
-                                          word-wrap: break-word;
-                                        }
-                                        .ingredients .field-value {
-                                          font-size: 7px;
-                                          line-height: 1.1;
-                                        }
-                                        @media print {
-                                          body { margin: 0; }
-                                          .label { 
-                                            page-break-inside: avoid;
-                                            break-inside: avoid;
-                                          }
-                                        }
-                                      </style>
-                                    </head>
-                                    <body>
-                                      <div class="label">
-                                        <div class="header">
-                                          <div class="company-name">${labelData.companyName}</div>
-                                          ${labelData.companyLocation ? `<div class="company-location">${labelData.companyLocation}</div>` : ""}
-                                        </div>
-                                        <div class="product-name">${selectedProductForLabel?.name}</div>
-                                        <div class="fields">
-                                          ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ""}
-                                          ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ""}
-                                          ${labelData.batchNo ? `<div class="field"><span class="field-label">Batch No:</span><span class="field-value">${labelData.batchNo}</span></div>` : ""}
-                                          ${labelData.netWeight ? `<div class="field"><span class="field-label">Net Weight:</span><span class="field-value">${labelData.netWeight}</span></div>` : ""}
-                                          ${labelData.ingredients ? `<div class="field ingredients"><span class="field-label">Ingredients:</span><span class="field-value">${labelData.ingredients}</span></div>` : ""}
-                                          <div class="field"><span class="field-label">MRP:</span><span class="field-value">${labelData.mrp}</span></div>
-                                          ${labelData.manufactureDate ? `<div class="field"><span class="field-label">Mfg. Date:</span><span class="field-value">${new Date(labelData.manufactureDate).toLocaleDateString()}</span></div>` : ""}
-                                          ${labelData.expireDate ? `<div class="field"><span class="field-label">Exp. Date:</span><span class="field-value">${new Date(labelData.expireDate).toLocaleDateString()}</span></div>` : ""}
-                                        </div>
-                                      </div>
-                                    </body>
-                                  </html>
-                                `;
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Product Label - ${selectedProductForLabel.name}</title>
+          <style>
+            body { font-family: 'Arial', sans-serif; margin: ${margin}mm; font-size: 10px; background: white; }
+            .label {
+              border: 2px solid #000; padding: 8px; width: ${currentSize.width}; height: ${currentSize.height};
+              margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column;
+              ${orientation === "landscape" ? "transform: rotate(90deg); transform-origin: center;" : ""}
+            }
+            .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 6px; margin-bottom: 6px; }
+            .company-name { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+            .company-location { font-size: 8px; }
+            .product-name { font-size: 11px; font-weight: bold; text-align: center; margin: 4px 0; border: 1px solid #000; padding: 3px; background: #f9f9f9; }
+            .fields { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+            .field { display: flex; justify-content: space-between; align-items: flex-start; line-height: 1.2; }
+            .field-label { font-weight: bold; width: 35%; font-size: 9px; }
+            .field-value { width: 60%; text-align: right; font-size: 9px; word-wrap: break-word; }
+            .ingredients .field-value { font-size: 7px; line-height: 1.1; }
+            @media print { body { margin: 0; } .label { page-break-inside: avoid; } }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <div class="header">
+              <div class="company-name">${labelData.companyName}</div>
+              ${labelData.companyLocation ? `<div class="company-location">${labelData.companyLocation}</div>` : ""}
+            </div>
+            <div class="product-name">${selectedProductForLabel.name}</div>
+            <div class="fields">
+              ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ""}
+              ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ""}
+              ${labelData.batchNo ? `<div class="field"><span class="field-label">Batch No:</span><span class="field-value">${labelData.batchNo}</span></div>` : ""}
+              ${labelData.netWeight ? `<div class="field"><span class="field-label">Net Weight:</span><span class="field-value">${labelData.netWeight}</span></div>` : ""}
+              ${labelData.ingredients ? `<div class="field ingredients"><span class="field-label">Ingredients:</span><span class="field-value">${labelData.ingredients}</span></div>` : ""}
+              <div class="field"><span class="field-label">MRP:</span><span class="field-value">${labelData.mrp}</span></div>
+              ${labelData.manufactureDate ? `<div class="field"><span class="field-label">Mfg. Date:</span><span class="field-value">${new Date(labelData.manufactureDate).toLocaleDateString()}</span></div>` : ""}
+              ${labelData.expireDate ? `<div class="field"><span class="field-label">Exp. Date:</span><span class="field-value">${new Date(labelData.expireDate).toLocaleDateString()}</span></div>` : ""}
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
 
-    printWindow?.document.write(printContent);
-    printWindow?.document.close();
-    printWindow?.focus();
-    printWindow?.print();
-    if (printWindow) {
-      printWindow.onafterprint = () => printWindow.close();
-    }
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.onafterprint = () => printWindow.close();
   };
 
   if (isLoading) {
@@ -428,7 +368,7 @@ export default function Products() {
         </div>
         <div className="flex space-x-2">
           <Button onClick={() => setShowCostCalculator(true)} variant="outline">
-            <i className="fas fa-calculator mr-2"></i>
+            <Calculator className="h-4 w-4 mr-2" />
             Cost Calculator
           </Button>
           <Button onClick={() => setShowProductForm(true)}>
@@ -560,7 +500,7 @@ export default function Products() {
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-2">
                         <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
-                          <i className="fas fa-cookie-bite text-orange-600 text-sm"></i>
+                          <Cookie className="h-4 w-4 text-orange-600" />
                         </div>
                         <span>{product.name}</span>
                       </div>
@@ -629,7 +569,7 @@ export default function Products() {
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8">
                     <div className="flex flex-col items-center">
-                      <i className="fas fa-cookie-bite text-4xl text-gray-300 mb-4"></i>
+                      <Cookie className="text-4xl text-gray-300 mb-4" />
                       <h3 className="text-lg font-semibold text-gray-600 mb-2">
                         No products found
                       </h3>
@@ -945,21 +885,21 @@ export default function Products() {
                   Label Preview
                 </h3>
                 <div
-                  className="border-2 border-gray-300 p-4 bg-white shadow-sm max-w-sm mx-auto"
-                  style={{ fontFamily: "Arial, sans-serif", fontSize: "10px" }}
+                  className="border-2 border-gray-300 p-4 bg-white shadow-sm max-w-sm mx-auto text-xs"
+                  style={{ fontFamily: "Arial", fontSize: "10px" }}
                 >
                   <div className="text-center border-b border-gray-300 pb-2 mb-3">
                     <div className="font-bold text-sm">
                       {labelData.companyName}
                     </div>
                     {labelData.companyLocation && (
-                      <div className="text-xs">{labelData.companyLocation}</div>
+                      <div>{labelData.companyLocation}</div>
                     )}
                   </div>
-                  <div className="font-bold text-center text-sm border border-gray-300 p-1 mb-2">
+                  <div className="font-bold text-center border border-gray-300 p-1 mb-2">
                     {selectedProductForLabel?.name}
                   </div>
-                  <div className="space-y-1 text-xs">
+                  <div className="space-y-1">
                     {labelData.regNo && (
                       <div className="flex justify-between">
                         <span className="font-semibold">Reg. No:</span>
@@ -987,9 +927,7 @@ export default function Products() {
                     {labelData.ingredients && (
                       <div className="flex justify-between">
                         <span className="font-semibold">Ingredients:</span>
-                        <span className="text-right">
-                          {labelData.ingredients}
-                        </span>
+                        <span>{labelData.ingredients}</span>
                       </div>
                     )}
                     <div className="flex justify-between">

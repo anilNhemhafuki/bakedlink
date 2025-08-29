@@ -137,7 +137,6 @@ export default function Production() {
                   variant="outline"
                   onClick={() => {}}
                   className="text-red-600 hover:text-red-800 focus:outline-none"
-                 
                 >
                   Cancel
                 </Button>

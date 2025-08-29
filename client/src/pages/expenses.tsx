@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -53,43 +53,48 @@ export default function Expenses() {
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
+  // ✅ Fixed: Add queryFn and correct queryKey
   const {
     data: expenses = [],
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["/api/expenses"],
+    queryKey: ["expenses"], // ✅ Meaningful key
+    queryFn: () => apiRequest("GET", "/api/expenses"), // ✅ Fetch data
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "Session expired. Redirecting to login...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to load expenses.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/expenses", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
       setIsDialogOpen(false);
       setEditingExpense(null);
-      toast({ title: "Success", description: "Expense saved successfully" });
+      toast({ title: "Success", description: "Expense added successfully" });
     },
     onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to save expense",
-        variant: "destructive",
-      });
+      handleError(error, "Failed to save expense");
     },
   });
 
@@ -97,66 +102,63 @@ export default function Expenses() {
     mutationFn: ({ id, data }: { id: number; data: any }) =>
       apiRequest("PUT", `/api/expenses/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
       setIsDialogOpen(false);
       setEditingExpense(null);
       toast({ title: "Success", description: "Expense updated successfully" });
     },
     onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to update expense",
-        variant: "destructive",
-      });
+      handleError(error, "Failed to update expense");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/expenses/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
       toast({ title: "Success", description: "Expense deleted successfully" });
     },
     onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to delete expense",
-        variant: "destructive",
-      });
+      handleError(error, "Failed to delete expense");
     },
   });
+
+  // Reuse error handling
+  function handleError(error: any, message: string) {
+    if (isUnauthorizedError(error)) {
+      toast({
+        title: "Unauthorized",
+        description: "Session expired. Redirecting to login...",
+        variant: "destructive",
+      });
+      setTimeout(() => (window.location.href = "/api/login"), 500);
+      return;
+    }
+    toast({ title: "Error", description: message, variant: "destructive" });
+  }
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
+    const amount = parseFloat(formData.get("amount") as string);
+    const title = (formData.get("title") as string)?.trim();
+    const category = selectedCategory?.trim();
+
+    if (!title || !category || isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill all required fields correctly.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const data = {
-      title: formData.get("title") as string,
-      category: formData.get("category") as string,
-      amount: parseFloat(formData.get("amount") as string) || 0,
+      title,
+      category,
+      amount,
       date: new Date(formData.get("date") as string),
-      description: (formData.get("description") as string) || null,
+      description: (formData.get("description") as string)?.trim() || null,
     };
 
     if (editingExpense) {
@@ -178,17 +180,25 @@ export default function Expenses() {
     "other",
   ];
 
-  const filteredExpenses = (expenses as any[]).filter((expense: any) => {
-    const matchesSearch =
-      expense.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      expense.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      categoryFilter === "all" || expense.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  // ✅ Safely filter
+  const filteredExpenses = Array.isArray(expenses)
+    ? expenses.filter((expense: any) => {
+        const matchesSearch =
+          expense.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          expense.description
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase());
+        const matchesCategory =
+          categoryFilter === "all" || expense.category === categoryFilter;
+        return matchesSearch && matchesCategory;
+      })
+    : [];
 
-  // Add sorting functionality
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredExpenses, 'title');
+  // Add sorting
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredExpenses,
+    "title",
+  );
 
   const getCategoryBadge = (category: string) => {
     const variants: Record<
@@ -208,10 +218,19 @@ export default function Expenses() {
     return variants[category] || "outline";
   };
 
+  // Sync selectedCategory when editing
+  useEffect(() => {
+    if (editingExpense) {
+      setSelectedCategory(editingExpense.category);
+    } else {
+      setSelectedCategory("");
+    }
+  }, [editingExpense]);
+
   if (error && isUnauthorizedError(error)) {
     toast({
       title: "Unauthorized",
-      description: "You are logged out. Logging in again...",
+      description: "Session expired. Redirecting to login...",
       variant: "destructive",
     });
     setTimeout(() => {
@@ -222,6 +241,7 @@ export default function Expenses() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <p className="text-gray-600">
@@ -240,10 +260,7 @@ export default function Expenses() {
         >
           <DialogTrigger asChild>
             <Button
-              onClick={() => {
-                setEditingExpense(null);
-                setSelectedCategory("");
-              }}
+              onClick={() => setEditingExpense(null)}
               className="w-full sm:w-auto"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -268,7 +285,6 @@ export default function Expenses() {
                 <Select
                   value={selectedCategory}
                   onValueChange={setSelectedCategory}
-                  defaultValue={editingExpense?.category || ""}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select Category" />
@@ -281,7 +297,12 @@ export default function Expenses() {
                     ))}
                   </SelectContent>
                 </Select>
-                <input type="hidden" name="category" value={selectedCategory} />
+                <input
+                  type="hidden"
+                  name="category"
+                  value={selectedCategory}
+                  required
+                />
               </div>
               <Input
                 name="amount"
@@ -303,7 +324,7 @@ export default function Expenses() {
               />
               <Textarea
                 name="description"
-                placeholder="Description"
+                placeholder="Description (optional)"
                 defaultValue={editingExpense?.description || ""}
                 rows={3}
               />
@@ -323,7 +344,11 @@ export default function Expenses() {
                   }
                   className="w-full sm:w-auto"
                 >
-                  {editingExpense ? "Update" : "Create"}
+                  {createMutation.isPending || updateMutation.isPending
+                    ? "Saving..."
+                    : editingExpense
+                      ? "Update"
+                      : "Create"}
                 </Button>
               </div>
             </form>
@@ -331,6 +356,7 @@ export default function Expenses() {
         </Dialog>
       </div>
 
+      {/* Expenses List */}
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -370,101 +396,121 @@ export default function Expenses() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHeader sortKey="title" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="title"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Expense
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="category" sortConfig={sortConfig} onSort={requestSort} className="hidden sm:table-cell">
+                    <SortableTableHeader
+                      sortKey="category"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                      className="hidden sm:table-cell"
+                    >
                       Category
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="amount" sortConfig={sortConfig} onSort={requestSort}>
+                    <SortableTableHeader
+                      sortKey="amount"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
                       Amount
                     </SortableTableHeader>
-                    <SortableTableHeader sortKey="date" sortConfig={sortConfig} onSort={requestSort} className="hidden md:table-cell">
+                    <SortableTableHeader
+                      sortKey="date"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                      className="hidden md:table-cell"
+                    >
                       Date
                     </SortableTableHeader>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedData.map((expense: any) => (
-                    <TableRow key={expense.id}>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                            <Receipt className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{expense.title}</div>
-                            <div className="text-sm text-muted-foreground sm:hidden">
-                              {expense.category}
+                  {sortedData.length > 0 ? (
+                    sortedData.map((expense: any) => (
+                      <TableRow key={expense.id}>
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                              <Receipt className="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                              <div className="font-medium">{expense.title}</div>
+                              <div className="text-sm text-muted-foreground sm:hidden">
+                                {expense.category}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge variant={getCategoryBadge(expense.category)}>
-                          {expense.category?.charAt(0).toUpperCase() +
-                            expense.category?.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">
-                          {formatCurrency(parseFloat(expense.amount || 0))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {new Date(expense.date).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingExpense(expense);
-                              setSelectedCategory(expense.category || "");
-                              setIsDialogOpen(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <DeleteConfirmationDialog
-                            trigger={
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            }
-                            title="Delete Expense"
-                            itemName={expense.description || "expense"}
-                            onConfirm={() => deleteMutation.mutate(expense.id)}
-                            isLoading={deleteMutation.isPending}
-                          />
-                        </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant={getCategoryBadge(expense.category)}>
+                            {expense.category?.charAt(0).toUpperCase() +
+                              expense.category?.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">
+                            {formatCurrency(parseFloat(expense.amount || 0))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {new Date(expense.date).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingExpense(expense);
+                                setSelectedCategory(expense.category || "");
+                                setIsDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <DeleteConfirmationDialog
+                              trigger={
+                                <Button variant="ghost" size="sm">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              }
+                              title="Delete Expense"
+                              itemName={expense.title || "this expense"}
+                              onConfirm={() =>
+                                deleteMutation.mutate(expense.id)
+                              }
+                              isLoading={deleteMutation.isPending}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                          No expenses found
+                        </h3>
+                        <p className="text-muted-foreground mb-4">
+                          {searchQuery || categoryFilter !== "all"
+                            ? "Try adjusting your search criteria"
+                            : "Start by adding your first expense"}
+                        </p>
+                        <Button onClick={() => setIsDialogOpen(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Expense
+                        </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
-              {sortedData.length === 0 && (
-                <div className="text-center py-8">
-                  <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                    No expenses found
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchQuery || categoryFilter !== "all"
-                      ? "Try adjusting your search criteria"
-                      : "Start by adding your first expense"}
-                  </p>
-                  <Button onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Expense
-                  </Button>
-                </div>
-              )}
             </div>
           )}
         </CardContent>
