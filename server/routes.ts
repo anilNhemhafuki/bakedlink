@@ -1866,7 +1866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(403).json({ message: "Access denied. Super Admin role required." });
   };
 
-  app.get("/api/admin/users", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/admin/users", isAuthenticated, isAdmin, auditLogger('READ', 'users'), async (req, res) => {
     try {
       const users = await storage.getAllUsers();
       res.json(users);
@@ -1876,7 +1876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/users", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/admin/users", isAuthenticated, isAdmin, auditLogger('CREATE', 'users'), async (req, res) => {
     try {
       const { email, password, firstName, lastName, role } = req.body;
 
@@ -1917,6 +1917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/admin/users/:id",
     isAuthenticated,
     isAdmin,
+    auditLogger('UPDATE', 'users'),
     async (req, res) => {
       try {
         const { id } = req.params;
@@ -1948,6 +1949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/admin/users/:id",
     isAuthenticated,
     isAdmin,
+    auditLogger('DELETE', 'users'),
     async (req, res) => {
       try {
         const { id } = req.params;
@@ -2980,7 +2982,7 @@ Form Version: ${formVersion || '1.0'}`,
     }
   });
 
-  app.put("/api/settings", isAuthenticated, async (req, res) => {
+  app.put("/api/settings", isAuthenticated, auditLogger('UPDATE', 'settings'), async (req, res) => {
     try {
       const settingsData = req.body;
       console.log("Updating settings with data:", settingsData);

@@ -81,9 +81,9 @@ export async function setupAuth(app: Express) {
         if (!user) {
           console.log('❌ User not found:', email);
           // Log failed login attempt
-          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
-                          req.headers['x-real-ip'] || 
-                          req.connection.remoteAddress || 
+          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] ||
+                          req.headers['x-real-ip'] ||
+                          req.connection.remoteAddress ||
                           req.socket.remoteAddress ||
                           '127.0.0.1';
           const userAgent = req.get('User-Agent') || '';
@@ -93,10 +93,10 @@ export async function setupAuth(app: Express) {
                          userAgent.includes('Firefox') ? 'Firefox' :
                          userAgent.includes('Safari') ? 'Safari' :
                          userAgent.includes('Edge') ? 'Edge' : 'Other';
-          const location = clientIP === '127.0.0.1' || clientIP === '::1' || 
-                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') || 
+          const location = clientIP === '127.0.0.1' || clientIP === '::1' ||
+                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') ||
                           clientIP.startsWith('172.') ? 'Local Network' : 'External';
-          
+
           await storage.createLoginLog({
             userId: 'unknown',
             userEmail: email,
@@ -125,9 +125,9 @@ export async function setupAuth(app: Express) {
         if (!user.password) {
           console.log('❌ User has no password set:', email);
           // Log failed login attempt
-          const clientIPAddr = req.headers['x-forwarded-for']?.split(',')[0] || 
-                          req.headers['x-real-ip'] || 
-                          req.connection.remoteAddress || 
+          const clientIPAddr = req.headers['x-forwarded-for']?.split(',')[0] ||
+                          req.headers['x-real-ip'] ||
+                          req.connection.remoteAddress ||
                           req.socket.remoteAddress ||
                           '127.0.0.1';
           const userAgent = req.get('User-Agent') || '';
@@ -137,8 +137,8 @@ export async function setupAuth(app: Express) {
                          userAgent.includes('Firefox') ? 'Firefox' :
                          userAgent.includes('Safari') ? 'Safari' :
                          userAgent.includes('Edge') ? 'Edge' : 'Other';
-          const location = clientIP === '127.0.0.1' || clientIP === '::1' || 
-                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') || 
+          const location = clientIP === '127.0.0.1' || clientIP === '::1' ||
+                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') ||
                           clientIP.startsWith('172.') ? 'Local Network' : 'External';
 
           await storage.createLoginLog({
@@ -170,9 +170,9 @@ export async function setupAuth(app: Express) {
         if (!isValidPassword) {
           console.log('❌ Invalid password for user:', email);
           // Log failed login attempt
-          const clientIPAddr = req.headers['x-forwarded-for']?.split(',')[0] || 
-                          req.headers['x-real-ip'] || 
-                          req.connection.remoteAddress || 
+          const clientIPAddr = req.headers['x-forwarded-for']?.split(',')[0] ||
+                          req.headers['x-real-ip'] ||
+                          req.connection.remoteAddress ||
                           req.socket.remoteAddress ||
                           '127.0.0.1';
           const userAgent = req.get('User-Agent') || '';
@@ -182,8 +182,8 @@ export async function setupAuth(app: Express) {
                          userAgent.includes('Firefox') ? 'Firefox' :
                          userAgent.includes('Safari') ? 'Safari' :
                          userAgent.includes('Edge') ? 'Edge' : 'Other';
-          const location = clientIP === '127.0.0.1' || clientIP === '::1' || 
-                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') || 
+          const location = clientIP === '127.0.0.1' || clientIP === '::1' ||
+                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') ||
                           clientIP.startsWith('172.') ? 'Local Network' : 'External';
 
           await storage.createLoginLog({
@@ -214,9 +214,9 @@ export async function setupAuth(app: Express) {
         console.log('✅ Login successful for user:', email);
         // Enhanced login logging with geolocation and device tracking
         try {
-          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
-                          req.headers['x-real-ip'] || 
-                          req.connection.remoteAddress || 
+          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] ||
+                          req.headers['x-real-ip'] ||
+                          req.connection.remoteAddress ||
                           req.socket.remoteAddress ||
                           '127.0.0.1';
 
@@ -231,8 +231,8 @@ export async function setupAuth(app: Express) {
                          userAgent.includes('Edge') ? 'Edge' : 'Other';
 
           // Basic geolocation (in production, use proper IP geolocation service)
-          const location = clientIP === '127.0.0.1' || clientIP === '::1' || 
-                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') || 
+          const location = clientIP === '127.0.0.1' || clientIP === '::1' ||
+                          clientIP.startsWith('192.168.') || clientIP.startsWith('10.') ||
                           clientIP.startsWith('172.') ? 'Local Network' : 'External';
 
           const loginLogData = {
@@ -287,49 +287,99 @@ export async function setupAuth(app: Express) {
     });
 
     // Login route
-    app.post('/api/login', (req, res, next) => {
-      console.log('🔐 Login attempt for:', req.body.email);
-      const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown';
-      const userAgent = req.get('User-Agent');
+    app.post("/api/auth/login", async (req, res) => {
+        const clientIP = req.headers['x-forwarded-for']?.toString().split(',')[0] ||
+                        req.headers['x-real-ip']?.toString() ||
+                        req.connection.remoteAddress ||
+                        req.socket.remoteAddress ||
+                        '127.0.0.1';
+        const userAgent = req.get('User-Agent') || 'Unknown';
 
-      passport.authenticate('local', async (err: any, user: any, info: any) => {
-        if (err) {
-          console.error('❌ Authentication error:', err);
-          return res.status(500).json({ message: 'Authentication error' });
-        }
+        try {
+          const { email, password } = req.body;
 
-        if (!user) {
-          console.log('❌ Authentication failed:', info?.message);
-          // Log failed login attempt
-          await logLoginAttempt('unknown', req.body.email, ipAddress, userAgent, 'failed');
-          return res.status(401).json({ message: info?.message || 'Invalid credentials' });
-        }
-
-        req.logIn(user, async (err) => {
-          if (err) {
-            console.error('❌ Login error:', err);
-            await logLoginAttempt(user.id, user.email, ipAddress, userAgent, 'failed');
-            return res.status(500).json({ message: 'Login error' });
+          if (!email || !password) {
+            // Log failed login attempt - missing credentials
+            await storage.logLogin('anonymous', email || 'unknown', 'Anonymous', clientIP, userAgent, false, 'Missing email or password');
+            return res.status(400).json({ message: "Email and password are required" });
           }
 
-          console.log('✅ User logged in successfully:', user.email);
+          const user = await storage.getUserByEmail(email);
+          if (!user) {
+            // Log failed login attempt - user not found
+            await storage.logLogin('unknown', email, 'Unknown User', clientIP, userAgent, false, 'User not found');
+            return res.status(401).json({ message: "Invalid credentials" });
+          }
+
+          const isValidPassword = await bcrypt.compare(password, user.password || "");
+          if (!isValidPassword) {
+            // Log failed login attempt - invalid password
+            await storage.logLogin(user.id, user.email, `${user.firstName || ''} ${user.lastName || ''}`.trim(), clientIP, userAgent, false, 'Invalid password');
+            return res.status(401).json({ message: "Invalid credentials" });
+          }
+
+          // Create session
+          req.session.userId = user.id;
+          req.session.user = {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName,
+          };
+
           // Log successful login
-          await logLoginAttempt(user.id, user.email, ipAddress, userAgent, 'success');
-          res.json({ user: { id: user.id, email: user.email, role: user.role } });
-        });
-      })(req, res, next);
-    });
+          await storage.logLogin(user.id, user.email, `${user.firstName || ''} ${user.lastName || ''}`.trim(), clientIP, userAgent, true);
+
+          console.log("✅ User logged in:", user.email);
+
+          // Return user data (excluding password)
+          const { password: _, ...userWithoutPassword } = user;
+          res.json({ user: userWithoutPassword });
+        } catch (error) {
+          console.error("Login error:", error);
+          // Log system error during login
+          await storage.logLogin('system', req.body?.email || 'unknown', 'System', clientIP, userAgent, false, error instanceof Error ? error.message : 'System error during login');
+          res.status(500).json({ message: "Login failed" });
+        }
+      });
 
     // Logout route
-    app.post('/api/logout', (req, res) => {
-      req.logout((err) => {
-        if (err) {
-          console.error('❌ Logout error:', err);
-          return res.status(500).json({ message: 'Logout error' });
+    app.post("/api/auth/logout", async (req, res) => {
+        const user = req.session.user;
+        const clientIP = req.headers['x-forwarded-for']?.toString().split(',')[0] ||
+                        req.headers['x-real-ip']?.toString() ||
+                        req.connection.remoteAddress ||
+                        req.socket.remoteAddress ||
+                        '127.0.0.1';
+
+        try {
+          // Log logout before destroying session
+          if (user) {
+            await storage.logLogout(user.id, user.email, `${user.firstName || ''} ${user.lastName || ''}`.trim(), clientIP);
+          }
+
+          req.session.destroy((err) => {
+            if (err) {
+              console.error("Logout error:", err);
+              return res.status(500).json({ message: "Logout failed" });
+            }
+
+            console.log("✅ User logged out:", user?.email);
+            res.json({ message: "Logged out successfully" });
+          });
+        } catch (error) {
+          console.error("Logout audit log error:", error);
+          // Still proceed with logout even if audit logging fails
+          req.session.destroy((err) => {
+            if (err) {
+              console.error("Logout error:", err);
+              return res.status(500).json({ message: "Logout failed" });
+            }
+            res.json({ message: "Logged out successfully" });
+          });
         }
-        res.json({ message: 'Logged out successfully' });
       });
-    });
 
     console.log("✅ Authentication setup completed");
   } catch (error) {
