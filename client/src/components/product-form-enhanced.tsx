@@ -502,10 +502,10 @@ export default function ProductFormEnhanced({
             </Card>
           </TabsContent>
 
-          <TabsContent value="calculator" className="space-y-6">
+          <TabsContent value="recipe" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Cost Calculator</CardTitle>
+                <CardTitle>Recipe</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Calculate product cost based on ingredients and production
                   parameters

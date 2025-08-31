@@ -37,6 +37,7 @@ import PublicOrderForm from "@/components/public-order-form";
 import Stock from "@/pages/stock";
 import Ingredients from "@/pages/ingredients";
 import Units from "@/pages/units";
+import Recipes from "@/pages/recipes";
 
 import Staff from "@/pages/staff";
 import Attendance from "@/pages/attendance";
@@ -117,6 +118,14 @@ function AuthenticatedApp({
                 component={() => (
                   <ProtectedRoute resource="production" action="read">
                     <ProductionPage />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/recipes"
+                component={() => (
+                  <ProtectedRoute resource="products" action="read">
+                    <Recipes />
                   </ProtectedRoute>
                 )}
               />

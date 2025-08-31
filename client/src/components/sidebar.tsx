@@ -127,6 +127,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       title: "Product & Inventory",
       items: [
         {
+          name: "Recipes",
+          href: "/recipes",
+          icon: "fas fa-utensils",
+          resource: "products",
+        },
+        {
           name: "Products",
           href: "/products",
           icon: "fas fa-cookie-bite",
