@@ -265,6 +265,9 @@ export default function OrderForm({ onSuccess }: OrderFormProps) {
                   Quantity
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Unit
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Unit Price ({symbol})
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -298,10 +301,7 @@ export default function OrderForm({ onSuccess }: OrderFormProps) {
                                     key={product.id}
                                     value={product.id.toString()}
                                   >
-                                    {product.name}{" "}
-                                    {product.unit
-                                      ? `(${product.unit.name})`
-                                      : ""}
+                                    {product.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -335,6 +335,16 @@ export default function OrderForm({ onSuccess }: OrderFormProps) {
                         </FormItem>
                       )}
                     />
+                  </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-600">
+                      {(() => {
+                        const productId = form.watch(`items.${index}.productId`);
+                        const product = products.find((p: any) => p.id.toString() === productId);
+                        return product?.unitAbbreviation || product?.unit || "N/A";
+                      })()}
+                    </div>
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -381,7 +391,7 @@ export default function OrderForm({ onSuccess }: OrderFormProps) {
 
               {/* Add Item Button Row */}
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-right">
+                <td colSpan={5} className="px-6 py-4 text-right">
                   <Button
                     type="button"
                     variant="outline"

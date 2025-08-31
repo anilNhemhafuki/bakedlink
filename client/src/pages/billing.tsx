@@ -233,6 +233,7 @@ function BillingContent() {
               <tr>
                 <th>Product</th>
                 <th>Quantity</th>
+                <th>Unit</th>
                 <th>Unit Price</th>
                 <th>Total</th>
               </tr>
@@ -245,6 +246,7 @@ function BillingContent() {
                 <tr>
                   <td>${item.productName}</td>
                   <td>${item.quantity}</td>
+                  <td>${item.unit || 'N/A'}</td>
                   <td>$${item.unitPrice.toFixed(2)}</td>
                   <td>$${(item.quantity * item.unitPrice).toFixed(2)}</td>
                 </tr>
@@ -383,6 +385,12 @@ function BillingContent() {
                       }
                       className="w-20"
                     />
+                    <div className="text-sm text-gray-600 w-16 flex items-center">
+                      {(() => {
+                        const product = products.find((p: any) => p.id.toString() === item.productId);
+                        return product?.unitAbbreviation || product?.unit || "N/A";
+                      })()}
+                    </div>
                     <Input
                       type="number"
                       step="0.01"

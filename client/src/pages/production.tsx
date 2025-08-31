@@ -351,22 +351,32 @@ export default function Production() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Input
-                  name="quantity"
-                  type="number"
-                  step="0.01"
-                  placeholder="Planned Quantity"
-                  defaultValue={editingProduction?.quantity || ""}
-                  required
-                />
-                {editingProduction && (
+                <div>
                   <Input
-                    name="actualQuantity"
+                    name="quantity"
                     type="number"
                     step="0.01"
-                    placeholder="Actual Quantity Produced"
-                    defaultValue={editingProduction?.actualQuantity || ""}
+                    placeholder={`Planned Quantity${selectedProductId ? (() => {
+                      const product = products.find((p: any) => p.id.toString() === selectedProductId);
+                      return product?.unitAbbreviation || product?.unit ? ` (${product.unitAbbreviation || product.unit})` : '';
+                    })() : ''}`}
+                    defaultValue={editingProduction?.quantity || ""}
+                    required
                   />
+                </div>
+                {editingProduction && (
+                  <div>
+                    <Input
+                      name="actualQuantity"
+                      type="number"
+                      step="0.01"
+                      placeholder={`Actual Quantity Produced${selectedProductId ? (() => {
+                        const product = products.find((p: any) => p.id.toString() === selectedProductId);
+                        return product?.unitAbbreviation || product?.unit ? ` (${product.unitAbbreviation || product.unit})` : '';
+                      })() : ''}`}
+                      defaultValue={editingProduction?.actualQuantity || ""}
+                    />
+                  </div>
                 )}
                 <Input
                   name="scheduledDate"
@@ -484,11 +494,27 @@ export default function Production() {
                         <TableCell className="font-medium">
                           {item.productName}
                         </TableCell>
-                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>
+                          {item.quantity}
+                          {(() => {
+                            const product = products.find((p: any) => p.id === item.productId);
+                            return product?.unitAbbreviation || product?.unit || '';
+                          })() && ` ${(() => {
+                            const product = products.find((p: any) => p.id === item.productId);
+                            return product?.unitAbbreviation || product?.unit || '';
+                          })()}`}
+                        </TableCell>
                         <TableCell>
                           {item.actualQuantity ? (
                             <span className="text-green-600 font-medium">
                               {item.actualQuantity}
+                              {(() => {
+                                const product = products.find((p: any) => p.id === item.productId);
+                                return product?.unitAbbreviation || product?.unit || '';
+                              })() && ` ${(() => {
+                                const product = products.find((p: any) => p.id === item.productId);
+                                return product?.unitAbbreviation || product?.unit || '';
+                              })()}`}
                             </span>
                           ) : (
                             <span className="text-gray-400">—</span>

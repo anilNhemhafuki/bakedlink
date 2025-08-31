@@ -1834,9 +1834,11 @@ export class Storage implements IStorage {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const todayString = today.toISOString().split('T')[0];
 
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowString = tomorrow.toISOString().split('T')[0];
 
       return await db
         .select({
@@ -1850,8 +1852,8 @@ export class Storage implements IStorage {
         .leftJoin(products, eq(productionSchedule.productId, products.id))
         .where(
           and(
-            gte(productionSchedule.scheduledDate, today),
-            lt(productionSchedule.scheduledDate, tomorrow),
+            gte(productionSchedule.scheduledDate, todayString),
+            lt(productionSchedule.scheduledDate, tomorrowString),
             // Only include records with valid dates
             sql`${productionSchedule.scheduledDate} IS NOT NULL`
           )
