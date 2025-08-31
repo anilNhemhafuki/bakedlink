@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import ProductForm from "@/components/product-form";
-import CostCalculator from "@/components/cost-calculator";
+import CostCalculator from "@/components/recipe";
 import SearchBar from "@/components/search-bar";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
