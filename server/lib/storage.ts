@@ -363,10 +363,10 @@ export class Storage implements IStorage {
   }
 
   async ensureDefaultAdmin(): Promise<void> {
-    const superAdminEmail = "superadmin@sweetreats.com";
-    const adminEmail = "admin@sweetreats.com";
-    const managerEmail = "manager@sweetreats.com";
-    const staffEmail = "staff@sweetreats.com";
+    const superAdminEmail = "superadmin@bakesewa.com";
+    const adminEmail = "admin@bakesewa.com";
+    const managerEmail = "manager@bakesewa.com";
+    const staffEmail = "staff@bakesewa.com";
 
     // Create superadmin user
     const existingSuperAdmin = await this.getUserByEmail(superAdminEmail);

@@ -34,10 +34,10 @@ export async function initializeDatabase() {
     console.log("✅ Default users created");
 
     console.log("📝 Default login credentials:");
-    console.log("   Super Admin: superadmin@sweetreats.com / superadmin123");
-    console.log("   Admin: admin@sweetreats.com / admin123");
-    console.log("   Manager: manager@sweetreats.com / manager123");
-    console.log("   Staff: staff@sweetreats.com / staff123");
+    console.log("   Super Admin: superadmin@bakesewa.com / superadmin123");
+    console.log("   Admin: admin@bakesewa.com / admin123");
+    console.log("   Manager: manager@bakesewa.com / manager123");
+    console.log("   Staff: staff@bakesewa.com / staff123");
 
     console.log("✅ Database initialization completed");
   } catch (error) {
