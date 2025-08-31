@@ -7,15 +7,27 @@ import { storage } from "./lib/storage";
 import { setupAuth, isAuthenticated } from "./localAuth";
 
 // Enhanced rate limiting and sanitization utilities
-import { rateLimitStore, rateLimitKey, submissionStart, submissionTimestamp, clientIP, userAgent, referenceId, formVersion, attachments, checkRateLimit } from "./rateLimiter";
+import {
+  rateLimitStore,
+  rateLimitKey,
+  submissionStart,
+  submissionTimestamp,
+  clientIP,
+  userAgent,
+  referenceId,
+  formVersion,
+  attachments,
+  checkRateLimit,
+} from "./rateLimiter";
 
 // Input sanitization utility
 function sanitizeInput(input: string): string {
-  if (!input) return '';
-  return input.replace(/<script[^>]*>.*?<\/script>/gi, '')
-              .replace(/<[^>]*>/g, '')
-              .trim()
-              .substring(0, 1000); // Limit length
+  if (!input) return "";
+  return input
+    .replace(/<script[^>]*>.*?<\/script>/gi, "")
+    .replace(/<[^>]*>/g, "")
+    .trim()
+    .substring(0, 1000); // Limit length
 }
 
 // Define authenticated request interface
@@ -50,7 +62,13 @@ import {
 } from "./notifications";
 import { format } from "date-fns";
 import { db } from "./db";
-import { requirePermission, requireRead, requireWrite, requireReadWrite, requireSuperAdmin } from "./permissionMiddleware";
+import {
+  requirePermission,
+  requireRead,
+  requireWrite,
+  requireReadWrite,
+  requireSuperAdmin,
+} from "./permissionMiddleware";
 import { unitConverter } from "./lib/unitConversion";
 
 // Enhanced audit logging middleware with complete coverage
@@ -65,57 +83,58 @@ const auditLogger = (action: string, resource: string) => {
     let errorMessage: string | null = null;
 
     // Capture old values for updates
-    if (action === 'UPDATE' && req.params.id) {
+    if (action === "UPDATE" && req.params.id) {
       try {
         const resourceId = parseInt(req.params.id);
         switch (resource) {
-          case 'staff':
+          case "staff":
             oldValues = await storage.getStaffById(resourceId);
             break;
-          case 'product':
+          case "product":
             oldValues = await storage.getProductById(resourceId);
             break;
-          case 'customer':
+          case "customer":
             oldValues = await storage.getCustomerById(resourceId);
             break;
-          case 'party':
+          case "party":
             oldValues = await storage.getPartyById(resourceId);
             break;
-          case 'inventory':
+          case "inventory":
             oldValues = await storage.getInventoryItemById(resourceId);
             break;
-          case 'order':
+          case "order":
             oldValues = await storage.getOrderById(resourceId);
             break;
-          case 'asset':
+          case "asset":
             oldValues = await storage.getAssetById(resourceId);
             break;
           // Add more resources as needed
         }
       } catch (error) {
-        console.warn('Failed to capture old values for audit log:', error);
+        console.warn("Failed to capture old values for audit log:", error);
       }
     }
 
     // Override response methods to capture response data and errors
-    res.send = function(data: any) {
+    res.send = function (data: any) {
       responseData = data;
       if (res.statusCode >= 400) {
-        errorMessage = typeof data === 'string' ? data : data?.message || 'Unknown error';
+        errorMessage =
+          typeof data === "string" ? data : data?.message || "Unknown error";
       }
       return originalSend.call(this, data);
     };
 
-    res.json = function(data: any) {
+    res.json = function (data: any) {
       responseData = data;
       if (res.statusCode >= 400) {
-        errorMessage = data?.message || data?.error || 'Unknown error';
+        errorMessage = data?.message || data?.error || "Unknown error";
       }
       return originalJson.call(this, data);
     };
 
     // Continue with the request
-    res.on('finish', async () => {
+    res.on("finish", async () => {
       try {
         const endTime = Date.now();
         const duration = endTime - startTime;
@@ -123,59 +142,89 @@ const auditLogger = (action: string, resource: string) => {
         // Enhanced geolocation detection
         const getLocationFromIP = (ip: string) => {
           // Basic geolocation logic - in production, use a service like MaxMind GeoIP
-          if (ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
-            return 'Local Network';
+          if (
+            ip === "127.0.0.1" ||
+            ip === "::1" ||
+            ip.startsWith("192.168.") ||
+            ip.startsWith("10.") ||
+            ip.startsWith("172.")
+          ) {
+            return "Local Network";
           }
-          return 'External'; // In production, integrate with IP geolocation service
+          return "External"; // In production, integrate with IP geolocation service
         };
 
         // Extract device information from User-Agent
         const getUserAgentInfo = (userAgent: string) => {
-          if (!userAgent) return { browser: 'Unknown', os: 'Unknown', device: 'Unknown' };
+          if (!userAgent)
+            return { browser: "Unknown", os: "Unknown", device: "Unknown" };
 
-          const browser = userAgent.includes('Chrome') ? 'Chrome' :
-                         userAgent.includes('Firefox') ? 'Firefox' :
-                         userAgent.includes('Safari') ? 'Safari' :
-                         userAgent.includes('Edge') ? 'Edge' : 'Other';
+          const browser = userAgent.includes("Chrome")
+            ? "Chrome"
+            : userAgent.includes("Firefox")
+              ? "Firefox"
+              : userAgent.includes("Safari")
+                ? "Safari"
+                : userAgent.includes("Edge")
+                  ? "Edge"
+                  : "Other";
 
-          const os = userAgent.includes('Windows') ? 'Windows' :
-                     userAgent.includes('Mac') ? 'macOS' :
-                     userAgent.includes('Linux') ? 'Linux' :
-                     userAgent.includes('Android') ? 'Android' :
-                     userAgent.includes('iOS') ? 'iOS' : 'Other';
+          const os = userAgent.includes("Windows")
+            ? "Windows"
+            : userAgent.includes("Mac")
+              ? "macOS"
+              : userAgent.includes("Linux")
+                ? "Linux"
+                : userAgent.includes("Android")
+                  ? "Android"
+                  : userAgent.includes("iOS")
+                    ? "iOS"
+                    : "Other";
 
-          const device = userAgent.includes('Mobile') ? 'Mobile' :
-                        userAgent.includes('Tablet') ? 'Tablet' : 'Desktop';
+          const device = userAgent.includes("Mobile")
+            ? "Mobile"
+            : userAgent.includes("Tablet")
+              ? "Tablet"
+              : "Desktop";
 
           return { browser, os, device };
         };
 
-        const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
-                        req.headers['x-real-ip'] || 
-                        req.connection.remoteAddress || 
-                        req.socket.remoteAddress ||
-                        '127.0.0.1';
+        const clientIP =
+          req.headers["x-forwarded-for"]?.split(",")[0] ||
+          req.headers["x-real-ip"] ||
+          req.connection.remoteAddress ||
+          req.socket.remoteAddress ||
+          "127.0.0.1";
 
-        const userAgentInfo = getUserAgentInfo(req.get('User-Agent'));
+        const userAgentInfo = getUserAgentInfo(req.get("User-Agent"));
         const location = getLocationFromIP(clientIP);
 
         // Log all activities, including anonymous/failed attempts
         const auditLogData = {
-          userId: req.user?.id || 'anonymous',
-          userEmail: req.user?.email || 'anonymous',
-          userName: req.user ? `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'Unknown User' : 'Anonymous',
+          userId: req.user?.id || "anonymous",
+          userEmail: req.user?.email || "anonymous",
+          userName: req.user
+            ? `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
+              "Unknown User"
+            : "Anonymous",
           action,
           resource,
-          resourceId: req.params.id || (responseData?.id ? responseData.id.toString() : null),
+          resourceId:
+            req.params.id ||
+            (responseData?.id ? responseData.id.toString() : null),
           details: {
             method: req.method,
             url: req.originalUrl,
-            body: action !== 'READ' && req.body ? sanitizeBody(req.body) : undefined,
+            body:
+              action !== "READ" && req.body
+                ? sanitizeBody(req.body)
+                : undefined,
             query: req.query,
             headers: {
-              'user-agent': req.get('User-Agent'),
-              'referer': req.get('Referer'),
-              'content-type': req.get('Content-Type'),
+              "user-agent": req.get("User-Agent"),
+              referer: req.get("Referer"),
+              "content-type": req.get("Content-Type"),
             },
             duration,
             statusCode: res.statusCode,
@@ -185,10 +234,11 @@ const auditLogger = (action: string, resource: string) => {
             location,
           },
           oldValues: oldValues || null,
-          newValues: action !== 'DELETE' && res.statusCode < 400 ? responseData : null,
+          newValues:
+            action !== "DELETE" && res.statusCode < 400 ? responseData : null,
           ipAddress: clientIP,
-          userAgent: req.get('User-Agent') || null,
-          status: res.statusCode < 400 ? 'success' : 'failed',
+          userAgent: req.get("User-Agent") || null,
+          status: res.statusCode < 400 ? "success" : "failed",
           errorMessage: errorMessage,
         };
 
@@ -196,16 +246,16 @@ const auditLogger = (action: string, resource: string) => {
 
         // Log critical security events separately
         if (res.statusCode === 401 || res.statusCode === 403) {
-          console.warn('🚨 Security Event:', {
-            type: 'ACCESS_DENIED',
-            user: req.user?.email || 'anonymous',
+          console.warn("🚨 Security Event:", {
+            type: "ACCESS_DENIED",
+            user: req.user?.email || "anonymous",
             ip: clientIP,
             resource: `${req.method} ${req.originalUrl}`,
             timestamp: new Date().toISOString(),
           });
         }
       } catch (error) {
-        console.error('Failed to create audit log:', error);
+        console.error("Failed to create audit log:", error);
       }
     });
 
@@ -215,14 +265,20 @@ const auditLogger = (action: string, resource: string) => {
 
 // Sanitize request body to remove sensitive information
 const sanitizeBody = (body: any) => {
-  if (!body || typeof body !== 'object') return body;
+  if (!body || typeof body !== "object") return body;
 
   const sanitized = { ...body };
-  const sensitiveFields = ['password', 'token', 'secret', 'key', 'authorization'];
+  const sensitiveFields = [
+    "password",
+    "token",
+    "secret",
+    "key",
+    "authorization",
+  ];
 
-  Object.keys(sanitized).forEach(key => {
-    if (sensitiveFields.some(field => key.toLowerCase().includes(field))) {
-      sanitized[key] = '[REDACTED]';
+  Object.keys(sanitized).forEach((key) => {
+    if (sensitiveFields.some((field) => key.toLowerCase().includes(field))) {
+      sanitized[key] = "[REDACTED]";
     }
   });
 
@@ -368,27 +424,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Get production schedule by date
-  app.get(
-    "/api/production-schedule",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { date } = req.query;
-        let schedule;
+  app.get("/api/production-schedule", isAuthenticated, async (req, res) => {
+    try {
+      const { date } = req.query;
+      let schedule;
 
-        if (date) {
-          schedule = await storage.getProductionScheduleByDate(date as string);
-        } else {
-          schedule = await storage.getProductionSchedule();
-        }
-
-        res.json(schedule);
-      } catch (error) {
-        console.error("Error fetching production schedule:", error);
-        res.status(500).json({ message: "Failed to fetch production schedule" });
+      if (date) {
+        schedule = await storage.getProductionScheduleByDate(date as string);
+      } else {
+        schedule = await storage.getProductionSchedule();
       }
-    },
-  );
+
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error fetching production schedule:", error);
+      res.status(500).json({ message: "Failed to fetch production schedule" });
+    }
+  });
 
   // Low stock items
   app.get("/api/dashboard/low-stock", isAuthenticated, async (req, res) => {
@@ -561,28 +613,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Calculate product cost with unit conversions
-  app.get("/api/products/:id/calculate-cost", isAuthenticated, async (req, res) => {
-    try {
-      const productId = parseInt(req.params.id);
-      const costCalculation = await unitConverter.calculateProductCost(productId);
-      res.json(costCalculation);
-    } catch (error) {
-      console.error("Error calculating product cost:", error);
-      res.status(500).json({ message: "Failed to calculate product cost" });
-    }
-  });
+  app.get(
+    "/api/products/:id/calculate-cost",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        const costCalculation =
+          await unitConverter.calculateProductCost(productId);
+        res.json(costCalculation);
+      } catch (error) {
+        console.error("Error calculating product cost:", error);
+        res.status(500).json({ message: "Failed to calculate product cost" });
+      }
+    },
+  );
 
   // Update product cost automatically
-  app.post("/api/products/:id/update-cost", isAuthenticated, async (req, res) => {
-    try {
-      const productId = parseInt(req.params.id);
-      await unitConverter.updateProductCost(productId);
-      res.json({ message: "Product cost updated successfully" });
-    } catch (error) {
-      console.error("Error updating product cost:", error);
-      res.status(500).json({ message: "Failed to update product cost" });
-    }
-  });
+  app.post(
+    "/api/products/:id/update-cost",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const productId = parseInt(req.params.id);
+        await unitConverter.updateProductCost(productId);
+        res.json({ message: "Product cost updated successfully" });
+      } catch (error) {
+        console.error("Error updating product cost:", error);
+        res.status(500).json({ message: "Failed to update product cost" });
+      }
+    },
+  );
 
   // Units
   app.get("/api/units", isAuthenticated, async (req, res) => {
@@ -596,15 +657,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         data: unitsArray,
-        count: unitsArray.length
+        count: unitsArray.length,
       });
     } catch (error) {
       console.error("Error fetching units:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Failed to fetch units",
         error: error instanceof Error ? error.message : "Unknown error",
-        data: []
+        data: [],
       });
     }
   });
@@ -615,7 +676,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Unit name is required" });
       }
       if (!req.body.abbreviation?.trim()) {
-        return res.status(400).json({ message: "Unit abbreviation is required" });
+        return res
+          .status(400)
+          .json({ message: "Unit abbreviation is required" });
       }
       if (!req.body.type?.trim()) {
         return res.status(400).json({ message: "Unit type is required" });
@@ -631,17 +694,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if unit with same name or abbreviation already exists
       const existingUnits = await storage.getUnits();
       const duplicateName = existingUnits.find(
-        (unit: any) => unit.name.toLowerCase() === transformedData.name.toLowerCase()
+        (unit: any) =>
+          unit.name.toLowerCase() === transformedData.name.toLowerCase(),
       );
       const duplicateAbbr = existingUnits.find(
-        (unit: any) => unit.abbreviation.toLowerCase() === transformedData.abbreviation.toLowerCase()
+        (unit: any) =>
+          unit.abbreviation.toLowerCase() ===
+          transformedData.abbreviation.toLowerCase(),
       );
 
       if (duplicateName) {
-        return res.status(400).json({ message: `Unit name "${transformedData.name}" already exists` });
+        return res.status(400).json({
+          message: `Unit name "${transformedData.name}" already exists`,
+        });
       }
       if (duplicateAbbr) {
-        return res.status(400).json({ message: `Unit abbreviation "${transformedData.abbreviation}" already exists` });
+        return res.status(400).json({
+          message: `Unit abbreviation "${transformedData.abbreviation}" already exists`,
+        });
       }
 
       const unit = await storage.createUnit(transformedData);
@@ -649,12 +719,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(unit);
     } catch (error) {
       console.error("Error creating unit:", error);
-      if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
-        res.status(400).json({ message: "A unit with this name or abbreviation already exists" });
+      if (
+        error.message?.includes("duplicate key") ||
+        error.message?.includes("unique constraint")
+      ) {
+        res.status(400).json({
+          message: "A unit with this name or abbreviation already exists",
+        });
       } else {
-        res.status(500).json({ 
+        res.status(500).json({
           message: "Failed to create unit",
-          error: error instanceof Error ? error.message : "Unknown error"
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
@@ -795,8 +870,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-
-
   // Unit Conversions
   app.get("/api/unit-conversions", isAuthenticated, async (req, res) => {
     try {
@@ -810,8 +883,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/unit-conversions", isAuthenticated, async (req, res) => {
     try {
-      if (!req.body.fromUnitId || !req.body.toUnitId || !req.body.conversionFactor) {
-        return res.status(400).json({ message: "From unit, to unit, and conversion factor are required" });
+      if (
+        !req.body.fromUnitId ||
+        !req.body.toUnitId ||
+        !req.body.conversionFactor
+      ) {
+        return res.status(400).json({
+          message: "From unit, to unit, and conversion factor are required",
+        });
       }
 
       const transformedData = {
@@ -844,7 +923,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: req.body.isActive ?? true,
       };
 
-      const conversion = await storage.updateUnitConversion(id, transformedData);
+      const conversion = await storage.updateUnitConversion(
+        id,
+        transformedData,
+      );
       res.json(conversion);
     } catch (error) {
       console.error("Error updating unit conversion:", error);
@@ -880,30 +962,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const items = await storage.getInventoryItems();
 
       // Filter items that are suitable as ingredients
-      const ingredients = items.filter((item: any) => 
-        item.name && (
-          item.group === 'raw-materials' || 
-          item.group === 'ingredients' || 
-          item.group === 'flour' ||
-          item.group === 'dairy' ||
-          item.group === 'sweeteners' ||
-          item.group === 'spices' ||
-          item.group === 'leavening' ||
-          item.group === 'extracts' ||
-          item.group === 'chocolate' ||
-          item.group === 'nuts' ||
-          item.group === 'fruits' ||
-          !item.group || 
-          item.name.toLowerCase().includes('flour') ||
-          item.name.toLowerCase().includes('sugar') ||
-          item.name.toLowerCase().includes('butter') ||
-          item.name.toLowerCase().includes('milk') ||
-          item.name.toLowerCase().includes('egg') ||
-          item.name.toLowerCase().includes('chocolate') ||
-          item.name.toLowerCase().includes('vanilla') ||
-          item.name.toLowerCase().includes('salt') ||
-          item.name.toLowerCase().includes('baking')
-        )
+      const ingredients = items.filter(
+        (item: any) =>
+          item.name &&
+          (item.group === "raw-materials" ||
+            item.group === "ingredients" ||
+            item.group === "flour" ||
+            item.group === "dairy" ||
+            item.group === "sweeteners" ||
+            item.group === "spices" ||
+            item.group === "leavening" ||
+            item.group === "extracts" ||
+            item.group === "chocolate" ||
+            item.group === "nuts" ||
+            item.group === "fruits" ||
+            !item.group ||
+            item.name.toLowerCase().includes("flour") ||
+            item.name.toLowerCase().includes("sugar") ||
+            item.name.toLowerCase().includes("butter") ||
+            item.name.toLowerCase().includes("milk") ||
+            item.name.toLowerCase().includes("egg") ||
+            item.name.toLowerCase().includes("chocolate") ||
+            item.name.toLowerCase().includes("vanilla") ||
+            item.name.toLowerCase().includes("salt") ||
+            item.name.toLowerCase().includes("baking")),
       );
 
       res.json(ingredients);
@@ -1014,25 +1096,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const criticalLevel = minLevel * 0.5; // Example: 50% of minLevel
 
         if (newStock <= criticalLevel && newStock > 0) {
-          await storage.triggerBusinessNotification('critical_low_stock', {
+          await storage.triggerBusinessNotification("critical_low_stock", {
             itemName: updatedItem.name,
             currentStock: newStock,
             minLevel: minLevel,
             unit: updatedItem.unit,
-            criticalLevel: criticalLevel
+            criticalLevel: criticalLevel,
           });
         } else if (newStock <= minLevel && newStock > 0) {
-          await storage.triggerBusinessNotification('low_stock', {
+          await storage.triggerBusinessNotification("low_stock", {
             itemName: updatedItem.name,
             currentStock: newStock,
             minLevel: minLevel,
-            unit: updatedItem.unit
+            unit: updatedItem.unit,
           });
         } else if (newStock <= 0) {
-          await storage.triggerBusinessNotification('out_of_stock', {
+          await storage.triggerBusinessNotification("out_of_stock", {
             itemName: updatedItem.name,
             currentStock: newStock,
-            unit: updatedItem.unit
+            unit: updatedItem.unit,
           });
         }
       }
@@ -1173,19 +1255,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Production schedule
-  app.get(
-    "/api/production",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const schedule = await storage.getProductionSchedule();
-        res.json(schedule);
-      } catch (error) {
-        console.error("Error fetching production schedule:", error);
-        res.status(500).json({ message: "Failed to fetch production schedule" });
-      }
-    },
-  );
+  app.get("/api/production", isAuthenticated, async (req, res) => {
+    try {
+      const schedule = await storage.getProductionSchedule();
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error fetching production schedule:", error);
+      res.status(500).json({ message: "Failed to fetch production schedule" });
+    }
+  });
 
   app.post("/api/production", isAuthenticated, async (req: any, res) => {
     try {
@@ -1275,9 +1353,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Validate required fields
       if (!req.body.name || !req.body.name.trim()) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Customer name is required",
-          errors: { name: "Customer name is required" }
+          errors: { name: "Customer name is required" },
         });
       }
 
@@ -1287,12 +1365,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: req.body.email ? req.body.email.trim() : null,
         phone: req.body.phone ? req.body.phone.trim() : null,
         address: req.body.address ? req.body.address.trim() : null,
-        openingBalance: req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
-          ? parseFloat(req.body.openingBalance).toString()
-          : "0.00",
-        currentBalance: req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
-          ? parseFloat(req.body.openingBalance).toString()
-          : "0.00",
+        openingBalance:
+          req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
+            ? parseFloat(req.body.openingBalance).toString()
+            : "0.00",
+        currentBalance:
+          req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
+            ? parseFloat(req.body.openingBalance).toString()
+            : "0.00",
         totalOrders: 0,
         totalSpent: "0.00",
         isActive: req.body.isActive !== undefined ? req.body.isActive : true,
@@ -1306,15 +1386,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating customer:", error);
 
       // Handle specific database errors
-      if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+      if (
+        error.message?.includes("duplicate key") ||
+        error.message?.includes("unique constraint")
+      ) {
         res.status(400).json({
           message: "A customer with this name or email already exists",
-          error: "Duplicate entry"
+          error: "Duplicate entry",
         });
-      } else if (error.message?.includes('not null constraint')) {
+      } else if (error.message?.includes("not null constraint")) {
         res.status(400).json({
           message: "Required fields are missing",
-          error: error.message
+          error: error.message,
         });
       } else {
         res.status(500).json({
@@ -1362,16 +1445,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Validate required fields
       if (!req.body.name || !req.body.name.trim()) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Party name is required",
-          errors: { name: "Party name is required" }
+          errors: { name: "Party name is required" },
         });
       }
 
       if (!req.body.type || !req.body.type.trim()) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Party type is required",
-          errors: { type: "Party type is required" }
+          errors: { type: "Party type is required" },
         });
       }
 
@@ -1379,18 +1462,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transformedData = {
         name: req.body.name.trim(),
         type: req.body.type.trim(),
-        contactPerson: req.body.contactPerson ? req.body.contactPerson.trim() : null,
+        contactPerson: req.body.contactPerson
+          ? req.body.contactPerson.trim()
+          : null,
         email: req.body.email ? req.body.email.trim() : null,
         phone: req.body.phone ? req.body.phone.trim() : null,
         address: req.body.address ? req.body.address.trim() : null,
         taxId: req.body.taxId ? req.body.taxId.trim() : null,
         notes: req.body.notes ? req.body.notes.trim() : null,
-        openingBalance: req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
-          ? parseFloat(req.body.openingBalance).toString()
-          : "0.00",
-        currentBalance: req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
-          ? parseFloat(req.body.openingBalance).toString()
-          : "0.00",
+        openingBalance:
+          req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
+            ? parseFloat(req.body.openingBalance).toString()
+            : "0.00",
+        currentBalance:
+          req.body.openingBalance && !isNaN(parseFloat(req.body.openingBalance))
+            ? parseFloat(req.body.openingBalance).toString()
+            : "0.00",
         isActive: req.body.isActive !== undefined ? req.body.isActive : true,
       };
 
@@ -1402,15 +1489,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating party:", error);
 
       // Handle specific database errors
-      if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+      if (
+        error.message?.includes("duplicate key") ||
+        error.message?.includes("unique constraint")
+      ) {
         res.status(400).json({
           message: "A party with this name already exists",
-          error: "Duplicate entry"
+          error: "Duplicate entry",
         });
-      } else if (error.message?.includes('not null constraint')) {
+      } else if (error.message?.includes("not null constraint")) {
         res.status(400).json({
           message: "Required fields are missing",
-          error: error.message
+          error: error.message,
         });
       } else {
         res.status(500).json({
@@ -1444,30 +1534,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Ledger Transaction Routes
-  app.get("/api/ledger/:entityType/:entityId", isAuthenticated, async (req, res) => {
-    try {
-      const { entityType, entityId } = req.params;
+  app.get(
+    "/api/ledger/:entityType/:entityId",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const { entityType, entityId } = req.params;
 
-      if (!['customer', 'party'].includes(entityType)) {
-        return res.status(400).json({ message: "Invalid entity type" });
+        if (!["customer", "party"].includes(entityType)) {
+          return res.status(400).json({ message: "Invalid entity type" });
+        }
+
+        const transactions = await storage.getLedgerTransactions(
+          parseInt(entityId),
+          entityType as "customer" | "party",
+        );
+        res.json(transactions);
+      } catch (error) {
+        console.error("Error fetching ledger transactions:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch ledger transactions" });
       }
-
-      const transactions = await storage.getLedgerTransactions(
-        parseInt(entityId), 
-        entityType as 'customer' | 'party'
-      );
-      res.json(transactions);
-    } catch (error) {
-      console.error("Error fetching ledger transactions:", error);
-      res.status(500).json({ message: "Failed to fetch ledger transactions" });
-    }
-  });
+    },
+  );
 
   // Customer ledger endpoint for compatibility
   app.get("/api/ledger/customer/:id", isAuthenticated, async (req, res) => {
     try {
       const entityId = parseInt(req.params.id);
-      const transactions = await storage.getLedgerTransactions(entityId, 'customer');
+      const transactions = await storage.getLedgerTransactions(
+        entityId,
+        "customer",
+      );
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching customer ledger:", error);
@@ -1479,7 +1578,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/ledger/party/:id", isAuthenticated, async (req, res) => {
     try {
       const entityId = parseInt(req.params.id);
-      const transactions = await storage.getLedgerTransactions(entityId, 'party');
+      const transactions = await storage.getLedgerTransactions(
+        entityId,
+        "party",
+      );
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching party ledger:", error);
@@ -1502,22 +1604,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes,
       } = req.body;
 
-      if (!['customer', 'party'].includes(entityType)) {
+      if (!["customer", "party"].includes(entityType)) {
         return res.status(400).json({ message: "Invalid entity type" });
       }
 
       // Calculate running balance
       const currentTransactions = await storage.getLedgerTransactions(
-        customerOrPartyId, 
-        entityType
+        customerOrPartyId,
+        entityType,
       );
 
-      const lastBalance = currentTransactions.length > 0 
-        ? parseFloat(currentTransactions[currentTransactions.length - 1].runningBalance)
-        : 0;
+      const lastBalance =
+        currentTransactions.length > 0
+          ? parseFloat(
+              currentTransactions[currentTransactions.length - 1]
+                .runningBalance,
+            )
+          : 0;
 
-      const debit = parseFloat(debitAmount || '0');
-      const credit = parseFloat(creditAmount || '0');
+      const debit = parseFloat(debitAmount || "0");
+      const credit = parseFloat(creditAmount || "0");
       const runningBalance = lastBalance + debit - credit;
 
       const transactionData = {
@@ -1535,7 +1641,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.user?.id,
       };
 
-      const transaction = await storage.createLedgerTransaction(transactionData);
+      const transaction =
+        await storage.createLedgerTransaction(transactionData);
 
       // Update entity's current balance
       await storage.recalculateRunningBalance(customerOrPartyId, entityType);
@@ -1557,8 +1664,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Recalculate running balances for affected entity
       if (transaction.length > 0) {
         await storage.recalculateRunningBalance(
-          transaction[0].customerOrPartyId, 
-          transaction[0].entityType as 'customer' | 'party'
+          transaction[0].customerOrPartyId,
+          transaction[0].entityType as "customer" | "party",
         );
       }
 
@@ -1588,8 +1695,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Recalculate running balances
       await storage.recalculateRunningBalance(
-        transactionToDelete[0].customerOrPartyId, 
-        transactionToDelete[0].entityType as 'customer' | 'party'
+        transactionToDelete[0].customerOrPartyId,
+        transactionToDelete[0].entityType as "customer" | "party",
       );
 
       res.json({ success: true });
@@ -1624,7 +1731,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } = req.body;
 
       if (!name || !category) {
-        return res.status(400).json({ message: "Name and category are required" });
+        return res
+          .status(400)
+          .json({ message: "Name and category are required" });
       }
 
       const assetData = {
@@ -1850,7 +1959,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin user management routes
   const isAdmin = (req: any, res: any, next: any) => {
     console.log("Checking admin access for user:", req.user);
-    if (req.user && (req.user.role === "admin" || req.user.role === "super_admin")) {
+    if (
+      req.user &&
+      (req.user.role === "admin" || req.user.role === "super_admin")
+    ) {
       return next();
     }
     console.log("Access denied - user role:", req.user?.role);
@@ -1863,61 +1975,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return next();
     }
     console.log("Access denied - user role:", req.user?.role);
-    res.status(403).json({ message: "Access denied. Super Admin role required." });
+    res
+      .status(403)
+      .json({ message: "Access denied. Super Admin role required." });
   };
 
-  app.get("/api/admin/users", isAuthenticated, isAdmin, auditLogger('READ', 'users'), async (req, res) => {
-    try {
-      const users = await storage.getAllUsers();
-      res.json(users);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
-    }
-  });
-
-  app.post("/api/admin/users", isAuthenticated, isAdmin, auditLogger('CREATE', 'users'), async (req, res) => {
-    try {
-      const { email, password, firstName, lastName, role } = req.body;
-
-      if (!email || !password) {
-        return res
-          .status(400)
-          .json({ message: "Email and password are required" });
+  app.get(
+    "/api/admin/users",
+    isAuthenticated,
+    isAdmin,
+    auditLogger("READ", "users"),
+    async (req, res) => {
+      try {
+        const users = await storage.getAllUsers();
+        res.json(users);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        res.status(500).json({ message: "Failed to fetch users" });
       }
+    },
+  );
 
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
+  app.post(
+    "/api/admin/users",
+    isAuthenticated,
+    isAdmin,
+    auditLogger("CREATE", "users"),
+    async (req, res) => {
+      try {
+        const { email, password, firstName, lastName, role } = req.body;
+
+        if (!email || !password) {
+          return res
+            .status(400)
+            .json({ message: "Email and password are required" });
+        }
+
+        // Check if user already exists
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser) {
+          return res.status(400).json({ message: "User already exists" });
+        }
+
+        // Hash password
+        const bcrypt = require("bcrypt");
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create user
+        const user = await storage.upsertUser({
+          id: `user_${Date.now()}`,
+          email,
+          password: hashedPassword,
+          firstName,
+          lastName,
+          role: role || "staff",
+        });
+
+        res.json(user);
+      } catch (error) {
+        console.error("Error creating user:", error);
+        res.status(500).json({ message: "Failed to create user" });
       }
-
-      // Hash password
-      const bcrypt = require("bcrypt");
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Create user
-      const user = await storage.upsertUser({
-        id: `user_${Date.now()}`,
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        role: role || "staff",
-      });
-
-      res.json(user);
-    } catch (error) {
-      console.error("Error creating user:", error);
-      res.status(500).json({ message: "Failed to create user" });
-    }
-  });
+    },
+  );
 
   app.put(
     "/api/admin/users/:id",
     isAuthenticated,
     isAdmin,
-    auditLogger('UPDATE', 'users'),
+    auditLogger("UPDATE", "users"),
     async (req, res) => {
       try {
         const { id } = req.params;
@@ -1949,7 +2075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/admin/users/:id",
     isAuthenticated,
     isAdmin,
-    auditLogger('DELETE', 'users'),
+    auditLogger("DELETE", "users"),
     async (req, res) => {
       try {
         const { id } = req.params;
@@ -1973,51 +2099,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/permissions/role/:role", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      const { role } = req.params;
-      const permissions = await storage.getRolePermissions(role);
-      res.json(permissions);
-    } catch (error) {
-      console.error("Error fetching role permissions:", error);
-      res.status(500).json({ message: "Failed to fetch role permissions" });
-    }
-  });
+  app.get(
+    "/api/permissions/role/:role",
+    isAuthenticated,
+    isAdmin,
+    async (req, res) => {
+      try {
+        const { role } = req.params;
+        const permissions = await storage.getRolePermissions(role);
+        res.json(permissions);
+      } catch (error) {
+        console.error("Error fetching role permissions:", error);
+        res.status(500).json({ message: "Failed to fetch role permissions" });
+      }
+    },
+  );
 
-  app.put("/api/permissions/role/:role", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      const { role } = req.params;
-      const { permissionIds } = req.body;
-      await storage.setRolePermissions(role, permissionIds);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error updating role permissions:", error);
-      res.status(500).json({ message: "Failed to update role permissions" });
-    }
-  });
+  app.put(
+    "/api/permissions/role/:role",
+    isAuthenticated,
+    isAdmin,
+    async (req, res) => {
+      try {
+        const { role } = req.params;
+        const { permissionIds } = req.body;
+        await storage.setRolePermissions(role, permissionIds);
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error updating role permissions:", error);
+        res.status(500).json({ message: "Failed to update role permissions" });
+      }
+    },
+  );
 
-  app.get("/api/permissions/user/:userId", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const permissions = await storage.getUserPermissions(userId);
-      res.json(permissions);
-    } catch (error) {
-      console.error("Error fetching user permissions:", error);
-      res.status(500).json({ message: "Failed to fetch user permissions" });
-    }
-  });
+  app.get(
+    "/api/permissions/user/:userId",
+    isAuthenticated,
+    isAdmin,
+    async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const permissions = await storage.getUserPermissions(userId);
+        res.json(permissions);
+      } catch (error) {
+        console.error("Error fetching user permissions:", error);
+        res.status(500).json({ message: "Failed to fetch user permissions" });
+      }
+    },
+  );
 
-  app.put("/api/permissions/user/:userId", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const { permissionUpdates } = req.body;
-      await storage.setUserPermissions(userId, permissionUpdates);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error updating user permissions:", error);
-      res.status(500).json({ message: "Failed to update user permissions" });
-    }
-  });
+  app.put(
+    "/api/permissions/user/:userId",
+    isAuthenticated,
+    isAdmin,
+    async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const { permissionUpdates } = req.body;
+        await storage.setUserPermissions(userId, permissionUpdates);
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error updating user permissions:", error);
+        res.status(500).json({ message: "Failed to update user permissions" });
+      }
+    },
+  );
 
   app.get("/api/auth/permissions", isAuthenticated, async (req: any, res) => {
     try {
@@ -2353,10 +2499,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const item of items) {
         await storage.createInventoryTransaction({
           inventoryItemId: item.inventoryItemId,
-          type: 'in',
+          type: "in",
           quantity: item.quantity.toString(),
-          reason: 'Purchase',
-          reference: `Purchase #${purchase.id}${invoiceNumber ? ` - Invoice: ${invoiceNumber}` : ''}`
+          reason: "Purchase",
+          reference: `Purchase #${purchase.id}${invoiceNumber ? ` - Invoice: ${invoiceNumber}` : ""}`,
         });
       }
 
@@ -2409,7 +2555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source,
         submissionTimestamp,
         submissionStart,
-        clientInfo
+        clientInfo,
       } = req.body;
 
       // Get client IP for rate limiting and logging
@@ -2418,17 +2564,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Enhanced rate limiting
       const rateLimitKeyStr = `public_order_${clientIPAddr}`;
-      if (!checkRateLimit(rateLimitKeyStr, 60000, 3)) { // 3 requests per minute
-        console.warn('🚨 Rate limit exceeded for public order:', {
+      if (!checkRateLimit(rateLimitKeyStr, 60000, 3)) {
+        // 3 requests per minute
+        console.warn("🚨 Rate limit exceeded for public order:", {
           ip: clientIPAddr,
           userAgent: userAgentStr,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
 
         return res.status(429).json({
           success: false,
-          message: "Too many order submissions. Please wait a minute before trying again.",
-          field: "rate_limit"
+          message:
+            "Too many order submissions. Please wait a minute before trying again.",
+          field: "rate_limit",
         });
       }
 
@@ -2445,13 +2593,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ) {
         return res.status(400).json({
           success: false,
-          message: "All required fields must be filled, and at least one item is needed.",
-          field: !customerName ? "customerName" :
-                 !customerEmail ? "customerEmail" :
-                 !customerPhone ? "customerPhone" :
-                 !deliveryDate ? "deliveryDate" :
-                 !deliveryAddress ? "deliveryAddress" :
-                 (!items || items.length === 0) ? "items" : "unknown"
+          message:
+            "All required fields must be filled, and at least one item is needed.",
+          field: !customerName
+            ? "customerName"
+            : !customerEmail
+              ? "customerEmail"
+              : !customerPhone
+                ? "customerPhone"
+                : !deliveryDate
+                  ? "deliveryDate"
+                  : !deliveryAddress
+                    ? "deliveryAddress"
+                    : !items || items.length === 0
+                      ? "items"
+                      : "unknown",
         });
       }
 
@@ -2464,15 +2620,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerEmail: sanitizeInput(customerEmail),
         customerPhone: sanitizeInput(customerPhone),
         deliveryAddress: sanitizeInput(deliveryAddress),
-        specialInstructions: sanitizeInput(specialInstructions || ''),
+        specialInstructions: sanitizeInput(specialInstructions || ""),
       };
 
       // Generate unique order number using reference ID if provided
-      const orderNumber = referenceId || `PUB-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+      const orderNumber =
+        referenceId ||
+        `PUB-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
       // Calculate and validate total amount
       const calculatedTotal = items.reduce(
-        (sum: number, item: any) => sum + (item.quantity * item.unitPrice),
+        (sum: number, item: any) => sum + item.quantity * item.unitPrice,
         0,
       );
 
@@ -2481,28 +2639,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({
           success: false,
           message: "Total amount mismatch. Please refresh and try again.",
-          field: "totalAmount"
+          field: "totalAmount",
         });
       }
 
-      console.log(`📦 Processing new public order: ${orderNumber} from ${sanitizedData.customerEmail}`);
+      console.log(
+        `📦 Processing new public order: ${orderNumber} from ${sanitizedData.customerEmail}`,
+      );
 
       // Create comprehensive audit log for the submission
       await storage.createAuditLog({
-        userId: 'public_user',
+        userId: "public_user",
         userEmail: sanitizedData.customerEmail,
         userName: sanitizedData.customerName,
-        action: 'CREATE',
-        resource: 'public_order',
+        action: "CREATE",
+        resource: "public_order",
         resourceId: orderNumber,
         details: {
-          source: source || 'public_form',
-          formVersion: formVersion || '1.0',
+          source: source || "public_form",
+          formVersion: formVersion || "1.0",
           itemCount: items.length,
           totalAmount: calculatedTotal,
           deliveryDate: deliveryDate,
           attachmentCount: attachments.length,
-          userAgent: userAgent || req.get('User-Agent'),
+          userAgent: userAgent || req.get("User-Agent"),
           submissionTimestamp: submissionTimestamp || new Date().toISOString(),
           processingDuration: Date.now() - submissionStart,
         },
@@ -2512,11 +2672,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerEmail: sanitizedData.customerEmail,
           itemCount: items.length,
           totalAmount: calculatedTotal,
-          status: 'pending'
+          status: "pending",
         },
         ipAddress: clientIP,
-        userAgent: req.get('User-Agent'),
-        status: 'success',
+        userAgent: req.get("User-Agent"),
+        status: "success",
       });
 
       // Create order with enhanced data
@@ -2532,10 +2692,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: `Public Order Submission
 Delivery Address: ${sanitizedData.deliveryAddress}
 ${sanitizedData.specialInstructions ? `Special Instructions: ${sanitizedData.specialInstructions}` : ""}
-Source: ${source || 'Website Form'}
+Source: ${source || "Website Form"}
 Submission IP: ${clientIP}
 Attachments: ${attachments.length} file(s)
-Form Version: ${formVersion || '1.0'}`,
+Form Version: ${formVersion || "1.0"}`,
         status: "pending",
         createdBy: null, // Public order, no user ID
       });
@@ -2553,7 +2713,10 @@ Form Version: ${formVersion || '1.0'}`,
           productId: parseInt(item.productId),
           quantity: parseInt(item.quantity),
           unitPrice: parseFloat(item.unitPrice).toString(),
-          totalPrice: (parseFloat(item.quantity.toString()) * parseFloat(item.unitPrice.toString())).toString(),
+          totalPrice: (
+            parseFloat(item.quantity.toString()) *
+            parseFloat(item.unitPrice.toString())
+          ).toString(),
         });
       }
 
@@ -2569,37 +2732,46 @@ Form Version: ${formVersion || '1.0'}`,
           itemCount: items.length,
         });
       } catch (notificationError) {
-        console.error("Failed to send notifications for new public order:", notificationError);
+        console.error(
+          "Failed to send notifications for new public order:",
+          notificationError,
+        );
         // Optionally log this error or alert admin, but don't fail the order
       }
 
       res.json({
         success: true,
         orderNumber: order.orderNumber,
-        message: "Order submitted successfully! We will contact you soon with confirmation.",
+        message:
+          "Order submitted successfully! We will contact you soon with confirmation.",
       });
     } catch (error) {
       console.error("Error processing public order:", error);
 
       // Log the error for audit purposes
       await storage.createAuditLog({
-        userId: 'public_user',
-        userEmail: req.body.customerEmail || 'unknown@example.com',
-        userName: req.body.customerName || 'Anonymous User',
-        action: 'CREATE',
-        resource: 'public_order',
-        resourceId: req.body.orderNumber || 'N/A',
+        userId: "public_user",
+        userEmail: req.body.customerEmail || "unknown@example.com",
+        userName: req.body.customerName || "Anonymous User",
+        action: "CREATE",
+        resource: "public_order",
+        resourceId: req.body.orderNumber || "N/A",
         details: {
-          error: error instanceof Error ? error.message : 'An unknown error occurred',
-          source: req.body.source || 'public_form',
-          submissionTimestamp: req.body.submissionTimestamp || new Date().toISOString(),
+          error:
+            error instanceof Error
+              ? error.message
+              : "An unknown error occurred",
+          source: req.body.source || "public_form",
+          submissionTimestamp:
+            req.body.submissionTimestamp || new Date().toISOString(),
         },
         oldValues: null,
         newValues: null,
         ipAddress: clientIP,
-        userAgent: req.get('User-Agent'),
-        status: 'failed',
-        errorMessage: error instanceof Error ? error.message : 'An unknown error occurred',
+        userAgent: req.get("User-Agent"),
+        status: "failed",
+        errorMessage:
+          error instanceof Error ? error.message : "An unknown error occurred",
       });
 
       res.status(500).json({
@@ -2734,110 +2906,124 @@ Form Version: ${formVersion || '1.0'}`,
   });
 
   // Staff document upload endpoint
-  app.post("/api/staff/upload-document", isAuthenticated, upload.single("document"), (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No document uploaded" });
+  app.post(
+    "/api/staff/upload-document",
+    isAuthenticated,
+    upload.single("document"),
+    (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "No document uploaded" });
+        }
+
+        // Validate file type - allow images and PDFs
+        const allowedTypes = [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif",
+          "application/pdf",
+        ];
+        if (!allowedTypes.includes(req.file.mimetype)) {
+          return res.status(400).json({
+            message:
+              "Invalid file type. Only images and PDF files are allowed.",
+          });
+        }
+
+        // Validate file size (10MB limit for documents)
+        if (req.file.size > 10 * 1024 * 1024) {
+          return res
+            .status(400)
+            .json({ message: "File size must be less than 10MB" });
+        }
+
+        const { documentType, staffId } = req.body;
+
+        // Create staff documents folder if it doesn't exist
+        const staffDocumentsPath = `uploads/staff-documents/${staffId}`;
+        const fs = require("fs");
+        const path = require("path");
+
+        if (!fs.existsSync(staffDocumentsPath)) {
+          fs.mkdirSync(staffDocumentsPath, { recursive: true });
+        }
+
+        // Move file to staff documents folder
+        const fileName = `${documentType}_${Date.now()}_${req.file.filename}`;
+        const newPath = path.join(staffDocumentsPath, fileName);
+        fs.renameSync(req.file.path, newPath);
+
+        const fileUrl = `/uploads/staff-documents/${staffId}/${fileName}`;
+        res.json({
+          url: fileUrl,
+          filename: fileName,
+          documentType: documentType,
+        });
+      } catch (error) {
+        console.error("Document upload error:", error);
+        res.status(500).json({ message: "Document upload failed" });
       }
-
-      // Validate file type - allow images and PDFs
-      const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-        "application/pdf",
-      ];
-      if (!allowedTypes.includes(req.file.mimetype)) {
-        return res
-          .status(400)
-          .json({ message: "Invalid file type. Only images and PDF files are allowed." });
-      }
-
-      // Validate file size (10MB limit for documents)
-      if (req.file.size > 10 * 1024 * 1024) {
-        return res
-          .status(400)
-          .json({ message: "File size must be less than 10MB" });
-      }
-
-      const { documentType, staffId } = req.body;
-
-      // Create staff documents folder if it doesn't exist
-      const staffDocumentsPath = `uploads/staff-documents/${staffId}`;
-      const fs = require('fs');
-      const path = require('path');
-
-      if (!fs.existsSync(staffDocumentsPath)) {
-        fs.mkdirSync(staffDocumentsPath, { recursive: true });
-      }
-
-      // Move file to staff documents folder
-      const fileName = `${documentType}_${Date.now()}_${req.file.filename}`;
-      const newPath = path.join(staffDocumentsPath, fileName);
-      fs.renameSync(req.file.path, newPath);
-
-      const fileUrl = `/uploads/staff-documents/${staffId}/${fileName}`;
-      res.json({ 
-        url: fileUrl, 
-        filename: fileName,
-        documentType: documentType 
-      });
-    } catch (error) {
-      console.error("Document upload error:", error);
-      res.status(500).json({ message: "Document upload failed" });
-    }
-  });
+    },
+  );
 
   // ============ Client Activity Tracking ============
 
-  app.post("/api/audit/client-activities", isAuthenticated, async (req: any, res) => {
-    try {
-      const { events } = req.body;
+  app.post(
+    "/api/audit/client-activities",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { events } = req.body;
 
-      if (!events || !Array.isArray(events)) {
-        return res.status(400).json({ error: "Invalid events data" });
+        if (!events || !Array.isArray(events)) {
+          return res.status(400).json({ error: "Invalid events data" });
+        }
+
+        // Process each client-side event
+        for (const event of events) {
+          const auditLogData = {
+            userId: req.user.id,
+            userEmail: req.user.email,
+            userName:
+              `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim(),
+            action: event.action,
+            resource: event.resource,
+            resourceId: event.resourceId || null,
+            details: {
+              ...event.details,
+              source: "client",
+              originalTimestamp: event.timestamp,
+            },
+            oldValues: null,
+            newValues: null,
+            ipAddress:
+              req.headers["x-forwarded-for"]?.split(",")[0] ||
+              req.headers["x-real-ip"] ||
+              req.connection.remoteAddress ||
+              "127.0.0.1",
+            userAgent: req.get("User-Agent") || null,
+            status: "success",
+          };
+
+          await storage.createAuditLog(auditLogData);
+        }
+
+        res.json({ success: true, processed: events.length });
+      } catch (error) {
+        console.error("Error processing client activities:", error);
+        res.status(500).json({ error: "Failed to process client activities" });
       }
-
-      // Process each client-side event
-      for (const event of events) {
-        const auditLogData = {
-          userId: req.user.id,
-          userEmail: req.user.email,
-          userName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim(),
-          action: event.action,
-          resource: event.resource,
-          resourceId: event.resourceId || null,
-          details: {
-            ...event.details,
-            source: 'client',
-            originalTimestamp: event.timestamp,
-          },
-          oldValues: null,
-          newValues: null,
-          ipAddress: req.headers['x-forwarded-for']?.split(',')[0] || 
-                    req.headers['x-real-ip'] || 
-                    req.connection.remoteAddress || 
-                    '127.0.0.1',
-          userAgent: req.get('User-Agent') || null,
-          status: 'success',
-        };
-
-        await storage.createAuditLog(auditLogData);
-      }
-
-      res.json({ success: true, processed: events.length });
-    } catch (error) {
-      console.error("Error processing client activities:", error);
-      res.status(500).json({ error: "Failed to process client activities" });
-    }
-  });
+    },
+  );
 
   // ============ Notifications Routes ============
 
   app.get("/api/notifications", isAuthenticated, async (req, res) => {
     try {
-      const notifications = await storage.getNotifications((req as any).user.id);
+      const notifications = await storage.getNotifications(
+        (req as any).user.id,
+      );
       res.json(notifications);
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -2949,10 +3135,10 @@ Form Version: ${formVersion || '1.0'}`,
 
       // Ensure default values are set if not present
       const defaultSettings = {
-        companyName: "Sweet Treats Bakery",
+        companyName: "Bake Sewa",
         companyAddress: "",
         companyPhone: "",
-        companyEmail: "info@sweettreatsbakery.com",
+        companyEmail: "info@bakesewa.com",
         companyLogo: "",
         themeColor: "#8B4513",
         currency: "USD",
@@ -2982,820 +3168,1067 @@ Form Version: ${formVersion || '1.0'}`,
     }
   });
 
-  app.put("/api/settings", isAuthenticated, auditLogger('UPDATE', 'settings'), async (req, res) => {
-    try {
-      const settingsData = req.body;
-      console.log("Updating settings with data:", settingsData);
-
-      // Update each setting individually
-      const updatePromises = [];
-      for (const [key, value] of Object.entries(settingsData)) {
-        if (value !== null && value !== undefined) {
-          updatePromises.push(
-            storage.updateOrCreateSetting(key, String(value)),
-          );
-        }
-      }
-
-      await Promise.all(updatePromises);
-
-      // Fetch updated settings
-      const allSettings = await storage.getSettings();
-      const settings: any = {};
-      allSettings.forEach((setting: any) => {
-        settings[setting.key] = setting.value;
-      });
-
-      // Ensure default values are maintained
-      const defaultSettings = {
-        companyName: "Sweet Treats Bakery",
-        companyAddress: "",
-        companyPhone: "",
-        companyEmail: "info@sweettreatsbakery.com",
-        companyLogo: "",
-        themeColor: "#8B4513",
-        currency: "USD",
-        timezone: "UTC",
-        emailNotifications: true,
-        lowStockAlerts: true,
-        orderNotifications: true,
-        productionReminders: true,
-        twoFactorAuth: false,
-        sessionTimeout: 60,
-        passwordPolicy: "medium",
-      };
-
-      const mergedSettings = { ...defaultSettings, ...settings };
-
-      res.json({
-        success: true,
-        message: "Settings updated successfully",
-        settings: mergedSettings,
-      });
-    } catch (error) {
-      console.error("Error updating settings:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to update settings",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Superadmin-only: Update user roles
-  app.put("/api/admin/users/:id/role", isAuthenticated, isSuperAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { role } = req.body;
-
-      const validRoles = ['super_admin', 'admin', 'manager', 'supervisor', 'marketer', 'staff'];
-      if (!validRoles.includes(role)) {
-        return res.status(400).json({ message: "Invalid role" });
-      }
-
-      const user = await storage.updateUser(id, { role });
-      res.json(user);
-    } catch (error) {
-      console.error("Error updating user role:", error);
-      res.status(500).json({ message: "Failed to update user role" });
-    }
-  });
-
-  // Login logs routes (admin only)
-  app.get("/api/login-logs", isAuthenticated, requireWrite("admin"), async (req: any, res) => {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const offset = (page - 1) * limit;
-
-      // Get total count
-      const totalResult = await db.select({ count: count() }).from(loginLogs);
-      const total = totalResult[0].count;
-
-      // Get paginated logs
-      const logs = await db
-        .select()
-        .from(loginLogs)
-        .orderBy(desc(loginLogs.loginTime))
-        .limit(limit)
-        .offset(offset);
-
-      res.json({
-        logs,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
-      });
-    } catch (error) {
-      console.error("Error fetching login logs:", error);
-      res.status(500).json({ message: "Failed to fetch login logs" });
-    }
-  });
-
-  // Login logs analytics
-  app.get("/api/login-logs/analytics", isAuthenticated, requireWrite("admin"), async (req: any, res) => {
-    try {
-      const last30Days = new Date();
-      last30Days.setDate(last30Days.getDate() - 30);
-
-      // Get success/failure counts
-      const successCount = await db
-        .select({ count: count() })
-        .from(loginLogs)
-        .where(sql`${loginLogs.status} = 'success' AND ${loginLogs.loginTime} >= ${last30Days}`);
-
-      const failureCount = await db
-        .select({ count: count() })
-        .from(loginLogs)
-        .where(sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${last30Days}`);
-
-      // Get top login locations
-      const topLocations = await db
-        .select({
-          location: loginLogs.location,
-          count: count(),
-        })
-        .from(loginLogs)
-        .where(sql`${loginLogs.loginTime} >= ${last30Days}`)
-        .groupBy(loginLogs.location)
-        .orderBy(desc(count()))
-        .limit(10);
-
-      // Get device types
-      const deviceTypes = await db
-        .select({
-          deviceType: loginLogs.deviceType,
-          count: count(),
-        })
-        .from(loginLogs)
-        .where(sql`${loginLogs.loginTime} >= ${last30Days}`)
-        .groupBy(loginLogs.deviceType)
-        .orderBy(desc(count()));
-
-      res.json({
-        successCount: successCount[0].count,
-        failureCount: failureCount[0].count,
-        topLocations,
-        deviceTypes,
-      });
-    } catch (error) {
-      console.error("Error fetching login analytics:", error);
-      res.status(500).json({ message: "Failed to fetch login analytics" });
-    }
-  });
-
-  // Login analytics endpoint
-  app.get("/api/admin/login-analytics", requireWrite("admin"), async (req, res) => {
-    try {
-      const { startDate, endDate } = req.query;
-
-      // Convert dates to proper string format if they exist
-      const formattedStartDate = startDate ? new Date(startDate as string).toISOString() : undefined;
-      const formattedEndDate = endDate ? new Date(endDate as string).toISOString() : undefined;
-
-      const analytics = await storage.getLoginAnalytics(
-        formattedStartDate,
-        formattedEndDate
-      );
-
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching login analytics:", error);
-      res.status(500).json({ message: "Failed to fetch login analytics" });
-    }
-  });
-
-  // Staff management routes
-  app.get("/api/staff", isAuthenticated, requireRead("staff"), auditLogger('READ', 'staff'), async (req, res) => {
-    try {
-      const staffList = await storage.getStaff();
-      res.json(staffList);
-    } catch (error) {
-      console.error("Error fetching staff:", error);
-      res.status(500).json({ message: "Failed to fetch staff" });
-    }
-  });
-
-  app.get("/api/staff/:id", isAuthenticated, requireRead("staff"), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const staffMember = await storage.getStaffById(id);
-      if (!staffMember) {
-        return res.status(404).json({ message: "Staff member not found" });
-      }
-      res.json(staffMember);
-    } catch (error) {
-      console.error("Error fetching staff member:", error);
-      res.status(500).json({ message: "Failed to fetch staff member" });
-    }
-  });
-
-  app.post("/api/staff", isAuthenticated, requireWrite("staff"), auditLogger('CREATE', 'staff'), async (req: any, res) => {
-    try {
-      const {
-        staffId,
-        firstName,
-        lastName,
-        email,
-        phone,
-        address,
-        dateOfBirth,
-        hireDate,
-        position,
-        department,
-        employmentType,
-        salary,
-        hourlyRate,
-        bankAccount,
-        emergencyContact,
-        emergencyPhone,
-        notes,
-      } = req.body;
-
-      // Validate required fields
-      if (!firstName || !lastName || !position || !department || !employmentType || !hireDate) {
-        return res.status(400).json({ message: "Required fields are missing" });
-      }
-
-      // Auto-generate staff ID if not provided
-      let finalStaffId = staffId;
-      if (!finalStaffId) {
-        const timestamp = Date.now().toString().slice(-6);
-        const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-        finalStaffId = `EMP${initials}${timestamp}`;
-      }
-
-      // Check if staff ID already exists
+  app.put(
+    "/api/settings",
+    isAuthenticated,
+    auditLogger("UPDATE", "settings"),
+    async (req, res) => {
       try {
-        const existingStaff = await storage.getStaffByStaffId(finalStaffId);
-        if (existingStaff) {
-          return res.status(400).json({ message: "Staff ID already exists" });
+        const settingsData = req.body;
+        console.log("Updating settings with data:", settingsData);
+
+        // Update each setting individually
+        const updatePromises = [];
+        for (const [key, value] of Object.entries(settingsData)) {
+          if (value !== null && value !== undefined) {
+            updatePromises.push(
+              storage.updateOrCreateSetting(key, String(value)),
+            );
+          }
         }
-      } catch (err) {
-        // Staff ID doesn't exist, which is good
-      }
 
-      const staffData = {
-        staffId: finalStaffId,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email?.trim() || null,
-        phone: phone?.trim() || null,
-        address: address?.trim() || null,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        hireDate: new Date(hireDate),
-        position: position.trim(),
-        department: department.trim(),
-        employmentType: employmentType.trim(),
-        salary: salary && !isNaN(parseFloat(salary)) ? parseFloat(salary).toString() : null,
-        hourlyRate: hourlyRate && !isNaN(parseFloat(hourlyRate)) ? parseFloat(hourlyRate).toString() : null,
-        bankAccount: bankAccount?.trim() || null,
-        emergencyContact: emergencyContact?.trim() || null,
-        emergencyPhone: emergencyPhone?.trim() || null,
-        notes: notes?.trim() || null,
-        status: "active",
-      };
+        await Promise.all(updatePromises);
 
-      console.log("Creating staff member with data:", staffData);
-      const newStaff = await storage.createStaff(staffData);
-      console.log("Staff member created successfully:", newStaff);
-      res.json(newStaff);
-    } catch (error) {
-      console.error("Error creating staff member:", error);
-      if (error.message?.includes('duplicate key')) {
-        res.status(400).json({ message: "Staff ID already exists" });
-      } else {
-        res.status(500).json({ 
-          message: "Failed to create staff member",
-          error: error instanceof Error ? error.message : "Unknown error"
+        // Fetch updated settings
+        const allSettings = await storage.getSettings();
+        const settings: any = {};
+        allSettings.forEach((setting: any) => {
+          settings[setting.key] = setting.value;
+        });
+
+        // Ensure default values are maintained
+        const defaultSettings = {
+          companyName: "Bake Sewa",
+          companyAddress: "",
+          companyPhone: "",
+          companyEmail: "info@bakesewa.com",
+          companyLogo: "",
+          themeColor: "#8B4513",
+          currency: "USD",
+          timezone: "UTC",
+          emailNotifications: true,
+          lowStockAlerts: true,
+          orderNotifications: true,
+          productionReminders: true,
+          twoFactorAuth: false,
+          sessionTimeout: 60,
+          passwordPolicy: "medium",
+        };
+
+        const mergedSettings = { ...defaultSettings, ...settings };
+
+        res.json({
+          success: true,
+          message: "Settings updated successfully",
+          settings: mergedSettings,
+        });
+      } catch (error) {
+        console.error("Error updating settings:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update settings",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-    }
-  });
+    },
+  );
 
-  app.put("/api/staff/:id", isAuthenticated, requireWrite("staff"), auditLogger('UPDATE', 'staff'), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const updateData = req.body;
+  // Superadmin-only: Update user roles
+  app.put(
+    "/api/admin/users/:id/role",
+    isAuthenticated,
+    isSuperAdmin,
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { role } = req.body;
 
-      // Validate required fields
-      if (!updateData.firstName || !updateData.lastName || !updateData.position || !updateData.department) {
-        return res.status(400).json({ message: "Required fields are missing" });
-      }
-
-      // Process dates
-      if (updateData.dateOfBirth) {
-        updateData.dateOfBirth = new Date(updateData.dateOfBirth);
-      }
-      if (updateData.hireDate) {
-        updateData.hireDate = new Date(updateData.hireDate);
-      }
-      if (updateData.terminationDate) {
-        updateData.terminationDate = new Date(updateData.terminationDate);
-      }
-
-      // Process numeric fields
-      if (updateData.salary && !isNaN(parseFloat(updateData.salary))) {
-        updateData.salary = parseFloat(updateData.salary).toString();
-      } else {
-        updateData.salary = null;
-      }
-
-      if (updateData.hourlyRate && !isNaN(parseFloat(updateData.hourlyRate))) {
-        updateData.hourlyRate = parseFloat(updateData.hourlyRate).toString();
-      } else {
-        updateData.hourlyRate = null;
-      }
-
-      // Trim string fields
-      ['firstName', 'lastName', 'email', 'phone', 'address', 'position', 'department', 'employmentType', 'bankAccount', 'emergencyContact', 'emergencyPhone', 'notes'].forEach(field => {
-        if (updateData[field]) {
-          updateData[field] = updateData[field].trim();
+        const validRoles = [
+          "super_admin",
+          "admin",
+          "manager",
+          "supervisor",
+          "marketer",
+          "staff",
+        ];
+        if (!validRoles.includes(role)) {
+          return res.status(400).json({ message: "Invalid role" });
         }
-      });
 
-      console.log("Updating staff member with data:", updateData);
-      const updatedStaff = await storage.updateStaff(id, updateData);
-      console.log("Staff member updated successfully:", updatedStaff);
-      res.json(updatedStaff);
-    } catch (error) {
-      console.error("Error updating staff member:", error);
-      res.status(500).json({ 
-        message: "Failed to update staff member",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
+        const user = await storage.updateUser(id, { role });
+        res.json(user);
+      } catch (error) {
+        console.error("Error updating user role:", error);
+        res.status(500).json({ message: "Failed to update user role" });
+      }
+    },
+  );
 
-  app.delete("/api/staff/:id", isAuthenticated, requireWrite("staff"), auditLogger('DELETE', 'staff'), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      await storage.deleteStaff(id);
-      res.json({ message: "Staff member deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting staff member:", error);
-      res.status(500).json({ message: "Failed to delete staff member" });
-    }
-  });
+  // Login logs routes (admin only)
+  app.get(
+    "/api/login-logs",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req: any, res) => {
+      try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const offset = (page - 1) * limit;
+
+        // Get total count
+        const totalResult = await db.select({ count: count() }).from(loginLogs);
+        const total = totalResult[0].count;
+
+        // Get paginated logs
+        const logs = await db
+          .select()
+          .from(loginLogs)
+          .orderBy(desc(loginLogs.loginTime))
+          .limit(limit)
+          .offset(offset);
+
+        res.json({
+          logs,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
+        });
+      } catch (error) {
+        console.error("Error fetching login logs:", error);
+        res.status(500).json({ message: "Failed to fetch login logs" });
+      }
+    },
+  );
+
+  // Login logs analytics
+  app.get(
+    "/api/login-logs/analytics",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req: any, res) => {
+      try {
+        const last30Days = new Date();
+        last30Days.setDate(last30Days.getDate() - 30);
+
+        // Get success/failure counts
+        const successCount = await db
+          .select({ count: count() })
+          .from(loginLogs)
+          .where(
+            sql`${loginLogs.status} = 'success' AND ${loginLogs.loginTime} >= ${last30Days}`,
+          );
+
+        const failureCount = await db
+          .select({ count: count() })
+          .from(loginLogs)
+          .where(
+            sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${last30Days}`,
+          );
+
+        // Get top login locations
+        const topLocations = await db
+          .select({
+            location: loginLogs.location,
+            count: count(),
+          })
+          .from(loginLogs)
+          .where(sql`${loginLogs.loginTime} >= ${last30Days}`)
+          .groupBy(loginLogs.location)
+          .orderBy(desc(count()))
+          .limit(10);
+
+        // Get device types
+        const deviceTypes = await db
+          .select({
+            deviceType: loginLogs.deviceType,
+            count: count(),
+          })
+          .from(loginLogs)
+          .where(sql`${loginLogs.loginTime} >= ${last30Days}`)
+          .groupBy(loginLogs.deviceType)
+          .orderBy(desc(count()));
+
+        res.json({
+          successCount: successCount[0].count,
+          failureCount: failureCount[0].count,
+          topLocations,
+          deviceTypes,
+        });
+      } catch (error) {
+        console.error("Error fetching login analytics:", error);
+        res.status(500).json({ message: "Failed to fetch login analytics" });
+      }
+    },
+  );
+
+  // Login analytics endpoint
+  app.get(
+    "/api/admin/login-analytics",
+    requireWrite("admin"),
+    async (req, res) => {
+      try {
+        const { startDate, endDate } = req.query;
+
+        // Convert dates to proper string format if they exist
+        const formattedStartDate = startDate
+          ? new Date(startDate as string).toISOString()
+          : undefined;
+        const formattedEndDate = endDate
+          ? new Date(endDate as string).toISOString()
+          : undefined;
+
+        const analytics = await storage.getLoginAnalytics(
+          formattedStartDate,
+          formattedEndDate,
+        );
+
+        res.json(analytics);
+      } catch (error) {
+        console.error("Error fetching login analytics:", error);
+        res.status(500).json({ message: "Failed to fetch login analytics" });
+      }
+    },
+  );
+
+  // Staff management routes
+  app.get(
+    "/api/staff",
+    isAuthenticated,
+    requireRead("staff"),
+    auditLogger("READ", "staff"),
+    async (req, res) => {
+      try {
+        const staffList = await storage.getStaff();
+        res.json(staffList);
+      } catch (error) {
+        console.error("Error fetching staff:", error);
+        res.status(500).json({ message: "Failed to fetch staff" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/staff/:id",
+    isAuthenticated,
+    requireRead("staff"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const staffMember = await storage.getStaffById(id);
+        if (!staffMember) {
+          return res.status(404).json({ message: "Staff member not found" });
+        }
+        res.json(staffMember);
+      } catch (error) {
+        console.error("Error fetching staff member:", error);
+        res.status(500).json({ message: "Failed to fetch staff member" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/staff",
+    isAuthenticated,
+    requireWrite("staff"),
+    auditLogger("CREATE", "staff"),
+    async (req: any, res) => {
+      try {
+        const {
+          staffId,
+          firstName,
+          lastName,
+          email,
+          phone,
+          address,
+          dateOfBirth,
+          hireDate,
+          position,
+          department,
+          employmentType,
+          salary,
+          hourlyRate,
+          bankAccount,
+          emergencyContact,
+          emergencyPhone,
+          notes,
+        } = req.body;
+
+        // Validate required fields
+        if (
+          !firstName ||
+          !lastName ||
+          !position ||
+          !department ||
+          !employmentType ||
+          !hireDate
+        ) {
+          return res
+            .status(400)
+            .json({ message: "Required fields are missing" });
+        }
+
+        // Auto-generate staff ID if not provided
+        let finalStaffId = staffId;
+        if (!finalStaffId) {
+          const timestamp = Date.now().toString().slice(-6);
+          const initials = (
+            firstName.charAt(0) + lastName.charAt(0)
+          ).toUpperCase();
+          finalStaffId = `EMP${initials}${timestamp}`;
+        }
+
+        // Check if staff ID already exists
+        try {
+          const existingStaff = await storage.getStaffByStaffId(finalStaffId);
+          if (existingStaff) {
+            return res.status(400).json({ message: "Staff ID already exists" });
+          }
+        } catch (err) {
+          // Staff ID doesn't exist, which is good
+        }
+
+        const staffData = {
+          staffId: finalStaffId,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email?.trim() || null,
+          phone: phone?.trim() || null,
+          address: address?.trim() || null,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          hireDate: new Date(hireDate),
+          position: position.trim(),
+          department: department.trim(),
+          employmentType: employmentType.trim(),
+          salary:
+            salary && !isNaN(parseFloat(salary))
+              ? parseFloat(salary).toString()
+              : null,
+          hourlyRate:
+            hourlyRate && !isNaN(parseFloat(hourlyRate))
+              ? parseFloat(hourlyRate).toString()
+              : null,
+          bankAccount: bankAccount?.trim() || null,
+          emergencyContact: emergencyContact?.trim() || null,
+          emergencyPhone: emergencyPhone?.trim() || null,
+          notes: notes?.trim() || null,
+          status: "active",
+        };
+
+        console.log("Creating staff member with data:", staffData);
+        const newStaff = await storage.createStaff(staffData);
+        console.log("Staff member created successfully:", newStaff);
+        res.json(newStaff);
+      } catch (error) {
+        console.error("Error creating staff member:", error);
+        if (error.message?.includes("duplicate key")) {
+          res.status(400).json({ message: "Staff ID already exists" });
+        } else {
+          res.status(500).json({
+            message: "Failed to create staff member",
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+      }
+    },
+  );
+
+  app.put(
+    "/api/staff/:id",
+    isAuthenticated,
+    requireWrite("staff"),
+    auditLogger("UPDATE", "staff"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const updateData = req.body;
+
+        // Validate required fields
+        if (
+          !updateData.firstName ||
+          !updateData.lastName ||
+          !updateData.position ||
+          !updateData.department
+        ) {
+          return res
+            .status(400)
+            .json({ message: "Required fields are missing" });
+        }
+
+        // Process dates
+        if (updateData.dateOfBirth) {
+          updateData.dateOfBirth = new Date(updateData.dateOfBirth);
+        }
+        if (updateData.hireDate) {
+          updateData.hireDate = new Date(updateData.hireDate);
+        }
+        if (updateData.terminationDate) {
+          updateData.terminationDate = new Date(updateData.terminationDate);
+        }
+
+        // Process numeric fields
+        if (updateData.salary && !isNaN(parseFloat(updateData.salary))) {
+          updateData.salary = parseFloat(updateData.salary).toString();
+        } else {
+          updateData.salary = null;
+        }
+
+        if (
+          updateData.hourlyRate &&
+          !isNaN(parseFloat(updateData.hourlyRate))
+        ) {
+          updateData.hourlyRate = parseFloat(updateData.hourlyRate).toString();
+        } else {
+          updateData.hourlyRate = null;
+        }
+
+        // Trim string fields
+        [
+          "firstName",
+          "lastName",
+          "email",
+          "phone",
+          "address",
+          "position",
+          "department",
+          "employmentType",
+          "bankAccount",
+          "emergencyContact",
+          "emergencyPhone",
+          "notes",
+        ].forEach((field) => {
+          if (updateData[field]) {
+            updateData[field] = updateData[field].trim();
+          }
+        });
+
+        console.log("Updating staff member with data:", updateData);
+        const updatedStaff = await storage.updateStaff(id, updateData);
+        console.log("Staff member updated successfully:", updatedStaff);
+        res.json(updatedStaff);
+      } catch (error) {
+        console.error("Error updating staff member:", error);
+        res.status(500).json({
+          message: "Failed to update staff member",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/staff/:id",
+    isAuthenticated,
+    requireWrite("staff"),
+    auditLogger("DELETE", "staff"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        await storage.deleteStaff(id);
+        res.json({ message: "Staff member deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting staff member:", error);
+        res.status(500).json({ message: "Failed to delete staff member" });
+      }
+    },
+  );
 
   // Attendance routes
-  app.get("/api/attendance", isAuthenticated, requireRead("staff"), async (req, res) => {
-    try {
-      const { staffId, startDate, endDate } = req.query;
+  app.get(
+    "/api/attendance",
+    isAuthenticated,
+    requireRead("staff"),
+    async (req, res) => {
+      try {
+        const { staffId, startDate, endDate } = req.query;
 
-      const attendanceRecords = await storage.getAttendance(
-        staffId ? parseInt(staffId as string) : undefined,
-        startDate ? new Date(startDate as string) : undefined,
-        endDate ? new Date(endDate as string) : undefined
-      );
+        const attendanceRecords = await storage.getAttendance(
+          staffId ? parseInt(staffId as string) : undefined,
+          startDate ? new Date(startDate as string) : undefined,
+          endDate ? new Date(endDate as string) : undefined,
+        );
 
-      res.json(attendanceRecords);
-    } catch (error) {
-      console.error("Error fetching attendance:", error);
-      res.status(500).json({ message: "Failed to fetch attendance" });
-    }
-  });
-
-  app.post("/api/attendance", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const attendanceData = req.body;
-
-      if (attendanceData.date) {
-        attendanceData.date = new Date(attendanceData.date);
+        res.json(attendanceRecords);
+      } catch (error) {
+        console.error("Error fetching attendance:", error);
+        res.status(500).json({ message: "Failed to fetch attendance" });
       }
-      if (attendanceData.clockIn) {
-        attendanceData.clockIn = new Date(attendanceData.clockIn);
-      }
-      if (attendanceData.clockOut) {
-        attendanceData.clockOut = new Date(attendanceData.clockOut);
-      }
-      if (attendanceData.breakStart) {
-        attendanceData.breakStart = new Date(attendanceData.breakStart);
-      }
-      if (attendanceData.breakEnd) {
-        attendanceData.breakEnd = new Date(attendanceData.breakEnd);
-      }
+    },
+  );
 
-      const newAttendance = await storage.createAttendance(attendanceData);
-      res.json(newAttendance);
-    } catch (error) {
-      console.error("Error creating attendance record:", error);
-      res.status(500).json({ message: "Failed to create attendance record" });
-    }
-  });
+  app.post(
+    "/api/attendance",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const attendanceData = req.body;
 
-  app.post("/api/attendance/clock-in", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const { staffId } = req.body;
-      const attendance = await storage.clockIn(staffId);
-      res.json(attendance);
-    } catch (error) {
-      console.error("Error clocking in:", error);
-      res.status(500).json({ message: error.message || "Failed to clock in" });
-    }
-  });
+        if (attendanceData.date) {
+          attendanceData.date = new Date(attendanceData.date);
+        }
+        if (attendanceData.clockIn) {
+          attendanceData.clockIn = new Date(attendanceData.clockIn);
+        }
+        if (attendanceData.clockOut) {
+          attendanceData.clockOut = new Date(attendanceData.clockOut);
+        }
+        if (attendanceData.breakStart) {
+          attendanceData.breakStart = new Date(attendanceData.breakStart);
+        }
+        if (attendanceData.breakEnd) {
+          attendanceData.breakEnd = new Date(attendanceData.breakEnd);
+        }
 
-  app.post("/api/attendance/clock-out", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const { staffId } = req.body;
-      const attendance = await storage.clockOut(staffId);
-      res.json(attendance);
-    } catch (error) {
-      console.error("Error clocking out:", error);
-      res.status(500).json({ message: error.message || "Failed to clock out" });
-    }
-  });
-
-  app.put("/api/attendance/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const updateData = req.body;
-
-      if (updateData.date) {
-        updateData.date = new Date(updateData.date);
+        const newAttendance = await storage.createAttendance(attendanceData);
+        res.json(newAttendance);
+      } catch (error) {
+        console.error("Error creating attendance record:", error);
+        res.status(500).json({ message: "Failed to create attendance record" });
       }
-      if (updateData.clockIn) {
-        updateData.clockIn = new Date(updateData.clockIn);
-      }
-      if (updateData.clockOut) {
-        updateData.clockOut = new Date(updateData.clockOut);
-      }
+    },
+  );
 
-      const updatedAttendance = await storage.updateAttendance(id, updateData);
-      res.json(updatedAttendance);
-    } catch (error) {
-      console.error("Error updating attendance:", error);
-      res.status(500).json({ message: "Failed to update attendance" });
-    }
-  });
+  app.post(
+    "/api/attendance/clock-in",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const { staffId } = req.body;
+        const attendance = await storage.clockIn(staffId);
+        res.json(attendance);
+      } catch (error) {
+        console.error("Error clocking in:", error);
+        res
+          .status(500)
+          .json({ message: error.message || "Failed to clock in" });
+      }
+    },
+  );
 
-  app.delete("/api/attendance/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      await storage.deleteAttendance(id);
-      res.json({ message: "Attendance record deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting attendance:", error);
-      res.status(500).json({ message: "Failed to delete attendance" });
-    }
-  });
+  app.post(
+    "/api/attendance/clock-out",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const { staffId } = req.body;
+        const attendance = await storage.clockOut(staffId);
+        res.json(attendance);
+      } catch (error) {
+        console.error("Error clocking out:", error);
+        res
+          .status(500)
+          .json({ message: error.message || "Failed to clock out" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/attendance/:id",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const updateData = req.body;
+
+        if (updateData.date) {
+          updateData.date = new Date(updateData.date);
+        }
+        if (updateData.clockIn) {
+          updateData.clockIn = new Date(updateData.clockIn);
+        }
+        if (updateData.clockOut) {
+          updateData.clockOut = new Date(updateData.clockOut);
+        }
+
+        const updatedAttendance = await storage.updateAttendance(
+          id,
+          updateData,
+        );
+        res.json(updatedAttendance);
+      } catch (error) {
+        console.error("Error updating attendance:", error);
+        res.status(500).json({ message: "Failed to update attendance" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/attendance/:id",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        await storage.deleteAttendance(id);
+        res.json({ message: "Attendance record deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting attendance:", error);
+        res.status(500).json({ message: "Failed to delete attendance" });
+      }
+    },
+  );
 
   // Salary payment routes
-  app.get("/api/salary-payments", isAuthenticated, requireRead("staff"), async (req, res) => {
-    try {
-      const { staffId } = req.query;
-      const payments = await storage.getSalaryPayments(
-        staffId ? parseInt(staffId as string) : undefined
-      );
-      res.json(payments);
-    } catch (error) {
-      console.error("Error fetching salary payments:", error);
-      res.status(500).json({ message: "Failed to fetch salary payments" });
-    }
-  });
-
-  app.post("/api/salary-payments", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const paymentData = req.body;
-
-      if (paymentData.payPeriodStart) {
-        paymentData.payPeriodStart = new Date(paymentData.payPeriodStart);
+  app.get(
+    "/api/salary-payments",
+    isAuthenticated,
+    requireRead("staff"),
+    async (req, res) => {
+      try {
+        const { staffId } = req.query;
+        const payments = await storage.getSalaryPayments(
+          staffId ? parseInt(staffId as string) : undefined,
+        );
+        res.json(payments);
+      } catch (error) {
+        console.error("Error fetching salary payments:", error);
+        res.status(500).json({ message: "Failed to fetch salary payments" });
       }
-      if (paymentData.payPeriodEnd) {
-        paymentData.payPeriodEnd = new Date(paymentData.payPeriodEnd);
-      }
-      if (paymentData.paymentDate) {
-        paymentData.paymentDate = new Date(paymentData.paymentDate);
-      }
+    },
+  );
 
-      // Convert numeric fields to strings
-      ['basicSalary', 'overtimePay', 'bonus', 'allowances', 'deductions', 'tax', 'netPay'].forEach(field => {
-        if (paymentData[field]) {
-          paymentData[field] = parseFloat(paymentData[field]).toString();
+  app.post(
+    "/api/salary-payments",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const paymentData = req.body;
+
+        if (paymentData.payPeriodStart) {
+          paymentData.payPeriodStart = new Date(paymentData.payPeriodStart);
         }
-      });
+        if (paymentData.payPeriodEnd) {
+          paymentData.payPeriodEnd = new Date(paymentData.payPeriodEnd);
+        }
+        if (paymentData.paymentDate) {
+          paymentData.paymentDate = new Date(paymentData.paymentDate);
+        }
 
-      const newPayment = await storage.createSalaryPayment(paymentData);
-      res.json(newPayment);
-    } catch (error) {
-      console.error("Error creating salary payment:", error);
-      res.status(500).json({ message: "Failed to create salary payment" });
-    }
-  });
+        // Convert numeric fields to strings
+        [
+          "basicSalary",
+          "overtimePay",
+          "bonus",
+          "allowances",
+          "deductions",
+          "tax",
+          "netPay",
+        ].forEach((field) => {
+          if (paymentData[field]) {
+            paymentData[field] = parseFloat(paymentData[field]).toString();
+          }
+        });
 
-  app.put("/api/salary-payments/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const updateData = req.body;
-
-      if (updateData.payPeriodStart) {
-        updateData.payPeriodStart = new Date(updateData.payPeriodStart);
+        const newPayment = await storage.createSalaryPayment(paymentData);
+        res.json(newPayment);
+      } catch (error) {
+        console.error("Error creating salary payment:", error);
+        res.status(500).json({ message: "Failed to create salary payment" });
       }
-      if (updateData.payPeriodEnd) {
-        updateData.payPeriodEnd = new Date(updateData.payPeriodEnd);
-      }
-      if (updateData.paymentDate) {
-        updateData.paymentDate = new Date(updateData.paymentDate);
-      }
+    },
+  );
 
-      const updatedPayment = await storage.updateSalaryPayment(id, updateData);
-      res.json(updatedPayment);
-    } catch (error) {
-      console.error("Error updating salary payment:", error);
-      res.status(500).json({ message: "Failed to update salary payment" });
-    }
-  });
+  app.put(
+    "/api/salary-payments/:id",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const updateData = req.body;
+
+        if (updateData.payPeriodStart) {
+          updateData.payPeriodStart = new Date(updateData.payPeriodStart);
+        }
+        if (updateData.payPeriodEnd) {
+          updateData.payPeriodEnd = new Date(updateData.payPeriodEnd);
+        }
+        if (updateData.paymentDate) {
+          updateData.paymentDate = new Date(updateData.paymentDate);
+        }
+
+        const updatedPayment = await storage.updateSalaryPayment(
+          id,
+          updateData,
+        );
+        res.json(updatedPayment);
+      } catch (error) {
+        console.error("Error updating salary payment:", error);
+        res.status(500).json({ message: "Failed to update salary payment" });
+      }
+    },
+  );
 
   // Leave request routes
-  app.get("/api/leave-requests", isAuthenticated, requireRead("staff"), async (req, res) => {
-    try {
-      const { staffId } = req.query;
-      const requests = await storage.getLeaveRequests(
-        staffId ? parseInt(staffId as string) : undefined
-      );
-      res.json(requests);
-    } catch (error) {
-      console.error("Error fetching leave requests:", error);
-      res.status(500).json({ message: "Failed to fetch leave requests" });
-    }
-  });
-
-  app.post("/api/leave-requests", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const requestData = req.body;
-
-      if (requestData.startDate) {
-        requestData.startDate = new Date(requestData.startDate);
+  app.get(
+    "/api/leave-requests",
+    isAuthenticated,
+    requireRead("staff"),
+    async (req, res) => {
+      try {
+        const { staffId } = req.query;
+        const requests = await storage.getLeaveRequests(
+          staffId ? parseInt(staffId as string) : undefined,
+        );
+        res.json(requests);
+      } catch (error) {
+        console.error("Error fetching leave requests:", error);
+        res.status(500).json({ message: "Failed to fetch leave requests" });
       }
-      if (requestData.endDate) {
-        requestData.endDate = new Date(requestData.endDate);
-      }
+    },
+  );
 
-      const newRequest = await storage.createLeaveRequest(requestData);
-      res.json(newRequest);
-    } catch (error) {
-      console.error("Error creating leave request:", error);
-      res.status(500).json({ message: "Failed to create leave request" });
-    }
-  });
+  app.post(
+    "/api/leave-requests",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const requestData = req.body;
 
-  app.put("/api/leave-requests/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const updateData = req.body;
+        if (requestData.startDate) {
+          requestData.startDate = new Date(requestData.startDate);
+        }
+        if (requestData.endDate) {
+          requestData.endDate = new Date(requestData.endDate);
+        }
 
-      if (updateData.startDate) {
-        updateData.startDate = new Date(updateData.startDate);
+        const newRequest = await storage.createLeaveRequest(requestData);
+        res.json(newRequest);
+      } catch (error) {
+        console.error("Error creating leave request:", error);
+        res.status(500).json({ message: "Failed to create leave request" });
       }
-      if (updateData.endDate) {
-        updateData.endDate = new Date(updateData.endDate);
-      }
-      if (updateData.reviewedDate) {
-        updateData.reviewedDate = new Date(updateData.reviewedDate);
-      }
+    },
+  );
 
-      const updatedRequest = await storage.updateLeaveRequest(id, updateData);
-      res.json(updatedRequest);
-    } catch (error) {
-      console.error("Error updating leave request:", error);
-      res.status(500).json({ message: "Failed to update leave request" });
-    }
-  });
+  app.put(
+    "/api/leave-requests/:id",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const updateData = req.body;
+
+        if (updateData.startDate) {
+          updateData.startDate = new Date(updateData.startDate);
+        }
+        if (updateData.endDate) {
+          updateData.endDate = new Date(updateData.endDate);
+        }
+        if (updateData.reviewedDate) {
+          updateData.reviewedDate = new Date(updateData.reviewedDate);
+        }
+
+        const updatedRequest = await storage.updateLeaveRequest(id, updateData);
+        res.json(updatedRequest);
+      } catch (error) {
+        console.error("Error updating leave request:", error);
+        res.status(500).json({ message: "Failed to update leave request" });
+      }
+    },
+  );
 
   // Audit logs routes
-  app.get("/api/audit-logs", isAuthenticated, requireWrite("admin"), async (req: any, res) => {
-    try {
-      const {
-        userId,
-        action,
-        resource,
-        startDate,
-        endDate,
-        page = 1,
-        limit = 50
-      } = req.query;
+  app.get(
+    "/api/audit-logs",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req: any, res) => {
+      try {
+        const {
+          userId,
+          action,
+          resource,
+          startDate,
+          endDate,
+          page = 1,
+          limit = 50,
+        } = req.query;
 
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+        const offset = (parseInt(page) - 1) * parseInt(limit);
 
-      const filters = {
-        userId: userId as string,
-        action: action as string,
-        resource: resource as string,
-        startDate: startDate ? new Date(startDate as string) : undefined,
-        endDate: endDate ? new Date(endDate as string) : undefined,
-        limit: parseInt(limit),
-        offset: offset,
-      };
-
-      const auditLogs = await storage.getAuditLogs(filters);
-
-      // Get total count for pagination
-      const totalResult = await db.select({ count: count() }).from(auditLogs);
-      const total = totalResult[0]?.count || 0;
-
-      res.json({
-        auditLogs,
-        pagination: {
-          page: parseInt(page),
+        const filters = {
+          userId: userId as string,
+          action: action as string,
+          resource: resource as string,
+          startDate: startDate ? new Date(startDate as string) : undefined,
+          endDate: endDate ? new Date(endDate as string) : undefined,
           limit: parseInt(limit),
-          total,
-          totalPages: Math.ceil(total / parseInt(limit)),
-        },
-      });
-    } catch (error) {
-      console.error("Error fetching audit logs:", error);
-      res.status(500).json({ message: "Failed to fetch audit logs" });
-    }
-  });
+          offset: offset,
+        };
 
-  app.get("/api/audit-logs/export", isAuthenticated, requireWrite("admin"), async (req, res) => {
-    try {
-      const logs = await storage.getAuditLogs();
+        const auditLogs = await storage.getAuditLogs(filters);
 
-      // Format logs for export
-      const exportData = {
-        exportedAt: new Date().toISOString(),
-        totalLogs: logs.length,
-        logs: logs.map(log => ({
-          ...log,
-          timestamp: new Date(log.timestamp).toISOString()
-        }))
-      };
+        // Get total count for pagination
+        const totalResult = await db.select({ count: count() }).from(auditLogs);
+        const total = totalResult[0]?.count || 0;
 
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="audit-logs-${new Date().toISOString().split('T')[0]}.json"`);
-      res.json(exportData);
-    } catch (error) {
-      console.error("Error exporting audit logs:", error);
-      res.status(500).json({ message: "Failed to export audit logs" });
-    }
-  });
+        res.json({
+          auditLogs,
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            totalPages: Math.ceil(total / parseInt(limit)),
+          },
+        });
+      } catch (error) {
+        console.error("Error fetching audit logs:", error);
+        res.status(500).json({ message: "Failed to fetch audit logs" });
+      }
+    },
+  );
 
-  app.get("/api/security/metrics", isAuthenticated, requireWrite("admin"), async (req, res) => {
-    try {
-      const last24Hours = new Date();
-      last24Hours.setHours(last24Hours.getHours() - 24);
+  app.get(
+    "/api/audit-logs/export",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req, res) => {
+      try {
+        const logs = await storage.getAuditLogs();
 
-      // Get failed logins in last 24 hours
-      const failedLogins = await db
-        .select({ count: count() })
-        .from(loginLogs)
-        .where(sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${last24Hours}`);
+        // Format logs for export
+        const exportData = {
+          exportedAt: new Date().toISOString(),
+          totalLogs: logs.length,
+          logs: logs.map((log) => ({
+            ...log,
+            timestamp: new Date(log.timestamp).toISOString(),
+          })),
+        };
 
-      // Get failed operations in last 24 hours
-      const failedOperations = await db
-        .select({ count: count() })
-        .from(auditLogs)
-        .where(sql`${auditLogs.status} = 'failed' AND ${auditLogs.timestamp} >= ${last24Hours}`);
+        res.setHeader("Content-Type", "application/json");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="audit-logs-${new Date().toISOString().split("T")[0]}.json"`,
+        );
+        res.json(exportData);
+      } catch (error) {
+        console.error("Error exporting audit logs:", error);
+        res.status(500).json({ message: "Failed to export audit logs" });
+      }
+    },
+  );
 
-      // Get unique active users in last 24 hours
-      const activeUsers = await db
-        .select({ count: count() })
-        .from(auditLogs)
-        .where(sql`${auditLogs.timestamp} >= ${last24Hours}`)
-        .groupBy(auditLogs.userId);
+  app.get(
+    "/api/security/metrics",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req, res) => {
+      try {
+        const last24Hours = new Date();
+        last24Hours.setHours(last24Hours.getHours() - 24);
 
-      res.json({
-        failedLogins: failedLogins[0]?.count || 0,
-        failedOperations: failedOperations[0]?.count || 0,
-        activeUsers: activeUsers.length || 0,
-      });
-    } catch (error) {
-      console.error("Error fetching security metrics:", error);
-      res.status(500).json({ message: "Failed to fetch security metrics" });
-    }
-  });
+        // Get failed logins in last 24 hours
+        const failedLogins = await db
+          .select({ count: count() })
+          .from(loginLogs)
+          .where(
+            sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${last24Hours}`,
+          );
 
-  app.get("/api/audit-logs/suspicious", isAuthenticated, requireWrite("admin"), async (req, res) => {
-    try {
-      const last24Hours = new Date();
-      last24Hours.setHours(last24Hours.getHours() - 24);
+        // Get failed operations in last 24 hours
+        const failedOperations = await db
+          .select({ count: count() })
+          .from(auditLogs)
+          .where(
+            sql`${auditLogs.status} = 'failed' AND ${auditLogs.timestamp} >= ${last24Hours}`,
+          );
 
-      const suspiciousLogs = await db
-        .select()
-        .from(auditLogs)
-        .where(sql`${auditLogs.status} = 'failed' AND ${auditLogs.timestamp} >= ${last24Hours}`)
-        .orderBy(desc(auditLogs.timestamp))
-        .limit(20);
+        // Get unique active users in last 24 hours
+        const activeUsers = await db
+          .select({ count: count() })
+          .from(auditLogs)
+          .where(sql`${auditLogs.timestamp} >= ${last24Hours}`)
+          .groupBy(auditLogs.userId);
 
-      res.json({ auditLogs: suspiciousLogs });
-    } catch (error) {
-      console.error("Error fetching suspicious activities:", error);
-      res.status(500).json({ message: "Failed to fetch suspicious activities" });
-    }
-  });
+        res.json({
+          failedLogins: failedLogins[0]?.count || 0,
+          failedOperations: failedOperations[0]?.count || 0,
+          activeUsers: activeUsers.length || 0,
+        });
+      } catch (error) {
+        console.error("Error fetching security metrics:", error);
+        res.status(500).json({ message: "Failed to fetch security metrics" });
+      }
+    },
+  );
 
-  app.get("/api/audit-logs/analytics", isAuthenticated, requireWrite("admin"), async (req, res) => {
-    try {
-      const { startDate, endDate } = req.query;
+  app.get(
+    "/api/audit-logs/suspicious",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req, res) => {
+      try {
+        const last24Hours = new Date();
+        last24Hours.setHours(last24Hours.getHours() - 24);
 
-      const filters = {
-        startDate: startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        endDate: endDate ? new Date(endDate as string) : new Date(),
-      };
+        const suspiciousLogs = await db
+          .select()
+          .from(auditLogs)
+          .where(
+            sql`${auditLogs.status} = 'failed' AND ${auditLogs.timestamp} >= ${last24Hours}`,
+          )
+          .orderBy(desc(auditLogs.timestamp))
+          .limit(20);
 
-      const logs = await storage.getAuditLogs(filters);
+        res.json({ auditLogs: suspiciousLogs });
+      } catch (error) {
+        console.error("Error fetching suspicious activities:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch suspicious activities" });
+      }
+    },
+  );
 
-      // Analyze the logs
-      const analytics = {
-        totalActions: logs.length,
-        actionsByType: logs.reduce((acc: any, log: any) => {
-          acc[log.action] = (acc[log.action] || 0) + 1;
-          return acc;
-        }, {}),
-        actionsByResource: logs.reduce((acc: any, log: any) => {
-          acc[log.resource] = (acc[log.resource] || 0) + 1;
-          return acc;
-        }, {}),
-        actionsByUser: logs.reduce((acc: any, log: any) => {
-          acc[log.userName] = (acc[log.userName] || 0) + 1;
-          return acc;
-        }, {}),
-        recentActions: logs.slice(0, 10),
-      };
+  app.get(
+    "/api/audit-logs/analytics",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req, res) => {
+      try {
+        const { startDate, endDate } = req.query;
 
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching audit analytics:", error);
-      res.status(500).json({ message: "Failed to fetch audit analytics" });
-    }
-  });
+        const filters = {
+          startDate: startDate
+            ? new Date(startDate as string)
+            : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          endDate: endDate ? new Date(endDate as string) : new Date(),
+        };
+
+        const logs = await storage.getAuditLogs(filters);
+
+        // Analyze the logs
+        const analytics = {
+          totalActions: logs.length,
+          actionsByType: logs.reduce((acc: any, log: any) => {
+            acc[log.action] = (acc[log.action] || 0) + 1;
+            return acc;
+          }, {}),
+          actionsByResource: logs.reduce((acc: any, log: any) => {
+            acc[log.resource] = (acc[log.resource] || 0) + 1;
+            return acc;
+          }, {}),
+          actionsByUser: logs.reduce((acc: any, log: any) => {
+            acc[log.userName] = (acc[log.userName] || 0) + 1;
+            return acc;
+          }, {}),
+          recentActions: logs.slice(0, 10),
+        };
+
+        res.json(analytics);
+      } catch (error) {
+        console.error("Error fetching audit analytics:", error);
+        res.status(500).json({ message: "Failed to fetch audit analytics" });
+      }
+    },
+  );
 
   // Staff schedule routes
-  app.get("/api/staff-schedules", isAuthenticated, requireRead("staff"), async (req, res) => {
-    try {
-      const { staffId, date } = req.query;
-      const schedules = await storage.getStaffSchedules(
-        staffId ? parseInt(staffId as string) : undefined,
-        date ? new Date(date as string) : undefined
-      );
-      res.json(schedules);
-    } catch (error) {
-      console.error("Error fetching staff schedules:", error);
-      res.status(500).json({ message: "Failed to fetch staff schedules" });
-    }
-  });
-
-  app.post("/api/staff-schedules", isAuthenticated, requireWrite("staff"), async (req: any, res) => {
-    try {
-      const scheduleData = req.body;
-
-      if (scheduleData.date) {
-        scheduleData.date = new Date(scheduleData.date);
+  app.get(
+    "/api/staff-schedules",
+    isAuthenticated,
+    requireRead("staff"),
+    async (req, res) => {
+      try {
+        const { staffId, date } = req.query;
+        const schedules = await storage.getStaffSchedules(
+          staffId ? parseInt(staffId as string) : undefined,
+          date ? new Date(date as string) : undefined,
+        );
+        res.json(schedules);
+      } catch (error) {
+        console.error("Error fetching staff schedules:", error);
+        res.status(500).json({ message: "Failed to fetch staff schedules" });
       }
-      if (scheduleData.shiftStart) {
-        scheduleData.shiftStart = new Date(scheduleData.shiftStart);
+    },
+  );
+
+  app.post(
+    "/api/staff-schedules",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req: any, res) => {
+      try {
+        const scheduleData = req.body;
+
+        if (scheduleData.date) {
+          scheduleData.date = new Date(scheduleData.date);
+        }
+        if (scheduleData.shiftStart) {
+          scheduleData.shiftStart = new Date(scheduleData.shiftStart);
+        }
+        if (scheduleData.shiftEnd) {
+          scheduleData.shiftEnd = new Date(scheduleData.shiftEnd);
+        }
+
+        scheduleData.createdBy = req.user?.id;
+
+        const newSchedule = await storage.createStaffSchedule(scheduleData);
+        res.json(newSchedule);
+      } catch (error) {
+        console.error("Error creating staff schedule:", error);
+        res.status(500).json({ message: "Failed to create staff schedule" });
       }
-      if (scheduleData.shiftEnd) {
-        scheduleData.shiftEnd = new Date(scheduleData.shiftEnd);
+    },
+  );
+
+  app.put(
+    "/api/staff-schedules/:id",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        const updateData = req.body;
+
+        if (updateData.date) {
+          updateData.date = new Date(updateData.date);
+        }
+        if (updateData.shiftStart) {
+          updateData.shiftStart = new Date(updateData.shiftStart);
+        }
+        if (updateData.shiftEnd) {
+          updateData.shiftEnd = new Date(updateData.shiftEnd);
+        }
+
+        const updatedSchedule = await storage.updateStaffSchedule(
+          id,
+          updateData,
+        );
+        res.json(updatedSchedule);
+      } catch (error) {
+        console.error("Error updating staff schedule:", error);
+        res.status(500).json({ message: "Failed to update staff schedule" });
       }
+    },
+  );
 
-      scheduleData.createdBy = req.user?.id;
-
-      const newSchedule = await storage.createStaffSchedule(scheduleData);
-      res.json(newSchedule);
-    } catch (error) {
-      console.error("Error creating staff schedule:", error);
-      res.status(500).json({ message: "Failed to create staff schedule" });
-    }
-  });
-
-  app.put("/api/staff-schedules/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const updateData = req.body;
-
-      if (updateData.date) {
-        updateData.date = new Date(updateData.date);
+  app.delete(
+    "/api/staff-schedules/:id",
+    isAuthenticated,
+    requireWrite("staff"),
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        await storage.deleteStaffSchedule(id);
+        res.json({ message: "Staff schedule deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting staff schedule:", error);
+        res.status(500).json({ message: "Failed to delete staff schedule" });
       }
-      if (updateData.shiftStart) {
-        updateData.shiftStart = new Date(updateData.shiftStart);
-      }
-      if (updateData.shiftEnd) {
-        updateData.shiftEnd = new Date(updateData.shiftEnd);
-      }
-
-      const updatedSchedule = await storage.updateStaffSchedule(id, updateData);
-      res.json(updatedSchedule);
-    } catch (error) {
-      console.error("Error updating staff schedule:", error);
-      res.status(500).json({ message: "Failed to update staff schedule" });
-    }
-  });
-
-  app.delete("/api/staff-schedules/:id", isAuthenticated, requireWrite("staff"), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      await storage.deleteStaffSchedule(id);
-      res.json({ message: "Staff schedule deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting staff schedule:", error);
-      res.status(500).json({ message: "Failed to delete staff schedule" });
-    }
-  });
+    },
+  );
 
   // Register enhanced routes for comprehensive system features
   // Enhanced routes functionality integrated above
