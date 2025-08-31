@@ -195,14 +195,14 @@ export default function Products() {
     filteredProducts,
     "name",
   );
-  const pagination = usePagination(sortedData, 10);
+  const pagination = usePagination(sortedData || [], 10);
 
   const {
     currentPage,
     pageSize,
     totalPages,
     totalItems,
-    paginatedData: paginatedProducts,
+    paginatedData: paginatedProducts = [],
     handlePageChange,
     handlePageSizeChange,
   } = pagination;
