@@ -398,7 +398,7 @@ export default function Sales() {
         </head>
         <body>
           <div class="header">
-            <div class="company-name">Sweet Treats Bakery</div>
+            <div class="company-name">Bake Sewa</div>
             <div class="company-tagline">Delicious Moments, Sweet Memories</div>
             <div class="invoice-title">SALES INVOICE</div>
           </div>
@@ -451,7 +451,7 @@ export default function Sales() {
           </div>
           <div class="footer">
             <p>Thank you for your business!</p>
-            <p>Sweet Treats Bakery - Where every bite is a delight</p>
+            <p>Bake Sewa - Where every bite is a delight</p>
           </div>
         </body>
       </html>

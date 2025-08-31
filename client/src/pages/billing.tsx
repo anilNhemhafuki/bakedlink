@@ -219,7 +219,7 @@ function BillingContent() {
         </head>
         <body>
           <div class="header">
-            <h1>Sweet Treats Bakery</h1>
+            <h1>Bake Sewa</h1>
             <h2>Invoice</h2>
           </div>
           <div class="bill-details">

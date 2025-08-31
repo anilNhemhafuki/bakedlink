@@ -1,4 +1,4 @@
-import { eq, desc, count, sql, and, gte, lte } from "drizzle-orm";
+import { eq, desc, count, sql, and, gte, lte, lt } from "drizzle-orm";
 import { db } from "../db";
 import {
   users,

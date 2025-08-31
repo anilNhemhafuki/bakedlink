@@ -288,7 +288,7 @@ export default function Settings() {
                       id="companyName"
                       name="companyName"
                       defaultValue={
-                        settings.companyName || "Sweet Treats Bakery"
+                        settings.companyName || "Bake Sewa"
                       }
                       required
                     />

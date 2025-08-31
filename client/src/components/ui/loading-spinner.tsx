@@ -29,7 +29,7 @@ export function FullPageLoader() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="text-center">
         <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Loading Sweet Treats</h2>
+        <h2 className="text-xl font-semibold text-gray-700 mb-2">Loading Bake Sewa</h2>
         <p className="text-gray-500">Please wait while we prepare your bakery management system...</p>
       </div>
     </div>

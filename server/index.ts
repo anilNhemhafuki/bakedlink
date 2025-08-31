@@ -81,9 +81,9 @@ async function startServer() {
     server.listen(port, "0.0.0.0", () => {
       console.log(`✅ Server running on http://0.0.0.0:${port}`);
       console.log(`📝 Default login credentials:`);
-      console.log(`   Admin: admin@bakery.com / password123`);
-      console.log(`   Manager: manager@bakery.com / password123`);
-      console.log(`   Staff: staff@bakery.com / password123`);
+      console.log(`   Admin: admin@bakesewa.com / admin123`);
+      console.log(`   Manager: manager@bakesewa.com / manager123`);
+      console.log(`   Staff: staff@bakesewa.com / staff123`);
 
       console.log(`\n🔍 To fix database issues:`);
       console.log(`   1. The Neon database endpoint is disabled`);
