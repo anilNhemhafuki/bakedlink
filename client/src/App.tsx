@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
@@ -87,13 +87,46 @@ function AuthenticatedApp({
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
 }) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Listen to localStorage changes for sidebar state
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedState = localStorage.getItem('sidebar-collapsed');
+      if (savedState !== null) {
+        setIsCollapsed(JSON.parse(savedState));
+      }
+    };
+
+    // Initial load
+    handleStorageChange();
+
+    // Listen for storage changes
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Custom event for same-page updates
+    const handleSidebarToggle = () => {
+      const savedState = localStorage.getItem('sidebar-collapsed');
+      if (savedState !== null) {
+        setIsCollapsed(JSON.parse(savedState));
+      }
+    };
+    
+    window.addEventListener('sidebar-toggle', handleSidebarToggle);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sidebar-toggle', handleSidebarToggle);
+    };
+  }, []);
+
   return (
     <div className="h-screen flex bg-background overflow-hidden">
       <Sidebar
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
-      <main className="flex-1 flex flex-col lg:ml-64 min-w-0">
+      <main className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         <div className="flex-1 overflow-y-auto">
           <Switch>
