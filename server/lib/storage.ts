@@ -303,15 +303,12 @@ export interface IStorage {
 }
 
 export class Storage implements IStorage {
-  private db; // Assuming db is initialized elsewhere and passed or accessible
-
-  constructor() {
-    this.db = db; // Assign the imported db instance
-  }
-
+  private db;
   private uploadsDir = path.join(process.cwd(), "public", "uploads");
 
   constructor() {
+    this.db = db; // Assign the imported db instance
+    
     // Ensure directories exist
     if (!fs.existsSync(this.uploadsDir)) {
       fs.mkdirSync(this.uploadsDir, { recursive: true });
