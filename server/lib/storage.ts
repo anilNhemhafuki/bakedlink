@@ -91,8 +91,8 @@ import {
   type InsertStaffSchedule,
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
 export interface IStorage {
   // User operations
@@ -196,9 +196,16 @@ export interface IStorage {
   deleteStaff(id: number): Promise<void>;
 
   // Attendance operations
-  getAttendance(staffId?: number, startDate?: Date, endDate?: Date): Promise<any[]>;
+  getAttendance(
+    staffId?: number,
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<any[]>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
-  updateAttendance(id: number, attendance: Partial<InsertAttendance>): Promise<Attendance>;
+  updateAttendance(
+    id: number,
+    attendance: Partial<InsertAttendance>,
+  ): Promise<Attendance>;
   deleteAttendance(id: number): Promise<void>;
   clockIn(staffId: number): Promise<Attendance>;
   clockOut(staffId: number): Promise<Attendance>;
@@ -206,19 +213,28 @@ export interface IStorage {
   // Salary operations
   getSalaryPayments(staffId?: number): Promise<any[]>;
   createSalaryPayment(payment: InsertSalaryPayment): Promise<SalaryPayment>;
-  updateSalaryPayment(id: number, payment: Partial<InsertSalaryPayment>): Promise<SalaryPayment>;
+  updateSalaryPayment(
+    id: number,
+    payment: Partial<InsertSalaryPayment>,
+  ): Promise<SalaryPayment>;
   deleteSalaryPayment(id: number): Promise<void>;
 
   // Leave request operations
   getLeaveRequests(staffId?: number): Promise<any[]>;
   createLeaveRequest(request: InsertLeaveRequest): Promise<LeaveRequest>;
-  updateLeaveRequest(id: number, request: Partial<InsertLeaveRequest>): Promise<LeaveRequest>;
+  updateLeaveRequest(
+    id: number,
+    request: Partial<InsertLeaveRequest>,
+  ): Promise<LeaveRequest>;
   deleteLeaveRequest(id: number): Promise<void>;
 
   // Staff schedule operations
   getStaffSchedules(staffId?: number, date?: Date): Promise<any[]>;
   createStaffSchedule(schedule: InsertStaffSchedule): Promise<StaffSchedule>;
-  updateStaffSchedule(id: number, schedule: Partial<InsertStaffSchedule>): Promise<StaffSchedule>;
+  updateStaffSchedule(
+    id: number,
+    schedule: Partial<InsertStaffSchedule>,
+  ): Promise<StaffSchedule>;
   deleteStaffSchedule(id: number): Promise<void>;
 
   // Customer operations
@@ -258,7 +274,7 @@ export interface IStorage {
   updateAsset(id: number, asset: Partial<InsertAsset>): Promise<Asset>;
   deleteAsset(id: number): Promise<void>;
 
-    // Audit Log operations
+  // Audit Log operations
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(filters?: {
     userId?: string;
@@ -269,8 +285,21 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<AuditLog[]>;
-  logLogin(userId: string, userEmail: string, userName: string, ipAddress: string, userAgent: string, success: boolean, errorMessage?: string): Promise<void>;
-  logLogout(userId: string, userEmail: string, userName: string, ipAddress: string): Promise<void>;
+  logLogin(
+    userId: string,
+    userEmail: string,
+    userName: string,
+    ipAddress: string,
+    userAgent: string,
+    success: boolean,
+    errorMessage?: string,
+  ): Promise<void>;
+  logLogout(
+    userId: string,
+    userEmail: string,
+    userName: string,
+    ipAddress: string,
+  ): Promise<void>;
 }
 
 export class Storage implements IStorage {
@@ -280,7 +309,7 @@ export class Storage implements IStorage {
     this.db = db; // Assign the imported db instance
   }
 
-  private uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+  private uploadsDir = path.join(process.cwd(), "public", "uploads");
 
   constructor() {
     // Ensure directories exist
@@ -289,7 +318,7 @@ export class Storage implements IStorage {
     }
 
     // Ensure staff documents directory exists
-    const staffDocumentsDir = path.join(this.uploadsDir, 'staff-documents');
+    const staffDocumentsDir = path.join(this.uploadsDir, "staff-documents");
     if (!fs.existsSync(staffDocumentsDir)) {
       fs.mkdirSync(staffDocumentsDir, { recursive: true });
     }
@@ -512,7 +541,10 @@ export class Storage implements IStorage {
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
-    const [newProduct] = await this.db.insert(products).values(product).returning();
+    const [newProduct] = await this.db
+      .insert(products)
+      .values(product)
+      .returning();
     return newProduct;
   }
 
@@ -576,9 +608,13 @@ export class Storage implements IStorage {
       console.log(`Storage getUnits result: ${result.length} units found`);
 
       // Ensure all units have the required properties
-      const validUnits = result.filter(unit => unit.id && unit.name && unit.abbreviation);
+      const validUnits = result.filter(
+        (unit) => unit.id && unit.name && unit.abbreviation,
+      );
       if (validUnits.length !== result.length) {
-        console.warn(`Filtered out ${result.length - validUnits.length} invalid units`);
+        console.warn(
+          `Filtered out ${result.length - validUnits.length} invalid units`,
+        );
       }
 
       return validUnits;
@@ -590,7 +626,11 @@ export class Storage implements IStorage {
 
   async getActiveUnits() {
     try {
-      const result = await this.db.select().from(units).where(eq(units.isActive, true)).orderBy(units.name);
+      const result = await this.db
+        .select()
+        .from(units)
+        .where(eq(units.isActive, true))
+        .orderBy(units.name);
       return result;
     } catch (error) {
       console.error("Error in getActiveUnits:", error);
@@ -613,13 +653,16 @@ export class Storage implements IStorage {
         throw new Error("Unit type is required");
       }
 
-      const [newUnit] = await this.db.insert(units).values({
-        ...data,
-        name: data.name.trim(),
-        abbreviation: data.abbreviation.trim(),
-        type: data.type.trim(),
-        isActive: data.isActive !== undefined ? data.isActive : true
-      }).returning();
+      const [newUnit] = await this.db
+        .insert(units)
+        .values({
+          ...data,
+          name: data.name.trim(),
+          abbreviation: data.abbreviation.trim(),
+          type: data.type.trim(),
+          isActive: data.isActive !== undefined ? data.isActive : true,
+        })
+        .returning();
 
       console.log("Unit created successfully:", newUnit);
       return newUnit;
@@ -644,30 +687,37 @@ export class Storage implements IStorage {
 
   // Unit conversion operations
   async getUnitConversions(): Promise<any[]> {
-    return await this.db.select({
-      id: unitConversions.id,
-      fromUnitId: unitConversions.fromUnitId,
-      toUnitId: unitConversions.toUnitId,
-      conversionFactor: unitConversions.conversionFactor,
-      formula: unitConversions.formula,
-      isActive: unitConversions.isActive,
-      createdAt: unitConversions.createdAt,
-      updatedAt: unitConversions.updatedAt,
-      fromUnit: {
-        id: sql`from_unit.id`,
-        name: sql`from_unit.name`,
-        abbreviation: sql`from_unit.abbreviation`,
-      },
-      toUnit: {
-        id: sql`to_unit.id`,
-        name: sql`to_unit.name`,
-        abbreviation: sql`to_unit.abbreviation`,
-      }
-    })
-    .from(unitConversions)
-    .leftJoin(sql`units as from_unit`, sql`from_unit.id = ${unitConversions.fromUnitId}`)
-    .leftJoin(sql`units as to_unit`, sql`to_unit.id = ${unitConversions.toUnitId}`)
-    .orderBy(sql`from_unit.name`, sql`to_unit.name`);
+    return await this.db
+      .select({
+        id: unitConversions.id,
+        fromUnitId: unitConversions.fromUnitId,
+        toUnitId: unitConversions.toUnitId,
+        conversionFactor: unitConversions.conversionFactor,
+        formula: unitConversions.formula,
+        isActive: unitConversions.isActive,
+        createdAt: unitConversions.createdAt,
+        updatedAt: unitConversions.updatedAt,
+        fromUnit: {
+          id: sql`from_unit.id`,
+          name: sql`from_unit.name`,
+          abbreviation: sql`from_unit.abbreviation`,
+        },
+        toUnit: {
+          id: sql`to_unit.id`,
+          name: sql`to_unit.name`,
+          abbreviation: sql`to_unit.abbreviation`,
+        },
+      })
+      .from(unitConversions)
+      .leftJoin(
+        sql`units as from_unit`,
+        sql`from_unit.id = ${unitConversions.fromUnitId}`,
+      )
+      .leftJoin(
+        sql`units as to_unit`,
+        sql`to_unit.id = ${unitConversions.toUnitId}`,
+      )
+      .orderBy(sql`from_unit.name`, sql`to_unit.name`);
   }
 
   async createUnitConversion(data: any): Promise<any> {
@@ -691,7 +741,11 @@ export class Storage implements IStorage {
     await this.db.delete(unitConversions).where(eq(unitConversions.id, id));
   }
 
-  async convertQuantity(fromQuantity: number, fromUnitId: number, toUnitId: number): Promise<number> {
+  async convertQuantity(
+    fromQuantity: number,
+    fromUnitId: number,
+    toUnitId: number,
+  ): Promise<number> {
     if (fromUnitId === toUnitId) return fromQuantity;
 
     // Try direct conversion
@@ -702,8 +756,8 @@ export class Storage implements IStorage {
         and(
           eq(unitConversions.fromUnitId, fromUnitId),
           eq(unitConversions.toUnitId, toUnitId),
-          eq(unitConversions.isActive, true)
-        )
+          eq(unitConversions.isActive, true),
+        ),
       )
       .limit(1);
 
@@ -719,8 +773,8 @@ export class Storage implements IStorage {
         and(
           eq(unitConversions.fromUnitId, toUnitId),
           eq(unitConversions.toUnitId, fromUnitId),
-          eq(unitConversions.isActive, true)
-        )
+          eq(unitConversions.isActive, true),
+        ),
       )
       .limit(1);
 
@@ -728,7 +782,9 @@ export class Storage implements IStorage {
       return fromQuantity / parseFloat(reverseConversion[0].conversionFactor);
     }
 
-    throw new Error(`No conversion found between units ${fromUnitId} and ${toUnitId}`);
+    throw new Error(
+      `No conversion found between units ${fromUnitId} and ${toUnitId}`,
+    );
   }
 
   // Inventory operations
@@ -765,11 +821,15 @@ export class Storage implements IStorage {
           unit: data.unit || "pcs",
           unitId: data.unitId,
           secondaryUnitId: data.secondaryUnitId || null,
-          conversionRate: data.conversionRate ? data.conversionRate.toString() : null,
+          conversionRate: data.conversionRate
+            ? data.conversionRate.toString()
+            : null,
           costPerUnit: data.costPerUnit?.toString() || "0",
           supplier: data.supplier,
           categoryId: data.categoryId,
-          lastRestocked: data.lastRestocked ? new Date(data.lastRestocked) : new Date(),
+          lastRestocked: data.lastRestocked
+            ? new Date(data.lastRestocked)
+            : new Date(),
         })
         .returning();
 
@@ -847,7 +907,9 @@ export class Storage implements IStorage {
   }
 
   async deleteInventoryCategory(id: number): Promise<void> {
-    await this.db.delete(inventoryCategories).where(eq(inventoryCategories.id, id));
+    await this.db
+      .delete(inventoryCategories)
+      .where(eq(inventoryCategories.id, id));
   }
 
   async createInventoryTransaction(
@@ -1108,7 +1170,9 @@ export class Storage implements IStorage {
     userId: string,
     permissionUpdates: { permissionId: number; granted: boolean }[],
   ): Promise<void> {
-    await this.db.delete(userPermissions).where(eq(userPermissions.userId, userId));
+    await this.db
+      .delete(userPermissions)
+      .where(eq(userPermissions.userId, userId));
 
     if (permissionUpdates.length > 0) {
       const userPermissionData = permissionUpdates.map((update) => ({
@@ -1141,7 +1205,8 @@ export class Storage implements IStorage {
       "dashboard",
       "products",
       "inventory",
-      "orders",      "production",
+      "orders",
+      "production",
       "customers",
       "parties",
       "assets",
@@ -1269,14 +1334,20 @@ export class Storage implements IStorage {
 
       if (startDate && endDate) {
         // Ensure dates are properly formatted as strings for the database
-        const startDateStr = typeof startDate === 'string' ? startDate : new Date(startDate).toISOString();
-        const endDateStr = typeof endDate === 'string' ? endDate : new Date(endDate).toISOString();
+        const startDateStr =
+          typeof startDate === "string"
+            ? startDate
+            : new Date(startDate).toISOString();
+        const endDateStr =
+          typeof endDate === "string"
+            ? endDate
+            : new Date(endDate).toISOString();
 
         query = query.where(
           and(
             gte(loginLogs.timestamp, startDateStr),
-            lte(loginLogs.timestamp, endDateStr)
-          )
+            lte(loginLogs.timestamp, endDateStr),
+          ),
         );
       }
 
@@ -1285,10 +1356,10 @@ export class Storage implements IStorage {
       // Process logs for analytics
       const analytics = {
         totalLogins: logs.length,
-        uniqueUsers: new Set(logs.map(log => log.userId)).size,
+        uniqueUsers: new Set(logs.map((log) => log.userId)).size,
         loginsByDay: this.groupLoginsByDay(logs),
         loginsByUser: this.groupLoginsByUser(logs),
-        recentLogins: logs.slice(-10)
+        recentLogins: logs.slice(-10),
       };
 
       return analytics;
@@ -1302,28 +1373,34 @@ export class Storage implements IStorage {
   groupLoginsByDay(logs: any[]): any {
     const loginsByDay: any = {};
 
-    logs.forEach(log => {
-      const date = log.timestamp.toISOString().split('T')[0];
+    logs.forEach((log) => {
+      const date = log.timestamp.toISOString().split("T")[0];
       if (!loginsByDay[date]) {
         loginsByDay[date] = 0;
       }
       loginsByDay[date]++;
     });
 
-    return Object.entries(loginsByDay).map(([date, count]) => ({ date, count }));
+    return Object.entries(loginsByDay).map(([date, count]) => ({
+      date,
+      count,
+    }));
   }
 
   groupLoginsByUser(logs: any[]): any {
     const loginsByUser: any = {};
 
-    logs.forEach(log => {
+    logs.forEach((log) => {
       if (!loginsByUser[log.userId]) {
         loginsByUser[log.userId] = 0;
       }
       loginsByUser[log.userId]++;
     });
 
-    return Object.entries(loginsByUser).map(([userId, count]) => ({ userId, count }));
+    return Object.entries(loginsByUser).map(([userId, count]) => ({
+      userId,
+      count,
+    }));
   }
 
   // Customer operations
@@ -1468,7 +1545,10 @@ export class Storage implements IStorage {
           totalPrice: purchaseItems.totalPrice,
         })
         .from(purchaseItems)
-        .leftJoin(inventoryItems, eq(purchaseItems.inventoryItemId, inventoryItems.id))
+        .leftJoin(
+          inventoryItems,
+          eq(purchaseItems.inventoryItemId, inventoryItems.id),
+        )
         .where(eq(purchaseItems.purchaseId, purchase.id));
 
       purchase.items = items;
@@ -1511,13 +1591,13 @@ export class Storage implements IStorage {
     if (purchaseData.partyId) {
       await this.createLedgerTransaction({
         customerOrPartyId: purchaseData.partyId,
-        entityType: 'party',
+        entityType: "party",
         transactionDate: new Date(),
-        description: `Purchase from ${purchaseData.supplierName}${purchaseData.invoiceNumber ? ` - Invoice: ${purchaseData.invoiceNumber}` : ''}`,
+        description: `Purchase from ${purchaseData.supplierName}${purchaseData.invoiceNumber ? ` - Invoice: ${purchaseData.invoiceNumber}` : ""}`,
         referenceNumber: purchaseData.invoiceNumber || `PUR-${newPurchase.id}`,
         debitAmount: purchaseData.totalAmount,
         creditAmount: "0",
-        transactionType: 'purchase',
+        transactionType: "purchase",
         relatedPurchaseId: newPurchase.id,
         paymentMethod: purchaseData.paymentMethod,
         notes: purchaseData.notes,
@@ -1526,7 +1606,7 @@ export class Storage implements IStorage {
       });
 
       // Recalculate running balance
-      await this.recalculateRunningBalance(purchaseData.partyId, 'party');
+      await this.recalculateRunningBalance(purchaseData.partyId, "party");
     }
 
     return newPurchase;
@@ -1552,7 +1632,10 @@ export class Storage implements IStorage {
   }
 
   async createExpense(expense: InsertExpense): Promise<Expense> {
-    const [newExpense] = await this.db.insert(expenses).values(expense).returning();
+    const [newExpense] = await this.db
+      .insert(expenses)
+      .values(expense)
+      .returning();
     return newExpense;
   }
 
@@ -1688,7 +1771,9 @@ export class Storage implements IStorage {
       .from(ledgerTransactions)
       .where(eq(ledgerTransactions.id, id))
       .limit(1);
-    await this.db.delete(ledgerTransactions).where(eq(ledgerTransactions.id, id));
+    await this.db
+      .delete(ledgerTransactions)
+      .where(eq(ledgerTransactions.id, id));
     if (transaction && transaction[0]) {
       await this.recalculateRunningBalance(
         transaction[0].customerOrPartyId,
@@ -1830,7 +1915,10 @@ export class Storage implements IStorage {
         totalPrice: data.totalPrice,
       };
 
-      const result = await this.db.insert(orderItems).values(orderItemData).returning();
+      const result = await this.db
+        .insert(orderItems)
+        .values(orderItemData)
+        .returning();
       return result[0];
     } catch (error) {
       console.error("Error creating order item:", error);
@@ -1869,8 +1957,8 @@ export class Storage implements IStorage {
             gte(productionSchedule.scheduledDate, today),
             lt(productionSchedule.scheduledDate, tomorrow),
             // Only include records with valid dates
-            sql`${productionSchedule.scheduledDate} IS NOT NULL`
-          )
+            sql`${productionSchedule.scheduledDate} IS NOT NULL`,
+          ),
         )
         .orderBy(productionSchedule.scheduledDate);
     } catch (error) {
@@ -1895,12 +1983,20 @@ export class Storage implements IStorage {
       .orderBy(desc(productionSchedule.scheduledDate));
   }
 
-  async createProductionScheduleItem(item: InsertProductionScheduleItem): Promise<ProductionScheduleItem> {
-    const [newItem] = await this.db.insert(productionSchedule).values(item).returning();
+  async createProductionScheduleItem(
+    item: InsertProductionScheduleItem,
+  ): Promise<ProductionScheduleItem> {
+    const [newItem] = await this.db
+      .insert(productionSchedule)
+      .values(item)
+      .returning();
     return newItem;
   }
 
-  async updateProductionScheduleItem(id: number, item: Partial<InsertProductionScheduleItem>): Promise<ProductionScheduleItem> {
+  async updateProductionScheduleItem(
+    id: number,
+    item: Partial<InsertProductionScheduleItem>,
+  ): Promise<ProductionScheduleItem> {
     const [updatedItem] = await this.db
       .update(productionSchedule)
       .set({ ...item, updatedAt: new Date() })
@@ -1929,8 +2025,8 @@ export class Storage implements IStorage {
       .where(
         and(
           gte(productionSchedule.scheduledDate, targetDate),
-          lte(productionSchedule.scheduledDate, nextDay)
-        )
+          lte(productionSchedule.scheduledDate, nextDay),
+        ),
       )
       .orderBy(productionSchedule.scheduledDate);
   }
@@ -1978,7 +2074,7 @@ export class Storage implements IStorage {
           read: false,
           priority: "high",
           actionUrl: "/orders/1024",
-          data: { orderId: 1024, customerName: "John Doe", amount: 125.50 }
+          data: { orderId: 1024, customerName: "John Doe", amount: 125.5 },
         },
         {
           id: "2",
@@ -1989,7 +2085,7 @@ export class Storage implements IStorage {
           read: false,
           priority: "critical",
           actionUrl: "/inventory",
-          data: { itemName: "Flour", currentStock: 5, minLevel: 10 }
+          data: { itemName: "Flour", currentStock: 5, minLevel: 10 },
         },
         {
           id: "3",
@@ -2000,7 +2096,7 @@ export class Storage implements IStorage {
           read: false,
           priority: "medium",
           actionUrl: "/production",
-          data: { batchId: 45, product: "Chocolate Cake" }
+          data: { batchId: 45, product: "Chocolate Cake" },
         },
         {
           id: "4",
@@ -2011,7 +2107,7 @@ export class Storage implements IStorage {
           read: true,
           priority: "medium",
           actionUrl: "/orders/1020",
-          data: { orderId: 1020, carrier: "Express Delivery" }
+          data: { orderId: 1020, carrier: "Express Delivery" },
         },
         {
           id: "5",
@@ -2022,7 +2118,7 @@ export class Storage implements IStorage {
           read: true,
           priority: "low",
           actionUrl: "/settings",
-          data: { maintenanceType: "Database optimization" }
+          data: { maintenanceType: "Database optimization" },
         },
         {
           id: "6",
@@ -2033,19 +2129,20 @@ export class Storage implements IStorage {
           read: false,
           priority: "medium",
           actionUrl: "/orders/1018",
-          data: { orderId: 1018, amount: 89.75 }
+          data: { orderId: 1018, amount: 89.75 },
         },
         {
           id: "7",
           type: "production",
           title: "Production Delay",
-          description: "Vanilla cupcake batch delayed due to ingredient shortage",
+          description:
+            "Vanilla cupcake batch delayed due to ingredient shortage",
           timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
           read: false,
           priority: "high",
           actionUrl: "/production",
-          data: { product: "Vanilla Cupcakes", reason: "Ingredient shortage" }
-        }
+          data: { product: "Vanilla Cupcakes", reason: "Ingredient shortage" },
+        },
       ];
 
       return sampleNotifications;
@@ -2060,7 +2157,9 @@ export class Storage implements IStorage {
     userId: string,
   ): Promise<void> {
     // In production, this would update the database
-    console.log(`Marking notification ${notificationId} as read for user ${userId}`);
+    console.log(
+      `Marking notification ${notificationId} as read for user ${userId}`,
+    );
   }
 
   async markAllNotificationsAsRead(userId: string): Promise<void> {
@@ -2081,10 +2180,7 @@ export class Storage implements IStorage {
     console.log(`Removing notification subscription for user ${userId}`);
   }
 
-  async saveNotificationSettings(
-    userId: string,
-    settings: any,
-  ): Promise<void> {
+  async saveNotificationSettings(userId: string, settings: any): Promise<void> {
     // In production, this would save notification preferences
     console.log(`Saving notification settings for user ${userId}:`, settings);
   }
@@ -2113,7 +2209,7 @@ export class Storage implements IStorage {
             description: `Order #${data.orderNumber} from ${data.customerName} - $${data.totalAmount}`,
             priority: "high",
             actionUrl: `/orders/${data.orderNumber}`,
-            data
+            data,
           };
           break;
 
@@ -2122,9 +2218,10 @@ export class Storage implements IStorage {
             type: "inventory",
             title: "Low Stock Alert",
             description: `${data.itemName} is running low (${data.currentStock}${data.unit} remaining)`,
-            priority: data.currentStock <= data.criticalLevel ? "critical" : "high",
+            priority:
+              data.currentStock <= data.criticalLevel ? "critical" : "high",
             actionUrl: "/inventory",
-            data
+            data,
           };
           break;
 
@@ -2135,7 +2232,7 @@ export class Storage implements IStorage {
             description: `${data.productName} batch #${data.batchId} completed successfully`,
             priority: "medium",
             actionUrl: "/production",
-            data
+            data,
           };
           break;
 
@@ -2146,7 +2243,7 @@ export class Storage implements IStorage {
             description: `${data.productName} batch delayed: ${data.reason}`,
             priority: "high",
             actionUrl: "/production",
-            data
+            data,
           };
           break;
 
@@ -2157,7 +2254,7 @@ export class Storage implements IStorage {
             description: `Order #${data.orderNumber} dispatched via ${data.carrier}`,
             priority: "medium",
             actionUrl: `/orders/${data.orderNumber}`,
-            data
+            data,
           };
           break;
 
@@ -2168,7 +2265,7 @@ export class Storage implements IStorage {
             description: `Failed to deliver Order #${data.orderNumber}: ${data.reason}`,
             priority: "high",
             actionUrl: `/orders/${data.orderNumber}`,
-            data
+            data,
           };
           break;
 
@@ -2179,7 +2276,7 @@ export class Storage implements IStorage {
             description: `Payment of $${data.amount} received for Order #${data.orderNumber}`,
             priority: "medium",
             actionUrl: `/orders/${data.orderNumber}`,
-            data
+            data,
           };
           break;
 
@@ -2190,7 +2287,7 @@ export class Storage implements IStorage {
             description: data.description,
             priority: data.priority || "medium",
             actionUrl: data.actionUrl || "/settings",
-            data
+            data,
           };
           break;
 
@@ -2201,18 +2298,20 @@ export class Storage implements IStorage {
 
       // In production, broadcast to all relevant users based on their roles
       const adminUsers = await this.getAllUsers();
-      const relevantUsers = adminUsers.filter(user =>
-        ["admin", "manager", "supervisor"].includes(user.role)
+      const relevantUsers = adminUsers.filter((user) =>
+        ["admin", "manager", "supervisor"].includes(user.role),
       );
 
       for (const user of relevantUsers) {
         await this.createNotification({
           userId: user.id,
-          ...notification
+          ...notification,
         });
       }
 
-      console.log(`Triggered ${event} notification for ${relevantUsers.length} users`);
+      console.log(
+        `Triggered ${event} notification for ${relevantUsers.length} users`,
+      );
     } catch (error) {
       console.error("Error triggering business notification:", error);
     }
@@ -2220,7 +2319,10 @@ export class Storage implements IStorage {
 
   // Staff management operations
   async getStaff(): Promise<Staff[]> {
-    return await this.db.select().from(staff).orderBy(staff.firstName, staff.lastName);
+    return await this.db
+      .select()
+      .from(staff)
+      .orderBy(staff.firstName, staff.lastName);
   }
 
   async getStaffById(id: number): Promise<Staff | undefined> {
@@ -2233,11 +2335,17 @@ export class Storage implements IStorage {
   }
 
   async createStaff(staffData: InsertStaff): Promise<Staff> {
-    const [newStaff] = await this.db.insert(staff).values(staffData).returning();
+    const [newStaff] = await this.db
+      .insert(staff)
+      .values(staffData)
+      .returning();
     return newStaff;
   }
 
-  async updateStaff(id: number, staffData: Partial<InsertStaff>): Promise<Staff> {
+  async updateStaff(
+    id: number,
+    staffData: Partial<InsertStaff>,
+  ): Promise<Staff> {
     const [updatedStaff] = await this.db
       .update(staff)
       .set({ ...staffData, updatedAt: new Date() })
@@ -2251,12 +2359,20 @@ export class Storage implements IStorage {
   }
 
   async getStaffByStaffId(staffId: string): Promise<Staff | null> {
-    const result = await this.db.select().from(staff).where(eq(staff.staffId, staffId)).limit(1);
+    const result = await this.db
+      .select()
+      .from(staff)
+      .where(eq(staff.staffId, staffId))
+      .limit(1);
     return result[0] || null;
   }
 
   // Attendance operations
-  async getAttendance(staffId?: number, startDate?: Date, endDate?: Date): Promise<any[]> {
+  async getAttendance(
+    staffId?: number,
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<any[]> {
     let query = this.db
       .select({
         id: attendance.id,
@@ -2297,12 +2413,20 @@ export class Storage implements IStorage {
     return await query;
   }
 
-  async createAttendance(attendanceData: InsertAttendance): Promise<Attendance> {
-    const [newAttendance] = await this.db.insert(attendance).values(attendanceData).returning();
+  async createAttendance(
+    attendanceData: InsertAttendance,
+  ): Promise<Attendance> {
+    const [newAttendance] = await this.db
+      .insert(attendance)
+      .values(attendanceData)
+      .returning();
     return newAttendance;
   }
 
-  async updateAttendance(id: number, attendanceData: Partial<InsertAttendance>): Promise<Attendance> {
+  async updateAttendance(
+    id: number,
+    attendanceData: Partial<InsertAttendance>,
+  ): Promise<Attendance> {
     const [updatedAttendance] = await this.db
       .update(attendance)
       .set({ ...attendanceData, updatedAt: new Date() })
@@ -2323,12 +2447,7 @@ export class Storage implements IStorage {
     const existing = await this.db
       .select()
       .from(attendance)
-      .where(
-        and(
-          eq(attendance.staffId, staffId),
-          gte(attendance.date, today)
-        )
-      )
+      .where(and(eq(attendance.staffId, staffId), gte(attendance.date, today)))
       .limit(1);
 
     if (existing.length > 0) {
@@ -2355,12 +2474,7 @@ export class Storage implements IStorage {
     const existing = await this.db
       .select()
       .from(attendance)
-      .where(
-        and(
-          eq(attendance.staffId, staffId),
-          gte(attendance.date, today)
-        )
-      )
+      .where(and(eq(attendance.staffId, staffId), gte(attendance.date, today)))
       .limit(1);
 
     if (existing.length === 0) {
@@ -2372,7 +2486,8 @@ export class Storage implements IStorage {
     let totalHours = 0;
 
     if (clockInTime) {
-      totalHours = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+      totalHours =
+        (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
     }
 
     const [updatedAttendance] = await this.db
@@ -2423,12 +2538,20 @@ export class Storage implements IStorage {
     return await query;
   }
 
-  async createSalaryPayment(paymentData: InsertSalaryPayment): Promise<SalaryPayment> {
-    const [newPayment] = await this.db.insert(salaryPayments).values(paymentData).returning();
+  async createSalaryPayment(
+    paymentData: InsertSalaryPayment,
+  ): Promise<SalaryPayment> {
+    const [newPayment] = await this.db
+      .insert(salaryPayments)
+      .values(paymentData)
+      .returning();
     return newPayment;
   }
 
-  async updateSalaryPayment(id: number, paymentData: Partial<InsertSalaryPayment>): Promise<SalaryPayment> {
+  async updateSalaryPayment(
+    id: number,
+    paymentData: Partial<InsertSalaryPayment>,
+  ): Promise<SalaryPayment> {
     const [updatedPayment] = await this.db
       .update(salaryPayments)
       .set({ ...paymentData, updatedAt: new Date() })
@@ -2471,12 +2594,20 @@ export class Storage implements IStorage {
     return await query;
   }
 
-  async createLeaveRequest(requestData: InsertLeaveRequest): Promise<LeaveRequest> {
-    const [newRequest] = await this.db.insert(leaveRequests).values(requestData).returning();
+  async createLeaveRequest(
+    requestData: InsertLeaveRequest,
+  ): Promise<LeaveRequest> {
+    const [newRequest] = await this.db
+      .insert(leaveRequests)
+      .values(requestData)
+      .returning();
     return newRequest;
   }
 
-  async updateLeaveRequest(id: number, requestData: Partial<InsertLeaveRequest>): Promise<LeaveRequest> {
+  async updateLeaveRequest(
+    id: number,
+    requestData: Partial<InsertLeaveRequest>,
+  ): Promise<LeaveRequest> {
     const [updatedRequest] = await this.db
       .update(leaveRequests)
       .set({ ...requestData, updatedAt: new Date() })
@@ -2523,8 +2654,8 @@ export class Storage implements IStorage {
       conditions.push(
         and(
           gte(staffSchedules.date, startOfDay),
-          lte(staffSchedules.date, endOfDay)
-        )
+          lte(staffSchedules.date, endOfDay),
+        ),
       );
     }
 
@@ -2535,12 +2666,20 @@ export class Storage implements IStorage {
     return await query;
   }
 
-  async createStaffSchedule(scheduleData: InsertStaffSchedule): Promise<StaffSchedule> {
-    const [newSchedule] = await this.db.insert(staffSchedules).values(scheduleData).returning();
+  async createStaffSchedule(
+    scheduleData: InsertStaffSchedule,
+  ): Promise<StaffSchedule> {
+    const [newSchedule] = await this.db
+      .insert(staffSchedules)
+      .values(scheduleData)
+      .returning();
     return newSchedule;
   }
 
-  async updateStaffSchedule(id: number, scheduleData: Partial<InsertStaffSchedule>): Promise<StaffSchedule> {
+  async updateStaffSchedule(
+    id: number,
+    scheduleData: Partial<InsertStaffSchedule>,
+  ): Promise<StaffSchedule> {
     const [updatedSchedule] = await this.db
       .update(staffSchedules)
       .set({ ...scheduleData, updatedAt: new Date() })
@@ -2558,19 +2697,22 @@ export class Storage implements IStorage {
       const auditLogData = {
         ...log,
         timestamp: new Date(),
-        status: log.status || 'success',
-        userId: log.userId || 'system',
-        userEmail: log.userEmail || 'system@bakesewa.com',
-        userName: log.userName || 'System',
-        ipAddress: log.ipAddress || '127.0.0.1'
+        status: log.status || "success",
+        userId: log.userId || "system",
+        userEmail: log.userEmail || "system@bakesewa.com",
+        userName: log.userName || "System",
+        ipAddress: log.ipAddress || "127.0.0.1",
       };
 
-      const [auditLog] = await this.db.insert(auditLogs).values(auditLogData).returning();
+      const [auditLog] = await this.db
+        .insert(auditLogs)
+        .values(auditLogData)
+        .returning();
       return auditLog;
     } catch (error) {
-      console.error('Failed to create audit log:', error);
+      console.error("Failed to create audit log:", error);
       // Still try to log the error to console for debugging
-      console.error('Audit log data:', log);
+      console.error("Audit log data:", log);
       throw error;
     }
   }
@@ -2603,11 +2745,15 @@ export class Storage implements IStorage {
         }
 
         if (filters.startDate) {
-          conditions.push(sql`${auditLogs.timestamp} >= ${filters.startDate.toISOString()}`);
+          conditions.push(
+            sql`${auditLogs.timestamp} >= ${filters.startDate.toISOString()}`,
+          );
         }
 
         if (filters.endDate) {
-          conditions.push(sql`${auditLogs.timestamp} <= ${filters.endDate.toISOString()}`);
+          conditions.push(
+            sql`${auditLogs.timestamp} <= ${filters.endDate.toISOString()}`,
+          );
         }
 
         if (conditions.length > 0) {
@@ -2629,105 +2775,128 @@ export class Storage implements IStorage {
 
       return await query.orderBy(desc(auditLogs.timestamp));
     } catch (error) {
-      console.error('Failed to get audit logs:', error);
+      console.error("Failed to get audit logs:", error);
       return [];
     }
   }
 
-  async logLogin(userId: string, userEmail: string, userName: string, ipAddress: string, userAgent: string, success: boolean, errorMessage?: string): Promise<void> {
+  async logLogin(
+    userId: string,
+    userEmail: string,
+    userName: string,
+    ipAddress: string,
+    userAgent: string,
+    success: boolean,
+    errorMessage?: string,
+  ): Promise<void> {
     try {
       await this.createAuditLog({
         userId,
         userEmail,
         userName,
-        action: 'LOGIN',
-        resource: 'authentication',
+        action: "LOGIN",
+        resource: "authentication",
         details: {
           userAgent,
           success,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
         ipAddress,
         userAgent,
-        status: success ? 'success' : 'failed',
-        errorMessage
+        status: success ? "success" : "failed",
+        errorMessage,
       });
     } catch (error) {
-      console.error('Failed to log login event:', error);
+      console.error("Failed to log login event:", error);
     }
   }
 
-  async logLogout(userId: string, userEmail: string, userName: string, ipAddress: string): Promise<void> {
+  async logLogout(
+    userId: string,
+    userEmail: string,
+    userName: string,
+    ipAddress: string,
+  ): Promise<void> {
     try {
       await this.createAuditLog({
         userId,
         userEmail,
         userName,
-        action: 'LOGOUT',
-        resource: 'authentication',
+        action: "LOGOUT",
+        resource: "authentication",
         details: {
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
         ipAddress,
-        status: 'success'
+        status: "success",
       });
     } catch (error) {
-      console.error('Failed to log logout event:', error);
+      console.error("Failed to log logout event:", error);
     }
   }
 
   // Security monitoring methods
-  async getSecurityMetrics(timeframe: 'hour' | 'day' | 'week' = 'day'): Promise<any> {
+  async getSecurityMetrics(
+    timeframe: "hour" | "day" | "week" = "day",
+  ): Promise<any> {
     try {
       const now = new Date();
       let startTime: Date;
 
       switch (timeframe) {
-        case 'hour':
+        case "hour":
           startTime = new Date(now.getTime() - 60 * 60 * 1000);
           break;
-        case 'week':
+        case "week":
           startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           break;
         default:
           startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       }
 
-      const [failedLogins, suspiciousActivities, totalActivities] = await Promise.all([
-        this.db.select({ count: count() })
-          .from(loginLogs)
-          .where(and(
-            eq(loginLogs.status, 'failed'),
-            gte(loginLogs.timestamp, startTime)
-          )),
+      const [failedLogins, suspiciousActivities, totalActivities] =
+        await Promise.all([
+          this.db
+            .select({ count: count() })
+            .from(loginLogs)
+            .where(
+              and(
+                eq(loginLogs.status, "failed"),
+                gte(loginLogs.timestamp, startTime),
+              ),
+            ),
 
-        this.db.select({ count: count() })
-          .from(auditLogs)
-          .where(and(
-            eq(auditLogs.status, 'failed'),
-            gte(auditLogs.timestamp, startTime)
-          )),
+          this.db
+            .select({ count: count() })
+            .from(auditLogs)
+            .where(
+              and(
+                eq(auditLogs.status, "failed"),
+                gte(auditLogs.timestamp, startTime),
+              ),
+            ),
 
-        this.db.select({ count: count() })
-          .from(auditLogs)
-          .where(gte(auditLogs.timestamp, startTime))
-      ]);
+          this.db
+            .select({ count: count() })
+            .from(auditLogs)
+            .where(gte(auditLogs.timestamp, startTime)),
+        ]);
 
       return {
         failedLogins: failedLogins[0]?.count || 0,
         suspiciousActivities: suspiciousActivities[0]?.count || 0,
         totalActivities: totalActivities[0]?.count || 0,
         timeframe,
-        period: { start: startTime, end: now }
+        period: { start: startTime, end: now },
       };
     } catch (error) {
-      console.error('❌ Failed to get security metrics:', error);
+      console.error("❌ Failed to get security metrics:", error);
       return {
         failedLogins: 0,
         suspiciousActivities: 0,
         totalActivities: 0,
         timeframe,
-        error: error.message
+        error: error.message,
       };
     }
   }
