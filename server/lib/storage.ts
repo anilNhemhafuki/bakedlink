@@ -907,16 +907,16 @@ export class Storage implements IStorage {
         throw new Error("Item with this name already exists. Please use a different name.");
       }
 
-      // Only allow specified fields
+      // Only allow specified fields as per requirements
       const transformedData = {
         name: trimmedName,
-        currentStock: itemData.currentStock,
-        minLevel: itemData.minLevel,
+        currentStock: itemData.currentStock.toString(),
+        minLevel: itemData.minLevel.toString(),
         unit: itemData.unit,
         unitId: itemData.unitId || null,
         secondaryUnitId: itemData.secondaryUnitId || null,
-        conversionRate: itemData.conversionRate || null,
-        costPerUnit: itemData.costPerUnit,
+        conversionRate: itemData.conversionRate ? itemData.conversionRate.toString() : null,
+        costPerUnit: itemData.costPerUnit.toString(),
         supplier: itemData.supplier || null,
         categoryId: itemData.categoryId || null,
         lastRestocked: itemData.lastRestocked || new Date(),
