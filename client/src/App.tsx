@@ -32,7 +32,6 @@ import NotificationSettings from "@/components/notification-settings";
 import CategoryManagement from "@/pages/category-management";
 import Sales from "@/pages/sales";
 import Purchases from "@/pages/purchases";
-import PurchaseHistory from "@/pages/purchase-history";
 import PublicOrderForm from "@/components/public-order-form";
 import Stock from "@/pages/stock";
 import Ingredients from "@/pages/ingredients";
@@ -92,7 +91,7 @@ function AuthenticatedApp({
   // Listen to localStorage changes for sidebar state
   useEffect(() => {
     const handleStorageChange = () => {
-      const savedState = localStorage.getItem('sidebar-collapsed');
+      const savedState = localStorage.getItem("sidebar-collapsed");
       if (savedState !== null) {
         setIsCollapsed(JSON.parse(savedState));
       }
@@ -102,21 +101,21 @@ function AuthenticatedApp({
     handleStorageChange();
 
     // Listen for storage changes
-    window.addEventListener('storage', handleStorageChange);
-    
+    window.addEventListener("storage", handleStorageChange);
+
     // Custom event for same-page updates
     const handleSidebarToggle = () => {
-      const savedState = localStorage.getItem('sidebar-collapsed');
+      const savedState = localStorage.getItem("sidebar-collapsed");
       if (savedState !== null) {
         setIsCollapsed(JSON.parse(savedState));
       }
     };
-    
-    window.addEventListener('sidebar-toggle', handleSidebarToggle);
+
+    window.addEventListener("sidebar-toggle", handleSidebarToggle);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('sidebar-toggle', handleSidebarToggle);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("sidebar-toggle", handleSidebarToggle);
     };
   }, []);
 
@@ -126,285 +125,279 @@ function AuthenticatedApp({
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
-      <main className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+      <main
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? "lg:ml-20" : "lg:ml-64"}`}
+      >
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         <div className="flex-1 overflow-y-auto">
           <Switch>
-              <Route
-                path="/"
-                component={() => (
-                  <ProtectedRoute resource="dashboard" action="read">
-                    <Dashboard />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/dashboard"
-                component={() => (
-                  <ProtectedRoute resource="dashboard" action="read">
-                    <Dashboard />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/production"
-                component={() => (
-                  <ProtectedRoute resource="production" action="read">
-                    <ProductionPage />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/recipes"
-                component={() => (
-                  <ProtectedRoute resource="products" action="read">
-                    <Recipes />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/products"
-                component={() => (
-                  <ProtectedRoute resource="products" action="read">
-                    <Products />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/inventory"
-                component={() => (
-                  <ProtectedRoute resource="inventory" action="read">
-                    <Inventory />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/stock"
-                component={() => (
-                  <ProtectedRoute resource="inventory" action="read">
-                    <Stock />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/ingredients"
-                component={() => (
-                  <ProtectedRoute resource="inventory" action="read">
-                    <Ingredients />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/orders"
-                component={() => (
-                  <ProtectedRoute resource="orders" action="read">
-                    <Orders />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/production"
-                component={() => (
-                  <ProtectedRoute resource="production" action="read">
-                    <Production />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/customers"
-                component={() => (
-                  <ProtectedRoute resource="customers" action="read">
-                    <Customers />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/parties"
-                component={() => (
-                  <ProtectedRoute resource="parties" action="read">
-                    <Parties />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/assets"
-                component={() => (
-                  <ProtectedRoute resource="assets" action="read">
-                    <Assets />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/expenses"
-                component={() => (
-                  <ProtectedRoute resource="expenses" action="read">
-                    <Expenses />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/reports"
-                component={() => (
-                  <ProtectedRoute resource="reports" action="read">
-                    <Reports />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/billing"
-                component={() => (
-                  <ProtectedRoute resource="billing" action="read">
-                    <Billing />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/day-book"
-                component={() => (
-                  <ProtectedRoute resource="reports" action="read">
-                    <DayBook />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/transactions"
-                component={() => (
-                  <ProtectedRoute resource="reports" action="read">
-                    <Transactions />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/billing"
-                component={() => (
-                  <ProtectedRoute resource="orders" action="read">
-                    <Billing />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/settings"
-                component={() => (
-                  <ProtectedRoute resource="settings" action="read">
-                    <Settings />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/notifications"
-                component={() => (
-                  <ProtectedRoute resource="dashboard" action="read">
-                    <Notifications />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/notification-settings"
-                component={() => (
-                  <ProtectedRoute resource="settings" action="read">
-                    <NotificationSettings />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/admin/users"
-                component={() => (
-                  <ProtectedRoute resource="users" action="read_write">
-                    <AdminUsers />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/admin/login-logs"
-                component={() => (
-                  <ProtectedRoute resource="admin" action="read_write">
-                    <LoginLogs />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/category-management"
-                component={() => (
-                  <ProtectedRoute resource="products" action="read_write">
-                    <CategoryManagement />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/sales"
-                component={() => (
-                  <ProtectedRoute resource="sales" action="read">
-                    <Sales />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/purchases"
-                component={() => (
-                  <ProtectedRoute resource="purchases" action="read">
-                    <Purchases />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/purchase-history"
-                component={() => (
-                  <ProtectedRoute resource="purchases" action="read">
-                    <PurchaseHistory />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/units"
-                component={() => (
-                  <ProtectedRoute resource="units" action="read">
-                    <Units />
-                  </ProtectedRoute>
-                )}
-              />
+            <Route
+              path="/"
+              component={() => (
+                <ProtectedRoute resource="dashboard" action="read">
+                  <Dashboard />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/dashboard"
+              component={() => (
+                <ProtectedRoute resource="dashboard" action="read">
+                  <Dashboard />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/production"
+              component={() => (
+                <ProtectedRoute resource="production" action="read">
+                  <ProductionPage />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/recipes"
+              component={() => (
+                <ProtectedRoute resource="products" action="read">
+                  <Recipes />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/products"
+              component={() => (
+                <ProtectedRoute resource="products" action="read">
+                  <Products />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/inventory"
+              component={() => (
+                <ProtectedRoute resource="inventory" action="read">
+                  <Inventory />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/stock"
+              component={() => (
+                <ProtectedRoute resource="inventory" action="read">
+                  <Stock />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/ingredients"
+              component={() => (
+                <ProtectedRoute resource="inventory" action="read">
+                  <Ingredients />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/orders"
+              component={() => (
+                <ProtectedRoute resource="orders" action="read">
+                  <Orders />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/production"
+              component={() => (
+                <ProtectedRoute resource="production" action="read">
+                  <Production />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/customers"
+              component={() => (
+                <ProtectedRoute resource="customers" action="read">
+                  <Customers />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/parties"
+              component={() => (
+                <ProtectedRoute resource="parties" action="read">
+                  <Parties />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/assets"
+              component={() => (
+                <ProtectedRoute resource="assets" action="read">
+                  <Assets />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/expenses"
+              component={() => (
+                <ProtectedRoute resource="expenses" action="read">
+                  <Expenses />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/reports"
+              component={() => (
+                <ProtectedRoute resource="reports" action="read">
+                  <Reports />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/billing"
+              component={() => (
+                <ProtectedRoute resource="billing" action="read">
+                  <Billing />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/day-book"
+              component={() => (
+                <ProtectedRoute resource="reports" action="read">
+                  <DayBook />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/transactions"
+              component={() => (
+                <ProtectedRoute resource="reports" action="read">
+                  <Transactions />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/billing"
+              component={() => (
+                <ProtectedRoute resource="orders" action="read">
+                  <Billing />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/settings"
+              component={() => (
+                <ProtectedRoute resource="settings" action="read">
+                  <Settings />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/notifications"
+              component={() => (
+                <ProtectedRoute resource="dashboard" action="read">
+                  <Notifications />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/notification-settings"
+              component={() => (
+                <ProtectedRoute resource="settings" action="read">
+                  <NotificationSettings />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/admin/users"
+              component={() => (
+                <ProtectedRoute resource="users" action="read_write">
+                  <AdminUsers />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/admin/login-logs"
+              component={() => (
+                <ProtectedRoute resource="admin" action="read_write">
+                  <LoginLogs />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/category-management"
+              component={() => (
+                <ProtectedRoute resource="products" action="read_write">
+                  <CategoryManagement />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/sales"
+              component={() => (
+                <ProtectedRoute resource="sales" action="read">
+                  <Sales />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/purchases"
+              component={() => (
+                <ProtectedRoute resource="purchases" action="read">
+                  <Purchases />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/units"
+              component={() => (
+                <ProtectedRoute resource="units" action="read">
+                  <Units />
+                </ProtectedRoute>
+              )}
+            />
 
-              <Route
-                path="/staff"
-                component={() => (
-                  <ProtectedRoute resource="staff" action="read">
-                    <Staff />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/attendance"
-                component={() => (
-                  <ProtectedRoute resource="staff" action="read">
-                    <Attendance />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/salary"
-                component={() => (
-                  <ProtectedRoute resource="staff" action="read">
-                    <Salary />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/leave-requests"
-                component={() => (
-                  <ProtectedRoute resource="staff" action="read">
-                    <LeaveRequests />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/staff-schedules"
-                component={() => (
-                  <ProtectedRoute resource="staff" action="read">
-                    <LeaveRequests />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route component={NotFound} />
-            </Switch>
+            <Route
+              path="/staff"
+              component={() => (
+                <ProtectedRoute resource="staff" action="read">
+                  <Staff />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/attendance"
+              component={() => (
+                <ProtectedRoute resource="staff" action="read">
+                  <Attendance />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/salary"
+              component={() => (
+                <ProtectedRoute resource="staff" action="read">
+                  <Salary />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/leave-requests"
+              component={() => (
+                <ProtectedRoute resource="staff" action="read">
+                  <LeaveRequests />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/staff-schedules"
+              component={() => (
+                <ProtectedRoute resource="staff" action="read">
+                  <LeaveRequests />
+                </ProtectedRoute>
+              )}
+            />
+            <Route component={NotFound} />
+          </Switch>
         </div>
       </main>
     </div>

@@ -141,12 +141,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           resource: "purchases",
         },
         {
-          name: "Purchase History",
-          href: "/purchase-history",
-          icon: "fas fa-history",
-          resource: "purchases",
-        },
-        {
           name: "Income & Expenses",
           href: "/expenses",
           icon: "fas fa-receipt",
@@ -547,7 +541,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                                transition-transform duration-300 group-hover:scale-110"
                   ></i>
                 )}
-              
+
                 <div className="flex-1 min-w-0 transition-transform duration-300 group-hover:translate-x-1">
                   <p className="text-sm font-semibold text-gray-900 truncate transition-colors duration-300 group-hover:text-primary">
                     {user?.firstName
@@ -560,7 +554,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                   </p>
                 </div>
               </div>
-              
             </button>
           </DropdownMenuTrigger>
 
