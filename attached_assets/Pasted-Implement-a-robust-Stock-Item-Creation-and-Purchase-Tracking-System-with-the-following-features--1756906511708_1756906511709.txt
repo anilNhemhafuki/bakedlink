@@ -1,0 +1,82 @@
+Implement a robust Stock Item Creation and Purchase Tracking System with the following features: 
+
+📌 1. Stock Item Creation
+When creating a new stock item, save the following fields:
+ts
+
+
+1
+id, name, current_stock, min_level, unit, unit_id, secondary_unit_id, conversion_rate, cost_per_unit, supplier, category_id, last_restocked, created_at, updated_at
+Only allow saving the above listed fields — no extra or optional fields should be stored unless explicitly defined.
+Ensure all required fields are validated before saving (e.g., name, unit, conversion_rate, cost_per_unit).
+🔒 2. Prevent Duplicate Item Names
+If a user attempts to create an item with a name that already exists in the database (e.g., "Flour"), show a clear error message:
+❌ "Item with this name already exists. Please use a different name." 
+The check must be case-insensitive and trim whitespace.
+💾 3. Opening Stock Handling
+On item creation:
+Allow entering Opening Stock quantity and rate.
+Automatically calculate Value = Quantity × Rate.
+Store:
+current_stock = opening quantity
+cost_per_unit = opening rate (this becomes the default price)
+last_restocked = current date/time
+created_at and updated_at = auto-generated timestamps
+🔄 4. Purchase Transaction Logic
+When a purchase is recorded:
+Add the purchased quantity to the current_stock.
+Update last_restocked to the purchase date.
+Update cost_per_unit using the weighted average method (if multiple purchases exist), or simply use the new purchase rate if it's the first time.
+Example:
+Previous stock: 10 bags @ ₹4200 → Total value = ₹42,000
+New purchase: 20 bags @ ₹4000 → Total value = ₹80,000
+New total: 30 bags, Total value = ₹122,000
+New cost_per_unit = ₹122,000 / 30 = ₹4,066.67
+🧮 5. Closing Stock Calculation
+After each purchase:
+The remaining stock (before purchase) becomes the "closing stock" for reporting purposes.
+The new stock after purchase becomes the "opening stock" for future transactions.
+Track both quantity and value of closing and opening stocks for inventory reports.
+🛠️ 6. Field Updates on Purchase
+After recording a purchase:
+Update the item’s current_stock = previous + new purchase
+Update cost_per_unit = weighted average of all purchase rates
+Update last_restocked = purchase date
+Update updated_at = current timestamp
+📊 7. Auto-Calculate Value
+In both Create Stock Item and Record Purchase forms:
+Auto-calculate Value = Quantity × Rate
+Display in real-time (e.g., Rs. 0.00 → updates when rate changes)
+🧩 8. Conversion Handling
+Store conversion_rate (e.g., 50) between primary and secondary units.
+Use this to convert between units (e.g., 1 bag = 50 kg).
+Ensure all calculations (price, stock) respect the conversion rate.
+📝 9. UI/UX Notes
+Show clear labels: “Opening Stock” and “Rate per Unit”
+Validate inputs:
+Numbers only in quantity, rate, conversion rate
+Minimum level ≥ 0
+Conversion rate > 0
+Provide feedback: success toast on save, error messages on validation failure
+✅ Example Flow
+Step 1: Create Item
+
+Name: Flour
+Primary Unit: Bag
+Secondary Unit: Kilograms
+Conversion Rate: 50
+Default Price: ₹4200
+Opening Stock: 10 bags @ ₹4200 → Value: ₹42,000
+Save → Stored in DB
+Step 2: Record Purchase
+
+Purchase: 20 bags @ ₹4000 → Value: ₹80,000
+System updates:
+current_stock: 10 + 20 = 30
+cost_per_unit: (42,000 + 80,000) / 30 = ₹4,066.67
+last_restocked: 09/03/2025
+updated_at: now
+Step 3: Report
+
+Closing Stock (before): 10 bags @ ₹4200 → ₹42,000
+Opening Stock (after): 30 bags @ ₹4,066.67 → ₹122,000
