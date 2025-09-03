@@ -998,7 +998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/inventory", isAuthenticated, async (req, res) => {
     try {
       // Validate required fields
-      if (!req.body.name) {
+      if (!req.body.name || !req.body.name.trim()) {
         return res.status(400).json({ message: "Item name is required" });
       }
 
@@ -1014,8 +1014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ message: "Valid minimum level is required" });
       }
 
-      // Check for either unit or unitId
-      if (!req.body.unit && !req.body.unitId) {
+      if (!req.body.unitId) {
         return res.status(400).json({ message: "Unit is required" });
       }
 
@@ -1025,43 +1024,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ message: "Valid cost per unit is required" });
       }
 
-      // Transform the data
+      if (req.body.conversionRate && parseFloat(req.body.conversionRate) <= 0) {
+        return res
+          .status(400)
+          .json({ message: "Conversion rate must be greater than 0" });
+      }
+
+      // Get unit information for the item
+      const selectedUnit = await storage.getUnitById(parseInt(req.body.unitId));
+      if (!selectedUnit) {
+        return res.status(400).json({ message: "Invalid unit selected" });
+      }
+
+      // Transform the data - only allow specified fields
       const transformedData = {
         name: req.body.name.trim(),
         currentStock: parseFloat(req.body.currentStock).toString(),
         minLevel: parseFloat(req.body.minLevel).toString(),
-        unit: req.body.unit ? req.body.unit.trim() : "pcs",
-        unitId: req.body.unitId ? parseInt(req.body.unitId) : null,
+        unit: selectedUnit.abbreviation,
+        unitId: parseInt(req.body.unitId),
+        secondaryUnitId: req.body.secondaryUnitId ? parseInt(req.body.secondaryUnitId) : null,
+        conversionRate: req.body.conversionRate ? parseFloat(req.body.conversionRate).toString() : null,
         costPerUnit: parseFloat(req.body.costPerUnit).toString(),
-        previousQuantity: req.body.previousQuantity
-          ? parseFloat(req.body.previousQuantity).toString()
-          : "0",
-        previousAmount: req.body.previousAmount
-          ? parseFloat(req.body.previousAmount).toString()
-          : "0",
-        defaultPrice: req.body.defaultPrice
-          ? parseFloat(req.body.defaultPrice).toString()
-          : "0",
-        group: req.body.group ? req.body.group.trim() : null,
-        openingQuantity: req.body.openingQuantity
-          ? parseFloat(req.body.openingQuantity).toString()
-          : parseFloat(req.body.currentStock).toString(),
-        openingRate: req.body.openingRate
-          ? parseFloat(req.body.openingRate).toString()
-          : parseFloat(req.body.costPerUnit).toString(),
-        openingValue: req.body.openingValue
-          ? parseFloat(req.body.openingValue).toString()
-          : "0",
         supplier: req.body.supplier ? req.body.supplier.trim() : null,
-        company: req.body.company ? req.body.company.trim() : null,
-        location: req.body.location ? req.body.location.trim() : null,
-        notes: req.body.notes ? req.body.notes.trim() : null,
-        dateAdded: req.body.dateAdded
-          ? new Date(req.body.dateAdded)
-          : new Date(),
-        lastRestocked: req.body.lastRestocked
-          ? new Date(req.body.lastRestocked)
-          : new Date(),
+        categoryId: req.body.categoryId ? parseInt(req.body.categoryId) : null,
+        lastRestocked: new Date(),
       };
 
       console.log("Creating inventory item with data:", transformedData);
@@ -1070,6 +1057,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(item);
     } catch (error) {
       console.error("Error creating inventory item:", error);
+      
+      // Handle duplicate name error specifically
+      if (error.message?.includes("Item with this name already exists")) {
+        return res.status(400).json({
+          message: error.message,
+          field: "name"
+        });
+      }
+
       res.status(500).json({
         message: "Failed to create inventory item",
         error: error instanceof Error ? error.message : "Unknown error",

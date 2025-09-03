@@ -247,9 +247,19 @@ export default function Stock() {
         }, 500);
         return;
       }
+      
+      let errorMessage = error.message || "Failed to save stock item";
+      
+      // Handle specific error cases
+      if (error.message?.includes("Item with this name already exists")) {
+        errorMessage = "❌ Item with this name already exists. Please use a different name.";
+      } else if (error.message?.includes("duplicate") || error.message?.includes("unique constraint")) {
+        errorMessage = "❌ An item with this name already exists. Please choose a different name.";
+      }
+
       toast({
         title: "Error",
-        description: error.message || "Failed to save stock item",
+        description: errorMessage,
         variant: "destructive",
       });
     },

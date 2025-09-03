@@ -213,10 +213,21 @@ export function EnhancedStockItemForm({
       });
       onClose();
     },
-    onError: () => {
+    onError: (error: any) => {
+      let errorMessage = `Failed to ${editingItem ? "update" : "create"} stock item`;
+      
+      // Handle specific error cases
+      if (error.message?.includes("Item with this name already exists")) {
+        errorMessage = "Item with this name already exists. Please use a different name.";
+      } else if (error.message?.includes("duplicate")) {
+        errorMessage = "This item name is already in use. Please choose a different name.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: "Error",
-        description: `Failed to ${editingItem ? "update" : "create"} stock item`,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -235,10 +246,17 @@ export function EnhancedStockItemForm({
     return quantity * rate;
   };
 
+  const calculateOpeningValue = () => {
+    const openingQuantity = parseFloat(formData.currentStock) || 0;
+    const openingRate = parseFloat(formData.costPerUnit) || 0;
+    return openingQuantity * openingRate;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // Validate required fields
     if (!formData.name.trim()) {
       toast({
         title: "Error",
@@ -259,22 +277,52 @@ export function EnhancedStockItemForm({
       return;
     }
 
+    if (!formData.costPerUnit || parseFloat(formData.costPerUnit) <= 0) {
+      toast({
+        title: "Error",
+        description: "Valid cost per unit is required",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formData.currentStock || parseFloat(formData.currentStock) < 0) {
+      toast({
+        title: "Error",
+        description: "Valid current stock is required",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (parseFloat(formData.minLevel) < 0) {
+      toast({
+        title: "Error",
+        description: "Minimum level must be 0 or greater",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     const selectedUnit = units.find(
       (u: any) => u.id.toString() === formData.unitId,
     );
 
+    // Only submit allowed fields as per requirements
     const submitData = {
       name: formData.name.trim(),
-      categoryId: formData.categoryId ? parseInt(formData.categoryId) : null,
+      currentStock: parseFloat(formData.currentStock),
+      minLevel: parseFloat(formData.minLevel),
+      unit: selectedUnit?.abbreviation || "pcs",
       unitId: parseInt(formData.unitId),
-      unit: selectedUnit?.abbreviation || "kg",
-      currentStock: parseFloat(formData.currentStock) || 0,
-      minLevel: parseFloat(formData.minLevel) || 0,
-      costPerUnit: parseFloat(formData.costPerUnit) || 0,
+      secondaryUnitId: null, // Will be implemented when secondary units are added
+      conversionRate: null, // Will be implemented when secondary units are added
+      costPerUnit: parseFloat(formData.costPerUnit),
       supplier: formData.supplier.trim() || null,
-      company: formData.company.trim() || null,
-      previousQuantity: parseFloat(formData.previousQuantity) || 0,
-      previousAmount: parseFloat(formData.previousAmount) || 0,
+      categoryId: formData.categoryId ? parseInt(formData.categoryId) : null,
     };
 
     saveMutation.mutate(submitData);
@@ -472,8 +520,8 @@ export function EnhancedStockItemForm({
                       </span>
                       <Input
                         id="value"
-                        value={calculateValue().toFixed(2)}
-                        placeholder="14400"
+                        value={calculateOpeningValue().toFixed(2)}
+                        placeholder="0.00"
                         className="rounded-l-none bg-gray-50"
                         readOnly
                       />
@@ -518,43 +566,21 @@ export function EnhancedStockItemForm({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label
-                      htmlFor="currentStock"
-                      className="text-sm font-medium"
-                    >
-                      Quantity
-                    </Label>
-                    <Input
-                      id="currentStock"
-                      type="number"
-                      step="0.01"
-                      value={formData.currentStock}
-                      onChange={(e) =>
-                        handleInputChange("currentStock", e.target.value)
-                      }
-                      placeholder="12"
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="minLevel" className="text-sm font-medium">
-                      Minimum Level
-                    </Label>
-                    <Input
-                      id="minLevel"
-                      type="number"
-                      step="0.01"
-                      value={formData.minLevel}
-                      onChange={(e) =>
-                        handleInputChange("minLevel", e.target.value)
-                      }
-                      placeholder="Enter minimum stock level"
-                      className="mt-1"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="minLevelAdditional" className="text-sm font-medium">
+                    Additional Minimum Level Notes
+                  </Label>
+                  <Input
+                    id="minLevelAdditional"
+                    type="number"
+                    step="0.01"
+                    value={formData.minLevel}
+                    onChange={(e) =>
+                      handleInputChange("minLevel", e.target.value)
+                    }
+                    placeholder="Enter minimum stock level"
+                    className="mt-1"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

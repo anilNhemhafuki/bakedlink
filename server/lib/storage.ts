@@ -126,6 +126,7 @@ export interface IStorage {
 
   // Unit operations
   getUnits(): Promise<Unit[]>;
+  getUnitById(id: number): Promise<Unit | undefined>;
   createUnit(data: InsertUnit): Promise<Unit>;
   updateUnit(id: number, data: Partial<InsertUnit>): Promise<Unit>;
   deleteUnit(id: number): Promise<void>;
@@ -139,11 +140,17 @@ export interface IStorage {
   // Inventory operations
   getInventoryItems(): Promise<InventoryItem[]>;
   getInventoryItemById(id: number): Promise<InventoryItem | undefined>;
-  createInventoryItem(data: InsertInventoryItem): Promise<InventoryItem>;
+  createInventoryItem(data: any): Promise<InventoryItem>;
   updateInventoryItem(
     id: number,
     data: Partial<InsertInventoryItem>,
   ): Promise<InventoryItem>;
+  updateInventoryWithPurchase(
+    inventoryItemId: number,
+    purchaseQuantity: number,
+    purchaseRate: number,
+    purchaseDate: Date
+  ): Promise<void>;
   deleteInventoryItem(id: number): Promise<void>;
   getInventoryCategories(): Promise<InventoryCategory[]>;
   createInventoryCategory(
@@ -194,6 +201,7 @@ export interface IStorage {
   createStaff(staff: InsertStaff): Promise<Staff>;
   updateStaff(id: number, staff: Partial<InsertStaff>): Promise<Staff>;
   deleteStaff(id: number): Promise<void>;
+  getStaffByStaffId(staffId: string): Promise<Staff | null>;
 
   // Attendance operations
   getAttendance(
@@ -300,6 +308,69 @@ export interface IStorage {
     userName: string,
     ipAddress: string,
   ): Promise<void>;
+
+  // Purchase operations
+  getPurchases(): Promise<any[]>;
+  getPurchasesWithItems(): Promise<any[]>;
+  createPurchaseWithLedger(purchaseData: any): Promise<any>;
+  updatePurchase(id: number, purchaseData: any): Promise<any>;
+  deletePurchase(id: number): Promise<void>;
+
+  // Expense operations
+  getExpenses(): Promise<Expense[]>;
+  createExpense(expense: InsertExpense): Promise<Expense>;
+  updateExpense(
+    id: number,
+    expense: Partial<InsertExpense>,
+  ): Promise<Expense>;
+  deleteExpense(id: number): Promise<void>;
+
+  // Order operations
+  getOrders(): Promise<Order[]>;
+  getOrderById(id: number): Promise<Order | undefined>;
+  createOrder(order: InsertOrder): Promise<Order>;
+  updateOrder(id: number, order: Partial<InsertOrder>): Promise<Order>;
+  deleteOrder(id: number): Promise<void>;
+  getOrderItems(orderId: number);
+  createOrderItem(data: any);
+  getRecentOrders(limit: number): Promise<any[]>;
+
+  // Production operations
+  getTodayProductionSchedule(): Promise<any[]>;
+  getProductionSchedule(): Promise<any[]>;
+  createProductionScheduleItem(
+    item: InsertProductionScheduleItem,
+  ): Promise<ProductionScheduleItem>;
+  updateProductionScheduleItem(
+    id: number,
+    item: Partial<InsertProductionScheduleItem>,
+  ): Promise<ProductionScheduleItem>;
+  getProductionScheduleByDate(date: string): Promise<any[]>;
+
+  // Media operations
+  getMediaItems(): Promise<any[]>;
+  uploadMedia(userId: string, file: any): Promise<any>;
+  deleteMedia(id: number): Promise<void>;
+
+  // Billing operations
+  getBills(): Promise<any[]>;
+  createBill(billData: any): Promise<any>;
+  deleteBill(id: number): Promise<void>;
+
+  // Notifications
+  getNotifications(userId?: string): Promise<any[]>;
+  markNotificationAsRead(notificationId: string, userId: string): Promise<void>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  saveNotificationSubscription(userId: string, subscription: any): Promise<void>;
+  removeNotificationSubscription(userId: string): Promise<void>;
+  saveNotificationSettings(userId: string, settings: any): Promise<void>;
+  createNotification(notification: any): Promise<any>;
+  triggerBusinessNotification(event: string, data: any): Promise<void>;
+
+  // Security monitoring
+  getSecurityMetrics(
+    timeframe?: "hour" | "day" | "week",
+  ): Promise<any>;
 }
 
 export class Storage implements IStorage {
@@ -308,7 +379,7 @@ export class Storage implements IStorage {
 
   constructor() {
     this.db = db; // Assign the imported db instance
-    
+
     // Ensure directories exist
     if (!fs.existsSync(this.uploadsDir)) {
       fs.mkdirSync(this.uploadsDir, { recursive: true });
@@ -599,8 +670,8 @@ export class Storage implements IStorage {
 
   // Unit operations
   async getUnits(): Promise<Unit[]> {
-    console.log("Storage getUnits called");
     try {
+      console.log("Storage getUnits called");
       const result = await this.db.select().from(units).orderBy(units.name);
       console.log(`Storage getUnits result: ${result.length} units found`);
 
@@ -618,6 +689,20 @@ export class Storage implements IStorage {
     } catch (error) {
       console.error("Error in getUnits:", error);
       throw error; // Let the caller handle the error
+    }
+  }
+
+  async getUnitById(id: number): Promise<Unit | undefined> {
+    try {
+      const result = await this.db
+        .select()
+        .from(units)
+        .where(eq(units.id, id))
+        .limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error fetching unit by ID:", error);
+      throw error;
     }
   }
 
@@ -806,63 +891,107 @@ export class Storage implements IStorage {
     return result[0];
   }
 
-  async createInventoryItem(data: any): Promise<any> {
-    console.log("Creating inventory item with data:", data);
+  async createInventoryItem(itemData: any): Promise<InventoryItem> {
     try {
-      const [item] = await this.db
-        .insert(inventoryItems)
-        .values({
-          name: data.name,
-          currentStock: data.currentStock?.toString() || "0",
-          minLevel: data.minLevel?.toString() || "0",
-          unit: data.unit || "pcs",
-          unitId: data.unitId,
-          secondaryUnitId: data.secondaryUnitId || null,
-          conversionRate: data.conversionRate
-            ? data.conversionRate.toString()
-            : null,
-          costPerUnit: data.costPerUnit?.toString() || "0",
-          supplier: data.supplier,
-          categoryId: data.categoryId,
-          lastRestocked: data.lastRestocked
-            ? new Date(data.lastRestocked)
-            : new Date(),
-        })
-        .returning();
+      console.log("Creating inventory item with data:", itemData);
 
-      console.log("Inventory item created successfully:", item);
-      return item;
+      // Check for duplicate name (case-insensitive, trimmed)
+      const trimmedName = itemData.name.trim();
+      const existingItem = await this.db
+        .select()
+        .from(inventoryItems)
+        .where(sql`LOWER(TRIM(${inventoryItems.name})) = LOWER(${trimmedName})`)
+        .limit(1);
+
+      if (existingItem.length > 0) {
+        throw new Error("Item with this name already exists. Please use a different name.");
+      }
+
+      // Only allow specified fields
+      const transformedData = {
+        name: trimmedName,
+        currentStock: itemData.currentStock,
+        minLevel: itemData.minLevel,
+        unit: itemData.unit,
+        unitId: itemData.unitId || null,
+        secondaryUnitId: itemData.secondaryUnitId || null,
+        conversionRate: itemData.conversionRate || null,
+        costPerUnit: itemData.costPerUnit,
+        supplier: itemData.supplier || null,
+        categoryId: itemData.categoryId || null,
+        lastRestocked: itemData.lastRestocked || new Date(),
+      };
+
+      const result = await this.db
+        .insert(inventoryItems)
+        .values(transformedData)
+        .returning();
+      console.log("Inventory item created successfully:", result[0]);
+      return result[0];
     } catch (error) {
       console.error("Error creating inventory item:", error);
       throw error;
     }
   }
 
-  async updateInventoryItem(id: number, data: any): Promise<any> {
-    console.log("Updating inventory item:", id, data);
+  async updateInventoryItem(id: number, updateData: any): Promise<InventoryItem> {
     try {
-      const [item] = await this.db
+      const result = await this.db
         .update(inventoryItems)
         .set({
-          name: data.name,
-          currentStock: data.currentStock?.toString(),
-          minLevel: data.minLevel?.toString(),
-          unit: data.unit,
-          unitId: data.unitId,
-          secondaryUnitId: data.secondaryUnitId,
-          conversionRate: data.conversionRate?.toString(),
-          costPerUnit: data.costPerUnit?.toString(),
-          supplier: data.supplier,
-          categoryId: data.categoryId,
+          ...updateData,
           updatedAt: new Date(),
         })
         .where(eq(inventoryItems.id, id))
         .returning();
-
-      console.log("Inventory item updated successfully:", item);
-      return item;
+      return result[0];
     } catch (error) {
       console.error("Error updating inventory item:", error);
+      throw error;
+    }
+  }
+
+  async updateInventoryWithPurchase(
+    inventoryItemId: number,
+    purchaseQuantity: number,
+    purchaseRate: number,
+    purchaseDate: Date
+  ): Promise<void> {
+    try {
+      // Get current inventory item
+      const currentItem = await this.getInventoryItemById(inventoryItemId);
+      if (!currentItem) {
+        throw new Error("Inventory item not found");
+      }
+
+      const currentStock = parseFloat(currentItem.currentStock);
+      const currentRate = parseFloat(currentItem.costPerUnit);
+
+      // Calculate weighted average cost
+      const totalCurrentValue = currentStock * currentRate;
+      const totalPurchaseValue = purchaseQuantity * purchaseRate;
+      const totalQuantity = currentStock + purchaseQuantity;
+      const totalValue = totalCurrentValue + totalPurchaseValue;
+
+      const newWeightedAverageRate = totalQuantity > 0 ? totalValue / totalQuantity : purchaseRate;
+
+      // Update inventory item
+      await this.updateInventoryItem(inventoryItemId, {
+        currentStock: totalQuantity.toString(),
+        costPerUnit: newWeightedAverageRate.toString(),
+        lastRestocked: purchaseDate,
+      });
+
+      console.log(`Updated inventory item ${inventoryItemId}:`, {
+        previousStock: currentStock,
+        purchaseQuantity,
+        newStock: totalQuantity,
+        previousRate: currentRate,
+        purchaseRate,
+        newWeightedRate: newWeightedAverageRate
+      });
+    } catch (error) {
+      console.error("Error updating inventory with purchase:", error);
       throw error;
     }
   }
@@ -1554,59 +1683,74 @@ export class Storage implements IStorage {
     return purchaseList;
   }
 
-  async createPurchase(purchaseData: any): Promise<any> {
-    const [newPurchase] = await this.db
-      .insert(purchases)
-      .values(purchaseData)
-      .returning();
-    return newPurchase;
-  }
-
   async createPurchaseWithLedger(purchaseData: any): Promise<any> {
-    const { items, ...mainPurchaseData } = purchaseData;
+    try {
+      const { items, ...purchase } = purchaseData;
 
-    // Create main purchase record
-    const [newPurchase] = await this.db
-      .insert(purchases)
-      .values(mainPurchaseData)
-      .returning();
+      // Create purchase record
+      const newPurchase = await this.db
+        .insert(purchases)
+        .values({
+          supplierName: purchase.supplierName,
+          partyId: purchase.partyId || null,
+          totalAmount: purchase.totalAmount,
+          paymentMethod: purchase.paymentMethod,
+          status: purchase.status,
+          invoiceNumber: purchase.invoiceNumber || null,
+          notes: purchase.notes || null,
+          createdBy: purchase.createdBy,
+        })
+        .returning();
 
-    // Create purchase items
-    if (items && items.length > 0) {
-      for (const item of items) {
-        await this.db.insert(purchaseItems).values({
-          purchaseId: newPurchase.id,
-          inventoryItemId: item.inventoryItemId,
-          quantity: item.quantity.toString(),
-          unitPrice: item.unitPrice.toString(),
-          totalPrice: item.totalPrice.toString(),
-        });
+      // Create purchase items and update inventory with weighted average
+      if (items && items.length > 0) {
+        for (const item of items) {
+          // Create purchase item record
+          await this.db.insert(purchaseItems).values({
+            purchaseId: newPurchase.id,
+            inventoryItemId: item.inventoryItemId,
+            quantity: item.quantity.toString(),
+            unitPrice: item.unitPrice.toString(),
+            totalPrice: item.totalPrice.toString(),
+          });
+
+          // Update inventory with weighted average cost
+          await this.updateInventoryWithPurchase(
+            item.inventoryItemId,
+            parseFloat(item.quantity),
+            parseFloat(item.unitPrice),
+            new Date()
+          );
+        }
       }
+
+      // Create ledger transaction if party is involved
+      if (purchaseData.partyId) {
+        await this.createLedgerTransaction({
+          customerOrPartyId: purchaseData.partyId,
+          entityType: "party",
+          transactionDate: new Date(),
+          description: `Purchase from ${purchaseData.supplierName}${purchaseData.invoiceNumber ? ` - Invoice: ${purchaseData.invoiceNumber}` : ""}`,
+          referenceNumber: purchaseData.invoiceNumber || `PUR-${newPurchase.id}`,
+          debitAmount: purchaseData.totalAmount,
+          creditAmount: "0",
+          transactionType: "purchase",
+          relatedPurchaseId: newPurchase.id,
+          paymentMethod: purchaseData.paymentMethod,
+          notes: purchaseData.notes,
+          createdBy: purchaseData.createdBy,
+          runningBalance: "0", // Will be calculated by recalculateRunningBalance
+        });
+
+        // Recalculate running balance
+        await this.recalculateRunningBalance(purchaseData.partyId, "party");
+      }
+
+      return newPurchase;
+    } catch (error) {
+      console.error("Error creating purchase with ledger:", error);
+      throw error;
     }
-
-    // Create ledger transaction if party is involved
-    if (purchaseData.partyId) {
-      await this.createLedgerTransaction({
-        customerOrPartyId: purchaseData.partyId,
-        entityType: "party",
-        transactionDate: new Date(),
-        description: `Purchase from ${purchaseData.supplierName}${purchaseData.invoiceNumber ? ` - Invoice: ${purchaseData.invoiceNumber}` : ""}`,
-        referenceNumber: purchaseData.invoiceNumber || `PUR-${newPurchase.id}`,
-        debitAmount: purchaseData.totalAmount,
-        creditAmount: "0",
-        transactionType: "purchase",
-        relatedPurchaseId: newPurchase.id,
-        paymentMethod: purchaseData.paymentMethod,
-        notes: purchaseData.notes,
-        createdBy: purchaseData.createdBy,
-        runningBalance: "0", // Will be calculated by recalculateRunningBalance
-      });
-
-      // Recalculate running balance
-      await this.recalculateRunningBalance(purchaseData.partyId, "party");
-    }
-
-    return newPurchase;
   }
 
   async updatePurchase(id: number, purchaseData: any): Promise<any> {
@@ -1652,66 +1796,18 @@ export class Storage implements IStorage {
     await this.db.delete(expenses).where(eq(expenses.id, id));
   }
 
-  // Customer operations
-  async getCustomers(): Promise<Customer[]> {
-    return await this.db.select().from(customers).orderBy(customers.name);
-  }
+  // Customer operations (duplicate - see above)
+  // async getCustomers(): Promise<Customer[]> { ... }
+  // async getCustomerById(id: number): Promise<Customer | undefined> { ... }
+  // async createCustomer(customer: InsertCustomer): Promise<Customer> { ... }
+  // async updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer> { ... }
+  // async deleteCustomer(id: number): Promise<void> { ... }
 
-  async getCustomerById(id: number): Promise<Customer | undefined> {
-    const result = await this.db
-      .select()
-      .from(customers)
-      .where(eq(customers.id, id))
-      .limit(1);
-    return result[0];
-  }
-
-  async createCustomer(customer: InsertCustomer): Promise<Customer> {
-    const [newCustomer] = await this.db
-      .insert(customers)
-      .values(customer)
-      .returning();
-    return newCustomer;
-  }
-
-  async updateCustomer(
-    id: number,
-    customer: Partial<InsertCustomer>,
-  ): Promise<Customer> {
-    const [updatedCustomer] = await this.db
-      .update(customers)
-      .set({ ...customer, updatedAt: new Date() })
-      .where(eq(customers.id, id))
-      .returning();
-    return updatedCustomer;
-  }
-
-  async deleteCustomer(id: number): Promise<void> {
-    await this.db.delete(customers).where(eq(customers.id, id));
-  }
-
-  // Party operations
-  async getParties(): Promise<Party[]> {
-    return await this.db.select().from(parties).orderBy(parties.name);
-  }
-
-  async createParty(party: InsertParty): Promise<Party> {
-    const [newParty] = await this.db.insert(parties).values(party).returning();
-    return newParty;
-  }
-
-  async updateParty(id: number, party: Partial<InsertParty>): Promise<Party> {
-    const [updatedParty] = await this.db
-      .update(parties)
-      .set({ ...party, updatedAt: new Date() })
-      .where(eq(parties.id, id))
-      .returning();
-    return updatedParty;
-  }
-
-  async deleteParty(id: number): Promise<void> {
-    await this.db.delete(parties).where(eq(parties.id, id));
-  }
+  // Party operations (duplicate - see above)
+  // async getParties(): Promise<Party[]> { ... }
+  // async createParty(party: InsertParty): Promise<Party> { ... }
+  // async updateParty(id: number, party: Partial<InsertParty>): Promise<Party> { ... }
+  // async deleteParty(id: number): Promise<void> { ... }
 
   // Ledger Transaction Methods
   async createLedgerTransaction(data: any): Promise<any> {
