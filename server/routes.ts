@@ -946,13 +946,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Inventory
-  app.get("/api/inventory", isAuthenticated, async (req, res) => {
+  // Get inventory items with pagination
+  app.get("/api/inventory", async (req, res) => {
     try {
-      const items = await storage.getInventoryItems();
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string;
+
+      const result = await storage.getInventoryItems({
+        page,
+        limit,
+        search,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching inventory items:", error);
+      res.status(500).json({ error: "Failed to fetch inventory items" });
+    }
+  });
+
+  // Get all inventory items (for dropdowns, etc.)
+  app.get("/api/inventory/all", async (req, res) => {
+    try {
+      const items = await storage.getAllInventoryItems();
       res.json(items);
     } catch (error) {
-      console.error("Error fetching inventory:", error);
-      res.status(500).json({ message: "Failed to fetch inventory" });
+      console.error("Error fetching all inventory items:", error);
+      res.status(500).json({ error: "Failed to fetch inventory items" });
     }
   });
 
@@ -1057,7 +1078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(item);
     } catch (error) {
       console.error("Error creating inventory item:", error);
-      
+
       // Handle duplicate name error specifically
       if (error.message?.includes("Item with this name already exists")) {
         return res.status(400).json({
@@ -2500,6 +2521,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           reason: "Purchase",
           reference: `Purchase #${purchase.id}${invoiceNumber ? ` - Invoice: ${invoiceNumber}` : ""}`,
         });
+
+        // Update stock and cost per unit using weighted average
+        await storage.updateInventoryStockAndCost(
+          item.inventoryItemId,
+          item.quantity,
+          item.costPerUnit,
+        );
       }
 
       res.json(purchase);

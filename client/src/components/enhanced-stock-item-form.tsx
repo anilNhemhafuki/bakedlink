@@ -228,6 +228,7 @@ export function EnhancedStockItemForm({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/low-stock"] });
       toast({
         title: "Success",

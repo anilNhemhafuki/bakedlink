@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -68,7 +67,8 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
   ]);
 
   const { data: inventoryItems = [] } = useQuery({
-    queryKey: ["/api/inventory"],
+    queryKey: ["/api/inventory/all"],
+    queryFn: () => apiRequest("GET", "/api/inventory/all"),
   });
 
   const { data: parties = [] } = useQuery({
@@ -348,7 +348,7 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
                         </Button>
                       )}
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div>
                         <Label>Inventory Item *</Label>
@@ -368,7 +368,7 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <div>
                         <Label>Quantity *</Label>
                         <Input
@@ -381,7 +381,7 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
                         />
                         {item.unit && <span className="text-xs text-gray-500">Unit: {item.unit}</span>}
                       </div>
-                      
+
                       <div>
                         <Label>Rate per Unit *</Label>
                         <div className="flex">
@@ -404,7 +404,7 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
                           </span>
                         )}
                       </div>
-                      
+
                       <div>
                         <Label>Total Value</Label>
                         <div className="flex">

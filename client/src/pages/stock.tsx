@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,8 @@ import {
   Package,
   AlertTriangle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -66,21 +68,28 @@ export default function Stock() {
     string | undefined
   >(undefined);
   const [conversionRate, setConversionRate] = useState<string>("");
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const { toast } = useToast();
   const { symbol } = useCurrency();
 
   const {
-    data: items = [],
+    data: inventoryData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["/api/inventory"],
-    queryFn: () => apiRequest("GET", "/api/inventory"),
+    queryKey: ["/api/inventory", currentPage, itemsPerPage, searchQuery],
+    queryFn: () => apiRequest("GET", `/api/inventory?page=${currentPage}&limit=${itemsPerPage}&search=${encodeURIComponent(searchQuery)}`),
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
     },
   });
+
+  const items = inventoryData?.items || [];
+  const totalCount = inventoryData?.totalCount || 0;
+  const totalPages = inventoryData?.totalPages || 0;
 
   const { data: units = [] } = useQuery({
     queryKey: ["/api/units"],
@@ -131,19 +140,38 @@ export default function Stock() {
   console.log("Units in stock.tsx:", units);
   console.log("Active units in stock.tsx:", activeUnits);
 
-  // --- Fix 2: Ensure items is an array before filtering ---
-  const filteredItems = (Array.isArray(items) ? items : []).filter(
-    (item: any) =>
-      item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.group?.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
-  // Add sorting functionality
+  // Add sorting functionality - items are already filtered on server
   const { sortedData, sortConfig, requestSort } = useTableSort(
-    filteredItems,
+    items,
     "name",
   );
+
+  // Debounced search
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setCurrentPage(1); // Reset to first page when searching
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Update query key to use debounced search
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+  }, [debouncedSearchQuery]);
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
 
   // Unit selection state management
   useEffect(() => {
@@ -228,6 +256,7 @@ export default function Stock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/low-stock"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       setIsDialogOpen(false);
@@ -314,6 +343,7 @@ export default function Stock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/low-stock"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       setIsDialogOpen(false);
@@ -347,6 +377,7 @@ export default function Stock() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/inventory/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/all"] });
       toast({
         title: "Success",
         description: "Stock item deleted successfully",
@@ -841,6 +872,81 @@ export default function Stock() {
                   </Button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-2 py-4">
+              <div className="flex items-center space-x-2">
+                <p className="text-sm text-muted-foreground">
+                  Showing {Math.min((currentPage - 1) * itemsPerPage + 1, totalCount)} to{" "}
+                  {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} entries
+                </p>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => handleItemsPerPageChange(e.target.value)}
+                  className="ml-2 h-8 w-16 rounded border border-input bg-background px-2 py-1 text-sm"
+                >
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+                <span className="text-sm text-muted-foreground">per page</span>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNumber = i + 1;
+                    return (
+                      <Button
+                        key={pageNumber}
+                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNumber)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNumber}
+                      </Button>
+                    );
+                  })}
+                  {totalPages > 5 && (
+                    <>
+                      {currentPage < totalPages - 2 && <span className="px-2">...</span>}
+                      <Button
+                        variant={currentPage === totalPages ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(totalPages)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {totalPages}
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

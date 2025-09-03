@@ -870,14 +870,76 @@ export class Storage implements IStorage {
   }
 
   // Inventory operations
-  async getInventoryItems(): Promise<InventoryItem[]> {
+  async getInventoryItems(options?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<{
+    items: InventoryItem[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+  }> {
+    try {
+      const page = options?.page || 1;
+      const limit = options?.limit || 10;
+      const offset = (page - 1) * limit;
+      const search = options?.search?.toLowerCase();
+
+      let query = this.db
+        .select()
+        .from(inventoryItems);
+
+      let countQuery = this.db
+        .select({ count: count() })
+        .from(inventoryItems);
+
+      // Apply search filter if provided
+      if (search) {
+        const searchCondition = sql`
+          LOWER(${inventoryItems.name}) LIKE ${`%${search}%`} OR
+          LOWER(${inventoryItems.supplier}) LIKE ${`%${search}%`}
+        `;
+        query = query.where(searchCondition);
+        countQuery = countQuery.where(searchCondition);
+      }
+
+      // Get total count
+      const [{ count: totalCount }] = await countQuery;
+
+      // Get paginated items
+      const items = await query
+        .orderBy(inventoryItems.name)
+        .limit(limit)
+        .offset(offset);
+
+      const totalPages = Math.ceil(totalCount / limit);
+
+      return {
+        items,
+        totalCount,
+        totalPages,
+        currentPage: page,
+      };
+    } catch (error) {
+      console.error("Error in getInventoryItems:", error);
+      return {
+        items: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+      };
+    }
+  }
+
+  async getAllInventoryItems(): Promise<InventoryItem[]> {
     try {
       return await this.db
         .select()
         .from(inventoryItems)
         .orderBy(inventoryItems.name);
     } catch (error) {
-      console.error("Error in getInventoryItems:", error);
+      console.error("Error in getAllInventoryItems:", error);
       return [];
     }
   }
@@ -992,6 +1054,69 @@ export class Storage implements IStorage {
       });
     } catch (error) {
       console.error("Error updating inventory with purchase:", error);
+      throw error;
+    }
+  }
+
+  async updateInventoryWithWeightedAverage(
+    inventoryItemId: number,
+    purchaseQuantity: number,
+    purchaseRate: number,
+    purchaseDate: Date
+  ): Promise<void> {
+    try {
+      // Get current inventory item (this represents the closing stock)
+      const currentItem = await this.getInventoryItemById(inventoryItemId);
+      if (!currentItem) {
+        throw new Error("Inventory item not found");
+      }
+
+      const closingStock = parseFloat(currentItem.currentStock || "0");
+      const closingRate = parseFloat(currentItem.costPerUnit || "0");
+      
+      // Calculate closing stock value
+      const closingStockValue = closingStock * closingRate;
+      
+      // Calculate purchase value
+      const purchaseValue = purchaseQuantity * purchaseRate;
+      
+      // Calculate new opening stock after purchase
+      const newOpeningQuantity = closingStock + purchaseQuantity;
+      const newOpeningValue = closingStockValue + purchaseValue;
+      
+      // Calculate weighted average rate for new opening stock
+      const newWeightedAverageRate = newOpeningQuantity > 0 ? newOpeningValue / newOpeningQuantity : purchaseRate;
+
+      // Update inventory item with new opening stock values
+      await this.updateInventoryItem(inventoryItemId, {
+        currentStock: newOpeningQuantity.toString(),
+        costPerUnit: newWeightedAverageRate.toString(),
+        lastRestocked: purchaseDate,
+      });
+
+      // Create inventory transaction for tracking
+      await this.createInventoryTransaction({
+        inventoryItemId: inventoryItemId,
+        type: "in",
+        quantity: purchaseQuantity.toString(),
+        reason: `Purchase - Weighted average update`,
+        reference: `Purchase at ${purchaseRate}/unit`,
+        createdBy: "system",
+      });
+
+      console.log(`✅ Inventory updated with weighted average for item ${inventoryItemId}:`, {
+        closingStock,
+        closingRate,
+        closingValue: closingStockValue,
+        purchaseQuantity,
+        purchaseRate,
+        purchaseValue,
+        newOpeningQuantity,
+        newOpeningValue,
+        newWeightedRate: newWeightedAverageRate
+      });
+    } catch (error) {
+      console.error("❌ Error updating inventory with weighted average:", error);
       throw error;
     }
   }
@@ -1688,34 +1813,38 @@ export class Storage implements IStorage {
       const { items, ...purchase } = purchaseData;
 
       // Create purchase record
-      const newPurchase = await this.db
+      const [newPurchase] = await this.db
         .insert(purchases)
         .values({
           supplierName: purchase.supplierName,
           partyId: purchase.partyId || null,
           totalAmount: purchase.totalAmount,
           paymentMethod: purchase.paymentMethod,
-          status: purchase.status,
+          status: purchase.status || "completed",
           invoiceNumber: purchase.invoiceNumber || null,
           notes: purchase.notes || null,
           createdBy: purchase.createdBy,
         })
         .returning();
 
+      console.log("Purchase created with ID:", newPurchase.id);
+
       // Create purchase items and update inventory with weighted average
       if (items && items.length > 0) {
         for (const item of items) {
           // Create purchase item record
-          await this.db.insert(purchaseItems).values({
+          const [purchaseItem] = await this.db.insert(purchaseItems).values({
             purchaseId: newPurchase.id,
             inventoryItemId: item.inventoryItemId,
             quantity: item.quantity.toString(),
             unitPrice: item.unitPrice.toString(),
             totalPrice: item.totalPrice.toString(),
-          });
+          }).returning();
 
-          // Update inventory with weighted average cost
-          await this.updateInventoryWithPurchase(
+          console.log("Purchase item created:", purchaseItem);
+
+          // Update inventory with weighted average cost calculation
+          await this.updateInventoryWithWeightedAverage(
             item.inventoryItemId,
             parseFloat(item.quantity),
             parseFloat(item.unitPrice),
