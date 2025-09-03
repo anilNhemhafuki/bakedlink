@@ -177,19 +177,48 @@ export default function Recipe({ onSave }: RecipeProps) {
         );
         if (item && ingredient.quantity && ingredient.unitId) {
           const quantity = parseFloat(ingredient.quantity);
-          const pricePerUnit = parseFloat(item.costPerUnit);
-          const amount = quantity * pricePerUnit;
-
-          // Use the selected unit from the ingredient form
           const selectedUnit = units.find((u: any) => u.id.toString() === ingredient.unitId);
           const unitAbbr = selectedUnit?.abbreviation || item.unit;
+          
+          // Get the inventory item's storage unit details
+          const inventoryUnit = units.find((u: any) => u.id === item.unitId);
+          const inventoryUnitAbbr = inventoryUnit?.abbreviation || item.unit;
+          
+          // Calculate proper price per selected unit
+          let pricePerSelectedUnit = parseFloat(item.costPerUnit);
+          let amount = quantity * pricePerSelectedUnit;
+          
+          // Handle unit conversion for cost calculation
+          if (inventoryUnitAbbr.toLowerCase() === 'bag' && unitAbbr.toLowerCase() !== 'bag') {
+            // For bag purchases, we need to convert to price per kg/g
+            // TODO: This should ideally come from the unitConversions table or item.conversionRate
+            // For now, assuming 1 bag = 50 kg as per your examples
+            const bagToKgConversion = item.conversionRate ? parseFloat(item.conversionRate) : 50;
+            const pricePerKg = parseFloat(item.costPerUnit) / bagToKgConversion;
+            
+            if (unitAbbr.toLowerCase() === 'kg') {
+              pricePerSelectedUnit = pricePerKg;
+              amount = quantity * pricePerSelectedUnit;
+            } else if (unitAbbr.toLowerCase() === 'g' || unitAbbr.toLowerCase() === 'gm') {
+              pricePerSelectedUnit = pricePerKg / 1000; // Convert kg price to gram price
+              amount = quantity * pricePerSelectedUnit;
+            }
+          } else if (inventoryUnitAbbr.toLowerCase() === 'kg' && unitAbbr.toLowerCase() === 'g') {
+            // If inventory is in kg but recipe uses grams
+            pricePerSelectedUnit = parseFloat(item.costPerUnit) / 1000;
+            amount = quantity * pricePerSelectedUnit;
+          } else if (inventoryUnitAbbr.toLowerCase() === 'g' && unitAbbr.toLowerCase() === 'kg') {
+            // If inventory is in grams but recipe uses kg
+            pricePerSelectedUnit = parseFloat(item.costPerUnit) * 1000;
+            amount = quantity * pricePerSelectedUnit;
+          }
 
           return {
             sn: index + 1,
             particular: item.name,
             qty: quantity,
             unit: unitAbbr,
-            price: pricePerUnit,
+            price: pricePerSelectedUnit,
             unitType: `Per ${unitAbbr}`,
             amount: amount,
           };
@@ -230,6 +259,10 @@ export default function Recipe({ onSave }: RecipeProps) {
         case 'ltr':
         case 'liters':
           qtyInGrams = item.qty * 1000;
+          break;
+        case 'bag':
+          // For bags, convert to grams (assuming 1 bag = 50 kg = 50000 g)
+          qtyInGrams = item.qty * 50000;
           break;
         default:
           qtyInGrams = item.qty; // Default to the quantity as-is
