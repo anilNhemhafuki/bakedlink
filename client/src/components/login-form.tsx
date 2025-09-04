@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCompanyBranding } from "@/hooks/use-company-branding";
 import LoginFooter from "@/components/login-footer";
 import Client_Logo from "@/public/image/bakedLink_2.png";
+import { Eye, EyeOff } from "lucide-react";
 
 interface LoginFormProps {
   onSuccess: () => void;
@@ -22,6 +23,7 @@ interface LoginFormProps {
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const { branding } = useCompanyBranding();
 
@@ -30,7 +32,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     setIsLoading(true);
 
     try {
-      await apiRequest("POST", "/api/login", loginData);
+      await apiRequest("POST", "/api/auth/login", loginData);
       toast({
         title: "Success",
         description: "Logged in successfully",
@@ -77,15 +79,29 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
               </div>
               <div>
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={loginData.password}
-                  onChange={(e) =>
-                    setLoginData({ ...loginData, password: e.target.value })
-                  }
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={loginData.password}
+                    onChange={(e) =>
+                      setLoginData({ ...loginData, password: e.target.value })
+                    }
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
               <Button
                 type="submit"

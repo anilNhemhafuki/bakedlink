@@ -13,7 +13,7 @@ export function useAuth() {
 
   const logout = async () => {
     try {
-      await apiRequest("POST", "/api/logout");
+      await apiRequest("POST", "/api/auth/logout");
       queryClient.setQueryData(["/api/auth/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     } catch (error) {
