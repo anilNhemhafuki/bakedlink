@@ -12,14 +12,28 @@ export function useRoleAccess() {
 
   const canAccessPage = (resource: string, action: 'read' | 'write' | 'read_write' = 'read') => {
     if (isSuperAdmin()) return true;
-    if (isAdmin()) return true;
+    
+    // Admin cannot access superadmin-specific resources
+    if (isAdmin() && resource !== 'super_admin') return true;
+    
     return hasPermission(resource, action);
   };
 
   const canAccessSidebarItem = (resource: string, action: 'read' | 'write' | 'read_write' = 'read') => {
     if (isSuperAdmin()) return true;
-    if (isAdmin()) return true;
+    
+    // Admin cannot access superadmin-specific resources
+    if (isAdmin() && resource !== 'super_admin') return true;
+    
     return hasPermission(resource, action);
+  };
+
+  const canManageUsers = () => {
+    return isSuperAdmin() || isAdmin();
+  };
+
+  const canViewSuperAdminUsers = () => {
+    return isSuperAdmin();
   };
 
   return {
@@ -28,6 +42,8 @@ export function useRoleAccess() {
     isManager,
     canAccessPage,
     canAccessSidebarItem,
+    canManageUsers,
+    canViewSuperAdminUsers,
     user,
   };
 }

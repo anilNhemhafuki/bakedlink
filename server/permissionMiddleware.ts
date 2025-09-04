@@ -8,6 +8,7 @@ interface AuthenticatedRequest extends Request {
     email: string;
     role: string;
   };
+  filterSuperAdmin?: boolean;
 }
 
 export function requirePermission(resource: string, action: 'read' | 'write' | 'read_write') {
@@ -17,12 +18,12 @@ export function requirePermission(resource: string, action: 'read' | 'write' | '
         return res.status(401).json({ message: "Authentication required" });
       }
 
-      // Super admin always has access to everything - including staff management
+      // Super admin always has access to everything
       if (req.user.role === 'super_admin') {
         return next();
       }
 
-      // Admin has access to most things but not user management 
+      // Admin has access to most things but never to superadmin-related functionality
       if (req.user.role === 'admin' && resource !== 'super_admin') {
         return next();
       }
@@ -68,6 +69,14 @@ export function requireSuperAdmin() {
       });
     }
 
+    next();
+  };
+}
+
+export function filterSuperAdminUsers() {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    // Add a flag to indicate we need to filter superadmin users
+    req.filterSuperAdmin = req.user?.role !== 'super_admin';
     next();
   };
 }

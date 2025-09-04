@@ -41,10 +41,11 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Users, Activity, Shield, Settings, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Activity, Shield, Settings, Eye, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAllPermissions, useRolePermissions } from "@/hooks/usePermissions";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import AuditLogs from "@/pages/LoginLogs";
 
 export default function AdminUserManagement() {
@@ -59,6 +60,7 @@ export default function AdminUserManagement() {
     role: "staff",
   });
   const { toast } = useToast();
+  const { isSuperAdmin } = useRoleAccess();
 
   const {
     data: users = [],
@@ -67,6 +69,10 @@ export default function AdminUserManagement() {
   } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
   });
+
+  const filteredUsers = isSuperAdmin()
+    ? users
+    : users.filter((user) => user.role !== "super_admin");
 
   const groupPermissionsByResource = (permissions: any[]) => {
     const grouped = permissions.reduce((acc: any, perm: any) => {
@@ -239,7 +245,7 @@ export default function AdminUserManagement() {
     }
   };
 
-  const handleEdit = (user: any) => {
+  const handleEditUser = (user: any) => {
     setEditingUser(user);
     setUserData({
       email: user.email,
@@ -323,6 +329,15 @@ export default function AdminUserManagement() {
     );
   }
 
+  const validRoles = [
+    ...(isSuperAdmin() ? [{ value: "super_admin", label: "Super Admin" }] : []),
+    { value: "admin", label: "Admin" },
+    { value: "manager", label: "Manager" },
+    { value: "supervisor", label: "Supervisor" },
+    { value: "marketer", label: "Marketer" },
+    { value: "staff", label: "Staff" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -385,7 +400,7 @@ export default function AdminUserManagement() {
               }}
             >
               <DialogTrigger asChild>
-                <Button>
+                <Button disabled={!isSuperAdmin()}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add User
                 </Button>
@@ -456,12 +471,11 @@ export default function AdminUserManagement() {
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="super_admin">Super Admin</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="supervisor">Supervisor</SelectItem>
-                        <SelectItem value="marketer">Marketer</SelectItem>
-                        <SelectItem value="staff">Staff</SelectItem>
+                        {validRoles.map((role) => (
+                          <SelectItem key={role.value} value={role.value}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -486,6 +500,9 @@ export default function AdminUserManagement() {
               </DialogContent>
             </Dialog>
           </div>
+            <p className="text-sm text-muted-foreground">
+                Showing {filteredUsers.length} users
+              </p>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -505,7 +522,7 @@ export default function AdminUserManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user: any) => (
+                  {filteredUsers.map((user: any) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         {user.firstName} {user.lastName}
@@ -524,17 +541,18 @@ export default function AdminUserManagement() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEdit(user)}
+                            onClick={() => handleEditUser(user)}
+                            disabled={user.role === 'super_admin' && !isSuperAdmin()}
                             className="text-blue-600 hover:text-blue-800 focus:outline-none"
                             title="Edit"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteUser(user.id)}
-                            disabled={user.role === "admin"}
+                            disabled={user.role === 'super_admin' && !isSuperAdmin()}
                             className="text-red-600 hover:text-red-800 focus:outline-none"
                             title="Delete"
                           >
@@ -546,7 +564,7 @@ export default function AdminUserManagement() {
                   ))}
                 </TableBody>
               </Table>
-              {users.length === 0 && (
+              {filteredUsers.length === 0 && (
                 <div className="text-center py-8">
                   <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-muted-foreground mb-2">
@@ -555,7 +573,7 @@ export default function AdminUserManagement() {
                   <p className="text-muted-foreground mb-4">
                     Start by adding your first user
                   </p>
-                  <Button onClick={() => setIsDialogOpen(true)}>
+                  <Button onClick={() => setIsDialogOpen(true)} disabled={!isSuperAdmin()}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add User
                   </Button>
@@ -584,12 +602,11 @@ export default function AdminUserManagement() {
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
-                <SelectItem value="supervisor">Supervisor</SelectItem>
-                <SelectItem value="marketer">Marketer</SelectItem>
-                <SelectItem value="staff">Staff</SelectItem>
+                {validRoles.map((role) => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

@@ -2009,9 +2009,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     isAuthenticated,
     isAdmin,
     auditLogger("READ", "users"),
-    async (req, res) => {
+    async (req: any, res) => {
       try {
-        const users = await storage.getAllUsers();
+        // Filter superadmin users if the requester is not a superadmin
+        const excludeSuperAdmin = req.user?.role !== 'super_admin';
+        const users = await storage.getAllUsers(excludeSuperAdmin);
         res.json(users);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -2025,7 +2027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     isAuthenticated,
     isAdmin,
     auditLogger("CREATE", "users"),
-    async (req, res) => {
+    async (req: any, res) => {
       try {
         const { email, password, firstName, lastName, role } = req.body;
 
@@ -2033,6 +2035,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res
             .status(400)
             .json({ message: "Email and password are required" });
+        }
+
+        // Prevent non-superadmin from creating superadmin users
+        if (role === 'super_admin' && req.user?.role !== 'super_admin') {
+          return res.status(403).json({ 
+            message: "Cannot create superadmin users" 
+          });
         }
 
         // Check if user already exists
@@ -2067,10 +2076,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     isAuthenticated,
     isAdmin,
     auditLogger("UPDATE", "users"),
-    async (req, res) => {
+    async (req: any, res) => {
       try {
         const { id } = req.params;
         const { email, password, firstName, lastName, role } = req.body;
+
+        // Check if the user being updated is a superadmin and requester is not superadmin
+        const targetUser = await storage.getUser(id);
+        if (targetUser?.role === 'super_admin' && req.user?.role !== 'super_admin') {
+          return res.status(403).json({ 
+            message: "Cannot modify superadmin users" 
+          });
+        }
+
+        // Prevent non-superadmin from creating new superadmin users
+        if (role === 'super_admin' && req.user?.role !== 'super_admin') {
+          return res.status(403).json({ 
+            message: "Cannot assign superadmin role" 
+          });
+        }
 
         const updateData: any = {
           email,
@@ -2098,9 +2122,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     isAuthenticated,
     isAdmin,
     auditLogger("DELETE", "users"),
-    async (req, res) => {
+    async (req: any, res) => {
       try {
         const { id } = req.params;
+
+        // Check if the user being deleted is a superadmin and requester is not superadmin
+        const targetUser = await storage.getUser(id);
+        if (targetUser?.role === 'super_admin' && req.user?.role !== 'super_admin') {
+          return res.status(403).json({ 
+            message: "Cannot delete superadmin users" 
+          });
+        }
+
         await storage.deleteUser(id);
         res.json({ success: true });
       } catch (error) {

@@ -99,10 +99,11 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(userData: UpsertUser): Promise<User>;
-  getAllUsers(): Promise<User[]>;
+  getAllUsers(excludeSuperAdmin?: boolean): Promise<User[]>;
   updateUser(id: string, data: any): Promise<any>;
   deleteUser(id: string): Promise<void>;
   ensureDefaultAdmin(): Promise<void>;
+  getUserCount(excludeSuperAdmin?: boolean): Promise<number>;
 
   // Category operations
   getCategories(): Promise<Category[]>;
@@ -455,8 +456,14 @@ export class Storage implements IStorage {
     }
   }
 
-  async getAllUsers(): Promise<User[]> {
-    return await this.db.select().from(users).orderBy(desc(users.createdAt));
+  async getAllUsers(excludeSuperAdmin: boolean = false): Promise<User[]> {
+    let query = this.db.select().from(users);
+
+    if (excludeSuperAdmin) {
+      query = query.where(sql`${users.role} != 'super_admin'`);
+    }
+
+    return await query.orderBy(users.createdAt);
   }
 
   async updateUser(id: string, data: any): Promise<any> {
@@ -527,6 +534,17 @@ export class Storage implements IStorage {
       });
       console.log("✅ Default staff user created");
     }
+  }
+
+  async getUserCount(excludeSuperAdmin: boolean = false): Promise<number> {
+    let query = this.db.select({ count: count() }).from(users);
+
+    if (excludeSuperAdmin) {
+      query = query.where(sql`${users.role} != 'super_admin'`);
+    }
+
+    const result = await query;
+    return result[0].count;
   }
 
   // Category operations
@@ -1229,10 +1247,7 @@ export class Storage implements IStorage {
       .orderBy(inventoryItems.name);
   }
 
-  async getUserById(id: string): Promise<User | undefined> {
-    return this.getUser(id);
-  }
-
+  // Permission operations
   async getPermissions(): Promise<Permission[]> {
     return await this.db
       .select()
@@ -1500,8 +1515,9 @@ export class Storage implements IStorage {
     const superAdminPermissionIds = allPermissions.map((p) => p.id);
     await this.setRolePermissions("super_admin", superAdminPermissionIds);
 
+    // Admin gets all except super admin specific ones
     const adminPermissionIds = allPermissions
-      .filter((p) => p.action === "read_write")
+      .filter((p) => p.resource !== "users") // Exclude user management for admins
       .map((p) => p.id);
     await this.setRolePermissions("admin", adminPermissionIds);
 
@@ -2260,7 +2276,7 @@ export class Storage implements IStorage {
       .orderBy(productionSchedule.scheduledDate);
   }
 
-  // Additional utility methods for routes compatibility
+  // Media operations
   async getMediaItems(): Promise<any[]> {
     return [];
   }
@@ -2526,7 +2542,7 @@ export class Storage implements IStorage {
       }
 
       // In production, broadcast to all relevant users based on their roles
-      const adminUsers = await this.getAllUsers();
+      const adminUsers = await this.getAllUsers(); // Fetch all users, including superadmin
       const relevantUsers = adminUsers.filter((user) =>
         ["admin", "manager", "supervisor"].includes(user.role),
       );
