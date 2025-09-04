@@ -5,6 +5,8 @@ import { eq, desc, count, sql, isNotNull, and } from "drizzle-orm";
 
 import { createServer, type Server } from "http";
 import { storage } from "./lib/storage";
+import { securityMonitor } from "./securityMonitor";
+import { alertService } from "./alertService";
 import { setupAuth, isAuthenticated } from "./localAuth";
 
 // Enhanced rate limiting and sanitization utilities
@@ -4287,6 +4289,102 @@ Form Version: ${formVersion || "1.0"}`,
       } catch (error) {
         console.error("Error deleting staff schedule:", error);
         res.status(500).json({ message: "Failed to delete staff schedule" });
+      }
+    },
+  );
+
+  // Enhanced Security Monitoring API Endpoints
+  
+  app.get(
+    "/api/security/comprehensive-metrics",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req, res) => {
+      try {
+        const metrics = await securityMonitor.getSecurityMetrics();
+        res.json(metrics);
+      } catch (error) {
+        console.error("Error fetching comprehensive security metrics:", error);
+        res.status(500).json({ message: "Failed to fetch security metrics" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/security/alerts",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req, res) => {
+      try {
+        const activeAlerts = securityMonitor.getActiveAlerts();
+        const dashboardAlerts = alertService.getDashboardAlerts();
+        
+        res.json({
+          activeAlerts,
+          dashboardAlerts,
+          totalActive: activeAlerts.length,
+          totalDashboard: dashboardAlerts.length,
+        });
+      } catch (error) {
+        console.error("Error fetching security alerts:", error);
+        res.status(500).json({ message: "Failed to fetch security alerts" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/security/test-alert",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req, res) => {
+      try {
+        await alertService.sendTestAlert();
+        res.json({ message: "Test alert sent successfully" });
+      } catch (error) {
+        console.error("Error sending test alert:", error);
+        res.status(500).json({ message: "Failed to send test alert" });
+      }
+    },
+  );
+
+  // Enhanced login analytics
+  app.get(
+    "/api/security/login-analytics",
+    isAuthenticated,
+    requireWrite("admin"),
+    async (req, res) => {
+      try {
+        const { timeframe = '24h' } = req.query;
+        
+        let hours = 24;
+        if (timeframe === '1h') hours = 1;
+        else if (timeframe === '12h') hours = 12;
+        else if (timeframe === '7d') hours = 24 * 7;
+        else if (timeframe === '30d') hours = 24 * 30;
+        
+        const timeThreshold = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+        const [totalLogins, failedLogins, uniqueUsers] = await Promise.all([
+          db.select({ count: count() }).from(loginLogs)
+            .where(sql`${loginLogs.loginTime} >= ${timeThreshold}`),
+            
+          db.select({ count: count() }).from(loginLogs)
+            .where(sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${timeThreshold}`),
+            
+          db.select({ count: sql<number>`COUNT(DISTINCT ${loginLogs.userId})` }).from(loginLogs)
+            .where(sql`${loginLogs.loginTime} >= ${timeThreshold}`),
+        ]);
+
+        res.json({
+          totalLogins: totalLogins[0]?.count || 0,
+          failedLogins: failedLogins[0]?.count || 0,
+          uniqueUsers: uniqueUsers[0]?.count || 0,
+          timeframe,
+          periodHours: hours,
+        });
+      } catch (error) {
+        console.error("Error fetching login analytics:", error);
+        res.status(500).json({ message: "Failed to fetch login analytics" });
       }
     },
   );

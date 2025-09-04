@@ -80,36 +80,19 @@ export async function setupAuth(app: Express) {
         const user = await storage.getUserByEmail(email);
         if (!user) {
           // Log failed login attempt
-          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] ||
+          const clientIP = (Array.isArray(req.headers['x-forwarded-for']) 
+                          ? req.headers['x-forwarded-for'][0] 
+                          : req.headers['x-forwarded-for']?.split(',')[0]) ||
                           req.headers['x-real-ip'] ||
                           req.connection.remoteAddress ||
                           req.socket.remoteAddress ||
                           '127.0.0.1';
           const userAgent = req.get('User-Agent') || '';
-          const deviceType = userAgent.includes('Mobile') ? 'mobile' :
-                            userAgent.includes('Tablet') ? 'tablet' : 'desktop';
-          const browser = userAgent.includes('Chrome') ? 'Chrome' :
-                         userAgent.includes('Firefox') ? 'Firefox' :
-                         userAgent.includes('Safari') ? 'Safari' :
-                         userAgent.includes('Edge') ? 'Edge' : 'Other';
           const location = clientIP === '127.0.0.1' || clientIP === '::1' ||
                           clientIP.startsWith('192.168.') || clientIP.startsWith('10.') ||
                           clientIP.startsWith('172.') ? 'Local Network' : 'External';
 
-          await storage.createLoginLog({
-            userId: 'unknown',
-            userEmail: email,
-            loginTime: new Date(),
-            ipAddress: clientIP,
-            userAgent: userAgent,
-            status: 'failed',
-            failureReason: 'Invalid email or password',
-            deviceType: deviceType,
-            browser: browser,
-            location: location,
-            sessionId: req.sessionID || null,
-            timestamp: new Date(),
-          });
+          await logLoginAttempt('unknown', email, clientIP, userAgent, 'failed', location);
 
           console.warn('🚨 Failed Login Attempt:', {
             email,
@@ -123,36 +106,19 @@ export async function setupAuth(app: Express) {
 
         if (!user.password) {
           // Log failed login attempt
-          const clientIPAddr = req.headers['x-forwarded-for']?.split(',')[0] ||
+          const clientIP = (Array.isArray(req.headers['x-forwarded-for']) 
+                          ? req.headers['x-forwarded-for'][0] 
+                          : req.headers['x-forwarded-for']?.split(',')[0]) ||
                           req.headers['x-real-ip'] ||
                           req.connection.remoteAddress ||
                           req.socket.remoteAddress ||
                           '127.0.0.1';
           const userAgent = req.get('User-Agent') || '';
-          const deviceType = userAgent.includes('Mobile') ? 'mobile' :
-                            userAgent.includes('Tablet') ? 'tablet' : 'desktop';
-          const browser = userAgent.includes('Chrome') ? 'Chrome' :
-                         userAgent.includes('Firefox') ? 'Firefox' :
-                         userAgent.includes('Safari') ? 'Safari' :
-                         userAgent.includes('Edge') ? 'Edge' : 'Other';
           const location = clientIP === '127.0.0.1' || clientIP === '::1' ||
                           clientIP.startsWith('192.168.') || clientIP.startsWith('10.') ||
                           clientIP.startsWith('172.') ? 'Local Network' : 'External';
 
-          await storage.createLoginLog({
-            userId: user.id,
-            userEmail: email,
-            loginTime: new Date(),
-            ipAddress: clientIP,
-            userAgent: userAgent,
-            status: 'failed',
-            failureReason: 'User has no password set',
-            deviceType: deviceType,
-            browser: browser,
-            location: location,
-            sessionId: req.sessionID || null,
-            timestamp: new Date(),
-          });
+          await logLoginAttempt(user.id, email, clientIP, userAgent, 'failed', location);
 
           console.warn('🚨 Failed Login Attempt:', {
             email,
@@ -167,36 +133,19 @@ export async function setupAuth(app: Express) {
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
           // Log failed login attempt
-          const clientIPAddr = req.headers['x-forwarded-for']?.split(',')[0] ||
+          const clientIP = (Array.isArray(req.headers['x-forwarded-for']) 
+                          ? req.headers['x-forwarded-for'][0] 
+                          : req.headers['x-forwarded-for']?.split(',')[0]) ||
                           req.headers['x-real-ip'] ||
                           req.connection.remoteAddress ||
                           req.socket.remoteAddress ||
                           '127.0.0.1';
           const userAgent = req.get('User-Agent') || '';
-          const deviceType = userAgent.includes('Mobile') ? 'mobile' :
-                            userAgent.includes('Tablet') ? 'tablet' : 'desktop';
-          const browser = userAgent.includes('Chrome') ? 'Chrome' :
-                         userAgent.includes('Firefox') ? 'Firefox' :
-                         userAgent.includes('Safari') ? 'Safari' :
-                         userAgent.includes('Edge') ? 'Edge' : 'Other';
           const location = clientIP === '127.0.0.1' || clientIP === '::1' ||
                           clientIP.startsWith('192.168.') || clientIP.startsWith('10.') ||
                           clientIP.startsWith('172.') ? 'Local Network' : 'External';
 
-          await storage.createLoginLog({
-            userId: user.id,
-            userEmail: email,
-            loginTime: new Date(),
-            ipAddress: clientIP,
-            userAgent: userAgent,
-            status: 'failed',
-            failureReason: 'Invalid password',
-            deviceType: deviceType,
-            browser: browser,
-            location: location,
-            sessionId: req.sessionID || null,
-            timestamp: new Date(),
-          });
+          await logLoginAttempt(user.id, email, clientIP, userAgent, 'failed', location);
 
           console.warn('🚨 Failed Login Attempt:', {
             email,
@@ -210,7 +159,9 @@ export async function setupAuth(app: Express) {
 
         // Enhanced login logging with geolocation and device tracking
         try {
-          const clientIP = req.headers['x-forwarded-for']?.split(',')[0] ||
+          const clientIP = (Array.isArray(req.headers['x-forwarded-for']) 
+                          ? req.headers['x-forwarded-for'][0] 
+                          : req.headers['x-forwarded-for']?.split(',')[0]) ||
                           req.headers['x-real-ip'] ||
                           req.connection.remoteAddress ||
                           req.socket.remoteAddress ||
@@ -218,35 +169,13 @@ export async function setupAuth(app: Express) {
 
           // Enhanced device detection
           const userAgent = req.get('User-Agent') || '';
-          const deviceType = userAgent.includes('Mobile') ? 'mobile' :
-                            userAgent.includes('Tablet') ? 'tablet' : 'desktop';
-
-          const browser = userAgent.includes('Chrome') ? 'Chrome' :
-                         userAgent.includes('Firefox') ? 'Firefox' :
-                         userAgent.includes('Safari') ? 'Safari' :
-                         userAgent.includes('Edge') ? 'Edge' : 'Other';
 
           // Basic geolocation (in production, use proper IP geolocation service)
           const location = clientIP === '127.0.0.1' || clientIP === '::1' ||
                           clientIP.startsWith('192.168.') || clientIP.startsWith('10.') ||
                           clientIP.startsWith('172.') ? 'Local Network' : 'External';
 
-          const loginLogData = {
-            userId: user?.id || 'unknown',
-            userEmail: email,
-            loginTime: new Date(),
-            ipAddress: clientIP,
-            userAgent: userAgent,
-            status: user ? 'success' : 'failed',
-            failureReason: user ? null : 'Invalid email or password',
-            deviceType: deviceType,
-            browser: browser,
-            location: location,
-            sessionId: req.sessionID || null,
-            timestamp: new Date(),
-          };
-
-          await storage.createLoginLog(loginLogData);
+          await logLoginAttempt(user?.id || 'unknown', email, clientIP, userAgent, user ? 'success' : 'failed', location);
 
           // Log security events for failed attempts
           if (!user) {
@@ -316,8 +245,8 @@ export async function setupAuth(app: Express) {
             console.log('User logged in successfully:', user.email);
             
             // Set session data
-            req.session.userId = user.id;
-            req.session.user = user;
+            (req.session as any).userId = user.id;
+            (req.session as any).user = user;
             
             // Save session explicitly
             req.session.save((err) => {
@@ -348,7 +277,7 @@ export async function setupAuth(app: Express) {
         try {
           // Log logout before destroying session
           if (user) {
-            await storage.logLogout(user.id, user.email, `${user.firstName || ''} ${user.lastName || ''}`.trim(), clientIP);
+            await storage.logLogout((user as any).id, (user as any).email, `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim(), clientIP);
           }
 
           req.logout((err) => {
@@ -383,7 +312,7 @@ export const isAuthenticated: RequestHandler = (req, res, next) => {
   console.log('Checking authentication:', {
     isAuthenticated: req.isAuthenticated(),
     sessionID: req.sessionID,
-    userId: req.session?.userId,
+    userId: (req.session as any)?.userId,
     user: req.user ? 'present' : 'absent'
   });
   

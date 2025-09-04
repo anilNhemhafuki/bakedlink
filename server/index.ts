@@ -6,6 +6,8 @@ import { setupAuth } from "./localAuth";
 import { initializeDatabase } from "./init-db";
 import { registerRoutes } from "./routes";
 import { initializeUnits } from "./init-units"; // Import initializeUnits
+import { securityMonitor } from "./securityMonitor";
+import { alertService } from "./alertService";
 
 const app = express();
 
@@ -53,8 +55,22 @@ async function startServer() {
     if (dbConnected) {
       try {
         await initializeUnits();
+        console.log("✅ Units initialized successfully");
       } catch (error) {
         console.warn("⚠️ Unit initialization failed:", (error as Error).message);
+      }
+    }
+
+    // Initialize security monitoring
+    if (dbConnected) {
+      try {
+        // Connect security monitor to alert service
+        securityMonitor.onAlert(async (alert) => {
+          await alertService.sendAlert(alert);
+        });
+        console.log("🛡️ Security monitoring initialized");
+      } catch (error) {
+        console.warn("⚠️ Security monitoring initialization failed:", (error as Error).message);
       }
     }
 
