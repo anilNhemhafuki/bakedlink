@@ -381,7 +381,6 @@ export async function setupAuth(app: Express) {
         }
       });
 
-    console.log("✅ Authentication setup completed");
   } catch (error) {
     console.error("❌ Authentication setup failed:", error);
     throw error;

@@ -2,7 +2,6 @@ import { db } from "./db";
 import { units } from "@shared/schema";
 
 async function initializeUnits() {
-  console.log("🔧 Initializing default units...");
 
   const defaultUnits = [
     { name: "Kilograms", abbreviation: "kg", type: "weight" },
@@ -25,13 +24,11 @@ async function initializeUnits() {
     // Check if units already exist
     const existingUnits = await db.select().from(units);
     if (existingUnits.length > 0) {
-      console.log("✅ Units already initialized with", existingUnits.length, "units");
       return;
     }
 
     // Insert default units
     await db.insert(units).values(defaultUnits);
-    console.log("✅ Default units added successfully");
   } catch (error) {
     console.error("❌ Error initializing units:", error);
     throw error;

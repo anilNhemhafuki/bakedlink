@@ -149,7 +149,7 @@ export interface IStorage {
     inventoryItemId: number,
     purchaseQuantity: number,
     purchaseRate: number,
-    purchaseDate: Date
+    purchaseDate: Date,
   ): Promise<void>;
   deleteInventoryItem(id: number): Promise<void>;
   getInventoryCategories(): Promise<InventoryCategory[]>;
@@ -319,10 +319,7 @@ export interface IStorage {
   // Expense operations
   getExpenses(): Promise<Expense[]>;
   createExpense(expense: InsertExpense): Promise<Expense>;
-  updateExpense(
-    id: number,
-    expense: Partial<InsertExpense>,
-  ): Promise<Expense>;
+  updateExpense(id: number, expense: Partial<InsertExpense>): Promise<Expense>;
   deleteExpense(id: number): Promise<void>;
 
   // Order operations
@@ -361,16 +358,17 @@ export interface IStorage {
   getNotifications(userId?: string): Promise<any[]>;
   markNotificationAsRead(notificationId: string, userId: string): Promise<void>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
-  saveNotificationSubscription(userId: string, subscription: any): Promise<void>;
+  saveNotificationSubscription(
+    userId: string,
+    subscription: any,
+  ): Promise<void>;
   removeNotificationSubscription(userId: string): Promise<void>;
   saveNotificationSettings(userId: string, settings: any): Promise<void>;
   createNotification(notification: any): Promise<any>;
   triggerBusinessNotification(event: string, data: any): Promise<void>;
 
   // Security monitoring
-  getSecurityMetrics(
-    timeframe?: "hour" | "day" | "week",
-  ): Promise<any>;
+  getSecurityMetrics(timeframe?: "hour" | "day" | "week"): Promise<any>;
 }
 
 export class Storage implements IStorage {
@@ -492,8 +490,6 @@ export class Storage implements IStorage {
         role: "super_admin",
       });
       console.log("✅ Default superadmin user created");
-    } else {
-      console.log("✅ superadmin user already exists:", superAdminEmail);
     }
 
     const existingAdmin = await this.getUserByEmail(adminEmail);
@@ -506,8 +502,6 @@ export class Storage implements IStorage {
         role: "admin",
       });
       console.log("✅ Default admin user created");
-    } else {
-      console.log("✅ admin user already exists:", adminEmail);
     }
 
     const existingManager = await this.getUserByEmail(managerEmail);
@@ -520,8 +514,6 @@ export class Storage implements IStorage {
         role: "manager",
       });
       console.log("✅ Default manager user created");
-    } else {
-      console.log("✅ manager user already exists:", managerEmail);
     }
 
     const existingStaff = await this.getUserByEmail(staffEmail);
@@ -534,8 +526,6 @@ export class Storage implements IStorage {
         role: "staff",
       });
       console.log("✅ Default staff user created");
-    } else {
-      console.log("✅ staff user already exists:", staffEmail);
     }
   }
 
@@ -886,13 +876,9 @@ export class Storage implements IStorage {
       const offset = (page - 1) * limit;
       const search = options?.search?.toLowerCase();
 
-      let query = this.db
-        .select()
-        .from(inventoryItems);
+      let query = this.db.select().from(inventoryItems);
 
-      let countQuery = this.db
-        .select({ count: count() })
-        .from(inventoryItems);
+      let countQuery = this.db.select({ count: count() }).from(inventoryItems);
 
       // Apply search filter if provided
       if (search) {
@@ -966,7 +952,9 @@ export class Storage implements IStorage {
         .limit(1);
 
       if (existingItem.length > 0) {
-        throw new Error("Item with this name already exists. Please use a different name.");
+        throw new Error(
+          "Item with this name already exists. Please use a different name.",
+        );
       }
 
       // Only allow specified fields as per requirements
@@ -977,7 +965,9 @@ export class Storage implements IStorage {
         unit: itemData.unit,
         unitId: itemData.unitId || null,
         secondaryUnitId: itemData.secondaryUnitId || null,
-        conversionRate: itemData.conversionRate ? itemData.conversionRate.toString() : null,
+        conversionRate: itemData.conversionRate
+          ? itemData.conversionRate.toString()
+          : null,
         costPerUnit: itemData.costPerUnit.toString(),
         supplier: itemData.supplier || null,
         categoryId: itemData.categoryId || null,
@@ -996,7 +986,10 @@ export class Storage implements IStorage {
     }
   }
 
-  async updateInventoryItem(id: number, updateData: any): Promise<InventoryItem> {
+  async updateInventoryItem(
+    id: number,
+    updateData: any,
+  ): Promise<InventoryItem> {
     try {
       const result = await this.db
         .update(inventoryItems)
@@ -1017,7 +1010,7 @@ export class Storage implements IStorage {
     inventoryItemId: number,
     purchaseQuantity: number,
     purchaseRate: number,
-    purchaseDate: Date
+    purchaseDate: Date,
   ): Promise<void> {
     try {
       // Get current inventory item
@@ -1035,7 +1028,8 @@ export class Storage implements IStorage {
       const totalQuantity = currentStock + purchaseQuantity;
       const totalValue = totalCurrentValue + totalPurchaseValue;
 
-      const newWeightedAverageRate = totalQuantity > 0 ? totalValue / totalQuantity : purchaseRate;
+      const newWeightedAverageRate =
+        totalQuantity > 0 ? totalValue / totalQuantity : purchaseRate;
 
       // Update inventory item
       await this.updateInventoryItem(inventoryItemId, {
@@ -1050,7 +1044,7 @@ export class Storage implements IStorage {
         newStock: totalQuantity,
         previousRate: currentRate,
         purchaseRate,
-        newWeightedRate: newWeightedAverageRate
+        newWeightedRate: newWeightedAverageRate,
       });
     } catch (error) {
       console.error("Error updating inventory with purchase:", error);
@@ -1062,7 +1056,7 @@ export class Storage implements IStorage {
     inventoryItemId: number,
     purchaseQuantity: number,
     purchaseRate: number,
-    purchaseDate: Date
+    purchaseDate: Date,
   ): Promise<void> {
     try {
       // Get current inventory item (this represents the closing stock)
@@ -1073,19 +1067,22 @@ export class Storage implements IStorage {
 
       const closingStock = parseFloat(currentItem.currentStock || "0");
       const closingRate = parseFloat(currentItem.costPerUnit || "0");
-      
+
       // Calculate closing stock value
       const closingStockValue = closingStock * closingRate;
-      
+
       // Calculate purchase value
       const purchaseValue = purchaseQuantity * purchaseRate;
-      
+
       // Calculate new opening stock after purchase
       const newOpeningQuantity = closingStock + purchaseQuantity;
       const newOpeningValue = closingStockValue + purchaseValue;
-      
+
       // Calculate weighted average rate for new opening stock
-      const newWeightedAverageRate = newOpeningQuantity > 0 ? newOpeningValue / newOpeningQuantity : purchaseRate;
+      const newWeightedAverageRate =
+        newOpeningQuantity > 0
+          ? newOpeningValue / newOpeningQuantity
+          : purchaseRate;
 
       // Update inventory item with new opening stock values
       await this.updateInventoryItem(inventoryItemId, {
@@ -1104,19 +1101,25 @@ export class Storage implements IStorage {
         createdBy: "system",
       });
 
-      console.log(`✅ Inventory updated with weighted average for item ${inventoryItemId}:`, {
-        closingStock,
-        closingRate,
-        closingValue: closingStockValue,
-        purchaseQuantity,
-        purchaseRate,
-        purchaseValue,
-        newOpeningQuantity,
-        newOpeningValue,
-        newWeightedRate: newWeightedAverageRate
-      });
+      console.log(
+        `✅ Inventory updated with weighted average for item ${inventoryItemId}:`,
+        {
+          closingStock,
+          closingRate,
+          closingValue: closingStockValue,
+          purchaseQuantity,
+          purchaseRate,
+          purchaseValue,
+          newOpeningQuantity,
+          newOpeningValue,
+          newWeightedRate: newWeightedAverageRate,
+        },
+      );
     } catch (error) {
-      console.error("❌ Error updating inventory with weighted average:", error);
+      console.error(
+        "❌ Error updating inventory with weighted average:",
+        error,
+      );
       throw error;
     }
   }
@@ -1833,13 +1836,16 @@ export class Storage implements IStorage {
       if (items && items.length > 0) {
         for (const item of items) {
           // Create purchase item record
-          const [purchaseItem] = await this.db.insert(purchaseItems).values({
-            purchaseId: newPurchase.id,
-            inventoryItemId: item.inventoryItemId,
-            quantity: item.quantity.toString(),
-            unitPrice: item.unitPrice.toString(),
-            totalPrice: item.totalPrice.toString(),
-          }).returning();
+          const [purchaseItem] = await this.db
+            .insert(purchaseItems)
+            .values({
+              purchaseId: newPurchase.id,
+              inventoryItemId: item.inventoryItemId,
+              quantity: item.quantity.toString(),
+              unitPrice: item.unitPrice.toString(),
+              totalPrice: item.totalPrice.toString(),
+            })
+            .returning();
 
           console.log("Purchase item created:", purchaseItem);
 
@@ -1848,7 +1854,7 @@ export class Storage implements IStorage {
             item.inventoryItemId,
             parseFloat(item.quantity),
             parseFloat(item.unitPrice),
-            new Date()
+            new Date(),
           );
         }
       }
@@ -1860,7 +1866,8 @@ export class Storage implements IStorage {
           entityType: "party",
           transactionDate: new Date(),
           description: `Purchase from ${purchaseData.supplierName}${purchaseData.invoiceNumber ? ` - Invoice: ${purchaseData.invoiceNumber}` : ""}`,
-          referenceNumber: purchaseData.invoiceNumber || `PUR-${newPurchase.id}`,
+          referenceNumber:
+            purchaseData.invoiceNumber || `PUR-${newPurchase.id}`,
           debitAmount: purchaseData.totalAmount,
           creditAmount: "0",
           transactionType: "purchase",

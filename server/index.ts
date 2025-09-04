@@ -65,7 +65,6 @@ async function startServer() {
     if (dbConnected) {
       try {
         await initializeUnits();
-        console.log("✅ Units initialized successfully");
       } catch (error) {
         console.warn(
           "⚠️ Unit initialization failed, continuing without default units:",
@@ -90,17 +89,9 @@ async function startServer() {
 
     server.listen(port, "0.0.0.0", () => {
       console.log(`✅ Server running on http://0.0.0.0:${port}`);
-      console.log(`📝 Default login credentials:`);
-      console.log(`   Admin: admin@bakesewa.com / admin123`);
-      console.log(`   Manager: manager@bakesewa.com / manager123`);
-      console.log(`   Staff: staff@bakesewa.com / staff123`);
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);
-    console.error("❌ This appears to be a database connectivity issue.");
-    console.error(
-      "❌ Please check the DATABASE_URL and ensure the database is accessible.",
-    );
     process.exit(1);
   }
 }
