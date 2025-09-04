@@ -401,6 +401,10 @@ export class Storage implements IStorage {
     return result[0] || undefined;
   }
 
+  async getUserById(id: string): Promise<User | undefined> {
+    return this.getUser(id);
+  }
+
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
       const result = await this.db

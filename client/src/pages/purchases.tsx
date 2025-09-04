@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -93,7 +92,7 @@ export default function Purchases() {
     queryKey: ["/api/purchases"],
   });
 
-  const { data: inventoryItems = [] } = useQuery({
+  const { data: inventoryItems = [], isLoading: itemsLoading } = useQuery({
     queryKey: ["/api/inventory"],
   });
 
@@ -319,7 +318,7 @@ export default function Purchases() {
       const supplierName = purchase.supplierName?.toLowerCase() || "";
       const invoiceNumber = purchase.invoiceNumber?.toLowerCase() || "";
       const searchLower = searchTerm.toLowerCase();
-      
+
       const matchesSearch = 
         supplierName.includes(searchLower) ||
         invoiceNumber.includes(searchLower) ||
@@ -956,7 +955,7 @@ export default function Purchases() {
               Complete information for purchase #{selectedPurchase?.id}
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedPurchase && (
             <div className="space-y-6">
               {/* Purchase Information */}
