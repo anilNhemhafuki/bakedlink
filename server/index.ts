@@ -28,8 +28,6 @@ app.use(
 
 async function startServer() {
   try {
-    console.log("🚀 Starting bakery management server...");
-
     let dbConnected = false;
     let retryCount = 0;
     const maxRetries = 3;
@@ -39,26 +37,16 @@ async function startServer() {
       try {
         await initializeDatabase();
         dbConnected = true;
-        console.log("✅ Database connected successfully");
       } catch (error) {
         retryCount++;
-        console.error(
-          `❌ Database connection attempt ${retryCount} failed:`,
-          (error as Error).message,
-        );
-
         if (retryCount < maxRetries) {
-          console.log(`🔄 Retrying database connection in 5 seconds...`);
           await new Promise((resolve) => setTimeout(resolve, 5000));
         }
       }
     }
 
     if (!dbConnected) {
-      console.error("❌ Failed to connect to database after maximum retries");
-      console.error(
-        "❌ Server starting in limited mode without database features",
-      );
+      console.error("❌ Database connection failed - starting in limited mode");
     }
 
     // Initialize default units only if database is connected
@@ -66,10 +54,7 @@ async function startServer() {
       try {
         await initializeUnits();
       } catch (error) {
-        console.warn(
-          "⚠️ Unit initialization failed, continuing without default units:",
-          (error as Error).message,
-        );
+        console.warn("⚠️ Unit initialization failed:", (error as Error).message);
       }
     }
 

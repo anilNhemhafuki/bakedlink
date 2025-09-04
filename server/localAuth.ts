@@ -75,11 +75,8 @@ export async function setupAuth(app: Express) {
       passReqToCallback: true
     }, async (req, email, password, done) => {
       try {
-        console.log('🔍 Attempting login for email:', email);
-
         const user = await storage.getUserByEmail(email);
         if (!user) {
-          console.log('❌ User not found:', email);
           // Log failed login attempt
           const clientIP = req.headers['x-forwarded-for']?.split(',')[0] ||
                           req.headers['x-real-ip'] ||
@@ -123,7 +120,6 @@ export async function setupAuth(app: Express) {
         }
 
         if (!user.password) {
-          console.log('❌ User has no password set:', email);
           // Log failed login attempt
           const clientIPAddr = req.headers['x-forwarded-for']?.split(',')[0] ||
                           req.headers['x-real-ip'] ||
@@ -168,7 +164,6 @@ export async function setupAuth(app: Express) {
 
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
-          console.log('❌ Invalid password for user:', email);
           // Log failed login attempt
           const clientIPAddr = req.headers['x-forwarded-for']?.split(',')[0] ||
                           req.headers['x-real-ip'] ||
@@ -211,7 +206,6 @@ export async function setupAuth(app: Express) {
           return done(null, false, { message: 'Invalid email or password' });
         }
 
-        console.log('✅ Login successful for user:', email);
         // Enhanced login logging with geolocation and device tracking
         try {
           const clientIP = req.headers['x-forwarded-for']?.split(',')[0] ||
@@ -331,8 +325,6 @@ export async function setupAuth(app: Express) {
           // Log successful login
           await storage.logLogin(user.id, user.email, `${user.firstName || ''} ${user.lastName || ''}`.trim(), clientIP, userAgent, true);
 
-          console.log("✅ User logged in:", user.email);
-
           // Return user data (excluding password)
           const { password: _, ...userWithoutPassword } = user;
           res.json({ user: userWithoutPassword });
@@ -365,7 +357,6 @@ export async function setupAuth(app: Express) {
               return res.status(500).json({ message: "Logout failed" });
             }
 
-            console.log("✅ User logged out:", user?.email);
             res.json({ message: "Logged out successfully" });
           });
         } catch (error) {

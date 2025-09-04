@@ -21,16 +21,26 @@ export async function initializeDatabase() {
     }
 
     // Only initialize if database is connected
-    console.log("🔄 Ensuring default users exist...");
     await storage.ensureDefaultAdmin();
 
     // Initialize permissions
     await storage.initializeDefaultPermissions();
-    console.log("📝 Default login credentials:");
-    console.log("   Super Admin: superadmin@bakesewa.com / superadmin123");
-    console.log("   Admin: admin@bakesewa.com / admin123");
-    console.log("   Manager: manager@bakesewa.com / manager123");
-    console.log("   Staff: staff@bakesewa.com / staff123");
+    
+    console.log("\n" + "=".repeat(60));
+    console.log("🔑 SYSTEM LOGIN CREDENTIALS");
+    console.log("=".repeat(60));
+    console.log("📧 Super Admin: superadmin@bakesewa.com");
+    console.log("🔐 Password: superadmin123");
+    console.log("---");
+    console.log("📧 Admin: admin@bakesewa.com");
+    console.log("🔐 Password: admin123");
+    console.log("---");
+    console.log("📧 Manager: manager@bakesewa.com");
+    console.log("🔐 Password: manager123");
+    console.log("---");
+    console.log("📧 Staff: staff@bakesewa.com");
+    console.log("🔐 Password: staff123");
+    console.log("=".repeat(60));
 
   } catch (error) {
     console.error("❌ Database initialization failed:", error);
