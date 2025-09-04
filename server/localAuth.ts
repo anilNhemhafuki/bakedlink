@@ -49,14 +49,16 @@ export function getSession() {
   return session({
     secret: process.env.SESSION_SECRET || "bakery-management-secret-key-2024",
     store: sessionStore,
-    resave: false,
+    resave: true,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Set to false for development
       maxAge: sessionTtl,
       sameSite: 'lax'
     },
+    name: 'bakery.sid'
   });
 }
 
@@ -267,78 +269,76 @@ export async function setupAuth(app: Express) {
 
     // Serialize user for session
     passport.serializeUser((user: any, done) => {
+      console.log('Serializing user:', user.id);
       done(null, user.id);
     });
 
     // Deserialize user from session
     passport.deserializeUser(async (id: string, done) => {
       try {
+        console.log('Deserializing user ID:', id);
         const user = await storage.getUserById(id);
-        done(null, user);
+        if (user) {
+          console.log('User found:', user.email);
+          done(null, user);
+        } else {
+          console.log('User not found for ID:', id);
+          done(null, false);
+        }
       } catch (error) {
+        console.error('Deserialization error:', error);
         done(error);
       }
     });
 
     // Login route
-    app.post("/api/auth/login", async (req, res) => {
-        const clientIP = req.headers['x-forwarded-for']?.toString().split(',')[0] ||
-                        req.headers['x-real-ip']?.toString() ||
-                        req.connection.remoteAddress ||
-                        req.socket.remoteAddress ||
-                        '127.0.0.1';
-        const userAgent = req.get('User-Agent') || 'Unknown';
-
-        try {
-          const { email, password } = req.body;
-
-          if (!email || !password) {
-            // Log failed login attempt - missing credentials
-            await storage.logLogin('anonymous', email || 'unknown', 'Anonymous', clientIP, userAgent, false, 'Missing email or password');
-            return res.status(400).json({ message: "Email and password are required" });
+    app.post("/api/auth/login", (req, res, next) => {
+        console.log('Login attempt for:', req.body.email);
+        
+        passport.authenticate('local', (err: any, user: any, info: any) => {
+          if (err) {
+            console.error('Authentication error:', err);
+            return res.status(500).json({ message: 'Authentication failed' });
           }
-
-          const user = await storage.getUserByEmail(email);
+          
           if (!user) {
-            // Log failed login attempt - user not found
-            await storage.logLogin('unknown', email, 'Unknown User', clientIP, userAgent, false, 'User not found');
-            return res.status(401).json({ message: "Invalid credentials" });
+            console.log('Authentication failed:', info?.message);
+            return res.status(401).json({ message: info?.message || 'Invalid credentials' });
           }
 
-          const isValidPassword = await bcrypt.compare(password, user.password || "");
-          if (!isValidPassword) {
-            // Log failed login attempt - invalid password
-            await storage.logLogin(user.id, user.email, `${user.firstName || ''} ${user.lastName || ''}`.trim(), clientIP, userAgent, false, 'Invalid password');
-            return res.status(401).json({ message: "Invalid credentials" });
-          }
+          // Log the user in
+          req.logIn(user, (err) => {
+            if (err) {
+              console.error('Login error:', err);
+              return res.status(500).json({ message: 'Login failed' });
+            }
 
-          // Create session
-          req.session.userId = user.id;
-          req.session.user = {
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            firstName: user.firstName,
-            lastName: user.lastName,
-          };
-
-          // Log successful login
-          await storage.logLogin(user.id, user.email, `${user.firstName || ''} ${user.lastName || ''}`.trim(), clientIP, userAgent, true);
-
-          // Return user data (excluding password)
-          const { password: _, ...userWithoutPassword } = user;
-          res.json({ user: userWithoutPassword });
-        } catch (error) {
-          console.error("Login error:", error);
-          // Log system error during login
-          await storage.logLogin('system', req.body?.email || 'unknown', 'System', clientIP, userAgent, false, error instanceof Error ? error.message : 'System error during login');
-          res.status(500).json({ message: "Login failed" });
-        }
+            console.log('User logged in successfully:', user.email);
+            
+            // Set session data
+            req.session.userId = user.id;
+            req.session.user = user;
+            
+            // Save session explicitly
+            req.session.save((err) => {
+              if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ message: 'Session creation failed' });
+              }
+              
+              console.log('Session saved successfully for user:', user.email);
+              
+              // Return user data (excluding password)
+              const { password: _, ...userWithoutPassword } = user;
+              res.json({ user: userWithoutPassword });
+            });
+          });
+        })(req, res, next);
       });
 
     // Logout route
     app.post("/api/auth/logout", async (req, res) => {
-        const user = req.session.user;
+        const user = req.user;
         const clientIP = req.headers['x-forwarded-for']?.toString().split(',')[0] ||
                         req.headers['x-real-ip']?.toString() ||
                         req.connection.remoteAddress ||
@@ -351,24 +351,25 @@ export async function setupAuth(app: Express) {
             await storage.logLogout(user.id, user.email, `${user.firstName || ''} ${user.lastName || ''}`.trim(), clientIP);
           }
 
-          req.session.destroy((err) => {
+          req.logout((err) => {
             if (err) {
               console.error("Logout error:", err);
               return res.status(500).json({ message: "Logout failed" });
             }
-
-            res.json({ message: "Logged out successfully" });
+            
+            req.session.destroy((err) => {
+              if (err) {
+                console.error("Session destroy error:", err);
+                return res.status(500).json({ message: "Logout failed" });
+              }
+              
+              res.clearCookie('connect.sid');
+              res.json({ message: "Logged out successfully" });
+            });
           });
         } catch (error) {
-          console.error("Logout audit log error:", error);
-          // Still proceed with logout even if audit logging fails
-          req.session.destroy((err) => {
-            if (err) {
-              console.error("Logout error:", err);
-              return res.status(500).json({ message: "Logout failed" });
-            }
-            res.json({ message: "Logged out successfully" });
-          });
+          console.error("Logout error:", error);
+          res.status(500).json({ message: "Logout failed" });
         }
       });
 
@@ -379,8 +380,17 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
-  if (req.isAuthenticated()) {
+  console.log('Checking authentication:', {
+    isAuthenticated: req.isAuthenticated(),
+    sessionID: req.sessionID,
+    userId: req.session?.userId,
+    user: req.user ? 'present' : 'absent'
+  });
+  
+  if (req.isAuthenticated() && req.user) {
     return next();
   }
+  
+  console.log('Authentication failed - redirecting to login');
   res.status(401).json({ message: 'Authentication required' });
 };
