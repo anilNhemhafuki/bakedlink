@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import multer from "multer";
+import bcrypt from "bcrypt";
 import { eq, desc, count, sql, isNotNull, and } from "drizzle-orm";
 
 import { createServer, type Server } from "http";
@@ -2041,7 +2042,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Hash password
-        const bcrypt = require("bcrypt");
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create user
@@ -2081,7 +2081,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Only update password if provided
         if (password) {
-          const bcrypt = require("bcrypt");
           updateData.password = await bcrypt.hash(password, 10);
         }
 
@@ -2220,7 +2219,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         const user = await storage.getUser(userId);
-        const bcrypt = require("bcrypt");
         const isValidPassword = await bcrypt.compare(
           currentPassword,
           user.password || "",

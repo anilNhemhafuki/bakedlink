@@ -2183,8 +2183,8 @@ export class Storage implements IStorage {
         .leftJoin(products, eq(productionSchedule.productId, products.id))
         .where(
           and(
-            gte(productionSchedule.scheduledDate, today),
-            lt(productionSchedule.scheduledDate, tomorrow),
+            gte(productionSchedule.scheduledDate, today.toISOString()),
+            lt(productionSchedule.scheduledDate, tomorrow.toISOString()),
             // Only include records with valid dates
             sql`${productionSchedule.scheduledDate} IS NOT NULL`,
           ),
