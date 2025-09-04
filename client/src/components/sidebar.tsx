@@ -511,23 +511,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
         {/* Enhanced user profile section */}
         <div className="border-t border-gray-200/50 pt-4">
-          {isCollapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
-                  <DropdownMenu>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="ml-2">
-                <p className="font-medium">
-                  {user?.firstName
-                    ? `${user.firstName} ${user.lastName || ""}`.trim()
-                    : user?.email || "User"}
-                </p>
-                <p className="text-xs opacity-75">{user?.email}</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <DropdownMenu>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
@@ -670,9 +654,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-          {isCollapsed && (
-            </div>
-          )}
         </div>
       </aside>
     </TooltipProvider>
