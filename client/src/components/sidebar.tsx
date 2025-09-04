@@ -526,7 +526,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
               >
                 <div
                   className={`bg-gradient-to-br from-primary via-primary/90 to-primary/70 rounded-xl 
-                             flex items-center justify-center shadow-lg transition-all duration-300 
+                             flex items-center justify-center transition-all duration-300 
                              group-hover:scale-110 group-hover:rotate-3 relative overflow-hidden 
                              before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/30 
                              before:to-transparent before:opacity-0 group-hover:before:opacity-100 
@@ -561,9 +561,11 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                     <div className="flex items-center mt-1">
                       <span className="w-2 h-2 bg-green-500 rounded-full mr-2 flex-shrink-0 animate-pulse shadow-lg shadow-green-500/50"></span>
                       <span className="text-xs text-gray-500 capitalize truncate font-medium transition-colors duration-300 group-hover:text-gray-700">
-                        {user?.role === 'super_admin' ? 'Super Admin' : 
-                         user?.role === 'admin' ? 'Administrator' :
-                         user?.role || 'Staff'}
+                        {user?.role === "super_admin"
+                          ? "Super Admin"
+                          : user?.role === "admin"
+                            ? "Administrator"
+                            : user?.role || "Staff"}
                       </span>
                     </div>
                   </div>
@@ -571,89 +573,104 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
               </button>
             </DropdownMenuTrigger>
 
-          <DropdownMenuContent 
-            side={isCollapsed ? "right" : "top"} 
-            align="end" 
-            className={`${isCollapsed ? "w-64 mr-2" : "w-80 mb-2"} bg-white/95 backdrop-blur-md border border-gray-200/50 shadow-2xl`}
-          >
-            <div className="px-4 py-3 border-b border-gray-100">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
-                  {user?.profileImageUrl ? (
-                    <img
-                      src={user.profileImageUrl}
-                      alt="Profile"
-                      className="w-8 h-8 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <i className="fas fa-user text-primary-foreground text-sm"></i>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">
-                    {user?.firstName
-                      ? `${user.firstName} ${user.lastName || ""}`.trim()
-                      : user?.email || "User"}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                </div>
-              </div>
-              <div className="mt-2 flex items-center justify-between">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                  ${user?.role === 'super_admin' ? 'bg-purple-100 text-purple-800' : 
-                    user?.role === 'admin' ? 'bg-blue-100 text-blue-800' :
-                    user?.role === 'manager' ? 'bg-green-100 text-green-800' :
-                    'bg-gray-100 text-gray-800'}`}>
-                  <span className="w-1.5 h-1.5 bg-current rounded-full mr-1.5 animate-pulse"></span>
-                  {user?.role === 'super_admin' ? 'Super Admin' : 
-                   user?.role === 'admin' ? 'Administrator' :
-                   user?.role === 'manager' ? 'Manager' :
-                   user?.role === 'supervisor' ? 'Supervisor' :
-                   user?.role === 'marketer' ? 'Marketer' :
-                   'Staff'}
-                </span>
-                <div className="text-xs text-gray-400">
-                  Online
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-2">
-              <ProfileEditor user={user} />
-            </div>
-            
-            <DropdownMenuItem asChild>
-              <Link href="/settings" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 transition-colors">
-                <Settings className="mr-3 h-4 w-4 text-gray-500" />
-                <span className="text-sm">Settings</span>
-              </Link>
-            </DropdownMenuItem>
-            
-            <DropdownMenuSeparator className="my-1" />
-            
-            <DropdownMenuItem
-              onClick={async () => {
-                try {
-                  await logout();
-                  toast({
-                    title: "Success",
-                    description: "Logged out successfully",
-                  });
-                } catch (error) {
-                  toast({
-                    title: "Error",
-                    description: "Failed to logout",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              className="text-red-600 cursor-pointer px-3 py-2 hover:bg-red-50 transition-colors"
+            <DropdownMenuContent
+              side="right"
+              align="end"
+              className={`${isCollapsed ? "w-64 mr-2" : "w-80 mb-2"} bg-white/95 backdrop-blur-md border border-gray-200/50 shadow-2xl`}
             >
-              <LogOut className="mr-3 h-4 w-4" />
-              <span className="text-sm">Sign out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <div className="px-4 py-3 border-b border-gray-100">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
+                    {user?.profileImageUrl ? (
+                      <img
+                        src={user.profileImageUrl}
+                        alt="Profile"
+                        className="w-8 h-8 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <i className="fas fa-user text-primary-foreground text-sm"></i>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {user?.firstName
+                        ? `${user.firstName} ${user.lastName || ""}`.trim()
+                        : user?.email || "User"}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {user?.email}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                  ${
+                    user?.role === "super_admin"
+                      ? "bg-purple-100 text-purple-800"
+                      : user?.role === "admin"
+                        ? "bg-blue-100 text-blue-800"
+                        : user?.role === "manager"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                  }`}
+                  >
+                    <span className="w-1.5 h-1.5 bg-current rounded-full mr-1.5 animate-pulse"></span>
+                    {user?.role === "super_admin"
+                      ? "Super Admin"
+                      : user?.role === "admin"
+                        ? "Administrator"
+                        : user?.role === "manager"
+                          ? "Manager"
+                          : user?.role === "supervisor"
+                            ? "Supervisor"
+                            : user?.role === "marketer"
+                              ? "Marketer"
+                              : "Staff"}
+                  </span>
+                  <div className="text-xs text-gray-400">Online</div>
+                </div>
+              </div>
+
+              <div className="p-2">
+                <ProfileEditor user={user} />
+              </div>
+
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/settings"
+                  className="flex items-center w-full px-3 py-2 hover:bg-gray-50 transition-colors"
+                >
+                  <Settings className="mr-3 h-4 w-4 text-gray-500" />
+                  <span className="text-sm">Settings</span>
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="my-1" />
+
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    await logout();
+                    toast({
+                      title: "Success",
+                      description: "Logged out successfully",
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Error",
+                      description: "Failed to logout",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                className="text-red-600 cursor-pointer px-3 py-2 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="mr-3 h-4 w-4" />
+                <span className="text-sm">Sign out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
     </TooltipProvider>
