@@ -34,11 +34,29 @@ export default function LabelPrinting() {
     queryKey: ["production-schedule-labels"],
     queryFn: async () => {
       try {
+        console.log("🔄 Fetching production schedule labels...");
         const res = await apiRequest("GET", "/api/production-schedule-labels");
-        return Array.isArray(res) ? res : res.labels || [];
+        console.log("📋 Labels API response:", res);
+        
+        // Handle different response formats
+        if (res?.success && res?.labels) {
+          return Array.isArray(res.labels) ? res.labels : [];
+        }
+        
+        if (res?.labels) {
+          return Array.isArray(res.labels) ? res.labels : [];
+        }
+        
+        // If response is directly an array
+        if (Array.isArray(res)) {
+          return res;
+        }
+        
+        console.warn("Unexpected labels response format:", res);
+        return [];
       } catch (error) {
         console.error("Failed to fetch production schedule labels:", error);
-        return [];
+        throw error;
       }
     },
     retry: (failureCount, error) =>
@@ -121,41 +139,69 @@ export default function LabelPrinting() {
   // Create/Update mutation
   const createMutation = useMutation({
     mutationFn: async (data: InsertProductionScheduleLabel) => {
-      const response = await fetch('/api/production-schedule-labels', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to save');
-      return response.json();
+      console.log("🔄 Saving production schedule label:", data);
+      const response = await apiRequest('POST', '/api/production-schedule-labels', data);
+      return response;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/production-schedule-labels'] });
-      toast({ title: 'Success', description: 'Production schedule label saved successfully!' });
+    onSuccess: (data) => {
+      console.log("✅ Label saved successfully:", data);
+      queryClient.invalidateQueries({ queryKey: ["production-schedule-labels"] });
+      toast({ 
+        title: 'Success', 
+        description: 'Production schedule label saved successfully!' 
+      });
       resetForm();
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to save production schedule label', variant: 'destructive' });
+    onError: (error: any) => {
+      console.error("❌ Failed to save label:", error);
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "Session expired. Redirecting to login...",
+          variant: "destructive",
+        });
+        setTimeout(() => (window.location.href = "/api/login"), 500);
+        return;
+      }
+      toast({ 
+        title: 'Error', 
+        description: error?.message || 'Failed to save production schedule label', 
+        variant: 'destructive' 
+      });
     },
   });
 
   // Close day mutation
   const closeDayMutation = useMutation({
     mutationFn: async (ids: number[]) => {
-      const response = await fetch('/api/production-schedule-labels/close-day', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids }),
+      console.log("🔄 Closing day for labels:", ids);
+      const response = await apiRequest('POST', '/api/production-schedule-labels/close-day', { ids });
+      return response;
+    },
+    onSuccess: (data) => {
+      console.log("✅ Day closed successfully:", data);
+      queryClient.invalidateQueries({ queryKey: ["production-schedule-labels"] });
+      toast({ 
+        title: 'Success', 
+        description: 'Day closed successfully! Labels moved to production.' 
       });
-      if (!response.ok) throw new Error('Failed to close day');
-      return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/production-schedule-labels'] });
-      toast({ title: 'Success', description: 'Day closed successfully! Labels moved to production.' });
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to close day', variant: 'destructive' });
+    onError: (error: any) => {
+      console.error("❌ Failed to close day:", error);
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "Session expired. Redirecting to login...",
+          variant: "destructive",
+        });
+        setTimeout(() => (window.location.href = "/api/login"), 500);
+        return;
+      }
+      toast({ 
+        title: 'Error', 
+        description: error?.message || 'Failed to close day', 
+        variant: 'destructive' 
+      });
     },
   });
 

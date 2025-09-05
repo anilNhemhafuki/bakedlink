@@ -4465,25 +4465,52 @@ Form Version: ${formVersion || "1.0"}`,
   // Production Schedule Labels Routes
   app.get("/api/production-schedule-labels", isAuthenticated, async (req, res) => {
     try {
+      console.log("📋 Fetching production schedule labels...");
       const labels = await storage.getProductionScheduleLabels();
-      res.json(labels);
+      console.log(`✅ Retrieved ${labels.length} production schedule labels`);
+      
+      // Return consistent format
+      res.json({
+        success: true,
+        labels: Array.isArray(labels) ? labels : [],
+        count: Array.isArray(labels) ? labels.length : 0
+      });
     } catch (error) {
-      console.error("Error fetching production schedule labels:", error);
-      res.status(500).json({ message: "Failed to fetch production schedule labels" });
+      console.error("❌ Error fetching production schedule labels:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch production schedule labels",
+        labels: [],
+        count: 0
+      });
     }
   });
 
-  app.post("/api/production-schedule-labels", isAuthenticated, async (req, res) => {
+  app.post("/api/production-schedule-labels", isAuthenticated, async (req: any, res) => {
     try {
-      const labelData = req.body;
-      labelData.createdBy = req.user?.email;
-      labelData.updatedBy = req.user?.email;
+      console.log("📋 Creating production schedule label with data:", req.body);
+      
+      const labelData = {
+        ...req.body,
+        createdBy: req.user?.email || req.user?.firstName + ' ' + req.user?.lastName || 'Unknown User',
+        updatedBy: req.user?.email || req.user?.firstName + ' ' + req.user?.lastName || 'Unknown User',
+      };
       
       const newLabel = await storage.createProductionScheduleLabel(labelData);
-      res.json(newLabel);
+      console.log("✅ Production schedule label created successfully:", newLabel.id);
+      
+      res.json({
+        success: true,
+        label: newLabel,
+        message: "Production schedule label created successfully"
+      });
     } catch (error) {
-      console.error("Error creating production schedule label:", error);
-      res.status(500).json({ message: "Failed to create production schedule label" });
+      console.error("❌ Error creating production schedule label:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to create production schedule label",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

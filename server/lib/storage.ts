@@ -1318,7 +1318,7 @@ export class Storage implements IStorage {
         {
           closingStock,
           closingRate,
-          closingValue: closingStockValue,
+          closingStockValue,
           purchaseQuantity,
           purchaseRate,
           purchaseValue,
@@ -3454,7 +3454,7 @@ export class Storage implements IStorage {
         })
         .where(sql`${productionScheduleLabels.id} = ANY(${ids})`)
         .returning();
-      
+
       return { 
         message: `${result.length} labels closed successfully`,
         closedLabels: result 
