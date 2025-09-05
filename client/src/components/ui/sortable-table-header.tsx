@@ -21,7 +21,7 @@ export function SortableTableHeader({
   align = "left"
 }: SortableTableHeaderProps) {
   const isActive = sortConfig?.key === sortKey;
-  const direction = isActive ? sortConfig.direction : null;
+  const direction = isActive ? sortConfig?.direction : null;
 
   const getSortIcon = () => {
     if (!isActive) {
