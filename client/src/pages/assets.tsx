@@ -314,98 +314,144 @@ export default function Assets() {
               Add Asset
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
                 {editingAsset ? "Edit Asset" : "Add New Asset"}
               </DialogTitle>
-              <DialogDescription>Enter asset details below</DialogDescription>
+              <DialogDescription>
+                {editingAsset ? "Update asset information" : "Create a new asset record with detailed information"}
+              </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSave} className="space-y-4">
-              <Input
-                placeholder="Asset Name"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                required
-              />
+            <form onSubmit={handleSave} className="space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Basic Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="asset-name">Asset Name *</Label>
+                    <Input
+                      id="asset-name"
+                      placeholder="e.g. Office Laptop, Kitchen Mixer"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange("name", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="asset-category">Category *</Label>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) => handleInputChange("category", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category.charAt(0).toUpperCase() + category.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="asset-location">Location</Label>
+                    <Input
+                      id="asset-location"
+                      placeholder="e.g. Main Office, Kitchen"
+                      value={formData.location}
+                      onChange={(e) => handleInputChange("location", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="asset-condition">Condition</Label>
+                    <Select
+                      value={formData.condition}
+                      onValueChange={(value) => handleInputChange("condition", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Condition" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {conditions.map((condition) => (
+                          <SelectItem key={condition} value={condition}>
+                            {condition.charAt(0).toUpperCase() + condition.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
 
-              <Select
-                value={formData.category}
-                onValueChange={(value) => handleInputChange("category", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category.charAt(0).toUpperCase() + category.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Financial Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Financial Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="purchase-date">Purchase Date</Label>
+                    <Input
+                      id="purchase-date"
+                      type="date"
+                      value={formData.purchaseDate}
+                      onChange={(e) =>
+                        handleInputChange("purchaseDate", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="purchase-price">Purchase Price ($)</Label>
+                    <Input
+                      id="purchase-price"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={formData.purchasePrice}
+                      onChange={(e) =>
+                        handleInputChange("purchasePrice", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="current-value">Current Value ($)</Label>
+                    <Input
+                      id="current-value"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={formData.currentValue}
+                      onChange={(e) =>
+                        handleInputChange("currentValue", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
 
-              <Textarea
-                placeholder="Description"
-                value={formData.description}
-                onChange={(e) =>
-                  handleInputChange("description", e.target.value)
-                }
-                rows={3}
-              />
+              {/* Description */}
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="asset-description">Description</Label>
+                  <Textarea
+                    id="asset-description"
+                    placeholder="Additional notes about the asset..."
+                    value={formData.description}
+                    onChange={(e) =>
+                      handleInputChange("description", e.target.value)
+                    }
+                    rows={3}
+                  />
+                </div>
+              </div>
 
-              <Input
-                placeholder="Location"
-                value={formData.location}
-                onChange={(e) => handleInputChange("location", e.target.value)}
-              />
-
-              <Select
-                value={formData.condition}
-                onValueChange={(value) => handleInputChange("condition", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Condition" />
-                </SelectTrigger>
-                <SelectContent>
-                  {conditions.map((condition) => (
-                    <SelectItem key={condition} value={condition}>
-                      {condition.charAt(0).toUpperCase() + condition.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Input
-                type="date"
-                placeholder="Purchase Date"
-                value={formData.purchaseDate}
-                onChange={(e) =>
-                  handleInputChange("purchaseDate", e.target.value)
-                }
-              />
-
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="Purchase Price ($)"
-                value={formData.purchasePrice}
-                onChange={(e) =>
-                  handleInputChange("purchasePrice", e.target.value)
-                }
-              />
-
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="Current Value ($)"
-                value={formData.currentValue}
-                onChange={(e) =>
-                  handleInputChange("currentValue", e.target.value)
-                }
-              />
-
-              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
                 <Button
                   type="button"
                   variant="outline"
@@ -421,7 +467,13 @@ export default function Assets() {
                   }
                   className="w-full sm:w-auto"
                 >
-                  {editingAsset ? "Update" : "Create"}
+                  {createMutation.isPending || updateMutation.isPending
+                    ? editingAsset 
+                      ? "Updating..." 
+                      : "Creating..."
+                    : editingAsset 
+                      ? "Update Asset" 
+                      : "Create Asset"}
                 </Button>
               </div>
             </form>

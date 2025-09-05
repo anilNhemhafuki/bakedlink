@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -26,26 +27,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Plus,
-  Calendar,
-  Edit,
-  Trash2,
-  Clock,
-  Check,
-  Target,
-} from "lucide-react";
+import SearchBar from "@/components/search-bar";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
+import {
+  Pagination,
+  PaginationInfo,
+  PageSizeSelector,
+  usePagination,
+} from "@/components/ui/pagination";
+import { Plus, Search, Edit, Trash2, Clock, Check, Target } from "lucide-react";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 
 interface ProductionItem {
@@ -70,6 +64,10 @@ export default function Production() {
   const [selectedStatus, setSelectedStatus] = useState("");
   const { toast } = useToast();
 
+  // For search and filtering
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
   // Fetch products
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
@@ -87,16 +85,16 @@ export default function Production() {
   });
 
   // Fetch production schedule
-  const { data: productionSchedule = [], isLoading } = useQuery({
+  const {
+    data: productionSchedule = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["production-schedule"],
     queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", "/api/production-schedule");
-        return Array.isArray(res) ? res : res.schedule || [];
-      } catch (error) {
-        console.error("Failed to fetch production schedule:", error);
-        return [];
-      }
+      const res = await apiRequest("GET", "/api/production-schedule");
+      return Array.isArray(res) ? res : res.schedule || [];
     },
     retry: (failureCount, error) =>
       !isUnauthorizedError(error) && failureCount < 3,
@@ -118,7 +116,7 @@ export default function Production() {
         description: "Production item scheduled successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -152,7 +150,7 @@ export default function Production() {
         description: "Production item updated successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -182,7 +180,7 @@ export default function Production() {
         description: "Production item deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -215,7 +213,7 @@ export default function Production() {
         description: "Production day closed successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: "Failed to close production day",
@@ -301,6 +299,33 @@ export default function Production() {
     (sum: number, item: any) => sum + (item.actualQuantity || 0),
     0,
   );
+
+  // Filter and sort data
+  const filteredSchedule = productionSchedule.filter((item: any) => {
+    const matchesSearch =
+      item.productName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.notes?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || item.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredSchedule,
+    "scheduledDate",
+  );
+
+  // Add pagination functionality
+  const {
+    currentItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setPageSize,
+    goToPage,
+    totalItems,
+  } = usePagination(sortedData, 10);
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -508,6 +533,29 @@ export default function Production() {
         </div>
       </div>
 
+      {/* Search, Filter and Status */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <SearchBar
+          placeholder="Search by product name or notes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-auto">
+              <SelectValue placeholder="Filter by Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {/* Production Schedule List */}
       <Card>
         <CardContent>
@@ -515,24 +563,46 @@ export default function Production() {
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
+          ) : isError ? (
+            <div className="text-center py-8 text-destructive">
+              Error loading production schedule: {error.message}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Planned Qty</TableHead>
-                    <TableHead>Actual Qty</TableHead>
-                    <TableHead>Date</TableHead>
+                    <SortableTableHeader
+                      sortKey="productName"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
+                      Product
+                    </SortableTableHeader>
+                    <TableCell>Planned Qty</TableCell>
+                    <TableCell>Actual Qty</TableCell>
+                    <SortableTableHeader
+                      sortKey="scheduledDate"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
+                      Date
+                    </SortableTableHeader>
                     <TableHead>Time</TableHead>
-                    <TableHead>Status</TableHead>
+                    <SortableTableHeader
+                      sortKey="status"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
+                      Status
+                    </SortableTableHeader>
                     <TableHead>Assigned To</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {productionSchedule.length > 0 ? (
-                    productionSchedule.map((item: ProductionItem) => (
+                  {currentItems.length > 0 ? (
+                    currentItems.map((item: ProductionItem) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">
                           {item.productName}
@@ -557,7 +627,8 @@ export default function Production() {
                             })()}`}
                         </TableCell>
                         <TableCell>
-                          {item.actualQuantity ? (
+                          {item.actualQuantity !== null &&
+                          item.actualQuantity !== undefined ? (
                             <span className="text-green-600 font-medium">
                               {item.actualQuantity}
                               {(() => {
@@ -637,12 +708,12 @@ export default function Production() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8">
-                        <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                          No production scheduled
+                          No production items found
                         </h3>
                         <p className="text-muted-foreground mb-4">
-                          Start by scheduling your first production item
+                          Adjust your search or filters to find production items.
                         </p>
                       </TableCell>
                     </TableRow>
@@ -652,6 +723,27 @@ export default function Production() {
             </div>
           )}
         </CardContent>
+        {!isLoading && !isError && currentItems.length > 0 && (
+          <CardContent>
+            <div className="flex flex-col sm:flex-row justify-between items-center">
+              <PaginationInfo
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={totalItems}
+              />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={goToPage}
+              />
+              <PageSizeSelector
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+              />
+            </div>
+          </CardContent>
+        )}
       </Card>
     </div>
   );

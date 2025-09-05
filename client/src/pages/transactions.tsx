@@ -25,6 +25,141 @@ import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
 import { format } from "date-fns";
 
+// Assume useTableSort and usePagination are custom hooks providing sorting and pagination logic
+// Example stubs:
+const useTableSort = (data: any[], defaultSortColumn: string) => {
+  const [sortConfig, setSortConfig] = useState({
+    key: defaultSortColumn,
+    direction: "ascending",
+  });
+
+  const sortedData = useMemo(() => {
+    let sortableItems = [...data];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === "ascending" ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === "ascending" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [data, sortConfig]);
+
+  const requestSort = (key: string) => {
+    let direction = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  return { sortedData, sortConfig, requestSort };
+};
+
+const usePagination = (data: any[], initialPageSize: number) => {
+  const [pageSize, setPageSize] = useState(initialPageSize);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalItems = data.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+
+  const currentItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return data.slice(startIndex, endIndex);
+  }, [data, currentPage, pageSize]);
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  return {
+    currentItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setPageSize,
+    goToPage,
+    totalItems,
+  };
+};
+
+// Assume SortableTableHeader, PaginationInfo, PageSizeSelector, Pagination are UI components
+const SortableTableHeader = ({
+  children,
+  sortKey,
+  sortConfig,
+  onSort,
+  className,
+}: any) => {
+  const isSorted = sortConfig.key === sortKey;
+  const icon =
+    sortConfig.key === sortKey
+      ? sortConfig.direction === "ascending"
+        ? " ▲"
+        : " ▼"
+      : "";
+  return (
+    <TableHead className={className}>
+      <Button
+        variant="ghost"
+        className="p-0 h-auto"
+        onClick={() => onSort(sortKey)}
+      >
+        {children}
+        {isSorted && <span className="ml-1">{icon}</span>}
+      </Button>
+    </TableHead>
+  );
+};
+
+const PaginationInfo = ({ currentPage, totalPages, totalItems }: any) => (
+  <div className="text-sm text-muted-foreground">
+    Page {currentPage} of {totalPages} ({totalItems} items)
+  </div>
+);
+
+const PageSizeSelector = ({ pageSize, onPageSizeChange, options }: any) => (
+  <Select value={pageSize.toString()} onValueChange={(val) => onPageSizeChange(parseInt(val))}>
+    <SelectTrigger className="w-[100px]">
+      <SelectValue placeholder="Page Size" />
+    </SelectTrigger>
+    <SelectContent>
+      {options.map((size: number) => (
+        <SelectItem key={size} value={size.toString()}>
+          Show {size}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+);
+
+const Pagination = ({ currentPage, totalPages, onPageChange }: any) => (
+  <div className="flex items-center gap-2">
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => onPageChange(currentPage - 1)}
+      disabled={currentPage === 1}
+    >
+      Previous
+    </Button>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => onPageChange(currentPage + 1)}
+      disabled={currentPage === totalPages}
+    >
+      Next
+    </Button>
+  </div>
+);
+
 interface Transaction {
   id: string;
   entryDate: string;
@@ -200,6 +335,23 @@ export default function Transactions() {
 
     return filtered;
   }, [allTransactions, searchTerm, typeFilter, statusFilter, dateRange]);
+
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    allTransactions,
+    "txnDate",
+  );
+
+  // Add pagination functionality
+  const {
+    currentItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setPageSize,
+    goToPage,
+    totalItems,
+  } = usePagination(sortedData, 15);
 
   // Calculate summary stats
   const stats = useMemo(() => {
@@ -416,99 +568,175 @@ export default function Transactions() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">SN</TableHead>
-                  <TableHead>TXN Date</TableHead>
-                  <TableHead>TXN No</TableHead>
-                  <TableHead>Particular</TableHead>
-                  <TableHead>TXN Type</TableHead>
-                  <TableHead>Parties</TableHead>
-                  <TableHead>PMT Mode</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
+                  <SortableTableHeader
+                    sortKey="txnDate"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
+                    TXN Date
+                  </SortableTableHeader>
+                  <SortableTableHeader
+                    sortKey="txnNo"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
+                    TXN No
+                  </SortableTableHeader>
+                  <SortableTableHeader
+                    sortKey="particular"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
+                    Particular
+                  </SortableTableHeader>
+                  <SortableTableHeader
+                    sortKey="txnType"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
+                    TXN Type
+                  </SortableTableHeader>
+                  <SortableTableHeader
+                    sortKey="parties"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
+                    Parties
+                  </SortableTableHeader>
+                  <SortableTableHeader
+                    sortKey="pmtMode"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
+                    PMT Mode
+                  </SortableTableHeader>
+                  <SortableTableHeader
+                    sortKey="amount"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                    className="text-right"
+                  >
+                    Amount
+                  </SortableTableHeader>
+                  <SortableTableHeader
+                    sortKey="status"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
+                    Status
+                  </SortableTableHeader>
                   <TableHead>Entry By</TableHead>
                   <TableHead className="w-12">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTransactions.map((txn, index) => (
-                  <TableRow key={txn.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
+                {currentItems.length > 0 ? (
+                  currentItems.map((transaction, index) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell className="font-medium">
+                        {index + 1}
+                      </TableCell>
 
-                    <TableCell>{txn.txnDate}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {txn.txnNo}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {txn.particular}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          txn.txnType === "Sales"
-                            ? "default"
-                            : txn.txnType === "Purchase"
-                              ? "secondary"
-                              : "destructive"
-                        }
-                      >
-                        {txn.txnType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{txn.parties}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{txn.pmtMode}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      <span
-                        className={
-                          txn.category === "Income"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }
-                      >
-                        {formatCurrency(txn.amount)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          txn.status === "Paid" ? "default" : "secondary"
-                        }
-                        className={
-                          txn.status === "Paid"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }
-                      >
-                        {txn.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-xs text-blue-600 font-medium">
-                            {txn.entryBy.charAt(0).toUpperCase()}
-                          </span>
+                      <TableCell>{transaction.txnDate}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {transaction.txnNo}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {transaction.particular}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            transaction.txnType === "Sales"
+                              ? "default"
+                              : transaction.txnType === "Purchase"
+                                ? "secondary"
+                                : "destructive"
+                          }
+                        >
+                          {transaction.txnType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{transaction.parties}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{transaction.pmtMode}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        <span
+                          className={
+                            transaction.category === "Income"
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }
+                        >
+                          {formatCurrency(transaction.amount)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            transaction.status === "Paid" ? "default" : "secondary"
+                          }
+                          className={
+                            transaction.status === "Paid"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }
+                        >
+                          {transaction.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-xs text-blue-600 font-medium">
+                              {transaction.entryBy.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <span className="text-sm">{transaction.entryBy}</span>
                         </div>
-                        <span className="text-sm">{txn.entryBy}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-center py-8">
+                      <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No transactions found matching your criteria</p>
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>
 
-          {filteredTransactions.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No transactions found matching your criteria</p>
+          {/* Pagination Controls */}
+          {allTransactions.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+              <PaginationInfo
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+              />
+              <div className="flex items-center gap-4">
+                <PageSizeSelector
+                  pageSize={pageSize}
+                  onPageSizeChange={setPageSize}
+                  options={[10, 15, 25, 50]}
+                />
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={goToPage}
+                />
+              </div>
             </div>
           )}
         </CardContent>

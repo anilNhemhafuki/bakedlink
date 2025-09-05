@@ -49,6 +49,14 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useUnits } from "@/hooks/useUnits"; // Import useUnits
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
+import {
+  Pagination,
+  PaginationInfo,
+  PageSizeSelector,
+  usePagination,
+} from "@/components/ui/pagination";
 
 export default function Ingredients() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -301,12 +309,31 @@ export default function Ingredients() {
     }
   };
 
-  const filteredIngredients = ingredients.filter(
-    (item: any) =>
-      item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.group?.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredIngredients = ingredients.filter((ingredient: any) => {
+    return (
+      ingredient.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ingredient.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ingredient.group?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredIngredients,
+    "name",
   );
+
+  // Add pagination functionality
+  const {
+    currentItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setPageSize,
+    goToPage,
+    totalItems,
+  } = usePagination(sortedData, 10);
+
 
   const getStockBadge = (item: any) => {
     const currentStock = parseFloat(item.currentStock || 0);
@@ -676,11 +703,35 @@ export default function Ingredients() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Ingredient</TableHead>
+                    <SortableTableHeader
+                      sortKey="name"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
+                      Ingredient
+                    </SortableTableHeader>
                     <TableHead>Unit</TableHead>
-                    <TableHead>Current Stock</TableHead>
-                    <TableHead>Min Level</TableHead>
-                    <TableHead>Cost/Unit</TableHead>
+                    <SortableTableHeader
+                      sortKey="currentStock"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
+                      Current Stock
+                    </SortableTableHeader>
+                    <SortableTableHeader
+                      sortKey="minLevel"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
+                      Min Level
+                    </SortableTableHeader>
+                    <SortableTableHeader
+                      sortKey="costPerUnit"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
+                      Cost/Unit
+                    </SortableTableHeader>
                     <TableHead className="hidden md:table-cell">
                       Category
                     </TableHead>
@@ -692,107 +743,135 @@ export default function Ingredients() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredIngredients.map((item: any) => {
-                    const stockInfo = getStockBadge(item);
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Package className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <div className="font-medium">{item.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {item.company || "No brand"}
+                  {currentItems.length > 0 ? (
+                    currentItems.map((item: any) => {
+                      const stockInfo = getStockBadge(item);
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                <Package className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                <div className="font-medium">{item.name}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {item.company || "No brand"}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">
-                            {getUnitName(item.unitId)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            {parseFloat(item.currentStock || 0).toFixed(2)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm text-muted-foreground">
-                            {parseFloat(item.minLevel || 0).toFixed(2)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            {symbol}
-                            {parseFloat(item.costPerUnit || 0).toFixed(2)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {item.group ? (
-                            <Badge variant="outline" className="capitalize">
-                              {item.group.replace("-", " ")}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">
+                              {getUnitName(item.unitId)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">
+                              {parseFloat(item.currentStock || 0).toFixed(2)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-muted-foreground">
+                              {parseFloat(item.minLevel || 0).toFixed(2)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">
+                              {symbol}
+                              {parseFloat(item.costPerUnit || 0).toFixed(2)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {item.group ? (
+                              <Badge variant="outline" className="capitalize">
+                                {item.group.replace("-", " ")}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <div className="text-sm">
+                              {item.supplier || "No supplier"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={stockInfo.variant}>
+                              {stockInfo.text}
                             </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <div className="text-sm">
-                            {item.supplier || "No supplier"}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={stockInfo.variant}>
-                            {stockInfo.text}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingItem(item);
-                                setIsDialogOpen(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 focus:outline-none"
-                              title="Edit"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteMutation.mutate(item.id)}
-                              disabled={deleteMutation.isPending}
-                              className="text-red-600 hover:text-red-800 focus:outline-none"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingItem(item);
+                                  setIsDialogOpen(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                                title="Edit"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteMutation.mutate(item.id)}
+                                disabled={deleteMutation.isPending}
+                                className="text-red-600 hover:text-red-800 focus:outline-none"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center py-8">
+                        <div className="flex flex-col items-center">
+                          <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                            No ingredients found
+                          </h3>
+                          <p className="text-muted-foreground mb-4">
+                            {searchQuery
+                              ? "Try adjusting your search criteria"
+                              : "Start by adding your first ingredient"}
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
-              {filteredIngredients.length === 0 && (
-                <div className="text-center py-8">
-                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                    No ingredients found
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchQuery
-                      ? "Try adjusting your search criteria"
-                      : "Start by adding your first ingredient"}
-                  </p>
-                </div>
-              )}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {filteredIngredients.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+              <PaginationInfo
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+              />
+              <div className="flex items-center gap-4">
+                <PageSizeSelector
+                  pageSize={pageSize}
+                  onPageSizeChange={setPageSize}
+                  options={[10, 20, 50, 100]}
+                />
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={goToPage}
+                />
+              </div>
             </div>
           )}
         </CardContent>

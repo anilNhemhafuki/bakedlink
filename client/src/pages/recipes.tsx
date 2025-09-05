@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,11 +24,19 @@ import Recipe from "@/components/recipe";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Package, 
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHeader } from "@/components/ui/sortable-table-header";
+import {
+  Pagination,
+  PaginationInfo,
+  PageSizeSelector,
+  usePagination,
+} from "@/components/ui/pagination";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Package,
   Calculator,
   ChefHat,
   Eye
@@ -62,20 +69,76 @@ export default function Recipes() {
   });
 
   // Filter recipes based on search
-  const filteredRecipes = Array.isArray(recipes) 
-    ? recipes.filter((recipe: any) =>
-        recipe.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        recipe.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
+  const filteredProducts = recipes.filter((recipe: any) => {
+    const matchesSearch = recipe.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+
+  // Add sorting functionality
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredProducts,
+    "name",
+  );
+
+  // Add pagination functionality
+  const {
+    currentItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setPageSize,
+    goToPage,
+    totalItems,
+  } = usePagination(sortedData, 6);
+
+  const handleSaveProduct = (productData: any) => {
+    saveMutation.mutate(productData);
+  };
+
+  const handleEdit = (recipe: any) => {
+    setEditingRecipe(recipe);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (recipe: any) => {
+    if (window.confirm(`Are you sure you want to delete the recipe "${recipe.name}"?`)) {
+      deleteMutation.mutate(recipe.id);
+    }
+  };
+
+  const handleAddNew = () => {
+    setEditingRecipe(null);
+    setIsDialogOpen(true);
+  };
+
+  const getCategoryName = (categoryId: number) => {
+    const category = categories.find((c: any) => c.id === categoryId);
+    return category?.name || "Uncategorized";
+  };
+
+  const getStatusBadge = (recipe: any) => {
+    if (recipe.cost && recipe.price) {
+      const margin = ((recipe.price - recipe.cost) / recipe.price) * 100;
+      if (margin > 30) {
+        return <Badge className="bg-green-100 text-green-800">Profitable</Badge>;
+      } else if (margin > 10) {
+        return <Badge className="bg-yellow-100 text-yellow-800">Moderate</Badge>;
+      } else {
+        return <Badge className="bg-red-100 text-red-800">Low Margin</Badge>;
+      }
+    }
+    return <Badge variant="outline">No Costing</Badge>;
+  };
 
   // Create/Update mutation
   const saveMutation = useMutation({
     mutationFn: async (productData: any) => {
-      const url = editingRecipe 
-        ? `/api/products/${editingRecipe.id}` 
+      const url = editingRecipe
+        ? `/api/products/${editingRecipe.id}`
         : "/api/products";
-      
+
       const response = await fetch(url, {
         method: editingRecipe ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -135,44 +198,6 @@ export default function Recipes() {
     },
   });
 
-  const handleSaveProduct = (productData: any) => {
-    saveMutation.mutate(productData);
-  };
-
-  const handleEdit = (recipe: any) => {
-    setEditingRecipe(recipe);
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = (recipe: any) => {
-    if (window.confirm(`Are you sure you want to delete the recipe "${recipe.name}"?`)) {
-      deleteMutation.mutate(recipe.id);
-    }
-  };
-
-  const handleAddNew = () => {
-    setEditingRecipe(null);
-    setIsDialogOpen(true);
-  };
-
-  const getCategoryName = (categoryId: number) => {
-    const category = categories.find((c: any) => c.id === categoryId);
-    return category?.name || "Uncategorized";
-  };
-
-  const getStatusBadge = (recipe: any) => {
-    if (recipe.cost && recipe.price) {
-      const margin = ((recipe.price - recipe.cost) / recipe.price) * 100;
-      if (margin > 30) {
-        return <Badge className="bg-green-100 text-green-800">Profitable</Badge>;
-      } else if (margin > 10) {
-        return <Badge className="bg-yellow-100 text-yellow-800">Moderate</Badge>;
-      } else {
-        return <Badge className="bg-red-100 text-red-800">Low Margin</Badge>;
-      }
-    }
-    return <Badge variant="outline">No Costing</Badge>;
-  };
 
   return (
     <div className="p-6 space-y-6">
@@ -187,9 +212,9 @@ export default function Recipes() {
             Create and manage product recipes with automatic cost calculations
           </p>
         </div>
-        
-        <Dialog 
-          open={isDialogOpen} 
+
+        <Dialog
+          open={isDialogOpen}
           onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) {
@@ -210,8 +235,8 @@ export default function Recipes() {
                 {editingRecipe ? "Edit Recipe" : "Create New Recipe"}
               </DialogTitle>
             </DialogHeader>
-            <Recipe 
-              product={editingRecipe} 
+            <Recipe
+              product={editingRecipe}
               onSave={handleSaveProduct}
             />
           </DialogContent>
@@ -224,7 +249,7 @@ export default function Recipes() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Recipes ({filteredRecipes.length})
+              Recipes ({totalItems})
             </CardTitle>
             <div className="w-full sm:w-64">
               <SearchBar
@@ -241,7 +266,7 @@ export default function Recipes() {
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : filteredRecipes.length === 0 ? (
+          ) : recipes.length === 0 ? (
             <div className="text-center py-12">
               <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-muted-foreground mb-2">
@@ -262,8 +287,8 @@ export default function Recipes() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Recipe Name</TableHead>
-                    <TableHead>Category</TableHead>
+                    <SortableTableHeader sortConfig={sortConfig} requestSort={() => requestSort("name")}>Recipe Name</SortableTableHeader>
+                    <SortableTableHeader sortConfig={sortConfig} requestSort={() => requestSort("categoryId")}>Category</SortableTableHeader>
                     <TableHead>Cost per Unit</TableHead>
                     <TableHead>Selling Price</TableHead>
                     <TableHead>Margin</TableHead>
@@ -273,11 +298,11 @@ export default function Recipes() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRecipes.map((recipe: any) => {
-                    const margin = recipe.cost && recipe.price 
-                      ? ((recipe.price - recipe.cost) / recipe.price) * 100 
+                  {currentItems.map((recipe: any) => {
+                    const margin = recipe.cost && recipe.price
+                      ? ((recipe.price - recipe.cost) / recipe.price) * 100
                       : 0;
-                    
+
                     return (
                       <TableRow key={recipe.id}>
                         <TableCell>
@@ -304,7 +329,7 @@ export default function Recipes() {
                         <TableCell>
                           {margin > 0 ? (
                             <span className={`font-medium ${
-                              margin > 30 ? 'text-green-600' : 
+                              margin > 30 ? 'text-green-600' :
                               margin > 10 ? 'text-yellow-600' : 'text-red-600'
                             }`}>
                               {margin.toFixed(1)}%
@@ -362,9 +387,32 @@ export default function Recipes() {
         </CardContent>
       </Card>
 
+      {/* Pagination Controls */}
+      {filteredProducts.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+          <PaginationInfo
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+          />
+          <div className="flex items-center gap-4">
+            <PageSizeSelector
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              options={[6, 12, 18, 24]}
+            />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Recipe View Dialog */}
-      <Dialog 
-        open={!!viewingRecipe} 
+      <Dialog
+        open={!!viewingRecipe}
         onOpenChange={(open) => !open && setViewingRecipe(null)}
       >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -438,13 +486,13 @@ export default function Recipes() {
               )}
 
               <div className="flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setViewingRecipe(null)}
                 >
                   Close
                 </Button>
-                <Button 
+                <Button
                   onClick={() => {
                     setViewingRecipe(null);
                     handleEdit(viewingRecipe);

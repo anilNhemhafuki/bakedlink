@@ -77,13 +77,13 @@ export default function Orders() {
   // id, orderNumber, customerName, customerEmail, customerPhone, orderDate,
   // dueDate, totalAmount, status, notes, etc.
   const {
-    data: orders = [], // Type this properly, e.g., data: orders: Order[] = []
+    data: orders = [],
     isLoading,
     error,
   } = useQuery({
     queryKey: ["/api/orders"],
-    // Consider adding a staleTime if data doesn't change rapidly
-    // staleTime: 1000 * 60 * 5, // 5 minutes
+    queryFn: () => apiRequest("GET", "/api/orders"),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   // --- Mutation for Updating Status ---
@@ -324,13 +324,56 @@ export default function Orders() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Order ID</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Due Date</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHeader
+                sortKey="id"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+              >
+                Order ID
+              </SortableTableHeader>
+              <SortableTableHeader
+                sortKey="customerName"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+              >
+                Customer
+              </SortableTableHeader>
+              <SortableTableHeader
+                sortKey="orderDate"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+              >
+                Date
+              </SortableTableHeader>
+              <SortableTableHeader
+                sortKey="dueDate"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+              >
+                Due Date
+              </SortableTableHeader>
+              <SortableTableHeader
+                sortKey="customerPhone"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+              >
+                Phone
+              </SortableTableHeader>
+              <SortableTableHeader
+                sortKey="totalAmount"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="text-right"
+              >
+                Total
+              </SortableTableHeader>
+              <SortableTableHeader
+                sortKey="status"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+              >
+                Status
+              </SortableTableHeader>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>

@@ -147,27 +147,59 @@ export default function Sales() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form
+    if (!saleForm.customerName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Customer name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (saleForm.items.length === 0 || !saleForm.items.some(item => item.productId)) {
+      toast({
+        title: "Validation Error",
+        description: "At least one item is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const totalAmount = saleForm.items.reduce((sum, item) => {
+      if (!item.productId) return sum;
       const itemTotal = parseFloat(item.unitPrice) * item.quantity;
-      return isNaN(itemTotal) ? sum : sum + itemTotal; // Handle potential NaN
+      return isNaN(itemTotal) ? sum : sum + itemTotal;
     }, 0);
+
+    const validItems = saleForm.items
+      .filter(item => item.productId && parseFloat(item.unitPrice) > 0)
+      .map((item) => ({
+        productId: parseInt(item.productId, 10),
+        quantity: item.quantity,
+        unitPrice: parseFloat(item.unitPrice).toString(),
+        totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
+      }));
+
+    if (validItems.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please add valid items with prices.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const saleData = {
-      customerId: saleForm.customerId
-        ? parseInt(saleForm.customerId, 10)
-        : null,
-      customerName: saleForm.customerName,
+      customerId: saleForm.customerId ? parseInt(saleForm.customerId, 10) : null,
+      customerName: saleForm.customerName.trim(),
       totalAmount: totalAmount.toString(),
       paymentMethod: saleForm.paymentMethod,
       status: "completed",
-      items: saleForm.items
-        .map((item) => ({
-          productId: item.productId ? parseInt(item.productId, 10) : undefined, // Handle potential undefined if productId is ""
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
-        }))
-        .filter((item) => item.productId !== undefined), // Filter out items without a product ID if necessary
+      items: validItems,
     };
+    
     createSaleMutation.mutate(saleData);
   };
 

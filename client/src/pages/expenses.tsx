@@ -150,6 +150,7 @@ export default function Expenses() {
     const amount = parseFloat(formData.get("amount") as string);
     const title = (formData.get("title") as string)?.trim();
     const category = selectedCategory?.trim();
+    const dateValue = formData.get("date") as string;
 
     if (!title || !category || isNaN(amount) || amount <= 0) {
       toast({
@@ -163,8 +164,8 @@ export default function Expenses() {
     const data = {
       title,
       category,
-      amount,
-      date: new Date(formData.get("date") as string),
+      amount: amount.toString(),
+      date: dateValue ? new Date(dateValue) : new Date(),
       description: (formData.get("description") as string)?.trim() || null,
     };
 
@@ -285,68 +286,103 @@ export default function Expenses() {
               Add Expense
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5" />
                 {editingExpense ? "Edit Expense" : "Add New Expense"}
               </DialogTitle>
-              <DialogDescription>Enter expense details below</DialogDescription>
+              <DialogDescription>
+                {editingExpense ? "Update expense information" : "Record a new business expense with detailed information"}
+              </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSave} className="space-y-4">
-              <Input
-                name="title"
-                placeholder="Expense Title"
-                defaultValue={editingExpense?.title || ""}
-                required
-              />
-              <div>
-                <Select
-                  value={selectedCategory}
-                  onValueChange={setSelectedCategory}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <input
-                  type="hidden"
-                  name="category"
-                  value={selectedCategory}
-                  required
-                />
+            <form onSubmit={handleSave} className="space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Expense Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="expense-title">Expense Title *</Label>
+                    <Input
+                      id="expense-title"
+                      name="title"
+                      placeholder="e.g. Office Supplies, Electricity Bill"
+                      defaultValue={editingExpense?.title || ""}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="expense-category">Category *</Label>
+                    <Select
+                      value={selectedCategory}
+                      onValueChange={setSelectedCategory}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category.charAt(0).toUpperCase() + category.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <input
+                      type="hidden"
+                      name="category"
+                      value={selectedCategory}
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="expense-amount">Amount ($) *</Label>
+                    <Input
+                      id="expense-amount"
+                      name="amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      defaultValue={editingExpense?.amount || ""}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="expense-date">Date *</Label>
+                    <Input
+                      id="expense-date"
+                      name="date"
+                      type="date"
+                      defaultValue={
+                        editingExpense?.date
+                          ? new Date(editingExpense.date).toISOString().split("T")[0]
+                          : new Date().toISOString().split("T")[0]
+                      }
+                      required
+                    />
+                  </div>
+                </div>
               </div>
-              <Input
-                name="amount"
-                type="number"
-                step="0.01"
-                placeholder="Amount ($)"
-                defaultValue={editingExpense?.amount || ""}
-                required
-              />
-              <Input
-                name="date"
-                type="date"
-                defaultValue={
-                  editingExpense?.date
-                    ? new Date(editingExpense.date).toISOString().split("T")[0]
-                    : new Date().toISOString().split("T")[0]
-                }
-                required
-              />
-              <Textarea
-                name="description"
-                placeholder="Description (optional)"
-                defaultValue={editingExpense?.description || ""}
-                rows={3}
-              />
-              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+
+              {/* Additional Information */}
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="expense-description">Description</Label>
+                  <Textarea
+                    id="expense-description"
+                    name="description"
+                    placeholder="Additional notes about this expense..."
+                    defaultValue={editingExpense?.description || ""}
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
                 <Button
                   type="button"
                   variant="outline"
@@ -363,10 +399,12 @@ export default function Expenses() {
                   className="w-full sm:w-auto"
                 >
                   {createMutation.isPending || updateMutation.isPending
-                    ? "Saving..."
+                    ? editingExpense 
+                      ? "Updating..." 
+                      : "Saving..."
                     : editingExpense
-                      ? "Update"
-                      : "Create"}
+                      ? "Update Expense"
+                      : "Save Expense"}
                 </Button>
               </div>
             </form>
