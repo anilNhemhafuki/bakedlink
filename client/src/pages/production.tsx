@@ -510,15 +510,6 @@ export default function Production() {
 
       {/* Production Schedule List */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Calendar className="h-5 w-5 mr-2" />
-            Production Schedule
-          </CardTitle>
-          <CardDescription>
-            Manage your production items and track progress
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center py-8">

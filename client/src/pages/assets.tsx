@@ -432,7 +432,6 @@ export default function Assets() {
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <CardTitle>Assets List</CardTitle>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <div className="w-full sm:w-64">
                 <SearchBar

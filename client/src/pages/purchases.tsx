@@ -755,7 +755,7 @@ export default function Purchases() {
 
       {/* Filters and Search */}
       <Card>
-        <CardContent className="space-y-4">
+        <CardContent className="pt-6 pb-4 space-y-4">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
               <SearchBar
@@ -767,7 +767,6 @@ export default function Purchases() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="status-filter">Status</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger>
                     <SelectValue placeholder="All statuses" />
@@ -782,7 +781,6 @@ export default function Purchases() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="supplier-filter">Supplier</Label>
                 <Select
                   value={supplierFilter}
                   onValueChange={setSupplierFilter}
@@ -801,7 +799,6 @@ export default function Purchases() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="date-from">From Date</Label>
                 <Input
                   id="date-from"
                   type="date"
@@ -810,7 +807,6 @@ export default function Purchases() {
                 />
               </div>
               <div>
-                <Label htmlFor="date-to">To Date</Label>
                 <Input
                   id="date-to"
                   type="date"
@@ -850,9 +846,6 @@ export default function Purchases() {
 
       {/* Purchase History Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Purchase Records</CardTitle>
-        </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
