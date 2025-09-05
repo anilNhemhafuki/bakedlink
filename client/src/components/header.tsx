@@ -148,10 +148,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setLanguage("en")}>
-                <span className="mr-2">🇺🇸</span> English
+                <span className="mr-2">🇺🇸</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setLanguage("ne")}>
-                <span className="mr-2">🇳🇵</span> नेपाली
+                <span className="mr-2">🇳🇵</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
