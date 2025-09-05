@@ -3,6 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -713,7 +715,8 @@ export default function Production() {
                           No production items found
                         </h3>
                         <p className="text-muted-foreground mb-4">
-                          Adjust your search or filters to find production items.
+                          Adjust your search or filters to find production
+                          items.
                         </p>
                       </TableCell>
                     </TableRow>
@@ -737,10 +740,7 @@ export default function Production() {
                 totalPages={totalPages}
                 onPageChange={goToPage}
               />
-              <PageSizeSelector
-                pageSize={pageSize}
-                setPageSize={setPageSize}
-              />
+              <PageSizeSelector pageSize={pageSize} setPageSize={setPageSize} />
             </div>
           </CardContent>
         )}
