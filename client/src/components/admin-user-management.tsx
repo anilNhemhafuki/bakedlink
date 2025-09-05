@@ -196,7 +196,7 @@ export default function AdminUserManagement() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/admin/users/${id}`);
+      return await apiRequest("DELETE", `/api/admin/users/${id}`, undefined);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -655,17 +655,17 @@ export default function AdminUserManagement() {
                   </TableHeader>
                   <TableBody>
                     {Object.entries(
-                      groupPermissionsByResource(allPermissions),
-                    ).map(([resource, permissions]) => {
+                      groupPermissionsByResource(allPermissions as any[]),
+                    ).map(([resource, permissions]: [string, any[]]) => {
                       const hasRead = rolePermissions.some((rp: any) =>
-                        permissions.some(
+                        (permissions as any[]).some(
                           (p: any) =>
                             p.id === rp.permissionId && p.action === "read",
                         ),
                       );
 
                       const hasReadWrite = rolePermissions.some((rp: any) =>
-                        permissions.some(
+                        (permissions as any[]).some(
                           (p: any) =>
                             p.id === rp.permissionId &&
                             p.action === "read_write",
@@ -700,7 +700,7 @@ export default function AdminUserManagement() {
                       };
 
                       const handleReadToggle = (checked: boolean) => {
-                        const readPerm = permissions.find(
+                        const readPerm = (permissions as any[]).find(
                           (p: any) => p.action === "read",
                         );
                         if (readPerm) {
@@ -709,7 +709,7 @@ export default function AdminUserManagement() {
                       };
 
                       const handleReadWriteToggle = (checked: boolean) => {
-                        const readWritePerm = permissions.find(
+                        const readWritePerm = (permissions as any[]).find(
                           (p: any) => p.action === "read_write",
                         );
                         if (readWritePerm) {
@@ -816,13 +816,18 @@ export default function AdminUserManagement() {
 
 function SecurityMonitor() {
   const { data: securityMetrics } = useQuery({
-    queryKey: ["/api/security/metrics"],
-    queryFn: () => apiRequest("/api/security/metrics", "GET"),
+    queryKey: ["/api/security/comprehensive-metrics"],
+    queryFn: () => apiRequest("/api/security/comprehensive-metrics", "GET"),
+  });
+
+  const { data: securityAlerts } = useQuery({
+    queryKey: ["/api/security/alerts"],
+    queryFn: () => apiRequest("/api/security/alerts", "GET"),
   });
 
   const { data: recentFailedLogins } = useQuery({
-    queryKey: ["/api/login-logs/failed"],
-    queryFn: () => apiRequest("/api/login-logs?status=failed&limit=10", "GET"),
+    queryKey: ["/api/login-logs/analytics"],
+    queryFn: () => apiRequest("/api/login-logs/analytics", "GET"),
   });
 
   const { data: suspiciousActivities } = useQuery({
@@ -839,7 +844,7 @@ function SecurityMonitor() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-red-600">
-                  {recentFailedLogins?.loginLogs?.length || 0}
+                  {recentFailedLogins?.failedLoginsLast24h || 0}
                 </div>
                 <p className="text-sm text-muted-foreground">Failed Logins (24h)</p>
               </div>
@@ -852,9 +857,9 @@ function SecurityMonitor() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-orange-600">
-                  {suspiciousActivities?.auditLogs?.length || 0}
+                  {securityAlerts?.totalActive || 0}
                 </div>
-                <p className="text-sm text-muted-foreground">Failed Operations</p>
+                <p className="text-sm text-muted-foreground">Active Threats</p>
               </div>
               <Activity className="h-8 w-8 text-orange-500" />
             </div>
@@ -865,9 +870,9 @@ function SecurityMonitor() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-green-600">
-                  {securityMetrics?.activeUsers || 0}
+                  {securityMetrics?.riskScore || 0}%
                 </div>
-                <p className="text-sm text-muted-foreground">Active Users</p>
+                <p className="text-sm text-muted-foreground">Risk Score</p>
               </div>
               <Users className="h-8 w-8 text-green-500" />
             </div>
@@ -884,7 +889,7 @@ function SecurityMonitor() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {recentFailedLogins?.loginLogs?.length > 0 ? (
+          {recentFailedLogins?.recentFailedLogins?.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -897,7 +902,7 @@ function SecurityMonitor() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentFailedLogins.loginLogs.map((log: any) => (
+                  {recentFailedLogins.recentFailedLogins.map((log: any) => (
                     <TableRow key={log.id}>
                       <TableCell className="font-medium">{log.email}</TableCell>
                       <TableCell className="font-mono text-sm">{log.ipAddress}</TableCell>
@@ -965,6 +970,77 @@ function SecurityMonitor() {
               <Activity className="h-12 w-12 text-green-500 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-green-700 mb-2">All Operations Successful!</h3>
               <p className="text-muted-foreground">No failed operations detected recently</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Security Alerts */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            Active Security Alerts
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {securityAlerts?.activeAlerts?.length > 0 || securityAlerts?.dashboardAlerts?.length > 0 ? (
+            <div className="space-y-4">
+              {/* Active Alerts */}
+              {securityAlerts?.activeAlerts?.map((alert: any) => (
+                <div key={alert.id} className="border border-red-200 rounded-lg p-4 bg-red-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="destructive" className={`${
+                          alert.severity === 'HIGH' ? 'bg-red-600' :
+                          alert.severity === 'MEDIUM' ? 'bg-orange-600' : 'bg-yellow-600'
+                        }`}>
+                          {alert.severity}
+                        </Badge>
+                        <span className="font-semibold text-red-800">{alert.title}</span>
+                      </div>
+                      <p className="text-sm text-red-700 mb-2">{alert.description}</p>
+                      <div className="flex items-center gap-4 text-xs text-red-600">
+                        <span>User: {alert.userEmail}</span>
+                        <span>IP: {alert.ipAddress}</span>
+                        <span>Time: {new Date(alert.timestamp).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Dashboard Alerts */}
+              {securityAlerts?.dashboardAlerts?.map((alert: any) => (
+                <div key={alert.id} className="border border-orange-200 rounded-lg p-4 bg-orange-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="secondary" className={`${
+                          alert.severity === 'HIGH' ? 'bg-red-600' :
+                          alert.severity === 'MEDIUM' ? 'bg-orange-600' : 'bg-yellow-600'
+                        }`}>
+                          {alert.severity}
+                        </Badge>
+                        <span className="font-semibold text-orange-800">{alert.title}</span>
+                      </div>
+                      <p className="text-sm text-orange-700 mb-2">{alert.description}</p>
+                      <div className="flex items-center gap-4 text-xs text-orange-600">
+                        <span>User: {alert.userEmail}</span>
+                        <span>IP: {alert.ipAddress}</span>
+                        <span>Time: {new Date(alert.timestamp).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-green-700 mb-2">System Secure</h3>
+              <p className="text-muted-foreground">No active security threats detected</p>
             </div>
           )}
         </CardContent>

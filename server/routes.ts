@@ -4004,7 +4004,7 @@ Form Version: ${formVersion || "1.0"}`,
   app.get(
     "/api/audit-logs",
     isAuthenticated,
-    requireWrite("admin"),
+    requireRead("admin"),
     async (req: any, res) => {
       try {
         const {
@@ -4032,8 +4032,8 @@ Form Version: ${formVersion || "1.0"}`,
         const auditLogs = await storage.getAuditLogs(filters);
 
         // Get total count for pagination
-        const totalResult = await db.select({ count: count() }).from(auditLogs);
-        const total = totalResult[0]?.count || 0;
+        const totalAuditLogs = await storage.getAuditLogs(); // Get total count
+        const total = totalAuditLogs.length;
 
         res.json({
           auditLogs,
@@ -4054,7 +4054,7 @@ Form Version: ${formVersion || "1.0"}`,
   app.get(
     "/api/audit-logs/export",
     isAuthenticated,
-    requireWrite("admin"),
+    requireRead("admin"),
     async (req, res) => {
       try {
         const logs = await storage.getAuditLogs();
@@ -4298,7 +4298,7 @@ Form Version: ${formVersion || "1.0"}`,
   app.get(
     "/api/security/comprehensive-metrics",
     isAuthenticated,
-    requireWrite("admin"),
+    requireRead("admin"),
     async (req, res) => {
       try {
         const metrics = await securityMonitor.getSecurityMetrics();
@@ -4313,7 +4313,7 @@ Form Version: ${formVersion || "1.0"}`,
   app.get(
     "/api/security/alerts",
     isAuthenticated,
-    requireWrite("admin"),
+    requireRead("admin"),
     async (req, res) => {
       try {
         const activeAlerts = securityMonitor.getActiveAlerts();
@@ -4351,7 +4351,7 @@ Form Version: ${formVersion || "1.0"}`,
   app.get(
     "/api/security/login-analytics",
     isAuthenticated,
-    requireWrite("admin"),
+    requireRead("admin"),
     async (req, res) => {
       try {
         const { timeframe = '24h' } = req.query;
