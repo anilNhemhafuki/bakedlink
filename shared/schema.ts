@@ -53,8 +53,13 @@ export const inventoryCategories = pgTable("inventory_categories", {
 // Inventory Items table
 export const inventoryItems = pgTable("inventory_items", {
   id: serial("id").primaryKey(),
+  invCode: varchar("inv_code", { length: 50 }).unique(),
   name: varchar("name", { length: 200 }).notNull(),
   currentStock: numeric("current_stock", { precision: 10, scale: 2 }).notNull(),
+  openingStock: numeric("opening_stock", { precision: 10, scale: 2 }).default("0"),
+  purchasedQuantity: numeric("purchased_quantity", { precision: 10, scale: 2 }).default("0"),
+  consumedQuantity: numeric("consumed_quantity", { precision: 10, scale: 2 }).default("0"),
+  closingStock: numeric("closing_stock", { precision: 10, scale: 2 }).default("0"),
   minLevel: numeric("min_level", { precision: 10, scale: 2 }).notNull(),
   unit: varchar("unit", { length: 50 }).notNull(),
   unitId: integer("unit_id"), // Primary unit ID
@@ -63,6 +68,7 @@ export const inventoryItems = pgTable("inventory_items", {
   costPerUnit: numeric("cost_per_unit", { precision: 10, scale: 2 }).notNull(),
   supplier: varchar("supplier", { length: 200 }),
   categoryId: integer("category_id"),
+  isIngredient: boolean("is_ingredient").default(false),
   lastRestocked: timestamp("last_restocked"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

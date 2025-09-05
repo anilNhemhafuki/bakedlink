@@ -1048,10 +1048,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Item name is required" });
       }
 
-      if (!req.body.currentStock || isNaN(parseFloat(req.body.currentStock))) {
+      if (!req.body.openingStock && !req.body.currentStock) {
         return res
           .status(400)
-          .json({ message: "Valid current stock is required" });
+          .json({ message: "Valid opening stock is required" });
       }
 
       if (!req.body.minLevel || isNaN(parseFloat(req.body.minLevel))) {
@@ -1082,10 +1082,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid unit selected" });
       }
 
+      // Generate inventory code if not provided
+      const invCode = req.body.invCode || `INV-${Date.now().toString().slice(-6)}`;
+
+      // Calculate stock values
+      const openingStock = parseFloat(req.body.openingStock || req.body.currentStock || 0);
+      const purchasedQuantity = parseFloat(req.body.purchasedQuantity || 0);
+      const consumedQuantity = parseFloat(req.body.consumedQuantity || 0);
+      const closingStock = req.body.closingStock ? parseFloat(req.body.closingStock) : openingStock + purchasedQuantity - consumedQuantity;
+
       // Transform the data - only allow specified fields
       const transformedData = {
+        invCode: invCode,
         name: req.body.name.trim(),
-        currentStock: parseFloat(req.body.currentStock).toString(),
+        currentStock: closingStock.toString(),
+        openingStock: openingStock.toString(),
+        purchasedQuantity: purchasedQuantity.toString(),
+        consumedQuantity: consumedQuantity.toString(),
+        closingStock: closingStock.toString(),
         minLevel: parseFloat(req.body.minLevel).toString(),
         unit: selectedUnit.abbreviation,
         unitId: parseInt(req.body.unitId),
@@ -1094,6 +1108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         costPerUnit: parseFloat(req.body.costPerUnit).toString(),
         supplier: req.body.supplier ? req.body.supplier.trim() : null,
         categoryId: req.body.categoryId ? parseInt(req.body.categoryId) : null,
+        isIngredient: req.body.isIngredient || req.body.group === "ingredients" || false,
         lastRestocked: new Date(),
       };
 
@@ -1116,6 +1131,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to create inventory item",
         error: error instanceof Error ? error.message : "Unknown error",
       });
+    }
+  });
+
+  // Sync stock levels from purchases
+  app.post("/api/inventory/sync-from-purchases", isAuthenticated, async (req, res) => {
+    try {
+      await storage.syncStockFromPurchases();
+      res.json({ message: "Stock levels synced successfully" });
+    } catch (error) {
+      console.error("Error syncing stock from purchases:", error);
+      res.status(500).json({ message: "Failed to sync stock levels" });
+    }
+  });
+
+  // Get ingredients specifically
+  app.get("/api/ingredients/all", isAuthenticated, async (req, res) => {
+    try {
+      const ingredients = await storage.getIngredients();
+      res.json(ingredients);
+    } catch (error) {
+      console.error("Error fetching ingredients:", error);
+      res.status(500).json({ message: "Failed to fetch ingredients" });
     }
   });
 
@@ -2582,6 +2619,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           item.inventoryItemId,
           item.quantity,
           item.costPerUnit,
+        );
+
+        // Update purchased quantity and closing stock
+        await storage.updateInventoryPurchaseStock(
+          item.inventoryItemId,
+          item.quantity
         );
       }
 

@@ -25,7 +25,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Plus, AlertCircle } from "lucide-react";
+import { ChevronDown, Plus, AlertCircle, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -152,16 +152,18 @@ export function EnhancedStockItemForm({
     primaryUnitId: "",
     secondaryUnitId: "",
     conversionRate: "",
-    defaultPrice: "",
+    costPerUnit: "",
     group: "",
     minLevel: "",
-    openingQuantity: "",
-    openingRate: "",
+    openingStock: "",
+    purchasedQuantity: "",
+    consumedQuantity: "",
+    closingStock: "",
     supplier: "",
     notes: "",
+    invCode: "",
   });
 
-  // Validation states
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const { data: units = [], isLoading: unitsLoading } = useUnits();
@@ -169,6 +171,12 @@ export function EnhancedStockItemForm({
   const { data: categories = [] } = useQuery({
     queryKey: ["/api/inventory-categories"],
     queryFn: () => apiRequest("GET", "/api/inventory-categories"),
+  });
+
+  // Fetch ingredients from recipes and inventory
+  const { data: ingredients = [] } = useQuery({
+    queryKey: ["/api/ingredients/all"],
+    queryFn: () => apiRequest("GET", "/api/ingredients"),
   });
 
   // Filter active units
@@ -183,13 +191,16 @@ export function EnhancedStockItemForm({
         primaryUnitId: editingItem.unitId?.toString() || "",
         secondaryUnitId: editingItem.secondaryUnitId?.toString() || "",
         conversionRate: editingItem.conversionRate || "",
-        defaultPrice: editingItem.defaultPrice || editingItem.costPerUnit || "",
-        group: editingItem.categoryId?.toString() || "",
+        costPerUnit: editingItem.costPerUnit || "",
+        group: editingItem.categoryId?.toString() || editingItem.group || "",
         minLevel: editingItem.minLevel || "",
-        openingQuantity: editingItem.currentStock || "",
-        openingRate: editingItem.costPerUnit || "",
+        openingStock: editingItem.openingStock || editingItem.currentStock || "",
+        purchasedQuantity: editingItem.purchasedQuantity || "0",
+        consumedQuantity: editingItem.consumedQuantity || "0",
+        closingStock: editingItem.closingStock || editingItem.currentStock || "",
         supplier: editingItem.supplier || "",
         notes: editingItem.notes || "",
+        invCode: editingItem.invCode || editingItem.id?.toString() || "",
       });
     } else {
       setFormData({
@@ -197,16 +208,32 @@ export function EnhancedStockItemForm({
         primaryUnitId: "",
         secondaryUnitId: "",
         conversionRate: "",
-        defaultPrice: "",
+        costPerUnit: "",
         group: "",
         minLevel: "",
-        openingQuantity: "",
-        openingRate: "",
+        openingStock: "",
+        purchasedQuantity: "0",
+        consumedQuantity: "0",
+        closingStock: "",
         supplier: "",
         notes: "",
+        invCode: "",
       });
     }
   }, [editingItem, isOpen]);
+
+  // Auto-calculate closing stock
+  useEffect(() => {
+    const opening = parseFloat(formData.openingStock) || 0;
+    const purchased = parseFloat(formData.purchasedQuantity) || 0;
+    const consumed = parseFloat(formData.consumedQuantity) || 0;
+    const closing = opening + purchased - consumed;
+    
+    setFormData(prev => ({
+      ...prev,
+      closingStock: closing.toString()
+    }));
+  }, [formData.openingStock, formData.purchasedQuantity, formData.consumedQuantity]);
 
   const saveMutation = useMutation({
     mutationFn: (data: any) => {
@@ -219,6 +246,7 @@ export function EnhancedStockItemForm({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ingredients"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/low-stock"] });
       toast({
         title: "Success",
@@ -253,7 +281,6 @@ export function EnhancedStockItemForm({
       [field]: value,
     }));
 
-    // Clear validation error when user starts typing
     if (validationErrors[field]) {
       setValidationErrors((prev) => {
         const newErrors = { ...prev };
@@ -261,12 +288,6 @@ export function EnhancedStockItemForm({
         return newErrors;
       });
     }
-  };
-
-  const calculateOpeningValue = () => {
-    const quantity = parseFloat(formData.openingQuantity) || 0;
-    const rate = parseFloat(formData.openingRate) || 0;
-    return quantity * rate;
   };
 
   const getConversionInfoText = () => {
@@ -313,30 +334,20 @@ export function EnhancedStockItemForm({
       errors.primaryUnitId = "Primary unit is required";
     }
 
-    if (!formData.defaultPrice || parseFloat(formData.defaultPrice) <= 0) {
-      errors.defaultPrice = "Valid default price is required";
+    if (!formData.costPerUnit || parseFloat(formData.costPerUnit) <= 0) {
+      errors.costPerUnit = "Valid cost per unit is required";
     }
 
     if (!formData.minLevel || parseFloat(formData.minLevel) < 0) {
       errors.minLevel = "Minimum level must be 0 or greater";
     }
 
-    if (!formData.openingQuantity || parseFloat(formData.openingQuantity) < 0) {
-      errors.openingQuantity = "Valid opening quantity is required";
-    }
-
-    if (!formData.openingRate || parseFloat(formData.openingRate) <= 0) {
-      errors.openingRate = "Valid opening rate is required";
+    if (!formData.openingStock || parseFloat(formData.openingStock) < 0) {
+      errors.openingStock = "Valid opening stock is required";
     }
 
     if (formData.secondaryUnitId && (!formData.conversionRate || parseFloat(formData.conversionRate) <= 0)) {
       errors.conversionRate = "Valid conversion rate is required when secondary unit is selected";
-    }
-
-    const minLevel = parseFloat(formData.minLevel);
-    const currentStock = parseFloat(formData.openingQuantity);
-    if (minLevel > currentStock && currentStock > 0) {
-      errors.minLevel = "Warning: Minimum level exceeds current stock";
     }
 
     return errors;
@@ -360,18 +371,23 @@ export function EnhancedStockItemForm({
 
     const submitData = {
       name: formData.name.trim(),
-      currentStock: parseFloat(formData.openingQuantity),
+      invCode: formData.invCode.trim() || `INV-${Date.now()}`,
+      currentStock: parseFloat(formData.closingStock),
+      openingStock: parseFloat(formData.openingStock),
+      purchasedQuantity: parseFloat(formData.purchasedQuantity) || 0,
+      consumedQuantity: parseFloat(formData.consumedQuantity) || 0,
+      closingStock: parseFloat(formData.closingStock),
       minLevel: parseFloat(formData.minLevel),
       unit: selectedPrimaryUnit?.abbreviation || "pcs",
       unitId: parseInt(formData.primaryUnitId),
       secondaryUnitId: formData.secondaryUnitId ? parseInt(formData.secondaryUnitId) : null,
       conversionRate: formData.secondaryUnitId ? parseFloat(formData.conversionRate) : null,
-      costPerUnit: parseFloat(formData.openingRate),
-      defaultPrice: parseFloat(formData.defaultPrice),
+      costPerUnit: parseFloat(formData.costPerUnit),
       supplier: formData.supplier.trim() || null,
       categoryId: formData.group ? parseInt(formData.group) : null,
       notes: formData.notes.trim() || null,
       lastRestocked: new Date(),
+      isIngredient: formData.group === "ingredients",
     };
 
     saveMutation.mutate(submitData);
@@ -382,12 +398,19 @@ export function EnhancedStockItemForm({
     queryClient.invalidateQueries({ queryKey: ["/api/inventory-categories"] });
   };
 
+  // Auto-generate inventory code if not provided
+  const generateInvCode = () => {
+    const code = `INV-${Date.now().toString().slice(-6)}`;
+    handleInputChange("invCode", code);
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-center">
+            <DialogTitle className="text-xl font-semibold text-center flex items-center gap-2">
+              <Package className="h-5 w-5" />
               {editingItem ? "Edit Stock Item" : "Create Stock Item"}
             </DialogTitle>
           </DialogHeader>
@@ -399,8 +422,29 @@ export function EnhancedStockItemForm({
                 <CardTitle className="text-base">Basic Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Item Name and Primary Unit */}
+                {/* Inventory Code and Item Name */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="invCode" className="text-sm font-medium">
+                      Inventory Code <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="invCode"
+                        value={formData.invCode}
+                        onChange={(e) => handleInputChange("invCode", e.target.value)}
+                        placeholder="INV-001"
+                        className={validationErrors.invCode ? "border-red-500" : ""}
+                      />
+                      <Button type="button" variant="outline" onClick={generateInvCode}>
+                        Generate
+                      </Button>
+                    </div>
+                    {validationErrors.invCode && (
+                      <p className="text-red-500 text-xs mt-1">{validationErrors.invCode}</p>
+                    )}
+                  </div>
+
                   <div>
                     <Label htmlFor="itemName" className="text-sm font-medium">
                       Item Name <span className="text-red-500">*</span>
@@ -417,7 +461,10 @@ export function EnhancedStockItemForm({
                       <p className="text-red-500 text-xs mt-1">{validationErrors.name}</p>
                     )}
                   </div>
+                </div>
 
+                {/* Primary Unit and Group */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="primaryUnit" className="text-sm font-medium">
                       Primary Unit <span className="text-red-500">*</span>
@@ -450,6 +497,45 @@ export function EnhancedStockItemForm({
                     {validationErrors.primaryUnitId && (
                       <p className="text-red-500 text-xs mt-1">{validationErrors.primaryUnitId}</p>
                     )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="group" className="text-sm font-medium">
+                      Group/Category <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="flex gap-2">
+                      <Select
+                        value={formData.group}
+                        onValueChange={(value) => handleInputChange("group", value)}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select Group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ingredients">Ingredients</SelectItem>
+                          <SelectItem value="raw-materials">Raw Materials</SelectItem>
+                          <SelectItem value="packaging">Packaging</SelectItem>
+                          <SelectItem value="spices">Spices</SelectItem>
+                          <SelectItem value="dairy">Dairy</SelectItem>
+                          <SelectItem value="flour">Flour</SelectItem>
+                          <SelectItem value="sweeteners">Sweeteners</SelectItem>
+                          <SelectItem value="supplies">Supplies</SelectItem>
+                          {categories.map((category: any) => (
+                            <SelectItem key={category.id} value={category.id.toString()}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowCategoryDialog(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -513,69 +599,31 @@ export function EnhancedStockItemForm({
                   )}
                 </div>
 
-                {/* Default Price, Group, Minimum Level */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Cost Per Unit and Minimum Level */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="defaultPrice" className="text-sm font-medium">
-                      Default Price <span className="text-red-500">*</span>
+                    <Label htmlFor="costPerUnit" className="text-sm font-medium">
+                      Cost Per Unit <span className="text-red-500">*</span>
                     </Label>
                     <div className="flex mt-1">
                       <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
                         {symbol}
                       </span>
                       <Input
-                        id="defaultPrice"
+                        id="costPerUnit"
                         type="number"
                         step="0.01"
                         min="0.01"
-                        value={formData.defaultPrice}
-                        onChange={(e) => handleInputChange("defaultPrice", e.target.value)}
+                        value={formData.costPerUnit}
+                        onChange={(e) => handleInputChange("costPerUnit", e.target.value)}
                         placeholder="0.00"
-                        className={`rounded-l-none ${validationErrors.defaultPrice ? "border-red-500" : ""}`}
+                        className={`rounded-l-none ${validationErrors.costPerUnit ? "border-red-500" : ""}`}
                         required
                       />
                     </div>
-                    {validationErrors.defaultPrice && (
-                      <p className="text-red-500 text-xs mt-1">{validationErrors.defaultPrice}</p>
+                    {validationErrors.costPerUnit && (
+                      <p className="text-red-500 text-xs mt-1">{validationErrors.costPerUnit}</p>
                     )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="group" className="text-sm font-medium">
-                      Group <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="flex gap-2 mt-1">
-                      <Select
-                        value={formData.group}
-                        onValueChange={(value) => handleInputChange("group", value)}
-                      >
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Select Group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="raw-materials">Raw Materials</SelectItem>
-                          <SelectItem value="packaging">Packaging</SelectItem>
-                          <SelectItem value="spices">Spices</SelectItem>
-                          <SelectItem value="dairy">Dairy</SelectItem>
-                          <SelectItem value="flour">Flour</SelectItem>
-                          <SelectItem value="sweeteners">Sweeteners</SelectItem>
-                          <SelectItem value="supplies">Supplies</SelectItem>
-                          {categories.map((category: any) => (
-                            <SelectItem key={category.id} value={category.id.toString()}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setShowCategoryDialog(true)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
                   </div>
 
                   <div>
@@ -601,83 +649,96 @@ export function EnhancedStockItemForm({
               </CardContent>
             </Card>
 
-            {/* Opening Stock Section */}
+            {/* Stock Management Section */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Opening Stock</CardTitle>
+                <CardTitle className="text-base">Stock Management</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <Label htmlFor="quantity" className="text-sm font-medium">
-                      Quantity <span className="text-red-500">*</span>
+                    <Label htmlFor="openingStock" className="text-sm font-medium">
+                      Opening Stock <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="quantity"
+                      id="openingStock"
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.openingQuantity}
-                      onChange={(e) => handleInputChange("openingQuantity", e.target.value)}
+                      value={formData.openingStock}
+                      onChange={(e) => handleInputChange("openingStock", e.target.value)}
                       placeholder="0.00"
-                      className={validationErrors.openingQuantity ? "border-red-500" : ""}
+                      className={validationErrors.openingStock ? "border-red-500" : ""}
                       required
                     />
-                    {validationErrors.openingQuantity && (
-                      <p className="text-red-500 text-xs mt-1">{validationErrors.openingQuantity}</p>
+                    {validationErrors.openingStock && (
+                      <p className="text-red-500 text-xs mt-1">{validationErrors.openingStock}</p>
                     )}
                   </div>
 
                   <div>
-                    <Label htmlFor="rate" className="text-sm font-medium">
-                      Rate <span className="text-red-500">*</span>
+                    <Label htmlFor="purchasedQuantity" className="text-sm font-medium">
+                      Purchased
                     </Label>
-                    <div className="flex">
-                      <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                        {symbol}
-                      </span>
-                      <Input
-                        id="rate"
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        value={formData.openingRate}
-                        onChange={(e) => handleInputChange("openingRate", e.target.value)}
-                        placeholder="0.00"
-                        className={`rounded-l-none ${validationErrors.openingRate ? "border-red-500" : ""}`}
-                        required
-                      />
-                    </div>
-                    {validationErrors.openingRate && (
-                      <p className="text-red-500 text-xs mt-1">{validationErrors.openingRate}</p>
-                    )}
+                    <Input
+                      id="purchasedQuantity"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.purchasedQuantity}
+                      onChange={(e) => handleInputChange("purchasedQuantity", e.target.value)}
+                      placeholder="0.00"
+                    />
                   </div>
 
                   <div>
-                    <Label htmlFor="value" className="text-sm font-medium">
-                      Value
+                    <Label htmlFor="consumedQuantity" className="text-sm font-medium">
+                      Consumed/Used
                     </Label>
-                    <div className="flex">
-                      <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                        {symbol}
-                      </span>
-                      <Input
-                        id="value"
-                        value={calculateOpeningValue().toFixed(2)}
-                        placeholder="0.00"
-                        className="rounded-l-none bg-gray-50"
-                        readOnly
-                      />
-                    </div>
+                    <Input
+                      id="consumedQuantity"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.consumedQuantity}
+                      onChange={(e) => handleInputChange("consumedQuantity", e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="closingStock" className="text-sm font-medium">
+                      Closing Stock
+                    </Label>
+                    <Input
+                      id="closingStock"
+                      value={parseFloat(formData.closingStock || "0").toFixed(2)}
+                      placeholder="0.00"
+                      className="bg-gray-50"
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                {/* Stock Calculation Display */}
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">Stock Calculation</h4>
+                  <div className="text-sm text-blue-800">
+                    <p>Opening Stock: {parseFloat(formData.openingStock || "0").toFixed(2)}</p>
+                    <p>+ Purchased: {parseFloat(formData.purchasedQuantity || "0").toFixed(2)}</p>
+                    <p>- Consumed: {parseFloat(formData.consumedQuantity || "0").toFixed(2)}</p>
+                    <hr className="my-2 border-blue-200" />
+                    <p className="font-medium">= Closing Stock: {parseFloat(formData.closingStock || "0").toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Warning for minimum level */}
-                {validationErrors.minLevel && validationErrors.minLevel.includes("Warning") && (
+                {parseFloat(formData.closingStock || "0") <= parseFloat(formData.minLevel || "0") && 
+                 parseFloat(formData.closingStock || "0") > 0 && (
                   <Alert className="mt-4 border-yellow-500 bg-yellow-50">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
                     <AlertDescription className="text-yellow-800">
-                      {validationErrors.minLevel}
+                      Warning: Closing stock is at or below minimum level
                     </AlertDescription>
                   </Alert>
                 )}

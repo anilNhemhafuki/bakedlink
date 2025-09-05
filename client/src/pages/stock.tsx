@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import SearchBar from "@/components/search-bar";
 import {
   Card,
@@ -12,14 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -46,6 +37,10 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -59,31 +54,23 @@ export default function Stock() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
-  // Unit conversion state management
-  const [selectedPrimaryUnitId, setSelectedPrimaryUnitId] = useState<
-    string | undefined
-  >(undefined);
-  const [selectedSecondaryUnitId, setSelectedSecondaryUnitId] = useState<
-    string | undefined
-  >(undefined);
-  const [conversionRate, setConversionRate] = useState<string>("");
-  // Pagination state
+  const [selectedGroup, setSelectedGroup] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const { toast } = useToast();
-  const { symbol } = useCurrency();
+  const { symbol, formatCurrency } = useCurrency();
 
   const {
     data: inventoryData,
     isLoading,
     error,
+    refetch,
   } = useQuery({
-    queryKey: ["/api/inventory", currentPage, itemsPerPage, searchQuery],
+    queryKey: ["/api/inventory", currentPage, itemsPerPage, searchQuery, selectedGroup],
     queryFn: () =>
       apiRequest(
         "GET",
-        `/api/inventory?page=${currentPage}&limit=${itemsPerPage}&search=${encodeURIComponent(searchQuery)}`,
+        `/api/inventory?page=${currentPage}&limit=${itemsPerPage}&search=${encodeURIComponent(searchQuery)}&group=${selectedGroup}`,
       ),
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
@@ -95,56 +82,19 @@ export default function Stock() {
   const totalCount = inventoryData?.totalCount || 0;
   const totalPages = inventoryData?.totalPages || 0;
 
-  const { data: units = [] } = useQuery({
-    queryKey: ["/api/units"],
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", "/api/units");
-        console.log("Units API response:", response);
-
-        if (Array.isArray(response)) {
-          return response;
-        }
-        if (response?.data && Array.isArray(response.data)) {
-          return response.data;
-        }
-        if (response?.results && Array.isArray(response.results)) {
-          return response.results; // Common alternate key
-        }
-
-        console.warn("Unexpected units response format:", response);
-        return [];
-      } catch (error) {
-        console.error("Failed to fetch units:", error);
-        return []; // ✅ Fallback
-      }
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 10,
+  // Fetch ingredients specifically
+  const { data: ingredients = [] } = useQuery({
+    queryKey: ["/api/ingredients"],
+    queryFn: () => apiRequest("GET", "/api/ingredients"),
   });
 
-  // --- Fix 1: Ensure units is an array before filtering ---
-  const activeUnits = Array.isArray(units)
-    ? (units as any[]).filter((unit: any) => {
-        return (
-          unit &&
-          typeof unit === "object" &&
-          typeof unit.id !== "undefined" &&
-          unit.id !== null &&
-          unit.isActive === true &&
-          unit.name &&
-          typeof unit.name === "string" &&
-          unit.abbreviation &&
-          typeof unit.abbreviation === "string"
-        );
-      })
-    : [];
+  // Fetch categories for group filter
+  const { data: categories = [] } = useQuery({
+    queryKey: ["/api/inventory-categories"],
+    queryFn: () => apiRequest("GET", "/api/inventory-categories"),
+  });
 
-  // Debug logging
-  console.log("Units in stock.tsx:", units);
-  console.log("Active units in stock.tsx:", activeUnits);
-
-  // Add sorting functionality - items are already filtered on server
+  // Add sorting functionality
   const { sortedData, sortConfig, requestSort } = useTableSort(items, "name");
 
   // Debounced search
@@ -153,231 +103,15 @@ export default function Stock() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      setCurrentPage(1); // Reset to first page when searching
+      setCurrentPage(1);
     }, 300);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Update query key to use debounced search
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
   }, [debouncedSearchQuery]);
-
-  // Pagination handlers
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(parseInt(value));
-    setCurrentPage(1);
-  };
-
-  // Unit selection state management
-  useEffect(() => {
-    if (isDialogOpen) {
-      if (editingItem) {
-        setSelectedPrimaryUnitId(editingItem?.unitId?.toString());
-        setSelectedSecondaryUnitId(
-          editingItem?.secondaryUnitId?.toString() || "none",
-        );
-        setConversionRate(editingItem?.conversionRate?.toString() || "1");
-      } else {
-        setSelectedPrimaryUnitId(undefined);
-        setSelectedSecondaryUnitId(undefined);
-        setConversionRate("1");
-      }
-    } else {
-      setSelectedPrimaryUnitId(undefined);
-      setSelectedSecondaryUnitId(undefined);
-      setConversionRate("1");
-    }
-  }, [isDialogOpen, editingItem]);
-
-  const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      console.log("Creating stock item:", data);
-      // Validate required fields before sending
-      if (!data.name?.trim()) {
-        throw new Error("Item name is required");
-      }
-      if (!data.unitId && !data.unit) {
-        throw new Error("Measuring unit is required");
-      }
-      if (
-        isNaN(parseFloat(data.defaultPrice)) ||
-        parseFloat(data.defaultPrice) < 0
-      ) {
-        throw new Error("Valid default price is required");
-      }
-      if (
-        isNaN(parseFloat(data.currentStock)) ||
-        parseFloat(data.currentStock) < 0
-      ) {
-        throw new Error("Valid current stock is required");
-      }
-      if (
-        isNaN(parseFloat(data.costPerUnit)) ||
-        parseFloat(data.costPerUnit) < 0
-      ) {
-        throw new Error("Valid cost per unit is required");
-      }
-      // Calculate opening value
-      const openingValue = data.currentStock * data.costPerUnit;
-      // Prepare stock data for API including unit conversion
-      const stockData = {
-        name: data.name.trim(),
-        unitId: parseInt(data.unitId),
-        unit: data.unit || "pcs",
-        secondaryUnitId:
-          data.secondaryUnitId && data.secondaryUnitId !== "none"
-            ? parseInt(data.secondaryUnitId)
-            : null,
-        conversionRate:
-          data.secondaryUnitId && data.secondaryUnitId !== "none"
-            ? parseFloat(data.conversionRate || "1")
-            : null,
-        defaultPrice: parseFloat(data.defaultPrice || "0"),
-        group: data.group?.trim() || null,
-        currentStock: parseFloat(data.currentStock),
-        minLevel: parseFloat(data.minLevel || "0"),
-        costPerUnit: parseFloat(data.costPerUnit),
-        openingQuantity: parseFloat(data.openingQuantity || data.currentStock),
-        openingRate: parseFloat(data.openingRate || data.costPerUnit),
-        openingValue: openingValue,
-        supplier: data.supplier?.trim() || null,
-        company: data.company?.trim() || null,
-        location: data.location?.trim() || null,
-        notes: data.notes?.trim() || null,
-        dateAdded: new Date().toISOString(),
-        lastRestocked: new Date().toISOString(),
-      };
-      return apiRequest("POST", "/api/inventory", stockData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory/all"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/low-stock"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      setIsDialogOpen(false);
-      toast({
-        title: "Success",
-        description: "Stock item saved successfully",
-      });
-    },
-    onError: (error: any) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-
-      let errorMessage = error.message || "Failed to save stock item";
-
-      // Handle specific error cases
-      if (error.message?.includes("Item with this name already exists")) {
-        errorMessage =
-          "❌ Item with this name already exists. Please use a different name.";
-      } else if (
-        error.message?.includes("duplicate") ||
-        error.message?.includes("unique constraint")
-      ) {
-        errorMessage =
-          "❌ An item with this name already exists. Please choose a different name.";
-      }
-
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: { id: number; values: any }) => {
-      console.log("Updating stock item:", data);
-      const values = data.values;
-      // Validate required fields before sending
-      if (!values.name?.trim()) {
-        throw new Error("Item name is required");
-      }
-      if (!values.unitId) {
-        throw new Error("Measuring unit is required");
-      }
-      // Calculate opening value if opening fields are provided
-      let openingValue = values.openingValue;
-      if (values.openingQuantity && values.openingRate) {
-        openingValue =
-          parseFloat(values.openingQuantity) * parseFloat(values.openingRate);
-      }
-      const updateData = {
-        name: values.name.trim(),
-        unitId: parseInt(values.unitId),
-        secondaryUnitId:
-          values.secondaryUnitId && values.secondaryUnitId !== "none"
-            ? parseInt(values.secondaryUnitId)
-            : null,
-        conversionRate:
-          values.secondaryUnitId && values.secondaryUnitId !== "none"
-            ? parseFloat(values.conversionRate || "1")
-            : null,
-        defaultPrice: parseFloat(values.defaultPrice || 0),
-        group: values.group?.trim() || null,
-        currentStock: parseFloat(
-          values.currentStock || values.openingQuantity || 0,
-        ),
-        minLevel: parseFloat(values.minLevel || 0),
-        costPerUnit: parseFloat(values.costPerUnit || values.openingRate || 0),
-        openingQuantity: parseFloat(values.openingQuantity || 0),
-        openingRate: parseFloat(values.openingRate || 0),
-        openingValue: openingValue || 0,
-        supplier: values.supplier?.trim() || null,
-        company: values.company?.trim() || null,
-        location: values.location?.trim() || null,
-        notes: values.notes?.trim() || null,
-        dateUpdated: new Date().toISOString(),
-      };
-      return apiRequest("PUT", `/api/inventory/${data.id}`, updateData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory/all"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/low-stock"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      setIsDialogOpen(false);
-      setEditingItem(null);
-      toast({
-        title: "Success",
-        description: "Stock item updated successfully",
-      });
-    },
-    onError: (error: any) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update stock item",
-        variant: "destructive",
-      });
-    },
-  });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/inventory/${id}`),
@@ -409,196 +143,74 @@ export default function Stock() {
     },
   });
 
-  // Function to create unit conversion in database
-  const createUnitConversion = async (
-    fromUnitId: number,
-    toUnitId: number,
-    factor: number,
-  ) => {
-    try {
-      await apiRequest("POST", "/api/unit-conversions", {
-        fromUnitId: fromUnitId,
-        toUnitId: toUnitId,
-        conversionFactor: factor,
-        isActive: true,
+  // Sync stock from purchases
+  const syncStockMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/inventory/sync-from-purchases"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      toast({
+        title: "Success",
+        description: "Stock levels synced with purchases successfully",
       });
-    } catch (error) {
-      console.warn("Failed to create unit conversion:", error);
-    }
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to sync stock levels",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    const name = formData.get("name") as string;
-    // --- Modified: Get unitId from state instead of formData ---
-    const unitId = selectedPrimaryUnitId; // Use state variable
-    // --- End of modification ---
-    const defaultPrice = formData.get("defaultPrice") as string;
-    const group = formData.get("group") as string;
-    const openingQuantity = formData.get("openingQuantity") as string;
-    const openingRate = formData.get("openingRate") as string;
-
-    // Client-side validation
-    if (!name?.trim()) {
-      toast({
-        title: "Error",
-        description: "Item name is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    // --- Modified: Check state variable instead of formData ---
-    if (!unitId) {
-      toast({
-        title: "Error",
-        description: "Measuring unit is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    // --- End of modification ---
-
-    // Get the selected unit details (still okay to use units data here)
-    const selectedUnit = (units as any[]).find(
-      (u: any) => u.id.toString() === unitId, // unitId is still a string here
-    );
-    // --- Modified: Get secondaryUnitId from state instead of formData ---
-    const secondaryUnitId = selectedSecondaryUnitId; // Use state variable
-    // --- End of modification ---
-    const conversionRate = formData.get("conversionRate") as string;
-
-    // Prepare conversion data for database storage
-    const hasSecondaryUnit = secondaryUnitId && secondaryUnitId !== "none";
-    const finalConversionRate = hasSecondaryUnit
-      ? parseFloat(conversionRate || "1")
-      : null;
-
-    const data = {
-      name: name.trim(),
-      unitId: parseInt(unitId), // Parse the string ID from state
-      unit: selectedUnit ? selectedUnit.abbreviation : "pcs", // Fallback unit
-      secondaryUnitId: hasSecondaryUnit ? parseInt(secondaryUnitId) : null,
-      conversionRate: finalConversionRate,
-      defaultPrice: parseFloat(defaultPrice || "0"),
-      group: group,
-      currentStock: parseFloat(openingQuantity || "0"),
-      openingQuantity: parseFloat(openingQuantity || "0"),
-      openingRate: parseFloat(openingRate || "0"),
-      minLevel: parseFloat((formData.get("minLevel") as string) || "0"),
-      costPerUnit: parseFloat(openingRate || "0"),
-      supplier: (formData.get("supplier") as string)?.trim() || null,
-      company: (formData.get("company") as string)?.trim() || null,
-      location: (formData.get("location") as string)?.trim() || null,
-      notes: (formData.get("notes") as string)?.trim() || null,
-    };
-
-    if (editingItem) {
-      updateMutation.mutate({ id: editingItem.id, values: data });
-    } else {
-      createMutation.mutate(data);
-    }
-
-    // Create unit conversion relationship if secondary unit is selected
-    if (hasSecondaryUnit && finalConversionRate && finalConversionRate > 0) {
-      const primaryUnitIdNum = parseInt(unitId);
-      const secondaryUnitIdNum = parseInt(secondaryUnitId);
-
-      // Create bidirectional conversion
-      createUnitConversion(
-        secondaryUnitIdNum,
-        primaryUnitIdNum,
-        finalConversionRate,
-      );
-      createUnitConversion(
-        primaryUnitIdNum,
-        secondaryUnitIdNum,
-        1 / finalConversionRate,
-      );
-    }
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(parseInt(value));
+    setCurrentPage(1);
   };
 
   const getStockBadge = (item: any) => {
-    const currentStock = parseFloat(item.currentStock || 0);
+    const closingStock = parseFloat(item.closingStock || item.currentStock || 0);
     const minLevel = parseFloat(item.minLevel || 0);
-    if (currentStock <= minLevel) {
-      return { variant: "destructive" as const, text: "Low Stock" };
-    } else if (currentStock <= minLevel * 1.5) {
-      return { variant: "secondary" as const, text: "Warning" };
+
+    if (closingStock <= 0) {
+      return { variant: "destructive" as const, text: "Out of Stock", icon: <AlertTriangle className="h-3 w-3" /> };
+    } else if (closingStock <= minLevel) {
+      return { variant: "destructive" as const, text: "Low Stock", icon: <TrendingDown className="h-3 w-3" /> };
+    } else if (closingStock <= minLevel * 1.5) {
+      return { variant: "secondary" as const, text: "Warning", icon: <Minus className="h-3 w-3" /> };
     }
-    return { variant: "default" as const, text: "In Stock" };
+    return { variant: "default" as const, text: "In Stock", icon: <TrendingUp className="h-3 w-3" /> };
   };
 
-  // Get unit name by ID
-  const getUnitName = (unitId: number) => {
-    if (!unitId || !Array.isArray(activeUnits)) return "Unknown Unit";
-    const unit = activeUnits.find((u: any) => u.id === unitId);
-    return unit ? `${unit.name} (${unit.abbreviation})` : "Unknown Unit";
+  const getUnitName = (unitId: number, units: any[] = []) => {
+    if (!unitId || !Array.isArray(units)) return "Unknown Unit";
+    const unit = units.find((u: any) => u.id === unitId);
+    return unit ? unit.abbreviation || unit.name : "Unknown Unit";
   };
 
-  // --- Add function to generate dynamic conversion info text ---
-  const getConversionInfoText = () => {
-    // 🔒 Double guard: ensure activeUnits is an array
-    if (!Array.isArray(activeUnits)) {
-      console.warn("activeUnits is not an array:", activeUnits);
-      return "Loading units...";
-    }
-
-    if (activeUnits.length === 0) {
-      return "No units available";
-    }
-
-    // Safe helper to find unit by ID
-    const findUnit = (id: string | undefined) => {
-      if (!id || id === "none") return null;
-      return (
-        activeUnits.find((unit: any) => {
-          // Ensure unit and unit.id exist
-          return unit?.id?.toString() === id;
-        }) || null
-      );
+  const getGroupBadge = (group: string) => {
+    const colors = {
+      ingredients: "bg-green-100 text-green-800",
+      "raw-materials": "bg-blue-100 text-blue-800",
+      packaging: "bg-purple-100 text-purple-800",
+      spices: "bg-orange-100 text-orange-800",
+      dairy: "bg-yellow-100 text-yellow-800",
+      flour: "bg-amber-100 text-amber-800",
+      sweeteners: "bg-pink-100 text-pink-800",
+      supplies: "bg-gray-100 text-gray-800",
     };
 
-    // Case: No primary unit selected
-    if (!selectedPrimaryUnitId) {
-      return "Select a Primary Unit";
-    }
+    const colorClass = colors[group as keyof typeof colors] || "bg-gray-100 text-gray-800";
 
-    // Case: No secondary unit selected
-    if (!selectedSecondaryUnitId || selectedSecondaryUnitId === "none") {
-      return "No Secondary Unit Selected";
-    }
-
-    // Case: Same unit selected
-    if (selectedPrimaryUnitId === selectedSecondaryUnitId) {
-      return "Units must be different";
-    }
-
-    const primaryUnit = findUnit(selectedPrimaryUnitId);
-    const secondaryUnit = findUnit(selectedSecondaryUnitId);
-
-    if (!primaryUnit) {
-      return "Primary unit not found";
-    }
-    if (!secondaryUnit) {
-      return "Secondary unit not found";
-    }
-
-    // Validate conversion rate
-    const rate = conversionRate?.trim();
-    if (!rate) {
-      return "Enter a conversion rate";
-    }
-
-    const numRate = parseFloat(rate);
-    if (isNaN(numRate) || numRate <= 0) {
-      return "Enter a valid positive number";
-    }
-
-    // ✅ Final output
-    return `1 ${primaryUnit.name} = ${numRate} ${secondaryUnit.name}`;
+    return (
+      <Badge variant="outline" className={`capitalize ${colorClass} border-0`}>
+        {group?.replace("-", " ") || "Uncategorized"}
+      </Badge>
+    );
   };
-  // --- End of getConversionInfoText ---
 
   if (error && isUnauthorizedError(error)) {
     toast({
@@ -616,20 +228,32 @@ export default function Stock() {
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">Ingredient Stock Management</h1>
           <p className="text-gray-600">
-            Track your ingredients and raw materials
+            Track opening, purchased, consumed, and closing stock with purchase integration
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingItem(null);
-            setIsDialogOpen(true);
-          }}
-          className="w-full sm:w-auto"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Item
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => syncStockMutation.mutate()}
+            disabled={syncStockMutation.isPending}
+            className="w-full sm:w-auto"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncStockMutation.isPending ? "animate-spin" : ""}`} />
+            Sync from Purchases
+          </Button>
+          <Button
+            onClick={() => {
+              setEditingItem(null);
+              setIsDialogOpen(true);
+            }}
+            className="w-full sm:w-auto"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Item
+          </Button>
+        </div>
 
         <EnhancedStockItemForm
           isOpen={isDialogOpen}
@@ -641,18 +265,51 @@ export default function Stock() {
         />
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <SearchBar
+            placeholder="Search items, suppliers, or inventory codes..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+            className="w-full"
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by Group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Groups</SelectItem>
+              <SelectItem value="ingredients">Ingredients</SelectItem>
+              <SelectItem value="raw-materials">Raw Materials</SelectItem>
+              <SelectItem value="packaging">Packaging</SelectItem>
+              <SelectItem value="spices">Spices</SelectItem>
+              <SelectItem value="dairy">Dairy</SelectItem>
+              <SelectItem value="flour">Flour</SelectItem>
+              <SelectItem value="sweeteners">Sweeteners</SelectItem>
+              <SelectItem value="supplies">Supplies</SelectItem>
+              {categories.map((category: any) => (
+                <SelectItem key={category.id} value={category.id.toString()}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <CardTitle>Stock Items</CardTitle>
-            <div className="w-full sm:w-64">
-              <SearchBar
-                placeholder="Search items..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-                className="w-full"
-              />
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Stock Items ({totalCount} total)
+            </CardTitle>
+            <CardDescription>
+              Opening + Purchased - Consumed = Closing Stock
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -666,53 +323,53 @@ export default function Stock() {
                 <TableHeader>
                   <TableRow>
                     <SortableTableHeader
+                      sortKey="invCode"
+                      sortConfig={sortConfig}
+                      onSort={requestSort}
+                    >
+                      Inv Code
+                    </SortableTableHeader>
+                    <SortableTableHeader
                       sortKey="name"
                       sortConfig={sortConfig}
                       onSort={requestSort}
                     >
-                      Item
+                      Name
                     </SortableTableHeader>
                     <SortableTableHeader
-                      sortKey="unitId"
+                      sortKey="unit"
                       sortConfig={sortConfig}
                       onSort={requestSort}
                     >
                       Unit
                     </SortableTableHeader>
                     <SortableTableHeader
-                      sortKey="currentStock"
+                      sortKey="openingStock"
                       sortConfig={sortConfig}
                       onSort={requestSort}
                     >
-                      Stock
+                      Opening Stock
                     </SortableTableHeader>
                     <SortableTableHeader
-                      sortKey="minLevel"
+                      sortKey="purchasedQuantity"
                       sortConfig={sortConfig}
                       onSort={requestSort}
                     >
-                      Min Level
+                      Purchased
                     </SortableTableHeader>
                     <SortableTableHeader
-                      sortKey="costPerUnit"
+                      sortKey="consumedQuantity"
                       sortConfig={sortConfig}
                       onSort={requestSort}
                     >
-                      Cost/Unit
+                      Consumed
                     </SortableTableHeader>
                     <SortableTableHeader
-                      sortKey="previousQuantity"
+                      sortKey="closingStock"
                       sortConfig={sortConfig}
                       onSort={requestSort}
                     >
-                      Previous Qty
-                    </SortableTableHeader>
-                    <SortableTableHeader
-                      sortKey="previousAmount"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
-                      Previous Amt
+                      Closing Stock
                     </SortableTableHeader>
                     <SortableTableHeader
                       sortKey="group"
@@ -723,15 +380,15 @@ export default function Stock() {
                       Group
                     </SortableTableHeader>
                     <SortableTableHeader
-                      sortKey="dateAdded"
+                      sortKey="lastRestocked"
                       sortConfig={sortConfig}
                       onSort={requestSort}
                       className="hidden lg:table-cell"
                     >
-                      Date Added
+                      Last Updated
                     </SortableTableHeader>
                     <SortableTableHeader
-                      sortKey="currentStock"
+                      sortKey="status"
                       sortConfig={sortConfig}
                       onSort={requestSort}
                     >
@@ -743,8 +400,18 @@ export default function Stock() {
                 <TableBody>
                   {sortedData.map((item: any) => {
                     const stockInfo = getStockBadge(item);
+                    const openingStock = parseFloat(item.openingStock || item.currentStock || 0);
+                    const purchasedQuantity = parseFloat(item.purchasedQuantity || 0);
+                    const consumedQuantity = parseFloat(item.consumedQuantity || 0);
+                    const closingStock = parseFloat(item.closingStock || item.currentStock || 0);
+
                     return (
                       <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="font-mono text-sm">
+                            {item.invCode || item.id}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-3">
                             <div>
@@ -758,69 +425,54 @@ export default function Stock() {
                         <TableCell>
                           <div className="text-sm">
                             <div className="font-medium">
-                              {getUnitName(item.unitId)} (Primary)
+                              {item.unit || "pcs"}
                             </div>
                             {item.secondaryUnitId && (
                               <div className="text-xs text-muted-foreground">
-                                {getUnitName(item.secondaryUnitId)} (1 ={" "}
-                                {item.conversionRate || 1}{" "}
-                                {getUnitName(item.unitId).split(" ")[0]})
+                                Secondary unit available
                               </div>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">
-                            {parseFloat(item.currentStock || 0).toFixed(2)}
+                          <div className="font-medium text-blue-600">
+                            {openingStock.toFixed(2)}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">
-                            {parseFloat(item.minLevel || 0).toFixed(2)}
+                          <div className="font-medium text-green-600">
+                            +{purchasedQuantity.toFixed(2)}
                           </div>
                         </TableCell>
                         <TableCell>
-                          {symbol}
-                          {parseFloat(item.costPerUnit || 0).toFixed(2)}
+                          <div className="font-medium text-red-600">
+                            -{consumedQuantity.toFixed(2)}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {item.previousQuantity
-                            ? parseFloat(item.previousQuantity).toLocaleString()
-                            : "0"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {symbol}{" "}
-                          {item.previousAmount
-                            ? parseFloat(item.previousAmount).toLocaleString()
-                            : "0"}
+                        <TableCell>
+                          <div className="font-bold">
+                            {closingStock.toFixed(2)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Min: {parseFloat(item.minLevel || 0).toFixed(2)}
+                          </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {item.group ? (
-                            <Badge variant="outline" className="capitalize">
-                              {item.group.replace("-", " ")}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
+                          {getGroupBadge(item.group || item.categoryName)}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="text-sm">
-                            {item.dateAdded
-                              ? new Date(item.dateAdded).toLocaleDateString()
-                              : new Date(
-                                  item.createdAt || item.lastRestocked,
-                                ).toLocaleDateString()}
+                            {item.lastRestocked
+                              ? new Date(item.lastRestocked).toLocaleDateString()
+                              : new Date(item.createdAt).toLocaleDateString()}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {item.lastRestocked
-                              ? `Updated: ${new Date(
-                                  item.lastRestocked,
-                                ).toLocaleDateString()}`
-                              : ""}
+                            {formatCurrency(parseFloat(item.costPerUnit || 0))} per unit
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={stockInfo.variant}>
+                          <Badge variant={stockInfo.variant} className="flex items-center gap-1">
+                            {stockInfo.icon}
                             {stockInfo.text}
                           </Badge>
                         </TableCell>

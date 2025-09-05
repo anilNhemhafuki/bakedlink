@@ -1,4 +1,4 @@
-import { eq, desc, count, sql, and, gte, lte, lt } from "drizzle-orm";
+import { eq, desc, count, sql, and, gte, lte, lt, or } from "drizzle-orm";
 import { db } from "../db";
 import {
   users,
@@ -137,9 +137,26 @@ export interface IStorage {
   createUnitConversion(data: any): Promise<any>;
   updateUnitConversion(id: number, data: any): Promise<any>;
   deleteUnitConversion(id: number): Promise<void>;
+  convertQuantity(
+    fromQuantity: number,
+    fromUnitId: number,
+    toUnitId: number,
+  ): Promise<number>;
 
   // Inventory operations
-  getInventoryItems(): Promise<InventoryItem[]>;
+  getInventoryItems(options?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    group?: string;
+  }): Promise<{
+    items: InventoryItem[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+  }>;
+  getAllInventoryItems(): Promise<InventoryItem[]>;
   getInventoryItemById(id: number): Promise<InventoryItem | undefined>;
   createInventoryItem(data: any): Promise<InventoryItem>;
   updateInventoryItem(
@@ -147,6 +164,12 @@ export interface IStorage {
     data: Partial<InsertInventoryItem>,
   ): Promise<InventoryItem>;
   updateInventoryWithPurchase(
+    inventoryItemId: number,
+    purchaseQuantity: number,
+    purchaseRate: number,
+    purchaseDate: Date,
+  ): Promise<void>;
+  updateInventoryWithWeightedAverage(
     inventoryItemId: number,
     purchaseQuantity: number,
     purchaseRate: number,
@@ -167,6 +190,14 @@ export interface IStorage {
   ): Promise<InventoryTransaction>;
   getInventoryTransactions(itemId?: number): Promise<any[]>;
   getLowStockItems(): Promise<InventoryItem[]>;
+  getIngredients();
+  syncStockFromPurchases();
+  updateInventoryStockAndCost(
+    itemId: number,
+    addedQuantity: number,
+    newCostPerUnit: number,
+  );
+  updateInventoryPurchaseStock(itemId: number, purchasedQuantity: number);
 
   // Permission operations
   getPermissions(): Promise<Permission[]>;
@@ -194,7 +225,7 @@ export interface IStorage {
   // Analytics operations
   getDashboardStats(): Promise<any>;
   getSalesAnalytics(startDate?: Date, endDate?: Date): Promise<any>;
-  getLoginAnalytics(startDate?: string, endDate?: string): Promise<any>;
+  getLoginAnalytics(startDate?: string, endDate?: string);
 
   // Staff management operations
   getStaff(): Promise<Staff[]>;
@@ -794,7 +825,7 @@ export class Storage implements IStorage {
       ]);
 
       const totalUsage = usageChecks.reduce((sum, result) => sum + Number(result[0].count), 0);
-      
+
       if (totalUsage > 0) {
         throw new Error(`Cannot delete unit: it is being used in ${totalUsage} record(s). Please remove all references to this unit before deleting it.`);
       }
@@ -915,58 +946,100 @@ export class Storage implements IStorage {
     page?: number;
     limit?: number;
     search?: string;
+    group?: string;
   }): Promise<{
     items: InventoryItem[];
     totalCount: number;
     totalPages: number;
     currentPage: number;
+    itemsPerPage: number;
   }> {
-    try {
-      const page = options?.page || 1;
-      const limit = options?.limit || 10;
-      const offset = (page - 1) * limit;
-      const search = options?.search?.toLowerCase();
+    const page = options?.page || 1;
+    const limit = options?.limit || 10;
+    const search = options?.search?.toLowerCase() || "";
+    const group = options?.group || "";
+    const offset = (page - 1) * limit;
 
-      let query = this.db.select().from(inventoryItems);
+    let query = this.db
+      .select({
+        id: inventoryItems.id,
+        invCode: inventoryItems.invCode,
+        name: inventoryItems.name,
+        currentStock: inventoryItems.currentStock,
+        openingStock: inventoryItems.openingStock,
+        purchasedQuantity: inventoryItems.purchasedQuantity,
+        consumedQuantity: inventoryItems.consumedQuantity,
+        closingStock: inventoryItems.closingStock,
+        minLevel: inventoryItems.minLevel,
+        unit: inventoryItems.unit,
+        unitId: inventoryItems.unitId,
+        secondaryUnitId: inventoryItems.secondaryUnitId,
+        conversionRate: inventoryItems.conversionRate,
+        costPerUnit: inventoryItems.costPerUnit,
+        supplier: inventoryItems.supplier,
+        categoryId: inventoryItems.categoryId,
+        isIngredient: inventoryItems.isIngredient,
+        lastRestocked: inventoryItems.lastRestocked,
+        createdAt: inventoryItems.createdAt,
+        updatedAt: inventoryItems.updatedAt,
+        categoryName: inventoryCategories.name,
+        unitAbbreviation: units.abbreviation,
+      })
+      .from(inventoryItems)
+      .leftJoin(inventoryCategories, eq(inventoryItems.categoryId, inventoryCategories.id))
+      .leftJoin(units, eq(inventoryItems.unitId, units.id))
+      .orderBy(desc(inventoryItems.createdAt));
 
-      let countQuery = this.db.select({ count: count() }).from(inventoryItems);
+    let whereConditions = [];
 
-      // Apply search filter if provided
-      if (search) {
-        const searchCondition = sql`
-          LOWER(${inventoryItems.name}) LIKE ${`%${search}%`} OR
-          LOWER(${inventoryItems.supplier}) LIKE ${`%${search}%`}
-        `;
-        query = query.where(searchCondition);
-        countQuery = countQuery.where(searchCondition);
-      }
-
-      // Get total count
-      const [{ count: totalCount }] = await countQuery;
-
-      // Get paginated items
-      const items = await query
-        .orderBy(inventoryItems.name)
-        .limit(limit)
-        .offset(offset);
-
-      const totalPages = Math.ceil(totalCount / limit);
-
-      return {
-        items,
-        totalCount,
-        totalPages,
-        currentPage: page,
-      };
-    } catch (error) {
-      console.error("Error in getInventoryItems:", error);
-      return {
-        items: [],
-        totalCount: 0,
-        totalPages: 0,
-        currentPage: 1,
-      };
+    if (search) {
+      whereConditions.push(
+        or(
+          sql`LOWER(${inventoryItems.name}) LIKE ${`%${search}%`}`,
+          sql`LOWER(${inventoryItems.supplier}) LIKE ${`%${search}%`}`,
+          sql`LOWER(${inventoryCategories.name}) LIKE ${`%${search}%`}`,
+          sql`LOWER(${inventoryItems.invCode}) LIKE ${`%${search}%`}`
+        )
+      );
     }
+
+    if (group && group !== "all") {
+      if (group === "ingredients") {
+        whereConditions.push(eq(inventoryItems.isIngredient, true));
+      } else if (!isNaN(Number(group))) {
+        whereConditions.push(eq(inventoryItems.categoryId, parseInt(group)));
+      }
+    }
+
+    if (whereConditions.length > 0) {
+      query = query.where(and(...whereConditions));
+    }
+
+    // Get total count
+    const totalQuery = this.db
+      .select({ count: count() })
+      .from(inventoryItems)
+      .leftJoin(inventoryCategories, eq(inventoryItems.categoryId, inventoryCategories.id));
+
+    if (whereConditions.length > 0) {
+      totalQuery.where(and(...whereConditions));
+    }
+
+    const [items, totalResult] = await Promise.all([
+      query.limit(limit).offset(offset),
+      totalQuery
+    ]);
+
+    const totalCount = totalResult[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+      items,
+      totalCount,
+      totalPages,
+      currentPage: page,
+      itemsPerPage: limit
+    };
   }
 
   async getAllInventoryItems(): Promise<InventoryItem[]> {
@@ -1012,6 +1085,10 @@ export class Storage implements IStorage {
       const transformedData = {
         name: trimmedName,
         currentStock: itemData.currentStock.toString(),
+        openingStock: itemData.openingStock ? itemData.openingStock.toString() : itemData.currentStock.toString(),
+        purchasedQuantity: itemData.purchasedQuantity ? itemData.purchasedQuantity.toString() : "0",
+        consumedQuantity: itemData.consumedQuantity ? itemData.consumedQuantity.toString() : "0",
+        closingStock: itemData.closingStock ? itemData.closingStock.toString() : itemData.currentStock.toString(),
         minLevel: itemData.minLevel.toString(),
         unit: itemData.unit,
         unitId: itemData.unitId || null,
@@ -1022,6 +1099,7 @@ export class Storage implements IStorage {
         costPerUnit: itemData.costPerUnit.toString(),
         supplier: itemData.supplier || null,
         categoryId: itemData.categoryId || null,
+        isIngredient: itemData.isIngredient || false,
         lastRestocked: itemData.lastRestocked || new Date(),
       };
 
@@ -1270,14 +1348,168 @@ export class Storage implements IStorage {
     return await query;
   }
 
-  async getLowStockItems(): Promise<InventoryItem[]> {
-    return await this.db
+  async getLowStockItems() {
+    const items = await this.db
       .select()
       .from(inventoryItems)
-      .where(
-        sql`CAST(${inventoryItems.currentStock} AS DECIMAL) <= CAST(${inventoryItems.minLevel} AS DECIMAL)`,
-      )
-      .orderBy(inventoryItems.name);
+      .where(sql`${inventoryItems.closingStock} <= ${inventoryItems.minLevel}`)
+      .limit(10);
+
+    return items;
+  }
+
+  // Get ingredients from multiple sources
+  async getIngredients() {
+    try {
+      // Get ingredients from inventory items marked as ingredients
+      const inventoryIngredients = await this.db
+        .select({
+          id: inventoryItems.id,
+          name: inventoryItems.name,
+          unit: inventoryItems.unit,
+          currentStock: inventoryItems.closingStock,
+          costPerUnit: inventoryItems.costPerUnit,
+          source: sql<string>`'inventory'`,
+        })
+        .from(inventoryItems)
+        .where(eq(inventoryItems.isIngredient, true));
+
+      // Get ingredients from product ingredients table
+      const recipeIngredients = await this.db
+        .select({
+          id: inventoryItems.id,
+          name: inventoryItems.name,
+          unit: inventoryItems.unit,
+          currentStock: inventoryItems.closingStock,
+          costPerUnit: inventoryItems.costPerUnit,
+          source: sql<string>`'recipe'`,
+        })
+        .from(productIngredients)
+        .innerJoin(inventoryItems, eq(productIngredients.inventoryItemId, inventoryItems.id))
+        .groupBy(inventoryItems.id, inventoryItems.name, inventoryItems.unit, inventoryItems.closingStock, inventoryItems.costPerUnit);
+
+      // Merge and deduplicate
+      const allIngredients = [...inventoryIngredients, ...recipeIngredients];
+      const uniqueIngredients = allIngredients.filter((item, index, self) =>
+        index === self.findIndex(i => i.id === item.id)
+      );
+
+      return uniqueIngredients;
+    } catch (error) {
+      console.error("Error fetching ingredients:", error);
+      return [];
+    }
+  }
+
+  // Sync stock levels from purchases
+  async syncStockFromPurchases() {
+    try {
+      // Get all purchase items and aggregate by inventory item
+      const purchaseAggregates = await this.db
+        .select({
+          inventoryItemId: purchaseItems.inventoryItemId,
+          totalPurchased: sql<number>`SUM(${purchaseItems.quantity})`,
+        })
+        .from(purchaseItems)
+        .groupBy(purchaseItems.inventoryItemId);
+
+      // Update inventory items with purchased quantities
+      for (const aggregate of purchaseAggregates) {
+        const inventoryItem = await this.db
+          .select()
+          .from(inventoryItems)
+          .where(eq(inventoryItems.id, aggregate.inventoryItemId))
+          .limit(1);
+
+        if (inventoryItem.length > 0) {
+          const item = inventoryItem[0];
+          const openingStock = parseFloat(item.openingStock || "0");
+          const purchasedQuantity = aggregate.totalPurchased || 0;
+          const consumedQuantity = parseFloat(item.consumedQuantity || "0");
+          const closingStock = openingStock + purchasedQuantity - consumedQuantity;
+
+          await this.db
+            .update(inventoryItems)
+            .set({
+              purchasedQuantity: purchasedQuantity.toString(),
+              closingStock: closingStock.toString(),
+              currentStock: closingStock.toString(),
+              lastRestocked: new Date(),
+            })
+            .where(eq(inventoryItems.id, aggregate.inventoryItemId));
+        }
+      }
+
+      console.log("Stock levels synced from purchases successfully");
+    } catch (error) {
+      console.error("Error syncing stock from purchases:", error);
+      throw error;
+    }
+  }
+
+  async updateInventoryStockAndCost(itemId: number, addedQuantity: number, newCostPerUnit: number) {
+    try {
+      const item = await this.getInventoryItemById(itemId);
+      if (!item) {
+        throw new Error("Inventory item not found");
+      }
+
+      const currentStock = parseFloat(item.currentStock);
+      const currentCostPerUnit = parseFloat(item.costPerUnit);
+
+      // Calculate weighted average cost
+      const totalValue = (currentStock * currentCostPerUnit) + (addedQuantity * newCostPerUnit);
+      const totalQuantity = currentStock + addedQuantity;
+      const newWeightedCost = totalQuantity > 0 ? totalValue / totalQuantity : newCostPerUnit;
+
+      // Update inventory
+      await this.db
+        .update(inventoryItems)
+        .set({
+          currentStock: totalQuantity.toString(),
+          costPerUnit: newWeightedCost.toFixed(4),
+          lastRestocked: new Date(),
+        })
+        .where(eq(inventoryItems.id, itemId));
+
+      console.log(`Updated inventory item ${itemId}: stock=${totalQuantity}, cost=${newWeightedAverageRate.toFixed(4)}`);
+    } catch (error) {
+      console.error("Error updating inventory stock and cost:", error);
+      throw error;
+    }
+  }
+
+  // Update inventory stock specifically for purchases
+  async updateInventoryPurchaseStock(itemId: number, purchasedQuantity: number) {
+    try {
+      const item = await this.getInventoryItemById(itemId);
+      if (!item) {
+        throw new Error("Inventory item not found");
+      }
+
+      const openingStock = parseFloat(item.openingStock || item.currentStock || "0");
+      const currentPurchased = parseFloat(item.purchasedQuantity || "0");
+      const consumedQuantity = parseFloat(item.consumedQuantity || "0");
+
+      const newPurchasedQuantity = currentPurchased + purchasedQuantity;
+      const newClosingStock = openingStock + newPurchasedQuantity - consumedQuantity;
+
+      // Update inventory with new purchase data
+      await this.db
+        .update(inventoryItems)
+        .set({
+          purchasedQuantity: newPurchasedQuantity.toString(),
+          closingStock: newClosingStock.toString(),
+          currentStock: newClosingStock.toString(),
+          lastRestocked: new Date(),
+        })
+        .where(eq(inventoryItems.id, itemId));
+
+      console.log(`Updated purchase stock for item ${itemId}: purchased=${newPurchasedQuantity}, closing=${newClosingStock}`);
+    } catch (error) {
+      console.error("Error updating inventory purchase stock:", error);
+      throw error;
+    }
   }
 
   // Permission operations
@@ -1672,7 +1904,6 @@ export class Storage implements IStorage {
     }
   }
 
-  //```typescript
   groupLoginsByDay(logs: any[]): any {
     const loginsByDay: any = {};
 
@@ -1905,6 +2136,11 @@ export class Storage implements IStorage {
             parseFloat(item.unitPrice),
             new Date(),
           );
+          // Update inventory specifically for purchase quantity tracking
+          await this.updateInventoryPurchaseStock(
+            item.inventoryItemId,
+            parseFloat(item.quantity),
+          );
         }
       }
 
@@ -1979,142 +2215,6 @@ export class Storage implements IStorage {
 
   async deleteExpense(id: number): Promise<void> {
     await this.db.delete(expenses).where(eq(expenses.id, id));
-  }
-
-  // Customer operations (duplicate - see above)
-  // async getCustomers(): Promise<Customer[]> { ... }
-  // async getCustomerById(id: number): Promise<Customer | undefined> { ... }
-  // async createCustomer(customer: InsertCustomer): Promise<Customer> { ... }
-  // async updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer> { ... }
-  // async deleteCustomer(id: number): Promise<void> { ... }
-
-  // Party operations (duplicate - see above)
-  // async getParties(): Promise<Party[]> { ... }
-  // async createParty(party: InsertParty): Promise<Party> { ... }
-  // async updateParty(id: number, party: Partial<InsertParty>): Promise<Party> { ... }
-  // async deleteParty(id: number): Promise<void> { ... }
-
-  // Ledger Transaction Methods
-  async createLedgerTransaction(data: any): Promise<any> {
-    const [newTransaction] = await this.db
-      .insert(ledgerTransactions)
-      .values(data)
-      .returning();
-    await this.recalculateRunningBalance(
-      data.customerOrPartyId,
-      data.entityType,
-    );
-    return newTransaction;
-  }
-
-  async getLedgerTransactions(
-    entityId: number,
-    entityType: "customer" | "party",
-  ): Promise<any[]> {
-    return await this.db
-      .select()
-      .from(ledgerTransactions)
-      .where(
-        and(
-          eq(ledgerTransactions.customerOrPartyId, entityId),
-          eq(ledgerTransactions.entityType, entityType),
-        ),
-      )
-      .orderBy(ledgerTransactions.transactionDate, ledgerTransactions.id);
-  }
-
-  async updateLedgerTransaction(id: number, data: any): Promise<any> {
-    const [updatedTransaction] = await this.db
-      .update(ledgerTransactions)
-      .set(data)
-      .where(eq(ledgerTransactions.id, id))
-      .returning();
-    const transaction = await this.db
-      .select()
-      .from(ledgerTransactions)
-      .where(eq(ledgerTransactions.id, id))
-      .limit(1);
-    if (transaction && transaction[0]) {
-      await this.recalculateRunningBalance(
-        transaction[0].customerOrPartyId,
-        transaction[0].entityType,
-      );
-    }
-    return updatedTransaction;
-  }
-
-  async deleteLedgerTransaction(id: number): Promise<void> {
-    const transaction = await this.db
-      .select()
-      .from(ledgerTransactions)
-      .where(eq(ledgerTransactions.id, id))
-      .limit(1);
-    await this.db
-      .delete(ledgerTransactions)
-      .where(eq(ledgerTransactions.id, id));
-    if (transaction && transaction[0]) {
-      await this.recalculateRunningBalance(
-        transaction[0].customerOrPartyId,
-        transaction[0].entityType,
-      );
-    }
-  }
-
-  async recalculateRunningBalance(
-    entityId: number,
-    entityType: "customer" | "party",
-  ): Promise<number> {
-    const transactions = await this.getLedgerTransactions(entityId, entityType);
-
-    // Get opening balance
-    const entity =
-      entityType === "customer"
-        ? await this.db
-            .select()
-            .from(customers)
-            .where(eq(customers.id, entityId))
-            .limit(1)
-        : await this.db
-            .select()
-            .from(parties)
-            .where(eq(parties.id, entityId))
-            .limit(1);
-
-    const openingBalance = parseFloat(entity[0]?.openingBalance || "0");
-    let runningBalance = openingBalance;
-
-    // Update running balances for all transactions
-    for (const transaction of transactions) {
-      const debit = parseFloat(transaction.debitAmount || "0");
-      const credit = parseFloat(transaction.creditAmount || "0");
-      runningBalance = runningBalance + debit - credit;
-
-      await this.db
-        .update(ledgerTransactions)
-        .set({ runningBalance: runningBalance.toString() })
-        .where(eq(ledgerTransactions.id, transaction.id))
-        .returning();
-    }
-
-    // Update entity's current balance
-    const updateData = { currentBalance: runningBalance.toString() };
-    if (entity && entity[0]) {
-      if (entityType === "customer") {
-        await this.db
-          .update(customers)
-          .set(updateData)
-          .where(eq(customers.id, entityId))
-          .returning();
-      } else {
-        await this.db
-          .update(parties)
-          .set(updateData)
-          .where(eq(parties.id, entityId))
-          .returning();
-      }
-    }
-
-    return runningBalance;
   }
 
   // Order operations
