@@ -85,7 +85,7 @@ class SecurityMonitorService {
       })
       .from(loginLogs)
       .where(
-        sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${threshold}`
+        sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${threshold.toISOString()}`
       )
       .groupBy(loginLogs.ipAddress)
       .having(sql`COUNT(*) >= ${this.config.BRUTE_FORCE_THRESHOLD}`);
@@ -120,7 +120,7 @@ class SecurityMonitorService {
       })
       .from(loginLogs)
       .where(
-        sql`${loginLogs.status} = 'success' AND ${loginLogs.loginTime} >= ${last24Hours}`
+        sql`${loginLogs.status} = 'success' AND ${loginLogs.loginTime} >= ${last24Hours.toISOString()}`
       )
       .groupBy(loginLogs.userId, loginLogs.email)
       .having(sql`COUNT(DISTINCT ${loginLogs.location}) >= ${this.config.SUSPICIOUS_LOGIN_THRESHOLD}`);
@@ -154,7 +154,7 @@ class SecurityMonitorService {
       })
       .from(auditLogs)
       .where(
-        sql`${auditLogs.timestamp} >= ${last10Minutes} AND ${auditLogs.action} IN ('CREATE', 'UPDATE', 'DELETE')`
+        sql`${auditLogs.timestamp} >= ${last10Minutes.toISOString()} AND ${auditLogs.action} IN ('CREATE', 'UPDATE', 'DELETE')`
       )
       .groupBy(auditLogs.userId, auditLogs.userEmail)
       .having(sql`COUNT(*) >= ${this.config.BULK_OPERATION_THRESHOLD}`);
@@ -186,7 +186,7 @@ class SecurityMonitorService {
         requestCount: count(),
       })
       .from(auditLogs)
-      .where(sql`${auditLogs.timestamp} >= ${lastMinute}`)
+      .where(sql`${auditLogs.timestamp} >= ${lastMinute.toISOString()}`)
       .groupBy(auditLogs.ipAddress)
       .having(sql`COUNT(*) >= ${this.config.API_ABUSE_THRESHOLD}`);
 
@@ -215,7 +215,7 @@ class SecurityMonitorService {
       .select()
       .from(auditLogs)
       .where(
-        sql`${auditLogs.timestamp} >= ${last30Minutes} AND ${auditLogs.resource} = 'users' AND ${auditLogs.action} = 'UPDATE' AND ${auditLogs.newValues}::text LIKE '%"role":%'`
+        sql`${auditLogs.timestamp} >= ${last30Minutes.toISOString()} AND ${auditLogs.resource} = 'users' AND ${auditLogs.action} = 'UPDATE' AND ${auditLogs.newValues}::text LIKE '%"role":%'`
       )
       .orderBy(desc(auditLogs.timestamp));
 
@@ -286,9 +286,9 @@ class SecurityMonitorService {
 
     const [failedLoginsResult, suspiciousActivitiesResult] = await Promise.all([
       db.select({ count: count() }).from(loginLogs)
-        .where(sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${last24Hours}`),
+        .where(sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${last24Hours.toISOString()}`),
       db.select({ count: count() }).from(auditLogs)
-        .where(sql`${auditLogs.status} = 'failed' AND ${auditLogs.timestamp} >= ${last24Hours}`)
+        .where(sql`${auditLogs.status} = 'failed' AND ${auditLogs.timestamp} >= ${last24Hours.toISOString()}`)
     ]);
 
     const failedLogins24h = failedLoginsResult[0]?.count || 0;

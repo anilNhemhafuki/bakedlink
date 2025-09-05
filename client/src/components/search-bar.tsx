@@ -11,7 +11,7 @@ interface SearchBarProps {
   onChange?: (value: string) => void;
 }
 
-export default function SearchBar({
+export function SearchBar({
   placeholder = "Search...",
   onSearch,
   className = "",
