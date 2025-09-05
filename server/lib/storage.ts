@@ -954,99 +954,153 @@ export class Storage implements IStorage {
     currentPage: number;
     itemsPerPage: number;
   }> {
-    const page = options?.page || 1;
-    const limit = options?.limit || 10;
-    const search = options?.search?.toLowerCase() || "";
-    const group = options?.group || "all";
-    const offset = (page - 1) * limit;
+    try {
+      const page = options?.page || 1;
+      const limit = options?.limit || 10;
+      const search = options?.search?.toLowerCase() || "";
+      const group = options?.group || "all";
+      const offset = (page - 1) * limit;
 
-    let query = this.db
-      .select({
-        id: inventoryItems.id,
-        invCode: inventoryItems.invCode,
-        name: inventoryItems.name,
-        currentStock: inventoryItems.currentStock,
-        openingStock: inventoryItems.openingStock,
-        purchasedQuantity: inventoryItems.purchasedQuantity,
-        consumedQuantity: inventoryItems.consumedQuantity,
-        closingStock: inventoryItems.closingStock,
-        minLevel: inventoryItems.minLevel,
-        unit: inventoryItems.unit,
-        unitId: inventoryItems.unitId,
-        secondaryUnitId: inventoryItems.secondaryUnitId,
-        conversionRate: inventoryItems.conversionFactor,
-        costPerUnit: inventoryItems.costPerUnit,
-        supplier: inventoryItems.supplier,
-        categoryId: inventoryItems.categoryId,
-        isIngredient: inventoryItems.isIngredient,
-        lastRestocked: inventoryItems.lastRestocked,
-        notes: sql<string>`COALESCE(${inventoryItems.notes}, '')`.as('notes'),
-        createdAt: inventoryItems.createdAt,
-        updatedAt: inventoryItems.updatedAt,
-        categoryName: inventoryCategories.name,
-        unitAbbreviation: units.abbreviation,
-        group: sql<string>`
-          CASE 
-            WHEN ${inventoryItems.categoryId} IS NOT NULL THEN ${inventoryItems.categoryId}::text
-            WHEN ${inventoryItems.isIngredient} = true THEN 'ingredients'
-            ELSE 'uncategorized'
-          END
-        `.as('group')
-      })
-      .from(inventoryItems)
-      .leftJoin(inventoryCategories, eq(inventoryItems.categoryId, inventoryCategories.id))
-      .leftJoin(units, eq(inventoryItems.unitId, units.id))
-      .orderBy(desc(inventoryItems.createdAt));
+      // Build base query with simplified selection
+      let baseQuery = this.db
+        .select({
+          id: inventoryItems.id,
+          invCode: inventoryItems.invCode,
+          name: inventoryItems.name,
+          currentStock: inventoryItems.currentStock,
+          openingStock: inventoryItems.openingStock,
+          purchasedQuantity: inventoryItems.purchasedQuantity,
+          consumedQuantity: inventoryItems.consumedQuantity,
+          closingStock: inventoryItems.closingStock,
+          minLevel: inventoryItems.minLevel,
+          unit: inventoryItems.unit,
+          unitId: inventoryItems.unitId,
+          secondaryUnitId: inventoryItems.secondaryUnitId,
+          conversionRate: inventoryItems.conversionRate,
+          costPerUnit: inventoryItems.costPerUnit,
+          supplier: inventoryItems.supplier,
+          categoryId: inventoryItems.categoryId,
+          isIngredient: inventoryItems.isIngredient,
+          lastRestocked: inventoryItems.lastRestocked,
+          notes: inventoryItems.notes,
+          createdAt: inventoryItems.createdAt,
+          updatedAt: inventoryItems.updatedAt,
+        })
+        .from(inventoryItems)
+        .orderBy(desc(inventoryItems.createdAt));
 
-    let countQuery = this.db
-      .select({ count: count() })
-      .from(inventoryItems)
-      .leftJoin(inventoryCategories, eq(inventoryItems.categoryId, inventoryCategories.id));
+      let countQuery = this.db
+        .select({ count: count() })
+        .from(inventoryItems);
 
-    // Build where conditions
-    const whereConditions = [];
+      // Build where conditions
+      const whereConditions = [];
 
-    if (search) {
-      whereConditions.push(
-        or(
-          ilike(inventoryItems.name, `%${search}%`),
-          ilike(inventoryItems.supplier, `%${search}%`),
-          ilike(inventoryItems.invCode, `%${search}%`),
-          ilike(inventoryCategories.name, `%${search}%`)
-        )
-      );
-    }
-
-    if (group && group !== "all") {
-      if (group === "ingredients") {
-        whereConditions.push(eq(inventoryItems.isIngredient, true));
-      } else if (group === "uncategorized") {
-        whereConditions.push(isNull(inventoryItems.categoryId));
-      } else if (!isNaN(parseInt(group))) {
-        whereConditions.push(eq(inventoryItems.categoryId, parseInt(group)));
+      if (search) {
+        whereConditions.push(
+          or(
+            ilike(inventoryItems.name, `%${search}%`),
+            ilike(inventoryItems.supplier, `%${search}%`),
+            ilike(inventoryItems.invCode, `%${search}%`)
+          )
+        );
       }
+
+      if (group && group !== "all") {
+        if (group === "ingredients") {
+          whereConditions.push(eq(inventoryItems.isIngredient, true));
+        } else if (group === "uncategorized") {
+          whereConditions.push(isNull(inventoryItems.categoryId));
+        } else if (!isNaN(parseInt(group))) {
+          whereConditions.push(eq(inventoryItems.categoryId, parseInt(group)));
+        }
+      }
+
+      if (whereConditions.length > 0) {
+        baseQuery = baseQuery.where(and(...whereConditions));
+        countQuery = countQuery.where(and(...whereConditions));
+      }
+
+      const [items, totalResult] = await Promise.all([
+        baseQuery.limit(limit).offset(offset),
+        countQuery
+      ]);
+
+      const totalCount = totalResult[0]?.count || 0;
+      const totalPages = Math.ceil(totalCount / limit);
+
+      // Add category and unit information manually
+      const enrichedItems = await Promise.all(
+        items.map(async (item) => {
+          let categoryName = null;
+          let unitAbbreviation = item.unit;
+          let group = 'uncategorized';
+
+          // Get category name if categoryId exists
+          if (item.categoryId) {
+            try {
+              const category = await this.db
+                .select({ name: inventoryCategories.name })
+                .from(inventoryCategories)
+                .where(eq(inventoryCategories.id, item.categoryId))
+                .limit(1);
+              if (category.length > 0) {
+                categoryName = category[0].name;
+                group = item.categoryId.toString();
+              }
+            } catch (error) {
+              console.warn(`Failed to fetch category for item ${item.id}:`, error);
+            }
+          }
+
+          // Get unit abbreviation if unitId exists
+          if (item.unitId) {
+            try {
+              const unit = await this.db
+                .select({ abbreviation: units.abbreviation })
+                .from(units)
+                .where(eq(units.id, item.unitId))
+                .limit(1);
+              if (unit.length > 0) {
+                unitAbbreviation = unit[0].abbreviation;
+              }
+            } catch (error) {
+              console.warn(`Failed to fetch unit for item ${item.id}:`, error);
+            }
+          }
+
+          // Determine group
+          if (item.isIngredient) {
+            group = 'ingredients';
+          }
+
+          return {
+            ...item,
+            categoryName,
+            unitAbbreviation,
+            group,
+            notes: item.notes || ''
+          };
+        })
+      );
+
+      return {
+        items: enrichedItems,
+        totalCount,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit
+      };
+    } catch (error) {
+      console.error("Error in getInventoryItems:", error);
+      return {
+        items: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+        itemsPerPage: 10
+      };
     }
-
-    if (whereConditions.length > 0) {
-      query = query.where(and(...whereConditions));
-      countQuery = countQuery.where(and(...whereConditions));
-    }
-
-    const [items, totalResult] = await Promise.all([
-      query.limit(limit).offset(offset),
-      countQuery
-    ]);
-
-    const totalCount = totalResult[0]?.count || 0;
-    const totalPages = Math.ceil(totalCount / limit);
-
-    return {
-      items,
-      totalCount,
-      totalPages,
-      currentPage: page,
-      itemsPerPage: limit
-    };
   }
 
   async getAllInventoryItems(): Promise<InventoryItem[]> {
@@ -1408,36 +1462,38 @@ export class Storage implements IStorage {
   // Get ingredients from multiple sources
   async getIngredients(): Promise<InventoryItem[]> {
     try {
-      const result = await this.getInventoryItems({ limit: 1000 }); // Get all items
-      const items = result.items;
+      console.log("Fetching ingredients...");
+      
+      // Get all inventory items directly
+      const allItems = await this.db
+        .select()
+        .from(inventoryItems)
+        .orderBy(inventoryItems.name);
+
+      console.log(`Found ${allItems.length} total inventory items`);
 
       // Filter items that are suitable as ingredients
-      const ingredients = items.filter((item: any) =>
-        item.name &&
-        (item.group === "raw-materials" ||
-          item.group === "ingredients" ||
-          item.group === "flour" ||
-          item.group === "dairy" ||
-          item.group === "sweeteners" ||
-          item.group === "spices" ||
-          item.group === "leavening" ||
-          item.group === "extracts" ||
-          item.group === "chocolate" ||
-          item.group === "nuts" ||
-          item.group === "fruits" ||
-          item.isIngredient === true ||
-          !item.group ||
-          item.name.toLowerCase().includes("flour") ||
-          item.name.toLowerCase().includes("sugar") ||
-          item.name.toLowerCase().includes("butter") ||
-          item.name.toLowerCase().includes("milk") ||
-          item.name.toLowerCase().includes("egg") ||
-          item.name.toLowerCase().includes("chocolate") ||
-          item.name.toLowerCase().includes("vanilla") ||
-          item.name.toLowerCase().includes("salt") ||
-          item.name.toLowerCase().includes("baking"))
-      );
+      const ingredients = allItems.filter((item: any) => {
+        const itemName = item.name?.toLowerCase() || '';
+        
+        return item.isIngredient === true ||
+          itemName.includes("flour") ||
+          itemName.includes("sugar") ||
+          itemName.includes("butter") ||
+          itemName.includes("milk") ||
+          itemName.includes("egg") ||
+          itemName.includes("chocolate") ||
+          itemName.includes("vanilla") ||
+          itemName.includes("salt") ||
+          itemName.includes("baking") ||
+          itemName.includes("yeast") ||
+          itemName.includes("cream") ||
+          itemName.includes("oil") ||
+          itemName.includes("spice") ||
+          itemName.includes("extract");
+      });
 
+      console.log(`Filtered to ${ingredients.length} ingredients`);
       return ingredients;
     } catch (error) {
       console.error("Error fetching ingredients:", error);

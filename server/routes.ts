@@ -974,20 +974,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get inventory items with pagination
   app.get("/api/inventory", async (req, res) => {
     try {
+      console.log("📦 Fetching inventory items with params:", req.query);
+      
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-      const search = req.query.search as string;
+      const limit = parseInt(req.query.limit as string) || 50; // Increase default limit
+      const search = req.query.search as string || "";
+      const group = req.query.group as string || "all";
 
       const result = await storage.getInventoryItems({
         page,
         limit,
         search,
+        group,
       });
 
+      console.log(`✅ Returning ${result.items.length} items out of ${result.totalCount} total`);
       res.json(result);
     } catch (error) {
-      console.error("Error fetching inventory items:", error);
-      res.status(500).json({ error: "Failed to fetch inventory items" });
+      console.error("❌ Error fetching inventory items:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch inventory items",
+        message: error.message,
+        items: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+        itemsPerPage: 50
+      });
     }
   });
 
