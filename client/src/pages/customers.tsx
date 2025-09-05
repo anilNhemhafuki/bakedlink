@@ -508,7 +508,8 @@ export default function Customers() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedCustomers.map((customer: any) => {
+                  {paginatedCustomers && paginatedCustomers.length > 0 ? (
+                    paginatedCustomers.map((customer: any) => {
                     const balanceInfo = getBalanceBadge(
                       customer.currentBalance,
                     );
@@ -610,7 +611,20 @@ export default function Customers() {
                         </TableCell>
                       </TableRow>
                     );
-                  })}
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-12">
+                      <div className="flex flex-col items-center justify-center">
+                        <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold mb-2">No customers found</h3>
+                        <p className="text-muted-foreground mb-4">
+                          {searchQuery ? 'No customers match your search criteria.' : 'Start by adding your first customer.'}
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
                 </TableBody>
               </Table>
               {filteredCustomers.length === 0 && (

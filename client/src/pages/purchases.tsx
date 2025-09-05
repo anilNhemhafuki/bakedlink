@@ -587,14 +587,18 @@ export default function Purchases() {
                           <SelectValue placeholder="Select item" />
                         </SelectTrigger>
                         <SelectContent>
-                          {inventoryItems.map((inventoryItem: any) => (
+                          {inventoryItems && Array.isArray(inventoryItems) ? inventoryItems.map((inventoryItem: any) => (
                             <SelectItem
                               key={inventoryItem.id}
                               value={inventoryItem.id.toString()}
                             >
                               {inventoryItem.name}
                             </SelectItem>
-                          ))}
+                          )) : (
+                            <SelectItem value="no-items" disabled>
+                              No inventory items available
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>

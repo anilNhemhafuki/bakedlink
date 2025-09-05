@@ -335,7 +335,7 @@ export default function Orders() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedOrders.length > 0 ? (
+            {paginatedOrders && paginatedOrders.length > 0 ? (
               paginatedOrders.map((order: any) => {
                 // ✅ Move the logic here
                 let statusClass = "bg-gray-100 text-gray-800";

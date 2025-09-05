@@ -774,7 +774,7 @@ export default function Sales() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedSales.length > 0 ? (
+              {paginatedSales && paginatedSales.length > 0 ? (
                 paginatedSales.map((sale: Sale) => {
                   let statusClass = "bg-gray-100 text-gray-800";
                   if (sale.status === "completed") {
