@@ -66,7 +66,13 @@ export default function Stock() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["/api/inventory", currentPage, itemsPerPage, searchQuery, selectedGroup],
+    queryKey: [
+      "/api/inventory",
+      currentPage,
+      itemsPerPage,
+      searchQuery,
+      selectedGroup,
+    ],
     queryFn: () =>
       apiRequest(
         "GET",
@@ -172,17 +178,35 @@ export default function Stock() {
   };
 
   const getStockBadge = (item: any) => {
-    const closingStock = parseFloat(item.closingStock || item.currentStock || 0);
+    const closingStock = parseFloat(
+      item.closingStock || item.currentStock || 0,
+    );
     const minLevel = parseFloat(item.minLevel || 0);
 
     if (closingStock <= 0) {
-      return { variant: "destructive" as const, text: "Out of Stock", icon: <AlertTriangle className="h-3 w-3" /> };
+      return {
+        variant: "destructive" as const,
+        text: "Out of Stock",
+        icon: <AlertTriangle className="h-3 w-3" />,
+      };
     } else if (closingStock <= minLevel) {
-      return { variant: "destructive" as const, text: "Low Stock", icon: <TrendingDown className="h-3 w-3" /> };
+      return {
+        variant: "destructive" as const,
+        text: "Low Stock",
+        icon: <TrendingDown className="h-3 w-3" />,
+      };
     } else if (closingStock <= minLevel * 1.5) {
-      return { variant: "secondary" as const, text: "Warning", icon: <Minus className="h-3 w-3" /> };
+      return {
+        variant: "secondary" as const,
+        text: "Warning",
+        icon: <Minus className="h-3 w-3" />,
+      };
     }
-    return { variant: "default" as const, text: "In Stock", icon: <TrendingUp className="h-3 w-3" /> };
+    return {
+      variant: "default" as const,
+      text: "In Stock",
+      icon: <TrendingUp className="h-3 w-3" />,
+    };
   };
 
   const getUnitName = (unitId: number, units: any[] = []) => {
@@ -203,7 +227,8 @@ export default function Stock() {
       supplies: "bg-gray-100 text-gray-800",
     };
 
-    const colorClass = colors[group as keyof typeof colors] || "bg-gray-100 text-gray-800";
+    const colorClass =
+      colors[group as keyof typeof colors] || "bg-gray-100 text-gray-800";
 
     return (
       <Badge variant="outline" className={`capitalize ${colorClass} border-0`}>
@@ -228,9 +253,9 @@ export default function Stock() {
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">Ingredient Stock Management</h1>
           <p className="text-gray-600">
-            Track opening, purchased, consumed, and closing stock with purchase integration
+            Track opening, purchased, consumed, and closing stock with purchase
+            integration
           </p>
         </div>
         <div className="flex gap-2">
@@ -240,7 +265,9 @@ export default function Stock() {
             disabled={syncStockMutation.isPending}
             className="w-full sm:w-auto"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncStockMutation.isPending ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${syncStockMutation.isPending ? "animate-spin" : ""}`}
+            />
             Sync from Purchases
           </Button>
           <Button
@@ -400,10 +427,18 @@ export default function Stock() {
                 <TableBody>
                   {sortedData.map((item: any) => {
                     const stockInfo = getStockBadge(item);
-                    const openingStock = parseFloat(item.openingStock || item.currentStock || 0);
-                    const purchasedQuantity = parseFloat(item.purchasedQuantity || 0);
-                    const consumedQuantity = parseFloat(item.consumedQuantity || 0);
-                    const closingStock = parseFloat(item.closingStock || item.currentStock || 0);
+                    const openingStock = parseFloat(
+                      item.openingStock || item.currentStock || 0,
+                    );
+                    const purchasedQuantity = parseFloat(
+                      item.purchasedQuantity || 0,
+                    );
+                    const consumedQuantity = parseFloat(
+                      item.consumedQuantity || 0,
+                    );
+                    const closingStock = parseFloat(
+                      item.closingStock || item.currentStock || 0,
+                    );
 
                     return (
                       <TableRow key={item.id}>
@@ -458,20 +493,28 @@ export default function Stock() {
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {getGroupBadge(item.group || item.categoryName || "uncategorized")}
+                          {getGroupBadge(
+                            item.group || item.categoryName || "uncategorized",
+                          )}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="text-sm">
                             {item.lastRestocked
-                              ? new Date(item.lastRestocked).toLocaleDateString()
+                              ? new Date(
+                                  item.lastRestocked,
+                                ).toLocaleDateString()
                               : new Date(item.createdAt).toLocaleDateString()}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {formatCurrency(parseFloat(item.costPerUnit || 0))} per unit
+                            {formatCurrency(parseFloat(item.costPerUnit || 0))}{" "}
+                            per unit
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={stockInfo.variant} className="flex items-center gap-1">
+                          <Badge
+                            variant={stockInfo.variant}
+                            className="flex items-center gap-1"
+                          >
                             {stockInfo.icon}
                             {stockInfo.text}
                           </Badge>

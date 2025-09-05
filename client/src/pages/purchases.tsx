@@ -440,7 +440,6 @@ export default function Purchases() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Purchase Management</h1>
           <p className="text-gray-600">
             Record and track all purchase transactions with detailed history
           </p>
@@ -756,9 +755,6 @@ export default function Purchases() {
 
       {/* Filters and Search */}
       <Card>
-        <CardHeader>
-          <CardTitle>Filters & Search</CardTitle>
-        </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
@@ -862,46 +858,46 @@ export default function Purchases() {
             <Table>
               <TableHeader>
                 <TableRow>
-                    <SortableTableHeader
-                      label="Date"
-                      sortKey="purchaseDate"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
+                  <SortableTableHeader
+                    label="Date"
+                    sortKey="purchaseDate"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
                     Date
-                    </SortableTableHeader>
-                    <SortableTableHeader
-                      label="Supplier Name"
-                      sortKey="supplierName"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
+                  </SortableTableHeader>
+                  <SortableTableHeader
+                    label="Supplier Name"
+                    sortKey="supplierName"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
                     Supplier Name
                   </SortableTableHeader>
-                    <SortableTableHeader
-                      label="Invoice Number"
-                      sortKey="invoiceNumber"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
+                  <SortableTableHeader
+                    label="Invoice Number"
+                    sortKey="invoiceNumber"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
                     Invoice Number
                   </SortableTableHeader>
                   <SortableTableHeader>Items</SortableTableHeader>
-                    <SortableTableHeader
-                      label="Total Amount"
-                      sortKey="totalAmount"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
+                  <SortableTableHeader
+                    label="Total Amount"
+                    sortKey="totalAmount"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
                     Total Amount
                   </SortableTableHeader>
                   <SortableTableHeader>Payment Method</SortableTableHeader>
-                    <SortableTableHeader
-                      label="Status"
-                      sortKey="status"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
+                  <SortableTableHeader
+                    label="Status"
+                    sortKey="status"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                  >
                     Status
                   </SortableTableHeader>
                   <SortableTableHeader>Actions</SortableTableHeader>
