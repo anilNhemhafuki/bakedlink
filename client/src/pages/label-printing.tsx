@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { isUnauthorizedError } from '@/lib/authUtils';
 import type { ProductionScheduleLabel, InsertProductionScheduleLabel, Product, Order, Unit } from '@shared/schema';
 
 export default function LabelPrinting() {
@@ -29,24 +30,93 @@ export default function LabelPrinting() {
   });
 
   // Fetch production schedule labels
-  const { data: labels = [], isLoading: labelsLoading } = useQuery<ProductionScheduleLabel[]>({
-    queryKey: ['/api/production-schedule-labels'],
+  const { data: labelsData = [], isLoading: labelsLoading } = useQuery({
+    queryKey: ["production-schedule-labels"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", "/api/production-schedule-labels");
+        return Array.isArray(res) ? res : res.labels || [];
+      } catch (error) {
+        console.error("Failed to fetch production schedule labels:", error);
+        return [];
+      }
+    },
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
   });
+
+  const labels = Array.isArray(labelsData) ? labelsData : [];
 
   // Fetch products for dropdown
-  const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ['/api/products'],
+  const { data: productsData = [], isLoading: productsLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", "/api/products");
+        console.log("Products API response:", res);
+        
+        // Handle different response formats
+        if (res?.success && res?.products) {
+          return Array.isArray(res.products) ? res.products : [];
+        }
+        
+        if (res?.products) {
+          return Array.isArray(res.products) ? res.products : [];
+        }
+        
+        // If response is directly an array
+        if (Array.isArray(res)) {
+          return res;
+        }
+        
+        console.warn("Unexpected products response format:", res);
+        return [];
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+        throw error;
+      }
+    },
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
   });
+
+  const products = Array.isArray(productsData) ? productsData : [];
 
   // Fetch orders for dropdown
-  const { data: orders = [] } = useQuery<Order[]>({
-    queryKey: ['/api/orders'],
+  const { data: ordersData = [] } = useQuery({
+    queryKey: ["orders"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", "/api/orders");
+        return Array.isArray(res) ? res : res.orders || [];
+      } catch (error) {
+        console.error("Failed to fetch orders:", error);
+        return [];
+      }
+    },
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
   });
 
+  const orders = Array.isArray(ordersData) ? ordersData : [];
+
   // Fetch units for dropdown
-  const { data: units = [] } = useQuery<Unit[]>({
-    queryKey: ['/api/units'],
+  const { data: unitsData = [] } = useQuery({
+    queryKey: ["units"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", "/api/units");
+        return Array.isArray(res) ? res : res.units || [];
+      } catch (error) {
+        console.error("Failed to fetch units:", error);
+        return [];
+      }
+    },
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
   });
+
+  const units = Array.isArray(unitsData) ? unitsData : [];
 
   // Create/Update mutation
   const createMutation = useMutation({
