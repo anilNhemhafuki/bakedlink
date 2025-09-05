@@ -171,10 +171,14 @@ export default function Units() {
         setTimeout(() => (window.location.href = "/api/login"), 500);
         return;
       }
-      
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete unit";
-      const isConstraintError = error?.response?.data?.type === "FOREIGN_KEY_CONSTRAINT";
-      
+
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to delete unit";
+      const isConstraintError =
+        error?.response?.data?.type === "FOREIGN_KEY_CONSTRAINT";
+
       toast({
         title: isConstraintError ? "Cannot Delete Unit" : "Error",
         description: errorMessage,
