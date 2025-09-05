@@ -707,7 +707,6 @@ export default function Purchases() {
             <CardTitle className="text-sm font-medium">
               Total Purchases
             </CardTitle>
-           
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -863,49 +862,49 @@ export default function Purchases() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
                     <SortableTableHeader
                       label="Date"
                       sortKey="purchaseDate"
                       sortConfig={sortConfig}
                       onSort={requestSort}
-                    />
-                  </TableHead>
-                  <TableHead>
+                    >
+                    Date
+                    </SortableTableHeader>
                     <SortableTableHeader
                       label="Supplier Name"
                       sortKey="supplierName"
                       sortConfig={sortConfig}
                       onSort={requestSort}
-                    />
-                  </TableHead>
-                  <TableHead>
+                    >
+                    Supplier Name
+                  </SortableTableHeader>
                     <SortableTableHeader
                       label="Invoice Number"
                       sortKey="invoiceNumber"
                       sortConfig={sortConfig}
                       onSort={requestSort}
-                    />
-                  </TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>
+                    >
+                    Invoice Number
+                  </SortableTableHeader>
+                  <SortableTableHeader>Items</SortableTableHeader>
                     <SortableTableHeader
                       label="Total Amount"
                       sortKey="totalAmount"
                       sortConfig={sortConfig}
                       onSort={requestSort}
-                    />
-                  </TableHead>
-                  <TableHead>Payment Method</TableHead>
-                  <TableHead>
+                    >
+                    Total Amount
+                  </SortableTableHeader>
+                  <SortableTableHeader>Payment Method</SortableTableHeader>
                     <SortableTableHeader
                       label="Status"
                       sortKey="status"
                       sortConfig={sortConfig}
                       onSort={requestSort}
-                    />
-                  </TableHead>
-                  <TableHead>Actions</TableHead>
+                    >
+                    Status
+                  </SortableTableHeader>
+                  <SortableTableHeader>Actions</SortableTableHeader>
                 </TableRow>
               </TableHeader>
               <TableBody>
