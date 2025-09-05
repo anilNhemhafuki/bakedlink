@@ -285,6 +285,7 @@ export default function Products() {
       small: { width: "200px", height: "120px" },
       medium: { width: "280px", height: "200px" },
       large: { width: "350px", height: "260px" },
+      custom_40x30: { width: "40mm", height: "30mm" },
     };
 
     const currentSize =
@@ -296,21 +297,61 @@ export default function Products() {
         <head>
           <title>Product Label - ${selectedProductForLabel.name}</title>
           <style>
-            body { font-family: 'Arial', sans-serif; margin: ${margin}mm; font-size: 10px; background: white; }
+            @page { size: ${labelSize === 'custom_40x30' ? '40mm 30mm' : 'A4'}; margin: 0; }
+            body { 
+              font-family: 'Arial', sans-serif; 
+              margin: ${labelSize === 'custom_40x30' ? '1mm' : margin + 'mm'}; 
+              font-size: ${labelSize === 'custom_40x30' ? '6px' : '10px'}; 
+              background: white; 
+              width: ${labelSize === 'custom_40x30' ? '38mm' : 'auto'};
+              height: ${labelSize === 'custom_40x30' ? '28mm' : 'auto'};
+            }
             .label {
-              border: 2px solid #000; padding: 8px; width: ${currentSize.width}; height: ${currentSize.height};
+              border: ${labelSize === 'custom_40x30' ? '1px solid #000' : '2px solid #000'}; 
+              padding: ${labelSize === 'custom_40x30' ? '1mm' : '8px'}; 
+              width: ${currentSize.width}; 
+              height: ${currentSize.height};
               margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column;
               ${orientation === "landscape" ? "transform: rotate(90deg); transform-origin: center;" : ""}
             }
-            .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 6px; margin-bottom: 6px; }
-            .company-name { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
-            .company-location { font-size: 8px; }
-            .product-name { font-size: 11px; font-weight: bold; text-align: center; margin: 4px 0; border: 1px solid #000; padding: 3px; background: #f9f9f9; }
-            .fields { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-            .field { display: flex; justify-content: space-between; align-items: flex-start; line-height: 1.2; }
-            .field-label { font-weight: bold; width: 35%; font-size: 9px; }
-            .field-value { width: 60%; text-align: right; font-size: 9px; word-wrap: break-word; }
-            .ingredients .field-value { font-size: 7px; line-height: 1.1; }
+            .header { 
+              text-align: center; 
+              border-bottom: 1px solid #000; 
+              padding-bottom: ${labelSize === 'custom_40x30' ? '1px' : '6px'}; 
+              margin-bottom: ${labelSize === 'custom_40x30' ? '1px' : '6px'}; 
+            }
+            .company-name { 
+              font-size: ${labelSize === 'custom_40x30' ? '7px' : '12px'}; 
+              font-weight: bold; 
+              margin-bottom: ${labelSize === 'custom_40x30' ? '0px' : '2px'}; 
+            }
+            .company-location { font-size: ${labelSize === 'custom_40x30' ? '5px' : '8px'}; }
+            .product-name { 
+              font-size: ${labelSize === 'custom_40x30' ? '6px' : '11px'}; 
+              font-weight: bold; text-align: center; 
+              margin: ${labelSize === 'custom_40x30' ? '1px 0' : '4px 0'}; 
+              border: 1px solid #000; 
+              padding: ${labelSize === 'custom_40x30' ? '1px' : '3px'}; 
+              background: #f9f9f9; 
+            }
+            .fields { flex: 1; display: flex; flex-direction: column; gap: ${labelSize === 'custom_40x30' ? '0px' : '2px'}; }
+            .field { 
+              display: flex; justify-content: space-between; align-items: flex-start; 
+              line-height: ${labelSize === 'custom_40x30' ? '1' : '1.2'}; 
+            }
+            .field-label { 
+              font-weight: bold; width: 35%; 
+              font-size: ${labelSize === 'custom_40x30' ? '5px' : '9px'}; 
+            }
+            .field-value { 
+              width: 60%; text-align: right; 
+              font-size: ${labelSize === 'custom_40x30' ? '5px' : '9px'}; 
+              word-wrap: break-word; 
+            }
+            .ingredients .field-value { 
+              font-size: ${labelSize === 'custom_40x30' ? '4px' : '7px'}; 
+              line-height: ${labelSize === 'custom_40x30' ? '1' : '1.1'}; 
+            }
             @media print { body { margin: 0; } .label { page-break-inside: avoid; } }
           </style>
         </head>
@@ -863,6 +904,9 @@ export default function Products() {
                           </SelectItem>
                           <SelectItem value="large">
                             Large (100x75mm)
+                          </SelectItem>
+                          <SelectItem value="custom_40x30">
+                            Custom (40x30mm)
                           </SelectItem>
                         </SelectContent>
                       </Select>

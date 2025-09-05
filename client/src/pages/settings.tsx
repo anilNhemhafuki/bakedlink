@@ -602,7 +602,8 @@ export default function Settings() {
                         <SelectItem value="small">Small (50x30mm)</SelectItem>
                         <SelectItem value="medium">Medium (75x50mm)</SelectItem>
                         <SelectItem value="large">Large (100x75mm)</SelectItem>
-                        <SelectItem value="custom">Custom Size</SelectItem>
+                        <SelectItem value="custom_40x30">Custom (40x30mm)</SelectItem>
+                        <SelectItem value="custom">Other Custom Size</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
