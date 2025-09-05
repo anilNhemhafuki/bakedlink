@@ -4462,6 +4462,56 @@ Form Version: ${formVersion || "1.0"}`,
     },
   );
 
+  // Production Schedule Labels Routes
+  app.get("/api/production-schedule-labels", isAuthenticated, async (req, res) => {
+    try {
+      const labels = await storage.getProductionScheduleLabels();
+      res.json(labels);
+    } catch (error) {
+      console.error("Error fetching production schedule labels:", error);
+      res.status(500).json({ message: "Failed to fetch production schedule labels" });
+    }
+  });
+
+  app.post("/api/production-schedule-labels", isAuthenticated, async (req, res) => {
+    try {
+      const labelData = req.body;
+      labelData.createdBy = req.user?.email;
+      labelData.updatedBy = req.user?.email;
+      
+      const newLabel = await storage.createProductionScheduleLabel(labelData);
+      res.json(newLabel);
+    } catch (error) {
+      console.error("Error creating production schedule label:", error);
+      res.status(500).json({ message: "Failed to create production schedule label" });
+    }
+  });
+
+  app.put("/api/production-schedule-labels/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const labelData = req.body;
+      labelData.updatedBy = req.user?.email;
+      
+      const updatedLabel = await storage.updateProductionScheduleLabel(id, labelData);
+      res.json(updatedLabel);
+    } catch (error) {
+      console.error("Error updating production schedule label:", error);
+      res.status(500).json({ message: "Failed to update production schedule label" });
+    }
+  });
+
+  app.post("/api/production-schedule-labels/close-day", isAuthenticated, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      const result = await storage.closeDayForLabels(ids, req.user?.email);
+      res.json(result);
+    } catch (error) {
+      console.error("Error closing day for labels:", error);
+      res.status(500).json({ message: "Failed to close day for labels" });
+    }
+  });
+
   // Register enhanced routes for comprehensive system features
   // Enhanced routes functionality integrated above
 

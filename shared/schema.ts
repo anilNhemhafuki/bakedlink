@@ -460,6 +460,66 @@ export const staffSchedules = pgTable("staff_schedules", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Production Schedule Labels table
+export const productionScheduleLabels = pgTable("production_schedule_labels", {
+  id: serial("id").primaryKey(),
+  
+  // Order Information
+  orderId: integer("order_id"),
+  orderNumber: varchar("order_number", { length: 100 }),
+  customerName: varchar("customer_name", { length: 200 }),
+  orderDate: timestamp("order_date"),
+  
+  // Product Details
+  productId: integer("product_id"),
+  productSku: varchar("product_sku", { length: 50 }),
+  productName: varchar("product_name", { length: 200 }).notNull(),
+  productDescription: text("product_description"),
+  
+  // Target Quantities
+  targetedQuantity: numeric("targeted_quantity", { precision: 10, scale: 2 }).notNull(),
+  unit: varchar("unit", { length: 50 }),
+  unitId: integer("unit_id"),
+  
+  // Actual Production Data
+  actualQuantity: numeric("actual_quantity", { precision: 10, scale: 2 }),
+  startDatetime: timestamp("start_datetime"),
+  endDatetime: timestamp("end_datetime"),
+  
+  // Labeling and Packaging
+  batchNumber: varchar("batch_number", { length: 100 }),
+  expiryDate: date("expiry_date"),
+  weightVolume: varchar("weight_volume", { length: 100 }),
+  packagingType: varchar("packaging_type", { length: 100 }),
+  
+  // Production Status and Tracking
+  status: varchar("status", { length: 50 }).default("draft"), // draft, in_progress, completed, cancelled
+  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  assignedTo: varchar("assigned_to", { length: 100 }),
+  shift: varchar("shift", { length: 50 }),
+  
+  // Quality Control
+  qualityCheckPassed: boolean("quality_check_passed").default(false),
+  qualityNotes: text("quality_notes"),
+  
+  // Draft/Day-end functionality
+  isDraft: boolean("is_draft").default(true),
+  dayClosed: boolean("day_closed").default(false),
+  dayClosedAt: timestamp("day_closed_at"),
+  dayClosedBy: varchar("day_closed_by", { length: 100 }),
+  
+  // Additional Information
+  remarks: text("remarks"),
+  notes: text("notes"),
+  specialInstructions: text("special_instructions"),
+  
+  // Audit Trail
+  createdBy: varchar("created_by", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedBy: varchar("updated_by", { length: 100 }),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Type definitions
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -519,6 +579,8 @@ export type LeaveRequest = typeof leaveRequests.$inferSelect;
 export type InsertLeaveRequest = typeof leaveRequests.$inferInsert;
 export type StaffSchedule = typeof staffSchedules.$inferSelect;
 export type InsertStaffSchedule = typeof staffSchedules.$inferInsert;
+export type ProductionScheduleLabel = typeof productionScheduleLabels.$inferSelect;
+export type InsertProductionScheduleLabel = typeof productionScheduleLabels.$inferInsert;
 
 // Insert schemas for validation
 export const insertUserSchema = createInsertSchema(users).omit({ 

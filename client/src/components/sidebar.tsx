@@ -184,6 +184,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           resource: "production",
         },
         {
+          name: "Label Printing",
+          href: "/label-printing",
+          icon: "fas fa-print",
+          resource: "production",
+        },
+        {
           name: "Ingredients",
           href: "/ingredients",
           icon: "fas fa-seedling",

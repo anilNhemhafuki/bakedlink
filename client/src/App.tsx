@@ -36,6 +36,7 @@ import PublicOrderForm from "@/components/public-order-form";
 import Stock from "@/pages/stock";
 import Ingredients from "@/pages/ingredients";
 import Units from "@/pages/units";
+import LabelPrinting from "@/pages/label-printing";
 import Recipes from "@/pages/recipes";
 
 import Staff from "@/pages/staff";
@@ -152,6 +153,14 @@ function AuthenticatedApp({
               component={() => (
                 <ProtectedRoute resource="production" action="read">
                   <ProductionPage />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/label-printing"
+              component={() => (
+                <ProtectedRoute resource="production" action="read">
+                  <LabelPrinting />
                 </ProtectedRoute>
               )}
             />

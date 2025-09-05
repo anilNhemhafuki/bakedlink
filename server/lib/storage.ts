@@ -89,6 +89,9 @@ import {
   type InsertLeaveRequest,
   type StaffSchedule,
   type InsertStaffSchedule,
+  productionScheduleLabels,
+  type ProductionScheduleLabel,
+  type InsertProductionScheduleLabel,
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
 import fs from "fs";
@@ -401,6 +404,12 @@ export interface IStorage {
 
   // Security monitoring
   getSecurityMetrics(timeframe?: "hour" | "day" | "week"): Promise<any>;
+
+  // Production Schedule Labels operations
+  getProductionScheduleLabels(): Promise<ProductionScheduleLabel[]>;
+  createProductionScheduleLabel(data: InsertProductionScheduleLabel): Promise<ProductionScheduleLabel>;
+  updateProductionScheduleLabel(id: number, data: Partial<InsertProductionScheduleLabel>): Promise<ProductionScheduleLabel>;
+  closeDayForLabels(ids: number[], closedBy: string): Promise<any>;
 }
 
 export class Storage implements IStorage {
@@ -3389,6 +3398,70 @@ export class Storage implements IStorage {
         timeframe,
         error: error.message,
       };
+    }
+  }
+
+  // Production Schedule Labels operations
+  async getProductionScheduleLabels(): Promise<ProductionScheduleLabel[]> {
+    try {
+      return await this.db
+        .select()
+        .from(productionScheduleLabels)
+        .orderBy(desc(productionScheduleLabels.createdAt));
+    } catch (error) {
+      console.error("Error fetching production schedule labels:", error);
+      throw error;
+    }
+  }
+
+  async createProductionScheduleLabel(data: InsertProductionScheduleLabel): Promise<ProductionScheduleLabel> {
+    try {
+      const [newLabel] = await this.db
+        .insert(productionScheduleLabels)
+        .values(data)
+        .returning();
+      return newLabel;
+    } catch (error) {
+      console.error("Error creating production schedule label:", error);
+      throw error;
+    }
+  }
+
+  async updateProductionScheduleLabel(id: number, data: Partial<InsertProductionScheduleLabel>): Promise<ProductionScheduleLabel> {
+    try {
+      const [updatedLabel] = await this.db
+        .update(productionScheduleLabels)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(productionScheduleLabels.id, id))
+        .returning();
+      return updatedLabel;
+    } catch (error) {
+      console.error("Error updating production schedule label:", error);
+      throw error;
+    }
+  }
+
+  async closeDayForLabels(ids: number[], closedBy: string): Promise<any> {
+    try {
+      const result = await this.db
+        .update(productionScheduleLabels)
+        .set({
+          isDraft: false,
+          dayClosed: true,
+          dayClosedAt: new Date(),
+          dayClosedBy: closedBy,
+          updatedAt: new Date(),
+        })
+        .where(sql`${productionScheduleLabels.id} = ANY(${ids})`)
+        .returning();
+      
+      return { 
+        message: `${result.length} labels closed successfully`,
+        closedLabels: result 
+      };
+    } catch (error) {
+      console.error("Error closing day for labels:", error);
+      throw error;
     }
   }
 }
