@@ -58,10 +58,11 @@ const recipeSchema = z.object({
 });
 
 interface RecipeProps {
+  product?: any;
   onSave?: (productData: any) => void;
 }
 
-export default function Recipe({ onSave }: RecipeProps) {
+export default function Recipe({ product, onSave }: RecipeProps) {
   const [calculations, setCalculations] = useState({
     ingredientDetails: [] as any[],
     subTotalForBatch: 0,
@@ -108,17 +109,23 @@ export default function Recipe({ onSave }: RecipeProps) {
   const form = useForm({
     resolver: zodResolver(recipeSchema),
     defaultValues: {
-      productName: "",
-      categoryId: "",
-      unitId: "",
-      batchSize: "1",
+      productName: product?.name || "",
+      categoryId: product?.categoryId?.toString() || "",
+      unitId: product?.unitId?.toString() || "",
+      batchSize: product?.batchSize?.toString() || "1",
       finishedGoodRequired: "1",
       productionQuantity: "1",
       normalLossMfg: "5",
       normalLossOnSold: "0",
       mfgAndPackagingCost: "45",
       overheadCost: "5",
-      ingredients: [{ inventoryItemId: "", quantity: "", unitId: "" }],
+      ingredients: product?.ingredients?.length > 0 
+        ? product.ingredients.map((ing: any) => ({
+            inventoryItemId: ing.inventoryItemId?.toString() || "",
+            quantity: ing.quantity?.toString() || "",
+            unitId: ing.unitId?.toString() || ""
+          }))
+        : [{ inventoryItemId: "", quantity: "", unitId: "" }],
     },
   });
 
@@ -319,6 +326,31 @@ export default function Recipe({ onSave }: RecipeProps) {
       console.error("Error in cost calculation:", error);
     }
   };
+
+  // Reset form when product changes
+  useEffect(() => {
+    if (product) {
+      form.reset({
+        productName: product.name || "",
+        categoryId: product.categoryId?.toString() || "",
+        unitId: product.unitId?.toString() || "",
+        batchSize: product.batchSize?.toString() || "1",
+        finishedGoodRequired: "1",
+        productionQuantity: "1",
+        normalLossMfg: "5",
+        normalLossOnSold: "0",
+        mfgAndPackagingCost: "45",
+        overheadCost: "5",
+        ingredients: product.ingredients?.length > 0 
+          ? product.ingredients.map((ing: any) => ({
+              inventoryItemId: ing.inventoryItemId?.toString() || "",
+              quantity: ing.quantity?.toString() || "",
+              unitId: ing.unitId?.toString() || ""
+            }))
+          : [{ inventoryItemId: "", quantity: "", unitId: "" }],
+      });
+    }
+  }, [product, form]);
 
   useEffect(() => {
     calculateCosts();
@@ -716,7 +748,7 @@ export default function Recipe({ onSave }: RecipeProps) {
         <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50">
           <CardTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5 text-orange-600" />
-            Recipe: {form.getValues("productName") || "Untitled Recipe"}
+            {product ? "Edit Recipe" : "Recipe"}: {form.getValues("productName") || "Untitled Recipe"}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -884,7 +916,7 @@ export default function Recipe({ onSave }: RecipeProps) {
           className="h-11"
         >
           <Save className="h-4 w-4 mr-2" />
-          Save as Product
+          {product ? "Update Recipe" : "Save as Product"}
         </Button>
       </div>
     </div>
