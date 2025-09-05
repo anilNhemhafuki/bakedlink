@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -113,17 +112,20 @@ export default function NotificationDropdown() {
   // Fetch notifications
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ["/api/notifications"],
-    refetchInterval: 30000, // Poll every 30 seconds
-    refetchIntervalInBackground: true,
+    // refetchInterval: 30000, // Poll every 30 seconds
+    // refetchIntervalInBackground: true,
   });
 
   // Mark notification as read
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: string) => {
-      const response = await fetch(`/api/notifications/${notificationId}/read`, {
-        method: "PUT",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `/api/notifications/${notificationId}/read`,
+        {
+          method: "PUT",
+          credentials: "include",
+        },
+      );
       if (!response.ok) throw new Error("Failed to mark as read");
       return response.json();
     },
@@ -153,42 +155,51 @@ export default function NotificationDropdown() {
 
   // Calculate unread count
   const notificationData = (notifications as Notification[]) || [];
-  const unreadCount = notificationData.filter((n: Notification) => !n.read).length;
+  const unreadCount = notificationData.filter(
+    (n: Notification) => !n.read,
+  ).length;
 
   // Sort notifications by priority and timestamp
-  const sortedNotifications = [...notificationData].sort((a: Notification, b: Notification) => {
-    const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
-    
-    // First sort by priority
-    const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
-    if (priorityDiff !== 0) return priorityDiff;
-    
-    // Then by read status (unread first)
-    const readDiff = Number(a.read) - Number(b.read);
-    if (readDiff !== 0) return readDiff;
-    
-    // Finally by timestamp (newest first)
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-  });
+  const sortedNotifications = [...notificationData].sort(
+    (a: Notification, b: Notification) => {
+      const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
+
+      // First sort by priority
+      const priorityDiff =
+        priorityOrder[b.priority] - priorityOrder[a.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+
+      // Then by read status (unread first)
+      const readDiff = Number(a.read) - Number(b.read);
+      if (readDiff !== 0) return readDiff;
+
+      // Finally by timestamp (newest first)
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    },
+  );
 
   // Group notifications by type
-  const groupedNotifications = sortedNotifications.reduce((groups: any, notification: Notification) => {
-    const type = notification.type;
-    if (!groups[type]) {
-      groups[type] = [];
-    }
-    groups[type].push(notification);
-    return groups;
-  }, {});
+  const groupedNotifications = sortedNotifications.reduce(
+    (groups: any, notification: Notification) => {
+      const type = notification.type;
+      if (!groups[type]) {
+        groups[type] = [];
+      }
+      groups[type].push(notification);
+      return groups;
+    },
+    {},
+  );
 
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date();
     const time = new Date(timestamp);
     const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) return "Just now";
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)}h ago`;
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
 
@@ -224,7 +235,7 @@ export default function NotificationDropdown() {
 
   // Critical notifications count for extra highlighting
   const criticalCount = notificationData.filter(
-    (n: Notification) => !n.read && n.priority === "critical"
+    (n: Notification) => !n.read && n.priority === "critical",
   ).length;
 
   return (
@@ -232,7 +243,7 @@ export default function NotificationDropdown() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="relative p-2">
           {criticalCount > 0 ? (
-            <BellRing className="h-6 w-6 text-red-500 animate-pulse" />
+            <BellRing className="h-6 w-6 " />
           ) : (
             <Bell className="h-6 w-6" />
           )}
@@ -240,7 +251,7 @@ export default function NotificationDropdown() {
             <Badge
               variant="destructive"
               className={`absolute -top-1 -right-1 h-5 w-5 text-xs flex items-center justify-center ${
-                criticalCount > 0 ? "animate-pulse bg-red-600" : ""
+                criticalCount > 0 ? "bg-red-600" : ""
               }`}
             >
               {unreadCount > 99 ? "99+" : unreadCount}
@@ -293,102 +304,115 @@ export default function NotificationDropdown() {
             </div>
           ) : (
             <div className="p-2">
-              {Object.entries(groupedNotifications).map(([type, typeNotifications]: [string, any]) => {
-                const config = notificationConfig[type as keyof typeof notificationConfig];
-                const unreadInGroup = typeNotifications.filter((n: Notification) => !n.read).length;
-                
-                return (
-                  <div key={type} className="mb-4">
-                    {/* Group Header */}
-                    <div className="flex items-center gap-2 px-2 py-1 mb-2">
-                      <span className="text-lg">{config?.emoji}</span>
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {config?.label}
-                      </span>
-                      {unreadInGroup > 0 && (
-                        <Badge variant="outline" className="text-xs h-5">
-                          {unreadInGroup}
-                        </Badge>
-                      )}
-                    </div>
+              {Object.entries(groupedNotifications).map(
+                ([type, typeNotifications]: [string, any]) => {
+                  const config =
+                    notificationConfig[type as keyof typeof notificationConfig];
+                  const unreadInGroup = typeNotifications.filter(
+                    (n: Notification) => !n.read,
+                  ).length;
 
-                    {/* Notifications in Group */}
-                    {typeNotifications.map((notification: Notification) => {
-                      const priorityStyle = priorityConfig[notification.priority];
-                      
-                      return (
-                        <DropdownMenuItem
-                          key={notification.id}
-                          className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-muted/50 ${
-                            !notification.read
-                              ? `${config?.bgColor} ${config?.borderColor} border-l-4`
-                              : ""
-                          } ${notification.priority === "critical" ? "ring-1 ring-red-200" : ""}`}
-                          onClick={() => handleNotificationClick(notification)}
-                        >
-                          <div className="flex-shrink-0 mt-1">
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center ${config?.bgColor}`}
-                            >
-                              {getNotificationIcon(type)}
+                  return (
+                    <div key={type} className="mb-4">
+                      {/* Group Header */}
+                      <div className="flex items-center gap-2 px-2 py-1 mb-2">
+                        <span className="text-lg">{config?.emoji}</span>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {config?.label}
+                        </span>
+                        {unreadInGroup > 0 && (
+                          <Badge variant="outline" className="text-xs h-5">
+                            {unreadInGroup}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Notifications in Group */}
+                      {typeNotifications.map((notification: Notification) => {
+                        const priorityStyle =
+                          priorityConfig[notification.priority];
+
+                        return (
+                          <DropdownMenuItem
+                            key={notification.id}
+                            className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-muted/50 ${
+                              !notification.read
+                                ? `${config?.bgColor} ${config?.borderColor} border-l-4`
+                                : ""
+                            } ${notification.priority === "critical" ? "ring-1 ring-red-200" : ""}`}
+                            onClick={() =>
+                              handleNotificationClick(notification)
+                            }
+                          >
+                            <div className="flex-shrink-0 mt-1">
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center ${config?.bgColor}`}
+                              >
+                                {getNotificationIcon(type)}
+                              </div>
                             </div>
-                          </div>
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h4
-                                    className={`text-sm font-medium truncate ${
-                                      !notification.read ? "font-semibold" : ""
-                                    }`}
-                                  >
-                                    {notification.title}
-                                  </h4>
-                                  {!notification.read && (
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                                  {notification.description}
-                                </p>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1">
-                                      <Clock className="h-3 w-3 text-muted-foreground" />
-                                      <span className="text-xs text-muted-foreground">
-                                        {formatTimeAgo(notification.timestamp)}
-                                      </span>
-                                    </div>
-                                    {notification.priority !== "low" && (
-                                      <Badge
-                                        variant="outline"
-                                        className={`text-xs h-4 px-1 ${priorityStyle.textColor}`}
-                                      >
-                                        <div
-                                          className={`w-2 h-2 rounded-full mr-1 ${priorityStyle.color}`}
-                                        />
-                                        {priorityStyle.label}
-                                      </Badge>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4
+                                      className={`text-sm font-medium truncate ${
+                                        !notification.read
+                                          ? "font-semibold"
+                                          : ""
+                                      }`}
+                                    >
+                                      {notification.title}
+                                    </h4>
+                                    {!notification.read && (
+                                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                                     )}
                                   </div>
-                                  {notification.actionUrl && (
-                                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                  )}
+                                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                                    {notification.description}
+                                  </p>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3 text-muted-foreground" />
+                                        <span className="text-xs text-muted-foreground">
+                                          {formatTimeAgo(
+                                            notification.timestamp,
+                                          )}
+                                        </span>
+                                      </div>
+                                      {notification.priority !== "low" && (
+                                        <Badge
+                                          variant="outline"
+                                          className={`text-xs h-4 px-1 ${priorityStyle.textColor}`}
+                                        >
+                                          <div
+                                            className={`w-2 h-2 rounded-full mr-1 ${priorityStyle.color}`}
+                                          />
+                                          {priorityStyle.label}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {notification.actionUrl && (
+                                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        </DropdownMenuItem>
-                      );
-                    })}
-                    
-                    {Object.keys(groupedNotifications).indexOf(type) < Object.keys(groupedNotifications).length - 1 && (
-                      <Separator className="my-2" />
-                    )}
-                  </div>
-                );
-              })}
+                          </DropdownMenuItem>
+                        );
+                      })}
+
+                      {Object.keys(groupedNotifications).indexOf(type) <
+                        Object.keys(groupedNotifications).length - 1 && (
+                        <Separator className="my-2" />
+                      )}
+                    </div>
+                  );
+                },
+              )}
             </div>
           )}
         </ScrollArea>

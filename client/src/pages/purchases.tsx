@@ -38,7 +38,16 @@ import {
   usePagination,
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, ShoppingCart, Eye, FileText, ExternalLink } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  ShoppingCart,
+  Eye,
+  FileText,
+  ExternalLink,
+  ShoppingBag,
+} from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/hooks/useCurrency";
 import { apiRequest } from "@/lib/queryClient";
@@ -85,7 +94,9 @@ export default function Purchases() {
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(
+    null,
+  );
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
 
   const { data: purchases = [], isLoading } = useQuery({
@@ -123,7 +134,8 @@ export default function Purchases() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Success",
-        description: "Purchase recorded and stock quantities updated successfully",
+        description:
+          "Purchase recorded and stock quantities updated successfully",
       });
       handleCloseDialog();
     },
@@ -218,18 +230,19 @@ export default function Purchases() {
       supplierName: purchase.supplierName,
       paymentMethod: purchase.paymentMethod,
       invoiceNumber: purchase.invoiceNumber || "",
-      purchaseDate: purchase.purchaseDate 
+      purchaseDate: purchase.purchaseDate
         ? new Date(purchase.purchaseDate).toISOString().split("T")[0]
         : new Date(purchase.createdAt).toISOString().split("T")[0],
       status: purchase.status,
       notes: purchase.notes || "",
-      items: purchase.items && purchase.items.length > 0 
-        ? purchase.items.map(item => ({
-            inventoryItemId: item.inventoryItemId.toString(),
-            quantity: parseInt(item.quantity),
-            unitPrice: item.unitPrice,
-          }))
-        : [{ inventoryItemId: "", quantity: 1, unitPrice: "0" }],
+      items:
+        purchase.items && purchase.items.length > 0
+          ? purchase.items.map((item) => ({
+              inventoryItemId: item.inventoryItemId.toString(),
+              quantity: parseInt(item.quantity),
+              unitPrice: item.unitPrice,
+            }))
+          : [{ inventoryItemId: "", quantity: 1, unitPrice: "0" }],
     });
     setIsEditDialogOpen(true);
   };
@@ -261,7 +274,11 @@ export default function Purchases() {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this purchase? This action cannot be undone.")) {
+    if (
+      confirm(
+        "Are you sure you want to delete this purchase? This action cannot be undone.",
+      )
+    ) {
       deletePurchaseMutation.mutate(id);
     }
   };
@@ -319,29 +336,39 @@ export default function Purchases() {
       const invoiceNumber = purchase.invoiceNumber?.toLowerCase() || "";
       const searchLower = searchTerm.toLowerCase();
 
-      const matchesSearch = 
+      const matchesSearch =
         supplierName.includes(searchLower) ||
         invoiceNumber.includes(searchLower) ||
         purchase.totalAmount.includes(searchLower);
 
-      const matchesStatus = 
+      const matchesStatus =
         statusFilter === "all" || purchase.status === statusFilter;
 
-      const matchesSupplier = 
+      const matchesSupplier =
         supplierFilter === "all" || purchase.supplierName === supplierFilter;
 
-      const purchaseDate = new Date(purchase.purchaseDate || purchase.createdAt);
-      const matchesDateFrom = 
-        !dateFrom || purchaseDate >= new Date(dateFrom);
-      const matchesDateTo = 
+      const purchaseDate = new Date(
+        purchase.purchaseDate || purchase.createdAt,
+      );
+      const matchesDateFrom = !dateFrom || purchaseDate >= new Date(dateFrom);
+      const matchesDateTo =
         !dateTo || purchaseDate <= new Date(dateTo + "T23:59:59");
 
-      return matchesSearch && matchesStatus && matchesSupplier && matchesDateFrom && matchesDateTo;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesSupplier &&
+        matchesDateFrom &&
+        matchesDateTo
+      );
     });
   }, [purchases, searchTerm, statusFilter, supplierFilter, dateFrom, dateTo]);
 
   // Sorting
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredPurchases, 'purchaseDate');
+  const { sortedData, sortConfig, requestSort } = useTableSort(
+    filteredPurchases,
+    "purchaseDate",
+  );
 
   // Pagination
   const {
@@ -356,14 +383,16 @@ export default function Purchases() {
 
   // Get unique suppliers for filter
   const uniqueSuppliers = useMemo(() => {
-    const suppliers = [...new Set(purchases.map((p: Purchase) => p.supplierName))];
+    const suppliers = [
+      ...new Set(purchases.map((p: Purchase) => p.supplierName)),
+    ];
     return suppliers.filter(Boolean);
   }, [purchases]);
 
   // Summary calculations
   const totalPurchases = filteredPurchases.reduce(
     (sum: number, purchase: Purchase) => sum + parseFloat(purchase.totalAmount),
-    0
+    0,
   );
 
   const statusCounts = useMemo(() => {
@@ -374,7 +403,9 @@ export default function Purchases() {
   }, [filteredPurchases]);
 
   const getStatusBadge = (status: string) => {
-    const variants: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
+    const variants: {
+      [key: string]: "default" | "secondary" | "destructive" | "outline";
+    } = {
       completed: "default",
       pending: "secondary",
       cancelled: "destructive",
@@ -389,7 +420,7 @@ export default function Purchases() {
 
   const viewSupplierLedger = (partyId: number) => {
     if (partyId) {
-      window.open(`/parties?viewLedger=${partyId}`, '_blank');
+      window.open(`/parties?viewLedger=${partyId}`, "_blank");
     }
   };
 
@@ -519,7 +550,9 @@ export default function Purchases() {
                       <SelectItem value="cash">Cash</SelectItem>
                       <SelectItem value="card">Card</SelectItem>
                       <SelectItem value="upi">UPI</SelectItem>
-                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="bank_transfer">
+                        Bank Transfer
+                      </SelectItem>
                       <SelectItem value="credit">Credit</SelectItem>
                     </SelectContent>
                   </Select>
@@ -587,14 +620,16 @@ export default function Purchases() {
                           <SelectValue placeholder="Select item" />
                         </SelectTrigger>
                         <SelectContent>
-                          {inventoryItems && Array.isArray(inventoryItems) ? inventoryItems.map((inventoryItem: any) => (
-                            <SelectItem
-                              key={inventoryItem.id}
-                              value={inventoryItem.id.toString()}
-                            >
-                              {inventoryItem.name}
-                            </SelectItem>
-                          )) : (
+                          {inventoryItems && Array.isArray(inventoryItems) ? (
+                            inventoryItems.map((inventoryItem: any) => (
+                              <SelectItem
+                                key={inventoryItem.id}
+                                value={inventoryItem.id.toString()}
+                              >
+                                {inventoryItem.name}
+                              </SelectItem>
+                            ))
+                          ) : (
                             <SelectItem value="no-items" disabled>
                               No inventory items available
                             </SelectItem>
@@ -655,7 +690,9 @@ export default function Purchases() {
                   type="submit"
                   disabled={createPurchaseMutation.isPending}
                 >
-                  {createPurchaseMutation.isPending ? "Recording..." : "Record Purchase"}
+                  {createPurchaseMutation.isPending
+                    ? "Recording..."
+                    : "Record Purchase"}
                 </Button>
               </div>
             </form>
@@ -667,11 +704,18 @@ export default function Purchases() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Purchases</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Purchases
+            </CardTitle>
+           
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrencyWithCommas(totalPurchases)}</div>
-            <p className="text-xs text-muted-foreground">{filteredPurchases.length} transactions</p>
+            <div className="text-2xl font-bold">
+              {formatCurrencyWithCommas(totalPurchases)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {filteredPurchases.length} transactions
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -679,8 +723,12 @@ export default function Purchases() {
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{statusCounts.completed || 0}</div>
-            <p className="text-xs text-muted-foreground">Successfully processed</p>
+            <div className="text-2xl font-bold text-green-600">
+              {statusCounts.completed || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Successfully processed
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -688,13 +736,17 @@ export default function Purchases() {
             <CardTitle className="text-sm font-medium">Pending</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{statusCounts.pending || 0}</div>
+            <div className="text-2xl font-bold text-yellow-600">
+              {statusCounts.pending || 0}
+            </div>
             <p className="text-xs text-muted-foreground">Awaiting completion</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Unique Suppliers</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Unique Suppliers
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{uniqueSuppliers.length}</div>
@@ -736,7 +788,10 @@ export default function Purchases() {
               </div>
               <div>
                 <Label htmlFor="supplier-filter">Supplier</Label>
-                <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                <Select
+                  value={supplierFilter}
+                  onValueChange={setSupplierFilter}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="All suppliers" />
                   </SelectTrigger>
@@ -770,7 +825,11 @@ export default function Purchases() {
               </div>
             </div>
           </div>
-          {(searchTerm || statusFilter !== "all" || supplierFilter !== "all" || dateFrom || dateTo) && (
+          {(searchTerm ||
+            statusFilter !== "all" ||
+            supplierFilter !== "all" ||
+            dateFrom ||
+            dateTo) && (
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -786,7 +845,8 @@ export default function Purchases() {
                 Clear Filters
               </Button>
               <span className="text-sm text-muted-foreground self-center">
-                Showing {filteredPurchases.length} of {purchases.length} purchases
+                Showing {filteredPurchases.length} of {purchases.length}{" "}
+                purchases
               </span>
             </div>
           )}
@@ -849,81 +909,109 @@ export default function Purchases() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentItems.map((purchase: Purchase) => (
-                  <TableRow key={purchase.id}>
-                    <TableCell>
-                      {format(new Date(purchase.purchaseDate || purchase.createdAt), 'MMM dd, yyyy')}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {purchase.supplierName}
-                      {purchase.partyId && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="ml-2 h-6 px-2"
-                          onClick={() => viewSupplierLedger(purchase.partyId!)}
-                          title="View Supplier Ledger"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {purchase.invoiceNumber || (
-                        <span className="text-muted-foreground">No invoice</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewDetails(purchase)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <ShoppingCart className="h-4 w-4 mr-1" />
-                        View Items
-                      </Button>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {formatCurrencyWithCommas(parseFloat(purchase.totalAmount))}
-                    </TableCell>
-                    <TableCell className="capitalize">
-                      {purchase.paymentMethod?.replace('_', ' ')}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(purchase.status)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
+                {currentItems.length > 0 ? (
+                  currentItems.map((purchase) => (
+                    <TableRow key={purchase.id}>
+                      <TableCell>
+                        {format(
+                          new Date(purchase.purchaseDate || purchase.createdAt),
+                          "MMM dd, yyyy",
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {purchase.supplierName}
+                        {purchase.partyId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="ml-2 h-6 px-2"
+                            onClick={() =>
+                              viewSupplierLedger(purchase.partyId!)
+                            }
+                            title="View Supplier Ledger"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {purchase.invoiceNumber ? (
+                          purchase.invoiceNumber
+                        ) : (
+                          <span className="text-muted-foreground">
+                            No invoice
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleViewDetails(purchase)}
-                          title="View Details"
+                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                         >
-                          <Eye className="h-4 w-4" />
+                          <ShoppingCart className="h-4 w-4" />
+                          View Items
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(purchase)}
-                          title="Edit Purchase"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(purchase.id)}
-                          title="Delete Purchase"
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {formatCurrencyWithCommas(
+                          parseFloat(purchase.totalAmount || "0"),
+                        )}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {purchase.paymentMethod?.replace("_", " ") || "N/A"}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(purchase.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewDetails(purchase)}
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(purchase)}
+                            title="Edit Purchase"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(purchase.id)}
+                            title="Delete Purchase"
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      {/* Use a proper icon like Package or ShoppingBag */}
+                      <div className="flex flex-col items-center text-muted-foreground">
+                        <ShoppingBag className="h-12 w-12 mb-4 opacity-50" />
+                        <h3 className="text-lg font-semibold mb-2">
+                          No Purchase Record Found
+                        </h3>
+                        <p className="text-sm mb-4">
+                          {searchTerm || statusFilter !== "all"
+                            ? "Try adjusting your search or filter criteria."
+                            : "Start by adding a new purchase entry."}
+                        </p>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>
@@ -971,25 +1059,39 @@ export default function Purchases() {
                 <div>
                   <Label className="text-sm font-medium">Purchase Date</Label>
                   <p className="text-sm">
-                    {format(new Date(selectedPurchase.purchaseDate || selectedPurchase.createdAt), 'PPP')}
+                    {format(
+                      new Date(
+                        selectedPurchase.purchaseDate ||
+                          selectedPurchase.createdAt,
+                      ),
+                      "PPP",
+                    )}
                   </p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Invoice Number</Label>
-                  <p className="text-sm">{selectedPurchase.invoiceNumber || "Not provided"}</p>
+                  <p className="text-sm">
+                    {selectedPurchase.invoiceNumber || "Not provided"}
+                  </p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Payment Method</Label>
-                  <p className="text-sm capitalize">{selectedPurchase.paymentMethod?.replace('_', ' ')}</p>
+                  <p className="text-sm capitalize">
+                    {selectedPurchase.paymentMethod?.replace("_", " ")}
+                  </p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Status</Label>
-                  <div className="mt-1">{getStatusBadge(selectedPurchase.status)}</div>
+                  <div className="mt-1">
+                    {getStatusBadge(selectedPurchase.status)}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Total Amount</Label>
                   <p className="text-lg font-semibold">
-                    {formatCurrencyWithCommas(parseFloat(selectedPurchase.totalAmount))}
+                    {formatCurrencyWithCommas(
+                      parseFloat(selectedPurchase.totalAmount),
+                    )}
                   </p>
                 </div>
               </div>
@@ -1013,7 +1115,9 @@ export default function Purchases() {
                           <TableRow key={item.id}>
                             <TableCell>{item.inventoryItemName}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
-                            <TableCell>{formatCurrency(parseFloat(item.unitPrice))}</TableCell>
+                            <TableCell>
+                              {formatCurrency(parseFloat(item.unitPrice))}
+                            </TableCell>
                             <TableCell className="font-medium">
                               {formatCurrency(parseFloat(item.totalPrice))}
                             </TableCell>
@@ -1029,7 +1133,9 @@ export default function Purchases() {
               {selectedPurchase.notes && (
                 <div>
                   <Label className="text-sm font-medium">Notes</Label>
-                  <p className="text-sm text-muted-foreground">{selectedPurchase.notes}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedPurchase.notes}
+                  </p>
                 </div>
               )}
 
@@ -1037,7 +1143,9 @@ export default function Purchases() {
               {selectedPurchase.partyId && (
                 <div className="border-t pt-4">
                   <Button
-                    onClick={() => viewSupplierLedger(selectedPurchase.partyId!)}
+                    onClick={() =>
+                      viewSupplierLedger(selectedPurchase.partyId!)
+                    }
                     className="w-full"
                   >
                     <FileText className="h-4 w-4 mr-2" />
@@ -1055,9 +1163,7 @@ export default function Purchases() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Purchase</DialogTitle>
-            <DialogDescription>
-              Update purchase information
-            </DialogDescription>
+            <DialogDescription>Update purchase information</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -1204,11 +1310,10 @@ export default function Purchases() {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={updatePurchaseMutation.isPending}
-              >
-                {updatePurchaseMutation.isPending ? "Updating..." : "Update Purchase"}
+              <Button type="submit" disabled={updatePurchaseMutation.isPending}>
+                {updatePurchaseMutation.isPending
+                  ? "Updating..."
+                  : "Update Purchase"}
               </Button>
             </div>
           </form>

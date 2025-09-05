@@ -413,10 +413,6 @@ export default function Orders() {
                         ? "Try adjusting your search criteria"
                         : "Start by creating your first order"}
                     </p>
-                    <Button onClick={() => setShowOrderForm(true)}>
-                      <i className="fas fa-plus mr-2"></i> Create Your First
-                      Order
-                    </Button>
                   </div>
                 </TableCell>
               </TableRow>

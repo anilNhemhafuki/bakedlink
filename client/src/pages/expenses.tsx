@@ -37,6 +37,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationInfo,
+  PageSizeSelector,
+  usePagination,
+} from "@/components/ui/pagination";
+
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Edit, Trash2, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -199,6 +206,17 @@ export default function Expenses() {
     filteredExpenses,
     "title",
   );
+
+  // Pagination
+  const {
+    currentItems,
+    currentPage,
+    totalPages,
+    pageSize,
+    setPageSize,
+    goToPage,
+    totalItems,
+  } = usePagination(sortedData, 10);
 
   const getCategoryBadge = (category: string) => {
     const variants: Record<
@@ -502,10 +520,6 @@ export default function Expenses() {
                             ? "Try adjusting your search criteria"
                             : "Start by adding your first expense"}
                         </p>
-                        <Button onClick={() => setIsDialogOpen(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Expense
-                        </Button>
                       </TableCell>
                     </TableRow>
                   )}
@@ -513,6 +527,26 @@ export default function Expenses() {
               </Table>
             </div>
           )}
+
+          {/* Pagination */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-4">
+            <PaginationInfo
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+            />
+            <div className="flex items-center gap-4">
+              <PageSizeSelector
+                pageSize={pageSize}
+                onPageSizeChange={setPageSize}
+              />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={goToPage}
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

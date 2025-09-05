@@ -627,23 +627,7 @@ export default function Customers() {
                 )}
                 </TableBody>
               </Table>
-              {filteredCustomers.length === 0 && (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                    No customers found
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchQuery
-                      ? "Try adjusting your search criteria"
-                      : "Start by adding your first customer"}
-                  </p>
-                  <Button onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Customer
-                  </Button>
-                </div>
-              )}
+              
 
               {/* Pagination Controls */}
               {filteredCustomers.length > 0 && (
