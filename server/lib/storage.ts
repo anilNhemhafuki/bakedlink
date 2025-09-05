@@ -982,7 +982,6 @@ export class Storage implements IStorage {
           categoryId: inventoryItems.categoryId,
           isIngredient: inventoryItems.isIngredient,
           lastRestocked: inventoryItems.lastRestocked,
-          notes: inventoryItems.notes,
           createdAt: inventoryItems.createdAt,
           updatedAt: inventoryItems.updatedAt,
         })
@@ -1079,7 +1078,7 @@ export class Storage implements IStorage {
             categoryName,
             unitAbbreviation,
             group,
-            notes: item.notes || ''
+            notes: ''
           };
         })
       );
@@ -1464,9 +1463,30 @@ export class Storage implements IStorage {
     try {
       console.log("Fetching ingredients...");
       
-      // Get all inventory items directly
+      // Get all inventory items directly with specific field selection
       const allItems = await this.db
-        .select()
+        .select({
+          id: inventoryItems.id,
+          invCode: inventoryItems.invCode,
+          name: inventoryItems.name,
+          currentStock: inventoryItems.currentStock,
+          openingStock: inventoryItems.openingStock,
+          purchasedQuantity: inventoryItems.purchasedQuantity,
+          consumedQuantity: inventoryItems.consumedQuantity,
+          closingStock: inventoryItems.closingStock,
+          minLevel: inventoryItems.minLevel,
+          unit: inventoryItems.unit,
+          unitId: inventoryItems.unitId,
+          secondaryUnitId: inventoryItems.secondaryUnitId,
+          conversionRate: inventoryItems.conversionRate,
+          costPerUnit: inventoryItems.costPerUnit,
+          supplier: inventoryItems.supplier,
+          categoryId: inventoryItems.categoryId,
+          isIngredient: inventoryItems.isIngredient,
+          lastRestocked: inventoryItems.lastRestocked,
+          createdAt: inventoryItems.createdAt,
+          updatedAt: inventoryItems.updatedAt,
+        })
         .from(inventoryItems)
         .orderBy(inventoryItems.name);
 
