@@ -2,19 +2,15 @@ import { db } from "./db";
 import { units } from "@shared/schema";
 
 async function initializeUnits() {
-
   const defaultUnits = [
     { name: "Kilograms", abbreviation: "kg", type: "weight" },
     { name: "Grams", abbreviation: "g", type: "weight" },
     { name: "Pounds", abbreviation: "lbs", type: "weight" },
-    { name: "Ounces", abbreviation: "oz", type: "weight" },
     { name: "Liters", abbreviation: "L", type: "volume" },
     { name: "Milliliters", abbreviation: "ml", type: "volume" },
-    { name: "Cups", abbreviation: "cup", type: "volume" },
     { name: "Tablespoons", abbreviation: "tbsp", type: "volume" },
     { name: "Teaspoons", abbreviation: "tsp", type: "volume" },
     { name: "Pieces", abbreviation: "pcs", type: "count" },
-    { name: "Dozen", abbreviation: "doz", type: "count" },
     { name: "Packets", abbreviation: "pkt", type: "count" },
     { name: "Boxes", abbreviation: "box", type: "count" },
     { name: "Bags", abbreviation: "bag", type: "count" },

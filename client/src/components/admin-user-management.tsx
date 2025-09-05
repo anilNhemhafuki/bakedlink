@@ -34,14 +34,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Users, Activity, Shield, Settings, Eye, Pencil } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Users,
+  Activity,
+  Shield,
+  Settings,
+  Eye,
+  Pencil,
+  AlertTriangle,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAllPermissions, useRolePermissions } from "@/hooks/usePermissions";
@@ -381,207 +387,216 @@ export default function AdminUserManagement() {
                     <Users className="h-5 w-5" />
                     User Management
                   </CardTitle>
-                  <CardDescription>Manage users and their roles</CardDescription>
+                  <CardDescription>
+                    Manage users and their roles
+                  </CardDescription>
                 </div>
-            <Dialog
-              open={isDialogOpen}
-              onOpenChange={(open) => {
-                setIsDialogOpen(open);
-                if (!open) {
-                  setEditingUser(null);
-                  setUserData({
-                    email: "",
-                    password: "",
-                    firstName: "",
-                    lastName: "",
-                    role: "staff",
-                  });
-                }
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button disabled={!isSuperAdmin()}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add User
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingUser ? "Edit User" : "Create New User"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {editingUser
-                      ? "Update user information"
-                      : "Add a new user to the system"}
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSave} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="firstName"
-                        name="firstName"
-                        defaultValue={userData.firstName}
-                        placeholder="Enter first name"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        name="lastName"
-                        defaultValue={userData.lastName}
-                        placeholder="Enter last name"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      defaultValue={userData.email}
-                      placeholder="Enter email address"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="password">
-                      {editingUser
-                        ? "Password (leave blank to keep current)"
-                        : "Password"}
-                    </Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      placeholder="Enter password"
-                      required={!editingUser}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="role">Role</Label>
-                    <Select name="role" defaultValue={userData.role}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {validRoles.map((role) => (
-                          <SelectItem key={role.value} value={role.value}>
-                            {role.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                    >
-                      Cancel
+                <Dialog
+                  open={isDialogOpen}
+                  onOpenChange={(open) => {
+                    setIsDialogOpen(open);
+                    if (!open) {
+                      setEditingUser(null);
+                      setUserData({
+                        email: "",
+                        password: "",
+                        firstName: "",
+                        lastName: "",
+                        role: "staff",
+                      });
+                    }
+                  }}
+                >
+                  <DialogTrigger asChild>
+                    <Button disabled={!isSuperAdmin()}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add User
                     </Button>
-                    <Button
-                      type="submit"
-                      disabled={
-                        createMutation.isPending || updateMutation.isPending
-                      }
-                    >
-                      {editingUser ? "Update User" : "Create User"}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-            <p className="text-sm text-muted-foreground">
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingUser ? "Edit User" : "Create New User"}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {editingUser
+                          ? "Update user information"
+                          : "Add a new user to the system"}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSave} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="firstName">First Name</Label>
+                          <Input
+                            id="firstName"
+                            name="firstName"
+                            defaultValue={userData.firstName}
+                            placeholder="Enter first name"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="lastName">Last Name</Label>
+                          <Input
+                            id="lastName"
+                            name="lastName"
+                            defaultValue={userData.lastName}
+                            placeholder="Enter last name"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          defaultValue={userData.email}
+                          placeholder="Enter email address"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="password">
+                          {editingUser
+                            ? "Password (leave blank to keep current)"
+                            : "Password"}
+                        </Label>
+                        <Input
+                          id="password"
+                          name="password"
+                          type="password"
+                          placeholder="Enter password"
+                          required={!editingUser}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="role">Role</Label>
+                        <Select name="role" defaultValue={userData.role}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {validRoles.map((role) => (
+                              <SelectItem key={role.value} value={role.value}>
+                                {role.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={
+                            createMutation.isPending || updateMutation.isPending
+                          }
+                        >
+                          {editingUser ? "Update User" : "Create User"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <p className="text-sm text-muted-foreground">
                 Showing {filteredUsers.length} users
               </p>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user: any) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        {user.firstName} {user.lastName}
-                      </TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role)}>
-                          {user.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditUser(user)}
-                            disabled={user.role === 'super_admin' && !isSuperAdmin()}
-                            className="text-blue-600 hover:text-blue-800 focus:outline-none"
-                            title="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user.id)}
-                            disabled={user.role === 'super_admin' && !isSuperAdmin()}
-                            className="text-red-600 hover:text-red-800 focus:outline-none"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {filteredUsers.length === 0 && (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                    No users found
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    Start by adding your first user
-                  </p>
-                  <Button onClick={() => setIsDialogOpen(true)} disabled={!isSuperAdmin()}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add User
-                  </Button>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((user: any) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">
+                            {user.firstName} {user.lastName}
+                          </TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            <Badge variant={getRoleBadgeVariant(user.role)}>
+                              {user.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditUser(user)}
+                                disabled={
+                                  user.role === "super_admin" && !isSuperAdmin()
+                                }
+                                className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                                title="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteUser(user.id)}
+                                disabled={
+                                  user.role === "super_admin" && !isSuperAdmin()
+                                }
+                                className="text-red-600 hover:text-red-800 focus:outline-none"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {filteredUsers.length === 0 && (
+                    <div className="text-center py-8">
+                      <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                        No users found
+                      </h3>
+                      <p className="text-muted-foreground mb-4">
+                        Start by adding your first user
+                      </p>
+                      <Button
+                        onClick={() => setIsDialogOpen(true)}
+                        disabled={!isSuperAdmin()}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add User
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
-        </CardContent>
+            </CardContent>
           </Card>
         </TabsContent>
 
@@ -594,222 +609,226 @@ export default function AdminUserManagement() {
                 permissions.
               </CardDescription>
             </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <Label htmlFor="roleSelect">Select Role</Label>
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent>
-                {validRoles.map((role) => (
-                  <SelectItem key={role.value} value={role.value}>
-                    {role.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {selectedRole && (
-            <div className="space-y-4">
-              {updateRolePermissionsMutation.isPending && (
-                <div className="text-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Updating permissions...
-                  </p>
-                </div>
-              )}
-
-              {selectedRole === "super_admin" && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="default" className="bg-green-600">
-                      Super Admin
-                    </Badge>
-                    <span className="text-green-800 font-medium">
-                      Full Access to All System Resources
-                    </span>
-                  </div>
-                  <p className="text-green-700 text-sm mt-2">
-                    Super Admin has unrestricted access to all pages, features,
-                    and permissions in the system.
-                  </p>
-                </div>
-              )}
-
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[200px]">Resource</TableHead>
-                      <TableHead className="w-[300px]">Description</TableHead>
-                      <TableHead className="text-center w-[120px]">
-                        Read
-                      </TableHead>
-                      <TableHead className="text-center w-[120px]">
-                        Read-Write
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(
-                      groupPermissionsByResource(allPermissions as any[]),
-                    ).map(([resource, permissions]: [string, any[]]) => {
-                      const hasRead = rolePermissions.some((rp: any) =>
-                        (permissions as any[]).some(
-                          (p: any) =>
-                            p.id === rp.permissionId && p.action === "read",
-                        ),
-                      );
-
-                      const hasReadWrite = rolePermissions.some((rp: any) =>
-                        (permissions as any[]).some(
-                          (p: any) =>
-                            p.id === rp.permissionId &&
-                            p.action === "read_write",
-                        ),
-                      );
-
-                      const handlePermissionChange = (
-                        permissionId: number,
-                        isGranted: boolean,
-                      ) => {
-                        const currentPermissionIds = rolePermissions.map(
-                          (rp: any) => rp.permissionId,
-                        );
-
-                        let newPermissionIds;
-                        if (isGranted) {
-                          newPermissionIds = currentPermissionIds.includes(
-                            permissionId,
-                          )
-                            ? currentPermissionIds
-                            : [...currentPermissionIds, permissionId];
-                        } else {
-                          newPermissionIds = currentPermissionIds.filter(
-                            (id: number) => id !== permissionId,
-                          );
-                        }
-
-                        updateRolePermissionsMutation.mutate({
-                          role: selectedRole,
-                          permissionIds: newPermissionIds,
-                        });
-                      };
-
-                      const handleReadToggle = (checked: boolean) => {
-                        const readPerm = (permissions as any[]).find(
-                          (p: any) => p.action === "read",
-                        );
-                        if (readPerm) {
-                          handlePermissionChange(readPerm.id, checked);
-                        }
-                      };
-
-                      const handleReadWriteToggle = (checked: boolean) => {
-                        const readWritePerm = (permissions as any[]).find(
-                          (p: any) => p.action === "read_write",
-                        );
-                        if (readWritePerm) {
-                          handlePermissionChange(readWritePerm.id, checked);
-                        }
-                      };
-
-                      const getResourceDescription = (resource: string) => {
-                        const descriptions: { [key: string]: string } = {
-                          dashboard: "Overview and analytics",
-                          products: "Product catalog management",
-                          inventory: "Stock and materials tracking",
-                          orders: "Customer order processing",
-                          production: "Production scheduling",
-                          customers: "Customer relationship management",
-                          parties: "Supplier and vendor management",
-                          assets: "Asset and equipment tracking",
-                          expenses: "Business expense tracking",
-                          sales: "Sales transaction management",
-                          purchases: "Purchase order management",
-                          reports: "Reports and analytics",
-                          settings: "System configuration",
-                          users: "User account management",
-                          staff: "Staff management and records",
-                          attendance: "Staff attendance tracking",
-                          salary: "Salary and payroll management",
-                          leave_requests: "Leave request management",
-                        };
-                        return (
-                          descriptions[resource] || `Manage ${resource} access`
-                        );
-                      };
-
-                      return (
-                        <TableRow key={resource}>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center">
-                                <i className="fas fa-cube text-primary text-xs"></i>
-                              </div>
-                              <span className="capitalize">
-                                {resource.replace("_", " ")}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {getResourceDescription(resource)}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={
-                                  hasRead || selectedRole === "super_admin"
-                                }
-                                onChange={(e) =>
-                                  handleReadToggle(e.target.checked)
-                                }
-                                className="sr-only peer"
-                                disabled={selectedRole === "super_admin"}
-                              />
-                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
-                            </label>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={
-                                  hasReadWrite || selectedRole === "super_admin"
-                                }
-                                onChange={(e) =>
-                                  handleReadWriteToggle(e.target.checked)
-                                }
-                                className="sr-only peer"
-                                disabled={selectedRole === "super_admin"}
-                              />
-                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
-                            </label>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+            <CardContent className="space-y-6">
+              <div>
+                <Label htmlFor="roleSelect">Select Role</Label>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {validRoles.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-          )}
-          </CardContent>
-        </Card>
-      </TabsContent>
 
-      <TabsContent value="audit" className="space-y-6">
-        <AuditLogs />
-      </TabsContent>
+              {selectedRole && (
+                <div className="space-y-4">
+                  {updateRolePermissionsMutation.isPending && (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Updating permissions...
+                      </p>
+                    </div>
+                  )}
 
-      <TabsContent value="security" className="space-y-6">
-        <SecurityMonitor />
-      </TabsContent>
-    </Tabs>
+                  {selectedRole === "super_admin" && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="default" className="bg-green-600">
+                          Super Admin
+                        </Badge>
+                        <span className="text-green-800 font-medium">
+                          Full Access to All System Resources
+                        </span>
+                      </div>
+                      <p className="text-green-700 text-sm mt-2">
+                        Super Admin has unrestricted access to all pages,
+                        features, and permissions in the system.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[200px]">Resource</TableHead>
+                          <TableHead className="w-[300px]">
+                            Description
+                          </TableHead>
+                          <TableHead className="text-center w-[120px]">
+                            Read
+                          </TableHead>
+                          <TableHead className="text-center w-[120px]">
+                            Read-Write
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(
+                          groupPermissionsByResource(allPermissions as any[]),
+                        ).map(([resource, permissions]: [string, any[]]) => {
+                          const hasRead = rolePermissions.some((rp: any) =>
+                            (permissions as any[]).some(
+                              (p: any) =>
+                                p.id === rp.permissionId && p.action === "read",
+                            ),
+                          );
+
+                          const hasReadWrite = rolePermissions.some((rp: any) =>
+                            (permissions as any[]).some(
+                              (p: any) =>
+                                p.id === rp.permissionId &&
+                                p.action === "read_write",
+                            ),
+                          );
+
+                          const handlePermissionChange = (
+                            permissionId: number,
+                            isGranted: boolean,
+                          ) => {
+                            const currentPermissionIds = rolePermissions.map(
+                              (rp: any) => rp.permissionId,
+                            );
+
+                            let newPermissionIds;
+                            if (isGranted) {
+                              newPermissionIds = currentPermissionIds.includes(
+                                permissionId,
+                              )
+                                ? currentPermissionIds
+                                : [...currentPermissionIds, permissionId];
+                            } else {
+                              newPermissionIds = currentPermissionIds.filter(
+                                (id: number) => id !== permissionId,
+                              );
+                            }
+
+                            updateRolePermissionsMutation.mutate({
+                              role: selectedRole,
+                              permissionIds: newPermissionIds,
+                            });
+                          };
+
+                          const handleReadToggle = (checked: boolean) => {
+                            const readPerm = (permissions as any[]).find(
+                              (p: any) => p.action === "read",
+                            );
+                            if (readPerm) {
+                              handlePermissionChange(readPerm.id, checked);
+                            }
+                          };
+
+                          const handleReadWriteToggle = (checked: boolean) => {
+                            const readWritePerm = (permissions as any[]).find(
+                              (p: any) => p.action === "read_write",
+                            );
+                            if (readWritePerm) {
+                              handlePermissionChange(readWritePerm.id, checked);
+                            }
+                          };
+
+                          const getResourceDescription = (resource: string) => {
+                            const descriptions: { [key: string]: string } = {
+                              dashboard: "Overview and analytics",
+                              products: "Product catalog management",
+                              inventory: "Stock and materials tracking",
+                              orders: "Customer order processing",
+                              production: "Production scheduling",
+                              customers: "Customer relationship management",
+                              parties: "Supplier and vendor management",
+                              assets: "Asset and equipment tracking",
+                              expenses: "Business expense tracking",
+                              sales: "Sales transaction management",
+                              purchases: "Purchase order management",
+                              reports: "Reports and analytics",
+                              settings: "System configuration",
+                              users: "User account management",
+                              staff: "Staff management and records",
+                              attendance: "Staff attendance tracking",
+                              salary: "Salary and payroll management",
+                              leave_requests: "Leave request management",
+                            };
+                            return (
+                              descriptions[resource] ||
+                              `Manage ${resource} access`
+                            );
+                          };
+
+                          return (
+                            <TableRow key={resource}>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center">
+                                    <i className="fas fa-cube text-primary text-xs"></i>
+                                  </div>
+                                  <span className="capitalize">
+                                    {resource.replace("_", " ")}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {getResourceDescription(resource)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      hasRead || selectedRole === "super_admin"
+                                    }
+                                    onChange={(e) =>
+                                      handleReadToggle(e.target.checked)
+                                    }
+                                    className="sr-only peer"
+                                    disabled={selectedRole === "super_admin"}
+                                  />
+                                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+                                </label>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      hasReadWrite ||
+                                      selectedRole === "super_admin"
+                                    }
+                                    onChange={(e) =>
+                                      handleReadWriteToggle(e.target.checked)
+                                    }
+                                    className="sr-only peer"
+                                    disabled={selectedRole === "super_admin"}
+                                  />
+                                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+                                </label>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="audit" className="space-y-6">
+          <AuditLogs />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          <SecurityMonitor />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -846,7 +865,9 @@ function SecurityMonitor() {
                 <div className="text-2xl font-bold text-red-600">
                   {recentFailedLogins?.failedLoginsLast24h || 0}
                 </div>
-                <p className="text-sm text-muted-foreground">Failed Logins (24h)</p>
+                <p className="text-sm text-muted-foreground">
+                  Failed Logins (24h)
+                </p>
               </div>
               <Shield className="h-8 w-8 text-red-500" />
             </div>
@@ -905,10 +926,14 @@ function SecurityMonitor() {
                   {recentFailedLogins.recentFailedLogins.map((log: any) => (
                     <TableRow key={log.id}>
                       <TableCell className="font-medium">{log.email}</TableCell>
-                      <TableCell className="font-mono text-sm">{log.ipAddress}</TableCell>
-                      <TableCell>{log.location || 'Unknown'}</TableCell>
-                      <TableCell>{new Date(log.loginTime).toLocaleString()}</TableCell>
-                      <TableCell>{log.deviceType || 'Unknown'}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {log.ipAddress}
+                      </TableCell>
+                      <TableCell>{log.location || "Unknown"}</TableCell>
+                      <TableCell>
+                        {new Date(log.loginTime).toLocaleString()}
+                      </TableCell>
+                      <TableCell>{log.deviceType || "Unknown"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -917,8 +942,12 @@ function SecurityMonitor() {
           ) : (
             <div className="text-center py-8">
               <Shield className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-green-700 mb-2">All Clear!</h3>
-              <p className="text-muted-foreground">No failed login attempts in the last 24 hours</p>
+              <h3 className="text-lg font-semibold text-green-700 mb-2">
+                All Clear!
+              </h3>
+              <p className="text-muted-foreground">
+                No failed login attempts in the last 24 hours
+              </p>
             </div>
           )}
         </CardContent>
@@ -951,15 +980,23 @@ function SecurityMonitor() {
                       <TableCell>
                         <div>
                           <div className="font-medium">{log.userName}</div>
-                          <div className="text-sm text-muted-foreground">{log.userEmail}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {log.userEmail}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="destructive">{log.action}</Badge>
                       </TableCell>
-                      <TableCell className="capitalize">{log.resource.replace('_', ' ')}</TableCell>
-                      <TableCell className="font-mono text-sm">{log.ipAddress}</TableCell>
-                      <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
+                      <TableCell className="capitalize">
+                        {log.resource.replace("_", " ")}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {log.ipAddress}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(log.timestamp).toLocaleString()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -968,8 +1005,12 @@ function SecurityMonitor() {
           ) : (
             <div className="text-center py-8">
               <Activity className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-green-700 mb-2">All Operations Successful!</h3>
-              <p className="text-muted-foreground">No failed operations detected recently</p>
+              <h3 className="text-lg font-semibold text-green-700 mb-2">
+                All Operations Successful!
+              </h3>
+              <p className="text-muted-foreground">
+                No failed operations detected recently
+              </p>
             </div>
           )}
         </CardContent>
@@ -984,52 +1025,83 @@ function SecurityMonitor() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {securityAlerts?.activeAlerts?.length > 0 || securityAlerts?.dashboardAlerts?.length > 0 ? (
+          {securityAlerts?.activeAlerts?.length > 0 ||
+          securityAlerts?.dashboardAlerts?.length > 0 ? (
             <div className="space-y-4">
               {/* Active Alerts */}
               {securityAlerts?.activeAlerts?.map((alert: any) => (
-                <div key={alert.id} className="border border-red-200 rounded-lg p-4 bg-red-50">
+                <div
+                  key={alert.id}
+                  className="border border-red-200 rounded-lg p-4 bg-red-50"
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="destructive" className={`${
-                          alert.severity === 'HIGH' ? 'bg-red-600' :
-                          alert.severity === 'MEDIUM' ? 'bg-orange-600' : 'bg-yellow-600'
-                        }`}>
+                        <Badge
+                          variant="destructive"
+                          className={`${
+                            alert.severity === "HIGH"
+                              ? "bg-red-600"
+                              : alert.severity === "MEDIUM"
+                                ? "bg-orange-600"
+                                : "bg-yellow-600"
+                          }`}
+                        >
                           {alert.severity}
                         </Badge>
-                        <span className="font-semibold text-red-800">{alert.title}</span>
+                        <span className="font-semibold text-red-800">
+                          {alert.title}
+                        </span>
                       </div>
-                      <p className="text-sm text-red-700 mb-2">{alert.description}</p>
+                      <p className="text-sm text-red-700 mb-2">
+                        {alert.description}
+                      </p>
                       <div className="flex items-center gap-4 text-xs text-red-600">
                         <span>User: {alert.userEmail}</span>
                         <span>IP: {alert.ipAddress}</span>
-                        <span>Time: {new Date(alert.timestamp).toLocaleString()}</span>
+                        <span>
+                          Time: {new Date(alert.timestamp).toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
-              
+
               {/* Dashboard Alerts */}
               {securityAlerts?.dashboardAlerts?.map((alert: any) => (
-                <div key={alert.id} className="border border-orange-200 rounded-lg p-4 bg-orange-50">
+                <div
+                  key={alert.id}
+                  className="border border-orange-200 rounded-lg p-4 bg-orange-50"
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="secondary" className={`${
-                          alert.severity === 'HIGH' ? 'bg-red-600' :
-                          alert.severity === 'MEDIUM' ? 'bg-orange-600' : 'bg-yellow-600'
-                        }`}>
+                        <Badge
+                          variant="secondary"
+                          className={`${
+                            alert.severity === "HIGH"
+                              ? "bg-red-600"
+                              : alert.severity === "MEDIUM"
+                                ? "bg-orange-600"
+                                : "bg-yellow-600"
+                          }`}
+                        >
                           {alert.severity}
                         </Badge>
-                        <span className="font-semibold text-orange-800">{alert.title}</span>
+                        <span className="font-semibold text-orange-800">
+                          {alert.title}
+                        </span>
                       </div>
-                      <p className="text-sm text-orange-700 mb-2">{alert.description}</p>
+                      <p className="text-sm text-orange-700 mb-2">
+                        {alert.description}
+                      </p>
                       <div className="flex items-center gap-4 text-xs text-orange-600">
                         <span>User: {alert.userEmail}</span>
                         <span>IP: {alert.ipAddress}</span>
-                        <span>Time: {new Date(alert.timestamp).toLocaleString()}</span>
+                        <span>
+                          Time: {new Date(alert.timestamp).toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1039,8 +1111,12 @@ function SecurityMonitor() {
           ) : (
             <div className="text-center py-8">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-green-700 mb-2">System Secure</h3>
-              <p className="text-muted-foreground">No active security threats detected</p>
+              <h3 className="text-lg font-semibold text-green-700 mb-2">
+                System Secure
+              </h3>
+              <p className="text-muted-foreground">
+                No active security threats detected
+              </p>
             </div>
           )}
         </CardContent>
