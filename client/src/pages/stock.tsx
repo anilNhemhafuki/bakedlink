@@ -458,7 +458,7 @@ export default function Stock() {
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {getGroupBadge(item.group || item.categoryName)}
+                          {getGroupBadge(item.group || item.categoryName || "uncategorized")}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="text-sm">

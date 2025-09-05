@@ -1005,35 +1005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Ingredients (filtered inventory items suitable for recipes)
   app.get("/api/ingredients", isAuthenticated, async (req, res) => {
     try {
-      const items = await storage.getInventoryItems();
-
-      // Filter items that are suitable as ingredients
-      const ingredients = items.filter(
-        (item: any) =>
-          item.name &&
-          (item.group === "raw-materials" ||
-            item.group === "ingredients" ||
-            item.group === "flour" ||
-            item.group === "dairy" ||
-            item.group === "sweeteners" ||
-            item.group === "spices" ||
-            item.group === "leavening" ||
-            item.group === "extracts" ||
-            item.group === "chocolate" ||
-            item.group === "nuts" ||
-            item.group === "fruits" ||
-            !item.group ||
-            item.name.toLowerCase().includes("flour") ||
-            item.name.toLowerCase().includes("sugar") ||
-            item.name.toLowerCase().includes("butter") ||
-            item.name.toLowerCase().includes("milk") ||
-            item.name.toLowerCase().includes("egg") ||
-            item.name.toLowerCase().includes("chocolate") ||
-            item.name.toLowerCase().includes("vanilla") ||
-            item.name.toLowerCase().includes("salt") ||
-            item.name.toLowerCase().includes("baking")),
-      );
-
+      const ingredients = await storage.getIngredients();
       res.json(ingredients);
     } catch (error) {
       console.error("Error fetching ingredients:", error);
@@ -1091,6 +1063,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const consumedQuantity = parseFloat(req.body.consumedQuantity || 0);
       const closingStock = req.body.closingStock ? parseFloat(req.body.closingStock) : openingStock + purchasedQuantity - consumedQuantity;
 
+      // Handle group field - convert string groups to proper categoryId or isIngredient flag
+      let categoryId = null;
+      let isIngredient = false;
+      
+      if (req.body.group) {
+        if (req.body.group === "ingredients") {
+          isIngredient = true;
+        } else if (!isNaN(parseInt(req.body.group))) {
+          categoryId = parseInt(req.body.group);
+        }
+      }
+      
+      if (req.body.categoryId && !isNaN(parseInt(req.body.categoryId))) {
+        categoryId = parseInt(req.body.categoryId);
+      }
+
       // Transform the data - only allow specified fields
       const transformedData = {
         invCode: invCode,
@@ -1107,8 +1095,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversionRate: req.body.conversionRate ? parseFloat(req.body.conversionRate).toString() : null,
         costPerUnit: parseFloat(req.body.costPerUnit).toString(),
         supplier: req.body.supplier ? req.body.supplier.trim() : null,
-        categoryId: req.body.categoryId ? parseInt(req.body.categoryId) : null,
-        isIngredient: req.body.isIngredient || req.body.group === "ingredients" || false,
+        categoryId: categoryId,
+        isIngredient: isIngredient || req.body.isIngredient || false,
+        notes: req.body.notes ? req.body.notes.trim() : null,
         lastRestocked: new Date(),
       };
 

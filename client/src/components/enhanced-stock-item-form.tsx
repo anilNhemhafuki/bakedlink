@@ -186,13 +186,23 @@ export function EnhancedStockItemForm({
 
   useEffect(() => {
     if (editingItem) {
+      // Determine group value from editingItem
+      let groupValue = "";
+      if (editingItem.categoryId) {
+        groupValue = editingItem.categoryId.toString();
+      } else if (editingItem.isIngredient) {
+        groupValue = "ingredients";
+      } else if (editingItem.group && editingItem.group !== "uncategorized") {
+        groupValue = editingItem.group;
+      }
+      
       setFormData({
         name: editingItem.name || "",
         primaryUnitId: editingItem.unitId?.toString() || "",
         secondaryUnitId: editingItem.secondaryUnitId?.toString() || "",
         conversionRate: editingItem.conversionRate || "",
         costPerUnit: editingItem.costPerUnit || "",
-        group: editingItem.categoryId?.toString() || editingItem.group || "",
+        group: groupValue,
         minLevel: editingItem.minLevel || "",
         openingStock: editingItem.openingStock || editingItem.currentStock || "",
         purchasedQuantity: editingItem.purchasedQuantity || "0",
@@ -384,9 +394,10 @@ export function EnhancedStockItemForm({
       conversionRate: formData.secondaryUnitId ? parseFloat(formData.conversionRate) : null,
       costPerUnit: parseFloat(formData.costPerUnit),
       supplier: formData.supplier.trim() || null,
-      categoryId: formData.group ? parseInt(formData.group) : null,
+      group: formData.group || null,
+      categoryId: (formData.group && !isNaN(parseInt(formData.group))) ? parseInt(formData.group) : null,
       notes: formData.notes.trim() || null,
-      lastRestocked: new Date(),
+      lastRestocked: new Date().toISOString(),
       isIngredient: formData.group === "ingredients",
     };
 

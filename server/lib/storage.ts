@@ -1,4 +1,4 @@
-import { eq, desc, count, sql, and, gte, lte, lt, or } from "drizzle-orm";
+import { eq, desc, count, sql, and, gte, lte, lt, or, ilike, isNull } from "drizzle-orm";
 import { db } from "../db";
 import {
   users,
@@ -190,7 +190,7 @@ export interface IStorage {
   ): Promise<InventoryTransaction>;
   getInventoryTransactions(itemId?: number): Promise<any[]>;
   getLowStockItems(): Promise<InventoryItem[]>;
-  getIngredients();
+  getIngredients(): Promise<InventoryItem[]>;
   syncStockFromPurchases();
   updateInventoryStockAndCost(
     itemId: number,
@@ -957,7 +957,7 @@ export class Storage implements IStorage {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
     const search = options?.search?.toLowerCase() || "";
-    const group = options?.group || "";
+    const group = options?.group || "all";
     const offset = (page - 1) * limit;
 
     let query = this.db
@@ -974,31 +974,45 @@ export class Storage implements IStorage {
         unit: inventoryItems.unit,
         unitId: inventoryItems.unitId,
         secondaryUnitId: inventoryItems.secondaryUnitId,
-        conversionRate: inventoryItems.conversionRate,
+        conversionRate: inventoryItems.conversionFactor,
         costPerUnit: inventoryItems.costPerUnit,
         supplier: inventoryItems.supplier,
         categoryId: inventoryItems.categoryId,
         isIngredient: inventoryItems.isIngredient,
         lastRestocked: inventoryItems.lastRestocked,
+        notes: sql<string>`COALESCE(${inventoryItems.notes}, '')`.as('notes'),
         createdAt: inventoryItems.createdAt,
         updatedAt: inventoryItems.updatedAt,
         categoryName: inventoryCategories.name,
         unitAbbreviation: units.abbreviation,
+        group: sql<string>`
+          CASE 
+            WHEN ${inventoryItems.categoryId} IS NOT NULL THEN ${inventoryItems.categoryId}::text
+            WHEN ${inventoryItems.isIngredient} = true THEN 'ingredients'
+            ELSE 'uncategorized'
+          END
+        `.as('group')
       })
       .from(inventoryItems)
       .leftJoin(inventoryCategories, eq(inventoryItems.categoryId, inventoryCategories.id))
       .leftJoin(units, eq(inventoryItems.unitId, units.id))
       .orderBy(desc(inventoryItems.createdAt));
 
-    let whereConditions = [];
+    let countQuery = this.db
+      .select({ count: count() })
+      .from(inventoryItems)
+      .leftJoin(inventoryCategories, eq(inventoryItems.categoryId, inventoryCategories.id));
+
+    // Build where conditions
+    const whereConditions = [];
 
     if (search) {
       whereConditions.push(
         or(
-          sql`LOWER(${inventoryItems.name}) LIKE ${`%${search}%`}`,
-          sql`LOWER(${inventoryItems.supplier}) LIKE ${`%${search}%`}`,
-          sql`LOWER(${inventoryCategories.name}) LIKE ${`%${search}%`}`,
-          sql`LOWER(${inventoryItems.invCode}) LIKE ${`%${search}%`}`
+          ilike(inventoryItems.name, `%${search}%`),
+          ilike(inventoryItems.supplier, `%${search}%`),
+          ilike(inventoryItems.invCode, `%${search}%`),
+          ilike(inventoryCategories.name, `%${search}%`)
         )
       );
     }
@@ -1006,28 +1020,21 @@ export class Storage implements IStorage {
     if (group && group !== "all") {
       if (group === "ingredients") {
         whereConditions.push(eq(inventoryItems.isIngredient, true));
-      } else if (!isNaN(Number(group))) {
+      } else if (group === "uncategorized") {
+        whereConditions.push(isNull(inventoryItems.categoryId));
+      } else if (!isNaN(parseInt(group))) {
         whereConditions.push(eq(inventoryItems.categoryId, parseInt(group)));
       }
     }
 
     if (whereConditions.length > 0) {
       query = query.where(and(...whereConditions));
-    }
-
-    // Get total count
-    const totalQuery = this.db
-      .select({ count: count() })
-      .from(inventoryItems)
-      .leftJoin(inventoryCategories, eq(inventoryItems.categoryId, inventoryCategories.id));
-
-    if (whereConditions.length > 0) {
-      totalQuery.where(and(...whereConditions));
+      countQuery = countQuery.where(and(...whereConditions));
     }
 
     const [items, totalResult] = await Promise.all([
       query.limit(limit).offset(offset),
-      totalQuery
+      countQuery
     ]);
 
     const totalCount = totalResult[0]?.count || 0;
@@ -1063,12 +1070,12 @@ export class Storage implements IStorage {
     return result[0];
   }
 
-  async createInventoryItem(itemData: any): Promise<InventoryItem> {
+  async createInventoryItem(data: any): Promise<InventoryItem> {
     try {
-      console.log("Creating inventory item with data:", itemData);
+      console.log("Creating inventory item with data:", data);
 
       // Check for duplicate name (case-insensitive, trimmed)
-      const trimmedName = itemData.name.trim();
+      const trimmedName = data.name.trim();
       const existingItem = await this.db
         .select()
         .from(inventoryItems)
@@ -1081,31 +1088,29 @@ export class Storage implements IStorage {
         );
       }
 
-      // Only allow specified fields as per requirements
-      const transformedData = {
+      // Ensure proper data types and handle optional fields
+      const cleanData = {
         name: trimmedName,
-        currentStock: itemData.currentStock.toString(),
-        openingStock: itemData.openingStock ? itemData.openingStock.toString() : itemData.currentStock.toString(),
-        purchasedQuantity: itemData.purchasedQuantity ? itemData.purchasedQuantity.toString() : "0",
-        consumedQuantity: itemData.consumedQuantity ? itemData.consumedQuantity.toString() : "0",
-        closingStock: itemData.closingStock ? itemData.closingStock.toString() : itemData.currentStock.toString(),
-        minLevel: itemData.minLevel.toString(),
-        unit: itemData.unit,
-        unitId: itemData.unitId || null,
-        secondaryUnitId: itemData.secondaryUnitId || null,
-        conversionRate: itemData.conversionRate
-          ? itemData.conversionRate.toString()
-          : null,
-        costPerUnit: itemData.costPerUnit.toString(),
-        supplier: itemData.supplier || null,
-        categoryId: itemData.categoryId || null,
-        isIngredient: itemData.isIngredient || false,
-        lastRestocked: itemData.lastRestocked || new Date(),
+        currentStock: data.currentStock ? String(data.currentStock) : "0",
+        openingStock: data.openingStock ? String(data.openingStock) : String(data.currentStock || "0"),
+        purchasedQuantity: data.purchasedQuantity ? String(data.purchasedQuantity) : "0",
+        consumedQuantity: data.consumedQuantity ? String(data.consumedQuantity) : "0",
+        closingStock: data.closingStock ? String(data.closingStock) : String(data.currentStock || "0"),
+        minLevel: data.minLevel ? String(data.minLevel) : "0",
+        unitId: data.unitId || null,
+        secondaryUnitId: data.secondaryUnitId || null,
+        conversionRate: data.conversionRate ? String(data.conversionRate) : null,
+        costPerUnit: data.costPerUnit ? String(data.costPerUnit) : "0",
+        supplier: data.supplier || null,
+        categoryId: data.categoryId || null,
+        isIngredient: data.isIngredient || false,
+        lastRestocked: data.lastRestocked ? new Date(data.lastRestocked) : new Date(),
+        notes: data.notes || null,
       };
 
       const result = await this.db
         .insert(inventoryItems)
-        .values(transformedData)
+        .values(cleanData)
         .returning();
       console.log("Inventory item created successfully:", result[0]);
       return result[0];
@@ -1117,15 +1122,38 @@ export class Storage implements IStorage {
 
   async updateInventoryItem(
     id: number,
-    updateData: any,
+    updateData: Partial<InsertInventoryItem>,
   ): Promise<InventoryItem> {
     try {
+      // Clean the data and ensure proper types
+      const cleanData = { ...updateData };
+
+      // Handle timestamp fields
+      if (cleanData.lastRestocked && typeof cleanData.lastRestocked !== 'string') {
+        cleanData.lastRestocked = new Date(cleanData.lastRestocked);
+      } else if (typeof cleanData.lastRestocked === 'string') {
+        // Ensure string dates are parsed
+        cleanData.lastRestocked = new Date(cleanData.lastRestocked);
+      }
+
+      // Ensure numeric fields are strings if they exist
+      const numericFields = ['currentStock', 'openingStock', 'purchasedQuantity', 'consumedQuantity', 'closingStock', 'minLevel', 'costPerUnit', 'conversionRate'];
+      numericFields.forEach(field => {
+        if (cleanData[field] !== undefined && cleanData[field] !== null) {
+          cleanData[field] = String(cleanData[field]);
+        }
+      });
+
+      // Remove undefined fields
+      Object.keys(cleanData).forEach(key => {
+        if (cleanData[key] === undefined || cleanData[key] === null) {
+          delete cleanData[key];
+        }
+      });
+
       const result = await this.db
         .update(inventoryItems)
-        .set({
-          ...updateData,
-          updatedAt: new Date(),
-        })
+        .set(cleanData)
         .where(eq(inventoryItems.id, id))
         .returning();
       return result[0];
@@ -1254,10 +1282,23 @@ export class Storage implements IStorage {
   }
 
   async deleteInventoryItem(id: number): Promise<void> {
-    await this.db
-      .delete(inventoryTransactions)
-      .where(eq(inventoryTransactions.itemId, id));
-    await this.db.delete(inventoryItems).where(eq(inventoryItems.id, id));
+    try {
+      // First check if item exists
+      const existingItem = await this.db.select().from(inventoryItems).where(eq(inventoryItems.id, id)).limit(1);
+
+      if (existingItem.length === 0) {
+        throw new Error('Inventory item not found');
+      }
+
+      // Delete associated transactions
+      await this.db.delete(inventoryTransactions).where(eq(inventoryTransactions.itemId, id));
+
+      // Delete the item
+      await this.db.delete(inventoryItems).where(eq(inventoryItems.id, id));
+    } catch (error) {
+      console.error("Error deleting inventory item:", error);
+      throw error;
+    }
   }
 
   async getInventoryCategories(): Promise<InventoryCategory[]> {
@@ -1298,9 +1339,15 @@ export class Storage implements IStorage {
   async createInventoryTransaction(
     transaction: InsertInventoryTransaction,
   ): Promise<InventoryTransaction> {
+    // Ensure quantity is a string for consistency
+    const transactionData = {
+      ...transaction,
+      quantity: String(transaction.quantity),
+    };
+
     const [newTransaction] = await this.db
       .insert(inventoryTransactions)
-      .values(transaction)
+      .values(transactionData)
       .returning();
 
     // Update the current stock
@@ -1359,42 +1406,39 @@ export class Storage implements IStorage {
   }
 
   // Get ingredients from multiple sources
-  async getIngredients() {
+  async getIngredients(): Promise<InventoryItem[]> {
     try {
-      // Get ingredients from inventory items marked as ingredients
-      const inventoryIngredients = await this.db
-        .select({
-          id: inventoryItems.id,
-          name: inventoryItems.name,
-          unit: inventoryItems.unit,
-          currentStock: inventoryItems.closingStock,
-          costPerUnit: inventoryItems.costPerUnit,
-          source: sql<string>`'inventory'`,
-        })
-        .from(inventoryItems)
-        .where(eq(inventoryItems.isIngredient, true));
+      const result = await this.getInventoryItems({ limit: 1000 }); // Get all items
+      const items = result.items;
 
-      // Get ingredients from product ingredients table
-      const recipeIngredients = await this.db
-        .select({
-          id: inventoryItems.id,
-          name: inventoryItems.name,
-          unit: inventoryItems.unit,
-          currentStock: inventoryItems.closingStock,
-          costPerUnit: inventoryItems.costPerUnit,
-          source: sql<string>`'recipe'`,
-        })
-        .from(productIngredients)
-        .innerJoin(inventoryItems, eq(productIngredients.inventoryItemId, inventoryItems.id))
-        .groupBy(inventoryItems.id, inventoryItems.name, inventoryItems.unit, inventoryItems.closingStock, inventoryItems.costPerUnit);
-
-      // Merge and deduplicate
-      const allIngredients = [...inventoryIngredients, ...recipeIngredients];
-      const uniqueIngredients = allIngredients.filter((item, index, self) =>
-        index === self.findIndex(i => i.id === item.id)
+      // Filter items that are suitable as ingredients
+      const ingredients = items.filter((item: any) =>
+        item.name &&
+        (item.group === "raw-materials" ||
+          item.group === "ingredients" ||
+          item.group === "flour" ||
+          item.group === "dairy" ||
+          item.group === "sweeteners" ||
+          item.group === "spices" ||
+          item.group === "leavening" ||
+          item.group === "extracts" ||
+          item.group === "chocolate" ||
+          item.group === "nuts" ||
+          item.group === "fruits" ||
+          item.isIngredient === true ||
+          !item.group ||
+          item.name.toLowerCase().includes("flour") ||
+          item.name.toLowerCase().includes("sugar") ||
+          item.name.toLowerCase().includes("butter") ||
+          item.name.toLowerCase().includes("milk") ||
+          item.name.toLowerCase().includes("egg") ||
+          item.name.toLowerCase().includes("chocolate") ||
+          item.name.toLowerCase().includes("vanilla") ||
+          item.name.toLowerCase().includes("salt") ||
+          item.name.toLowerCase().includes("baking"))
       );
 
-      return uniqueIngredients;
+      return ingredients;
     } catch (error) {
       console.error("Error fetching ingredients:", error);
       return [];
@@ -1472,7 +1516,7 @@ export class Storage implements IStorage {
         })
         .where(eq(inventoryItems.id, itemId));
 
-      console.log(`Updated inventory item ${itemId}: stock=${totalQuantity}, cost=${newWeightedAverageRate.toFixed(4)}`);
+      console.log(`Updated inventory item ${itemId}: stock=${totalQuantity}, cost=${newWeightedCost.toFixed(4)}`);
     } catch (error) {
       console.error("Error updating inventory stock and cost:", error);
       throw error;
@@ -1976,7 +2020,7 @@ export class Storage implements IStorage {
   }
 
   // Party operations
-  async getParties(): Promise<Party[]> {
+  async getParties(): Promise<Party[]>{
     return await this.db.select().from(parties).orderBy(parties.name);
   }
 

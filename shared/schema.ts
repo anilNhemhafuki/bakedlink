@@ -69,6 +69,7 @@ export const inventoryItems = pgTable("inventory_items", {
   supplier: varchar("supplier", { length: 200 }),
   categoryId: integer("category_id"),
   isIngredient: boolean("is_ingredient").default(false),
+  notes: text("notes"),
   lastRestocked: timestamp("last_restocked"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
