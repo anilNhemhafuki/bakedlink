@@ -776,7 +776,36 @@ export class Storage implements IStorage {
   }
 
   async deleteUnit(id: number): Promise<void> {
-    await this.db.delete(units).where(eq(units.id, id));
+    try {
+      // Check if unit is being used in other tables before deletion
+      const usageChecks = await Promise.all([
+        // Check products table
+        this.db.select({ count: sql`count(*)` }).from(products).where(eq(products.unitId, id)),
+        // Check inventory items table (primary unit)
+        this.db.select({ count: sql`count(*)` }).from(inventoryItems).where(eq(inventoryItems.unitId, id)),
+        // Check inventory items table (secondary unit)
+        this.db.select({ count: sql`count(*)` }).from(inventoryItems).where(eq(inventoryItems.secondaryUnitId, id)),
+        // Check product ingredients table
+        this.db.select({ count: sql`count(*)` }).from(productIngredients).where(eq(productIngredients.unitId, id)),
+        // Check unit conversions table (from unit)
+        this.db.select({ count: sql`count(*)` }).from(unitConversions).where(eq(unitConversions.fromUnitId, id)),
+        // Check unit conversions table (to unit)
+        this.db.select({ count: sql`count(*)` }).from(unitConversions).where(eq(unitConversions.toUnitId, id)),
+      ]);
+
+      const totalUsage = usageChecks.reduce((sum, result) => sum + Number(result[0].count), 0);
+      
+      if (totalUsage > 0) {
+        throw new Error(`Cannot delete unit: it is being used in ${totalUsage} record(s). Please remove all references to this unit before deleting it.`);
+      }
+
+      // Safe to delete
+      await this.db.delete(units).where(eq(units.id, id));
+      console.log(`Unit ${id} deleted successfully`);
+    } catch (error) {
+      console.error("Error deleting unit:", error);
+      throw error;
+    }
   }
 
   // Unit conversion operations

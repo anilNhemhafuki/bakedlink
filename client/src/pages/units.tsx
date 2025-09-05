@@ -94,7 +94,7 @@ export default function Units() {
     mutationFn: (data: any) => apiRequest("POST", "/api/units", data),
     onSuccess: (data) => {
       setIsDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      queryClient.invalidateQueries({ queryKey: ["units"] });
       toast({
         title: "Success",
         description: `Unit "${data.name}" created successfully`,
@@ -126,7 +126,7 @@ export default function Units() {
     mutationFn: (data: { id: number; values: any }) =>
       apiRequest("PUT", `/api/units/${data.id}`, data.values),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      queryClient.invalidateQueries({ queryKey: ["units"] });
       setIsDialogOpen(false);
       setEditingUnit(null);
       toast({
@@ -155,7 +155,7 @@ export default function Units() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/units/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      queryClient.invalidateQueries({ queryKey: ["units"] });
       toast({
         title: "Success",
         description: "Unit deleted successfully",
@@ -171,9 +171,13 @@ export default function Units() {
         setTimeout(() => (window.location.href = "/api/login"), 500);
         return;
       }
+      
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete unit";
+      const isConstraintError = error?.response?.data?.type === "FOREIGN_KEY_CONSTRAINT";
+      
       toast({
-        title: "Error",
-        description: "Failed to delete unit",
+        title: isConstraintError ? "Cannot Delete Unit" : "Error",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -183,7 +187,7 @@ export default function Units() {
     mutationFn: (data: { id: number; isActive: boolean }) =>
       apiRequest("PUT", `/api/units/${data.id}`, { isActive: data.isActive }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/units"] });
+      queryClient.invalidateQueries({ queryKey: ["units"] });
       toast({
         title: "Success",
         description: "Unit status updated",

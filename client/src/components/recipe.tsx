@@ -26,6 +26,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useUnits } from "@/hooks/useUnits";
 import { Trash2, Plus, Calculator, Save, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -98,13 +99,7 @@ export default function Recipe({ product, onSave }: RecipeProps) {
     },
   });
 
-  const { data: units = [] } = useQuery({
-    queryKey: ["/api/units"],
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
-  });
+  const { data: units = [] } = useUnits();
 
   const form = useForm({
     resolver: zodResolver(recipeSchema),

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useUnits } from "@/hooks/useUnits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -163,18 +164,7 @@ export function EnhancedStockItemForm({
   // Validation states
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  const { data: units = [], isLoading: unitsLoading } = useQuery({
-    queryKey: ["/api/units"],
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", "/api/units");
-        return Array.isArray(response) ? response : response?.data || [];
-      } catch (error) {
-        console.error("Failed to fetch units:", error);
-        return [];
-      }
-    },
-  });
+  const { data: units = [], isLoading: unitsLoading } = useUnits();
 
   const { data: categories = [] } = useQuery({
     queryKey: ["/api/inventory-categories"],

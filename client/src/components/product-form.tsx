@@ -31,6 +31,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useUnits } from "@/hooks/useUnits";
 import { z } from "zod";
 
 const productFormSchema = insertProductSchema.extend({
@@ -85,35 +86,7 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
     queryFn: () => apiRequest("GET", "/api/categories"),
   });
 
-  const {
-    data: units = [],
-    isLoading: unitsLoading,
-    error: unitsError,
-  } = useQuery({
-    queryKey: ["units"],
-    queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", "/api/units");
-
-        // Handle multiple response formats safely
-        if (Array.isArray(response)) return response;
-        if (response?.success && Array.isArray(response.data))
-          return response.data;
-        if (response?.data && !Array.isArray(response.data)) {
-          console.warn("Units API returned non-array data:", response.data);
-          return [];
-        }
-
-        console.error("Unexpected units response:", response);
-        return [];
-      } catch (error) {
-        console.error("Failed to fetch units:", error);
-        return [];
-      }
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 10, // 10 minutes
-  });
+  const { data: units = [], isLoading: unitsLoading } = useUnits();
 
   const { data: inventoryItems = [] } = useQuery({
     queryKey: ["/api/ingredients"],

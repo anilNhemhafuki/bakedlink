@@ -31,6 +31,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useUnits } from "@/hooks/useUnits";
 import { z } from "zod";
 
 const productFormSchema = insertProductSchema.extend({
@@ -80,9 +81,7 @@ export default function ProductFormEnhanced({
     queryKey: ["/api/categories"],
   });
 
-  const { data: units = [] } = useQuery({
-    queryKey: ["/api/units"],
-  });
+  const { data: units = [] } = useUnits();
 
   const { data: inventoryItems = [] } = useQuery({
     queryKey: ["/api/inventory"],

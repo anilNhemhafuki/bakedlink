@@ -792,11 +792,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/units/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid unit ID" });
+      }
+      
       await storage.deleteUnit(id);
       res.json({ message: "Unit deleted successfully" });
     } catch (error) {
       console.error("Error deleting unit:", error);
-      res.status(500).json({ message: "Failed to delete unit" });
+      
+      // Check if it's a foreign key constraint error
+      if (error instanceof Error && error.message.includes("Cannot delete unit: it is being used")) {
+        return res.status(409).json({ 
+          message: error.message,
+          type: "FOREIGN_KEY_CONSTRAINT"
+        });
+      }
+      
+      res.status(500).json({ 
+        message: "Failed to delete unit",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
