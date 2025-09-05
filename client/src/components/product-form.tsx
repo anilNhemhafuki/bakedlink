@@ -89,7 +89,8 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
   const { data: units = [], isLoading: unitsLoading } = useUnits();
 
   const { data: inventoryItems = [] } = useQuery({
-    queryKey: ["/api/ingredients"],
+    queryKey: ["/api/inventory/all"],
+    queryFn: () => apiRequest("GET", "/api/inventory/all"),
   });
 
   const form = useForm({

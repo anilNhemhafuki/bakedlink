@@ -84,7 +84,8 @@ export default function ProductFormEnhanced({
   const { data: units = [] } = useUnits();
 
   const { data: inventoryItems = [] } = useQuery({
-    queryKey: ["/api/inventory"],
+    queryKey: ["/api/inventory/all"],
+    queryFn: () => apiRequest("GET", "/api/inventory/all"),
   });
 
   const form = useForm({
