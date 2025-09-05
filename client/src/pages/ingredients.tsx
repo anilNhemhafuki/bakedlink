@@ -791,10 +791,6 @@ export default function Ingredients() {
                       ? "Try adjusting your search criteria"
                       : "Start by adding your first ingredient"}
                   </p>
-                  <Button onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Ingredient
-                  </Button>
                 </div>
               )}
             </div>

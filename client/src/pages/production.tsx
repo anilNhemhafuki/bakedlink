@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -36,7 +35,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Calendar, Edit, Trash2, Clock, Check, Target } from "lucide-react";
+import {
+  Plus,
+  Calendar,
+  Edit,
+  Trash2,
+  Clock,
+  Check,
+  Target,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
@@ -57,7 +64,8 @@ interface ProductionItem {
 
 export default function Production() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingProduction, setEditingProduction] = useState<ProductionItem | null>(null);
+  const [editingProduction, setEditingProduction] =
+    useState<ProductionItem | null>(null);
   const [selectedProductId, setSelectedProductId] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const { toast } = useToast();
@@ -74,7 +82,8 @@ export default function Production() {
         return [];
       }
     },
-    retry: (failureCount, error) => !isUnauthorizedError(error) && failureCount < 3,
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
   });
 
   // Fetch production schedule
@@ -89,7 +98,8 @@ export default function Production() {
         return [];
       }
     },
-    retry: (failureCount, error) => !isUnauthorizedError(error) && failureCount < 3,
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
   });
 
   // Create production mutation
@@ -193,8 +203,10 @@ export default function Production() {
   // Close day mutation
   const closeDayMutation = useMutation({
     mutationFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      await apiRequest("POST", "/api/production-schedule/close-day", { date: today });
+      const today = new Date().toISOString().split("T")[0];
+      await apiRequest("POST", "/api/production-schedule/close-day", {
+        date: today,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["production-schedule"] });
@@ -215,7 +227,7 @@ export default function Production() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
-    
+
     const productId = parseInt(selectedProductId);
     const quantity = parseFloat(formData.get("quantity") as string);
     const scheduledDate = formData.get("scheduledDate") as string;
@@ -256,11 +268,16 @@ export default function Production() {
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case "completed": return "default";
-      case "in_progress": return "secondary";
-      case "scheduled": return "outline";
-      case "cancelled": return "destructive";
-      default: return "outline";
+      case "completed":
+        return "default";
+      case "in_progress":
+        return "secondary";
+      case "scheduled":
+        return "outline";
+      case "cancelled":
+        return "destructive";
+      default:
+        return "outline";
     }
   };
 
@@ -276,8 +293,14 @@ export default function Production() {
   }, [editingProduction]);
 
   // Calculate totals
-  const totalPlanned = productionSchedule.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
-  const totalActual = productionSchedule.reduce((sum: number, item: any) => sum + (item.actualQuantity || 0), 0);
+  const totalPlanned = productionSchedule.reduce(
+    (sum: number, item: any) => sum + (item.quantity || 0),
+    0,
+  );
+  const totalActual = productionSchedule.reduce(
+    (sum: number, item: any) => sum + (item.actualQuantity || 0),
+    0,
+  );
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -299,7 +322,7 @@ export default function Production() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button 
+          <Button
             onClick={() => closeDayMutation.mutate()}
             variant="outline"
             disabled={closeDayMutation.isPending}
@@ -307,8 +330,8 @@ export default function Production() {
             <Clock className="h-4 w-4 mr-2" />
             {closeDayMutation.isPending ? "Closing..." : "Close Day"}
           </Button>
-          <Dialog 
-            open={isDialogOpen} 
+          <Dialog
+            open={isDialogOpen}
             onOpenChange={(open) => {
               setIsDialogOpen(open);
               if (!open) {
@@ -319,7 +342,10 @@ export default function Production() {
             }}
           >
             <DialogTrigger asChild>
-              <Button onClick={() => setEditingProduction(null)} className="w-full sm:w-auto">
+              <Button
+                onClick={() => setEditingProduction(null)}
+                className="w-full sm:w-auto"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Schedule Production
               </Button>
@@ -327,7 +353,9 @@ export default function Production() {
             <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
-                  {editingProduction ? "Edit Production Item" : "Schedule New Production"}
+                  {editingProduction
+                    ? "Edit Production Item"
+                    : "Schedule New Production"}
                 </DialogTitle>
                 <DialogDescription>
                   Enter production details below
@@ -344,7 +372,10 @@ export default function Production() {
                     </SelectTrigger>
                     <SelectContent>
                       {products.map((product: any) => (
-                        <SelectItem key={product.id} value={product.id.toString()}>
+                        <SelectItem
+                          key={product.id}
+                          value={product.id.toString()}
+                        >
                           {product.name}
                         </SelectItem>
                       ))}
@@ -356,10 +387,18 @@ export default function Production() {
                     name="quantity"
                     type="number"
                     step="0.01"
-                    placeholder={`Planned Quantity${selectedProductId ? (() => {
-                      const product = products.find((p: any) => p.id.toString() === selectedProductId);
-                      return product?.unitAbbreviation || product?.unit ? ` (${product.unitAbbreviation || product.unit})` : '';
-                    })() : ''}`}
+                    placeholder={`Planned Quantity${
+                      selectedProductId
+                        ? (() => {
+                            const product = products.find(
+                              (p: any) => p.id.toString() === selectedProductId,
+                            );
+                            return product?.unitAbbreviation || product?.unit
+                              ? ` (${product.unitAbbreviation || product.unit})`
+                              : "";
+                          })()
+                        : ""
+                    }`}
                     defaultValue={editingProduction?.quantity || ""}
                     required
                   />
@@ -370,10 +409,19 @@ export default function Production() {
                       name="actualQuantity"
                       type="number"
                       step="0.01"
-                      placeholder={`Actual Quantity Produced${selectedProductId ? (() => {
-                        const product = products.find((p: any) => p.id.toString() === selectedProductId);
-                        return product?.unitAbbreviation || product?.unit ? ` (${product.unitAbbreviation || product.unit})` : '';
-                      })() : ''}`}
+                      placeholder={`Actual Quantity Produced${
+                        selectedProductId
+                          ? (() => {
+                              const product = products.find(
+                                (p: any) =>
+                                  p.id.toString() === selectedProductId,
+                              );
+                              return product?.unitAbbreviation || product?.unit
+                                ? ` (${product.unitAbbreviation || product.unit})`
+                                : "";
+                            })()
+                          : ""
+                      }`}
                       defaultValue={editingProduction?.actualQuantity || ""}
                     />
                   </div>
@@ -383,7 +431,9 @@ export default function Production() {
                   type="date"
                   defaultValue={
                     editingProduction?.scheduledDate
-                      ? new Date(editingProduction.scheduledDate).toISOString().split("T")[0]
+                      ? new Date(editingProduction.scheduledDate)
+                          .toISOString()
+                          .split("T")[0]
                       : new Date().toISOString().split("T")[0]
                   }
                   required
@@ -440,7 +490,9 @@ export default function Production() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={createMutation.isPending || updateMutation.isPending}
+                    disabled={
+                      createMutation.isPending || updateMutation.isPending
+                    }
                     className="w-full sm:w-auto"
                   >
                     {createMutation.isPending || updateMutation.isPending
@@ -497,24 +549,46 @@ export default function Production() {
                         <TableCell>
                           {item.quantity}
                           {(() => {
-                            const product = products.find((p: any) => p.id === item.productId);
-                            return product?.unitAbbreviation || product?.unit || '';
-                          })() && ` ${(() => {
-                            const product = products.find((p: any) => p.id === item.productId);
-                            return product?.unitAbbreviation || product?.unit || '';
-                          })()}`}
+                            const product = products.find(
+                              (p: any) => p.id === item.productId,
+                            );
+                            return (
+                              product?.unitAbbreviation || product?.unit || ""
+                            );
+                          })() &&
+                            ` ${(() => {
+                              const product = products.find(
+                                (p: any) => p.id === item.productId,
+                              );
+                              return (
+                                product?.unitAbbreviation || product?.unit || ""
+                              );
+                            })()}`}
                         </TableCell>
                         <TableCell>
                           {item.actualQuantity ? (
                             <span className="text-green-600 font-medium">
                               {item.actualQuantity}
                               {(() => {
-                                const product = products.find((p: any) => p.id === item.productId);
-                                return product?.unitAbbreviation || product?.unit || '';
-                              })() && ` ${(() => {
-                                const product = products.find((p: any) => p.id === item.productId);
-                                return product?.unitAbbreviation || product?.unit || '';
-                              })()}`}
+                                const product = products.find(
+                                  (p: any) => p.id === item.productId,
+                                );
+                                return (
+                                  product?.unitAbbreviation ||
+                                  product?.unit ||
+                                  ""
+                                );
+                              })() &&
+                                ` ${(() => {
+                                  const product = products.find(
+                                    (p: any) => p.id === item.productId,
+                                  );
+                                  return (
+                                    product?.unitAbbreviation ||
+                                    product?.unit ||
+                                    ""
+                                  );
+                                })()}`}
                             </span>
                           ) : (
                             <span className="text-gray-400">—</span>
@@ -538,7 +612,9 @@ export default function Production() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {item.assignedTo || <span className="text-gray-400">—</span>}
+                          {item.assignedTo || (
+                            <span className="text-gray-400">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-1">
@@ -577,10 +653,6 @@ export default function Production() {
                         <p className="text-muted-foreground mb-4">
                           Start by scheduling your first production item
                         </p>
-                        <Button onClick={() => setIsDialogOpen(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Schedule Production
-                        </Button>
                       </TableCell>
                     </TableRow>
                   )}

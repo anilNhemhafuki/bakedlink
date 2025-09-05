@@ -80,7 +80,11 @@ export default function Stock() {
     error,
   } = useQuery({
     queryKey: ["/api/inventory", currentPage, itemsPerPage, searchQuery],
-    queryFn: () => apiRequest("GET", `/api/inventory?page=${currentPage}&limit=${itemsPerPage}&search=${encodeURIComponent(searchQuery)}`),
+    queryFn: () =>
+      apiRequest(
+        "GET",
+        `/api/inventory?page=${currentPage}&limit=${itemsPerPage}&search=${encodeURIComponent(searchQuery)}`,
+      ),
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
@@ -141,10 +145,7 @@ export default function Stock() {
   console.log("Active units in stock.tsx:", activeUnits);
 
   // Add sorting functionality - items are already filtered on server
-  const { sortedData, sortConfig, requestSort } = useTableSort(
-    items,
-    "name",
-  );
+  const { sortedData, sortConfig, requestSort } = useTableSort(items, "name");
 
   // Debounced search
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -277,14 +278,19 @@ export default function Stock() {
         }, 500);
         return;
       }
-      
+
       let errorMessage = error.message || "Failed to save stock item";
-      
+
       // Handle specific error cases
       if (error.message?.includes("Item with this name already exists")) {
-        errorMessage = "❌ Item with this name already exists. Please use a different name.";
-      } else if (error.message?.includes("duplicate") || error.message?.includes("unique constraint")) {
-        errorMessage = "❌ An item with this name already exists. Please choose a different name.";
+        errorMessage =
+          "❌ Item with this name already exists. Please use a different name.";
+      } else if (
+        error.message?.includes("duplicate") ||
+        error.message?.includes("unique constraint")
+      ) {
+        errorMessage =
+          "❌ An item with this name already exists. Please choose a different name.";
       }
 
       toast({
@@ -866,10 +872,6 @@ export default function Stock() {
                       ? "Try adjusting your search criteria"
                       : "Start by adding your first stock item"}
                   </p>
-                  <Button onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Item
-                  </Button>
                 </div>
               )}
             </div>
@@ -880,8 +882,10 @@ export default function Stock() {
             <div className="flex items-center justify-between px-2 py-4">
               <div className="flex items-center space-x-2">
                 <p className="text-sm text-muted-foreground">
-                  Showing {Math.min((currentPage - 1) * itemsPerPage + 1, totalCount)} to{" "}
-                  {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} entries
+                  Showing{" "}
+                  {Math.min((currentPage - 1) * itemsPerPage + 1, totalCount)}{" "}
+                  to {Math.min(currentPage * itemsPerPage, totalCount)} of{" "}
+                  {totalCount} entries
                 </p>
                 <select
                   value={itemsPerPage}
@@ -913,7 +917,9 @@ export default function Stock() {
                     return (
                       <Button
                         key={pageNumber}
-                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        variant={
+                          currentPage === pageNumber ? "default" : "outline"
+                        }
                         size="sm"
                         onClick={() => handlePageChange(pageNumber)}
                         className="w-8 h-8 p-0"
@@ -924,9 +930,13 @@ export default function Stock() {
                   })}
                   {totalPages > 5 && (
                     <>
-                      {currentPage < totalPages - 2 && <span className="px-2">...</span>}
+                      {currentPage < totalPages - 2 && (
+                        <span className="px-2">...</span>
+                      )}
                       <Button
-                        variant={currentPage === totalPages ? "default" : "outline"}
+                        variant={
+                          currentPage === totalPages ? "default" : "outline"
+                        }
                         size="sm"
                         onClick={() => handlePageChange(totalPages)}
                         className="w-8 h-8 p-0"

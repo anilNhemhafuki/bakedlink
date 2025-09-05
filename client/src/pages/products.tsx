@@ -560,10 +560,6 @@ export default function Products() {
                           ? "Try adjusting your search criteria"
                           : "Start by adding your first product"}
                       </p>
-                      <Button onClick={() => setShowProductForm(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Your First Product
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
