@@ -155,7 +155,9 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      // Also refetch immediately to ensure UI updates
+      queryClient.refetchQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Success",
@@ -341,7 +343,7 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {unitsLoading ? (
+                            {categoriesLoading ? (
                               <SelectItem value="loading" disabled>
                                 Loading units...
                               </SelectItem>

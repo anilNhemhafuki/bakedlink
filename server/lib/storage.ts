@@ -626,29 +626,36 @@ export class Storage implements IStorage {
   }
 
   async getProductsWithIngredients(): Promise<any[]> {
-    const productsData = await this.db
-      .select({
-        id: products.id,
-        name: products.name,
-        description: products.description,
-        categoryId: products.categoryId,
-        price: products.price,
-        cost: products.cost,
-        margin: products.margin,
-        sku: products.sku,
-        isActive: products.isActive,
-      })
-      .from(products)
-      .orderBy(products.name);
+    try {
+      const result = await this.db
+        .select({
+          id: products.id,
+          name: products.name,
+          description: products.description,
+          categoryId: products.categoryId,
+          categoryName: categories.name,
+          price: products.price,
+          cost: products.cost,
+          margin: products.margin,
+          sku: products.sku,
+          unit: products.unit,
+          unitId: products.unitId,
+          unitName: units.name,
+          isActive: products.isActive,
+          createdAt: products.createdAt,
+          updatedAt: products.updatedAt,
+        })
+        .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .leftJoin(units, eq(products.unitId, units.id))
+        .orderBy(desc(products.createdAt));
 
-    const productsWithIngredients = await Promise.all(
-      productsData.map(async (product) => {
-        const ingredients = await this.getProductIngredients(product.id);
-        return { ...product, ingredients };
-      }),
-    );
-
-    return productsWithIngredients;
+      console.log(`📦 Retrieved ${result.length} products from database`);
+      return result || [];
+    } catch (error) {
+      console.error("Error fetching products with ingredients:", error);
+      throw error;
+    }
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {

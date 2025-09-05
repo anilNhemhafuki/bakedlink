@@ -94,12 +94,30 @@ export default function Products() {
     data: productsData,
     isLoading,
     error: productsError,
+    refetch: refetchProducts,
   } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
       try {
         const res = await apiRequest("GET", "/api/products");
-        return Array.isArray(res) ? res : res.products || [];
+        console.log("Products API response:", res);
+        
+        // Handle different response formats
+        if (res?.success && res?.products) {
+          return Array.isArray(res.products) ? res.products : [];
+        }
+        
+        if (res?.products) {
+          return Array.isArray(res.products) ? res.products : [];
+        }
+        
+        // If response is directly an array
+        if (Array.isArray(res)) {
+          return res;
+        }
+        
+        console.warn("Unexpected products response format:", res);
+        return [];
       } catch (error) {
         console.error("Failed to fetch products:", error);
         throw error;
@@ -110,6 +128,12 @@ export default function Products() {
   });
 
   const products = Array.isArray(productsData) ? productsData : [];
+  
+  // Debug logging
+  console.log("Products data in component:", products);
+  console.log("Products count:", products.length);
+  console.log("Is loading:", isLoading);
+  console.log("Products error:", productsError);
 
   // Fetch units
   const { data: units = [] } = useUnits();
@@ -335,6 +359,12 @@ export default function Products() {
       <div className="p-6 text-center text-red-500">
         <h2>Error loading products</h2>
         <p>{(productsError as Error).message}</p>
+        <Button 
+          onClick={() => refetchProducts()} 
+          className="mt-4"
+        >
+          Retry Loading Products
+        </Button>
       </div>
     );
   }

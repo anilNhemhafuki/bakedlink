@@ -503,10 +503,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products", isAuthenticated, async (req, res) => {
     try {
       const products = await storage.getProductsWithIngredients();
-      res.json(products);
+      console.log(`✅ Fetched ${products.length} products successfully`);
+      
+      // Ensure consistent response format
+      res.json({
+        success: true,
+        products: Array.isArray(products) ? products : [],
+        count: Array.isArray(products) ? products.length : 0
+      });
     } catch (error) {
       console.error("Error fetching products:", error);
-      res.status(500).json({ message: "Failed to fetch products" });
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch products",
+        products: [],
+        count: 0
+      });
     }
   });
 
