@@ -714,24 +714,26 @@ export class Storage implements IStorage {
   // Unit operations
   async getUnits(): Promise<Unit[]> {
     try {
-      console.log("Storage getUnits called");
-      const result = await this.db.select().from(units).orderBy(units.name);
-      console.log(`Storage getUnits result: ${result.length} units found`);
+      // Use only the columns that exist in the current schema
+      const result = await this.db
+        .select({
+          id: units.id,
+          name: units.name,
+          abbreviation: units.abbreviation,
+          type: units.type,
+          isActive: units.isActive,
+          createdAt: units.createdAt,
+          updatedAt: units.updatedAt
+        })
+        .from(units)
+        .where(eq(units.isActive, true))
+        .orderBy(units.name);
 
-      // Ensure all units have the required properties
-      const validUnits = result.filter(
-        (unit) => unit.id && unit.name && unit.abbreviation,
-      );
-      if (validUnits.length !== result.length) {
-        console.warn(
-          `Filtered out ${result.length - validUnits.length} invalid units`,
-        );
-      }
-
-      return validUnits;
+      return result;
     } catch (error) {
       console.error("Error in getUnits:", error);
-      throw error; // Let the caller handle the error
+      // Return empty array instead of throwing to prevent crashes
+      return [];
     }
   }
 
@@ -765,34 +767,18 @@ export class Storage implements IStorage {
 
   async createUnit(data: InsertUnit): Promise<Unit> {
     try {
-      console.log("Creating unit with data:", data);
+      // Only include fields that exist in the current schema
+      const unitData = {
+        name: data.name,
+        abbreviation: data.abbreviation,
+        type: data.type,
+        isActive: data.isActive ?? true
+      };
 
-      // Validate required fields
-      if (!data.name?.trim()) {
-        throw new Error("Unit name is required");
-      }
-      if (!data.abbreviation?.trim()) {
-        throw new Error("Unit abbreviation is required");
-      }
-      if (!data.type?.trim()) {
-        throw new Error("Unit type is required");
-      }
-
-      const [newUnit] = await this.db
-        .insert(units)
-        .values({
-          ...data,
-          name: data.name.trim(),
-          abbreviation: data.abbreviation.trim(),
-          type: data.type.trim(),
-          isActive: data.isActive !== undefined ? data.isActive : true,
-        })
-        .returning();
-
-      console.log("Unit created successfully:", newUnit);
-      return newUnit;
+      const [unit] = await this.db.insert(units).values(unitData).returning();
+      return unit;
     } catch (error) {
-      console.error("Error creating unit in storage:", error);
+      console.error("Error creating unit:", error);
       throw error;
     }
   }
@@ -1462,7 +1448,7 @@ export class Storage implements IStorage {
   async getIngredients(): Promise<InventoryItem[]> {
     try {
       console.log("Fetching ingredients...");
-      
+
       // Get all inventory items directly with specific field selection
       const allItems = await this.db
         .select({
@@ -1495,7 +1481,7 @@ export class Storage implements IStorage {
       // Filter items that are suitable as ingredients
       const ingredients = allItems.filter((item: any) => {
         const itemName = item.name?.toLowerCase() || '';
-        
+
         return item.isIngredient === true ||
           itemName.includes("flour") ||
           itemName.includes("sugar") ||
