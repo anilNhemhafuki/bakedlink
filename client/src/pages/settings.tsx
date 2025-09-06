@@ -165,6 +165,10 @@ export default function Settings() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("general");
+  const [customSizes, setCustomSizes] = useState<Array<{name: string, width: string, height: string}>>([]);
+  const [showCustomSize, setShowCustomSize] = useState(false);
+  const [customWidth, setCustomWidth] = useState("");
+  const [customHeight, setCustomHeight] = useState("");
 
   const { data: settingsResponse = {}, isLoading: settingsLoading } = useQuery({
     queryKey: ["/api/settings"],
@@ -172,6 +176,23 @@ export default function Settings() {
 
   // Extract settings from response structure
   const settings = settingsResponse?.settings || {};
+
+  // Load custom sizes from localStorage on mount
+  React.useEffect(() => {
+    const savedSizes = localStorage.getItem('customLabelSizes');
+    if (savedSizes) {
+      try {
+        setCustomSizes(JSON.parse(savedSizes));
+      } catch (e) {
+        console.warn('Failed to parse custom sizes:', e);
+      }
+    }
+  }, []);
+
+  // Check if current label size is custom to show inputs
+  React.useEffect(() => {
+    setShowCustomSize(settings.labelSize === 'custom');
+  }, [settings.labelSize]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PUT", "/api/settings", data),
@@ -193,16 +214,17 @@ export default function Settings() {
     const formData = new FormData(e.target as HTMLFormElement);
 
     const data = {
-      companyName: formData.get("companyName"),
-      companyAddress: formData.get("companyAddress"),
-      companyPhone: formData.get("companyPhone"),
-      companyEmail: formData.get("companyEmail"),
-      companyRegNo: formData.get("companyRegNo"),
-      companyDtqocNo: formData.get("companyDtqocNo"),
-      timezone: formData.get("timezone"),
-      currency: formData.get("currency"),
+      companyName: formData.get("companyName")?.toString() || "",
+      companyAddress: formData.get("companyAddress")?.toString() || "",
+      companyPhone: formData.get("companyPhone")?.toString() || "",
+      companyEmail: formData.get("companyEmail")?.toString() || "",
+      companyRegNo: formData.get("companyRegNo")?.toString() || "",
+      companyDtqocNo: formData.get("companyDtqocNo")?.toString() || "",
+      timezone: formData.get("timezone")?.toString() || "UTC",
+      currency: formData.get("currency")?.toString() || "USD",
     };
 
+    console.log("Saving general settings:", data);
     updateSettingsMutation.mutate(data);
   };
 
@@ -233,17 +255,220 @@ export default function Settings() {
     updateSettingsMutation.mutate(data);
   };
 
+  const handleTestPrint = () => {
+    const printSettings = {
+      labelSize: settings.labelSize || "small",
+      orientation: settings.labelOrientation || "portrait",
+      margins: {
+        top: settings.labelMarginTop || "2",
+        bottom: settings.labelMarginBottom || "2",
+        left: settings.labelMarginLeft || "2",
+        right: settings.labelMarginRight || "2"
+      },
+      customWidth: customWidth || settings.customLabelWidth,
+      customHeight: customHeight || settings.customLabelHeight
+    };
+
+    generateTestPrintLabel(printSettings);
+  };
+
+  const generateTestPrintLabel = (printSettings: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({
+        title: "Error",
+        description: "Please allow pop-ups for test printing",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Get paper dimensions
+    let paperWidth = "50mm";
+    let paperHeight = "30mm";
+    
+    switch (printSettings.labelSize) {
+      case "A4":
+        paperWidth = "210mm";
+        paperHeight = "297mm";
+        break;
+      case "A5":
+        paperWidth = "148mm";
+        paperHeight = "210mm";
+        break;
+      case "A6":
+        paperWidth = "105mm";
+        paperHeight = "148mm";
+        break;
+      case "medium":
+        paperWidth = "75mm";
+        paperHeight = "50mm";
+        break;
+      case "large":
+        paperWidth = "100mm";
+        paperHeight = "75mm";
+        break;
+      case "custom_40x30":
+        paperWidth = "40mm";
+        paperHeight = "30mm";
+        break;
+      default:
+        if (printSettings.customWidth && printSettings.customHeight) {
+          paperWidth = `${printSettings.customWidth}mm`;
+          paperHeight = `${printSettings.customHeight}mm`;
+        }
+    }
+
+    // Swap dimensions for landscape
+    if (printSettings.orientation === "landscape") {
+      [paperWidth, paperHeight] = [paperHeight, paperWidth];
+    }
+
+    const testLabelHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Test Print Label</title>
+        <style>
+          @page {
+            size: ${paperWidth} ${paperHeight};
+            margin: ${printSettings.margins.top} ${printSettings.margins.right} ${printSettings.margins.bottom} ${printSettings.margins.left};
+          }
+          
+          body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 0;
+            padding: 10px;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+          }
+          
+          .header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 10px;
+          }
+          
+          .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+          }
+          
+          .product-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 0;
+          }
+          
+          .qr-placeholder {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #333;
+            margin: 10px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+          }
+          
+          .footer {
+            text-align: center;
+            font-size: 10px;
+            margin-top: 10px;
+          }
+          
+          @media print {
+            body { -webkit-print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          ${settings.companyName || "Bake Sewa"}
+        </div>
+        
+        <div class="content">
+          <div class="product-name">Sample Product</div>
+          <div class="qr-placeholder">QR CODE</div>
+          <div>Weight: 500g</div>
+          <div>SKU: TEST001</div>
+        </div>
+        
+        <div class="footer">
+          ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(testLabelHTML);
+    printWindow.document.close();
+    
+    // Auto-trigger print dialog after a short delay
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+
+    toast({
+      title: "Test Print",
+      description: "Print preview opened. Check the layout before printing.",
+    });
+  };
+
   const handleSavePrinting = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
 
+    let labelSize = formData.get("labelSize")?.toString() || "small";
+    let customSizeName = "";
+
+    // Handle custom size
+    if (labelSize === "custom" && customWidth && customHeight) {
+      customSizeName = `Custom (${customWidth}x${customHeight}mm)`;
+      
+      // Add to custom sizes list if not already exists
+      const newCustomSize = {
+        name: customSizeName,
+        width: customWidth,
+        height: customHeight
+      };
+      
+      const existingIndex = customSizes.findIndex(
+        size => size.width === customWidth && size.height === customHeight
+      );
+      
+      if (existingIndex === -1) {
+        const updatedSizes = [...customSizes, newCustomSize];
+        setCustomSizes(updatedSizes);
+        localStorage.setItem('customLabelSizes', JSON.stringify(updatedSizes));
+      }
+      
+      labelSize = customSizeName;
+    }
+
     const data = {
-      defaultPrinter: formData.get("defaultPrinter"),
-      labelSize: formData.get("labelSize"),
-      labelOrientation: formData.get("labelOrientation"),
-      labelMargin: formData.get("labelMargin"),
+      defaultPrinter: formData.get("defaultPrinter")?.toString() || "",
+      labelSize: labelSize,
+      labelOrientation: formData.get("labelOrientation")?.toString() || "portrait",
+      labelMarginTop: formData.get("labelMarginTop")?.toString() || "2",
+      labelMarginBottom: formData.get("labelMarginBottom")?.toString() || "2",
+      labelMarginLeft: formData.get("labelMarginLeft")?.toString() || "2",
+      labelMarginRight: formData.get("labelMarginRight")?.toString() || "2",
+      customLabelWidth: customWidth,
+      customLabelHeight: customHeight,
     };
 
+    console.log("Saving printing settings:", data);
     updateSettingsMutation.mutate(data);
   };
 
@@ -594,20 +819,59 @@ export default function Settings() {
                     <Select
                       name="labelSize"
                       defaultValue={settings.labelSize || "small"}
+                      onValueChange={(value) => setShowCustomSize(value === "custom")}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="A4">A4 (210x297mm)</SelectItem>
+                        <SelectItem value="A5">A5 (148x210mm)</SelectItem>
+                        <SelectItem value="A6">A6 (105x148mm)</SelectItem>
                         <SelectItem value="small">Small (50x30mm)</SelectItem>
                         <SelectItem value="medium">Medium (75x50mm)</SelectItem>
                         <SelectItem value="large">Large (100x75mm)</SelectItem>
-                        <SelectItem value="custom_40x30">Custom (40x30mm)</SelectItem>
-                        <SelectItem value="custom">Other Custom Size</SelectItem>
+                        <SelectItem value="custom_40x30">40x30mm</SelectItem>
+                        {customSizes.map((size, index) => (
+                          <SelectItem key={index} value={size.name}>
+                            {size.name}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="custom">Custom Size</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
+
+                {showCustomSize && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50">
+                    <div>
+                      <Label htmlFor="customWidth">Width (mm)</Label>
+                      <Input
+                        id="customWidth"
+                        value={customWidth}
+                        onChange={(e) => setCustomWidth(e.target.value)}
+                        type="number"
+                        placeholder="40"
+                        min="10"
+                        max="300"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="customHeight">Height (mm)</Label>
+                      <Input
+                        id="customHeight"
+                        value={customHeight}
+                        onChange={(e) => setCustomHeight(e.target.value)}
+                        type="number"
+                        placeholder="30"
+                        min="10"
+                        max="400"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="labelOrientation">Label Orientation</Label>
@@ -624,24 +888,70 @@ export default function Settings() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <Label htmlFor="labelMargin">Label Margin (mm)</Label>
+                    <Label htmlFor="labelMarginTop">Top Margin (mm)</Label>
                     <Input
-                      id="labelMargin"
-                      name="labelMargin"
+                      id="labelMarginTop"
+                      name="labelMarginTop"
                       type="number"
                       step="0.5"
-                      defaultValue={settings.labelMargin || "2"}
+                      defaultValue={settings.labelMarginTop || "2"}
+                      placeholder="2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="labelMarginBottom">Bottom Margin (mm)</Label>
+                    <Input
+                      id="labelMarginBottom"
+                      name="labelMarginBottom"
+                      type="number"
+                      step="0.5"
+                      defaultValue={settings.labelMarginBottom || "2"}
+                      placeholder="2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="labelMarginLeft">Left Margin (mm)</Label>
+                    <Input
+                      id="labelMarginLeft"
+                      name="labelMarginLeft"
+                      type="number"
+                      step="0.5"
+                      defaultValue={settings.labelMarginLeft || "2"}
+                      placeholder="2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="labelMarginRight">Right Margin (mm)</Label>
+                    <Input
+                      id="labelMarginRight"
+                      name="labelMarginRight"
+                      type="number"
+                      step="0.5"
+                      defaultValue={settings.labelMarginRight || "2"}
                       placeholder="2"
                     />
                   </div>
                 </div>
-                <Button
-                  type="submit"
-                  disabled={updateSettingsMutation.isPending}
-                >
-                  Save Printing Settings
-                </Button>
+
+                <div className="flex gap-3">
+                  <Button
+                    type="submit"
+                    disabled={updateSettingsMutation.isPending}
+                  >
+                    Save Printing Settings
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleTestPrint}
+                  >
+                    Test Print
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>

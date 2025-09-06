@@ -3275,6 +3275,8 @@ Form Version: ${formVersion || "1.0"}`,
         companyAddress: "",
         companyPhone: "",
         companyEmail: "info@bakesewa.com",
+        companyRegNo: "",
+        companyDtqocNo: "",
         companyLogo: "",
         themeColor: "#8B4513",
         currency: "USD",
@@ -3286,6 +3288,15 @@ Form Version: ${formVersion || "1.0"}`,
         twoFactorAuth: false,
         sessionTimeout: 60,
         passwordPolicy: "medium",
+        defaultPrinter: "",
+        labelSize: "small",
+        labelOrientation: "portrait",
+        labelMarginTop: "2",
+        labelMarginBottom: "2",
+        labelMarginLeft: "2",
+        labelMarginRight: "2",
+        customLabelWidth: "",
+        customLabelHeight: "",
       };
 
       const mergedSettings = { ...defaultSettings, ...settings };
@@ -3332,12 +3343,14 @@ Form Version: ${formVersion || "1.0"}`,
           settings[setting.key] = setting.value;
         });
 
-        // Ensure default values are maintained
+        // Ensure default values are maintained including new printing settings
         const defaultSettings = {
           companyName: "Bake Sewa",
           companyAddress: "",
           companyPhone: "",
           companyEmail: "info@bakesewa.com",
+          companyRegNo: "",
+          companyDtqocNo: "",
           companyLogo: "",
           themeColor: "#8B4513",
           currency: "USD",
@@ -3349,6 +3362,15 @@ Form Version: ${formVersion || "1.0"}`,
           twoFactorAuth: false,
           sessionTimeout: 60,
           passwordPolicy: "medium",
+          defaultPrinter: "",
+          labelSize: "small",
+          labelOrientation: "portrait",
+          labelMarginTop: "2",
+          labelMarginBottom: "2",
+          labelMarginLeft: "2",
+          labelMarginRight: "2",
+          customLabelWidth: "",
+          customLabelHeight: "",
         };
 
         const mergedSettings = { ...defaultSettings, ...settings };
