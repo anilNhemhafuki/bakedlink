@@ -1367,30 +1367,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Product is required" });
       }
 
-      if (!req.body.quantity || isNaN(parseInt(req.body.quantity))) {
-        return res.status(400).json({ message: "Valid quantity is required" });
+      if (!req.body.totalQuantity || isNaN(parseFloat(req.body.totalQuantity))) {
+        return res.status(400).json({ message: "Valid total quantity is required" });
       }
 
-      if (!req.body.scheduledDate) {
-        return res.status(400).json({ message: "Scheduled date is required" });
+      if (!req.body.scheduleDate) {
+        return res.status(400).json({ message: "Schedule date is required" });
       }
 
-      // Transform the data
+      if (!req.body.status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      // Transform the data for enhanced production schedule
       const transformedData = {
+        // Schedule Information
+        scheduleDate: new Date(req.body.scheduleDate),
+        shift: req.body.shift || "Morning",
+        plannedBy: req.body.plannedBy?.trim() || null,
+        approvedBy: req.body.approvedBy?.trim() || null,
+        status: req.body.status,
+        
+        // Product Details
         productId: parseInt(req.body.productId),
-        quantity: parseInt(req.body.quantity),
-        scheduledDate: new Date(req.body.scheduledDate),
-        startTime: req.body.startTime ? new Date(req.body.startTime) : null,
-        endTime: req.body.endTime ? new Date(req.body.endTime) : null,
-        status: req.body.status || "scheduled",
+        productCode: req.body.productCode?.trim() || null,
+        batchNo: req.body.batchNo?.trim() || null,
+        
+        // Quantities
+        totalQuantity: parseFloat(req.body.totalQuantity),
+        unitType: req.body.unitType || "kg",
+        actualQuantityPackets: req.body.actualQuantityPackets ? parseFloat(req.body.actualQuantityPackets) : null,
+        
+        // Production Details
+        priority: req.body.priority || "medium",
+        productionStartTime: req.body.productionStartTime ? new Date(req.body.productionStartTime) : null,
+        productionEndTime: req.body.productionEndTime ? new Date(req.body.productionEndTime) : null,
         assignedTo: req.body.assignedTo || userId,
-        notes: req.body.notes ? req.body.notes.trim() : null,
+        notes: req.body.notes?.trim() || null,
+        
+        // Legacy fields for compatibility
+        quantity: parseFloat(req.body.totalQuantity),
+        scheduledDate: new Date(req.body.scheduleDate),
+        startTime: req.body.productionStartTime ? new Date(req.body.productionStartTime) : null,
+        endTime: req.body.productionEndTime ? new Date(req.body.productionEndTime) : null,
+        actualQuantity: req.body.actualQuantityPackets ? parseFloat(req.body.actualQuantityPackets) : null,
       };
 
-      console.log(
-        "Creating production schedule item with data:",
-        transformedData,
-      );
+      console.log("Creating enhanced production schedule item with data:", transformedData);
       const item = await storage.createProductionScheduleItem(transformedData);
       console.log("Production schedule item created successfully:", item);
       res.json(item);
@@ -1406,13 +1429,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/production/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const item = await storage.updateProductionScheduleItem(id, req.body);
+      
+      // Transform the update data
+      const updateData = { ...req.body };
+      
+      // Handle date transformations
+      if (updateData.scheduleDate) {
+        updateData.scheduleDate = new Date(updateData.scheduleDate);
+      }
+      if (updateData.productionStartTime) {
+        updateData.productionStartTime = new Date(updateData.productionStartTime);
+      }
+      if (updateData.productionEndTime) {
+        updateData.productionEndTime = new Date(updateData.productionEndTime);
+      }
+      
+      // Handle numeric transformations
+      if (updateData.totalQuantity) {
+        updateData.totalQuantity = parseFloat(updateData.totalQuantity);
+      }
+      if (updateData.actualQuantityPackets) {
+        updateData.actualQuantityPackets = parseFloat(updateData.actualQuantityPackets);
+      }
+      
+      // Update legacy fields for compatibility
+      if (updateData.scheduleDate) {
+        updateData.scheduledDate = updateData.scheduleDate;
+      }
+      if (updateData.totalQuantity) {
+        updateData.quantity = updateData.totalQuantity;
+      }
+      if (updateData.productionStartTime) {
+        updateData.startTime = updateData.productionStartTime;
+      }
+      if (updateData.productionEndTime) {
+        updateData.endTime = updateData.productionEndTime;
+      }
+      if (updateData.actualQuantityPackets) {
+        updateData.actualQuantity = updateData.actualQuantityPackets;
+      }
+
+      const item = await storage.updateProductionScheduleItem(id, updateData);
       res.json(item);
     } catch (error) {
       console.error("Error updating production schedule item:", error);
-      res
-        .status(500)
-        .json({ message: "Failed to update production schedule item" });
+      res.status(500).json({ message: "Failed to update production schedule item" });
+    }
+  });
+
+  // Close day endpoint
+  app.post("/api/production-schedule/close-day", isAuthenticated, async (req: any, res) => {
+    try {
+      const { date } = req.body;
+      const closedBy = req.user?.email || req.user?.firstName + ' ' + req.user?.lastName || 'Unknown User';
+      
+      const result = await storage.closeDayProductionSchedule(date, closedBy);
+      res.json(result);
+    } catch (error) {
+      console.error("Error closing production day:", error);
+      res.status(500).json({ message: "Failed to close production day" });
+    }
+  });
+
+  // Production schedule history endpoint
+  app.get("/api/production-schedule-history", isAuthenticated, async (req, res) => {
+    try {
+      const { date } = req.query;
+      const history = await storage.getProductionScheduleHistory(date as string);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching production schedule history:", error);
+      res.status(500).json({ message: "Failed to fetch production schedule history" });
     }
   });
 

@@ -92,6 +92,9 @@ import {
   productionScheduleLabels,
   type ProductionScheduleLabel,
   type InsertProductionScheduleLabel,
+  productionScheduleHistory,
+  type ProductionScheduleHistory,
+  type InsertProductionScheduleHistory
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
 import fs from "fs";
@@ -100,6 +103,7 @@ import path from "path";
 export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
+  getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(userData: UpsertUser): Promise<User>;
   getAllUsers(excludeSuperAdmin?: boolean): Promise<User[]>;
@@ -379,6 +383,9 @@ export interface IStorage {
     item: Partial<InsertProductionScheduleItem>,
   ): Promise<ProductionScheduleItem>;
   getProductionScheduleByDate(date: string): Promise<any[]>;
+  closeDayProductionSchedule(date: string, closedBy: string): Promise<any>;
+  getProductionScheduleHistory(date?: string): Promise<any[]>;
+
 
   // Media operations
   getMediaItems(): Promise<any[]>;
@@ -2590,6 +2597,116 @@ export class Storage implements IStorage {
         ),
       )
       .orderBy(productionSchedule.scheduledDate);
+  }
+
+  async closeDayProductionSchedule(date: string, closedBy: string): Promise<any> {
+    try {
+      const targetDate = new Date(date);
+      const nextDay = new Date(targetDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      // Get all production items for the specified date
+      const itemsToClose = await this.db
+        .select({
+          id: productionSchedule.id,
+          productId: productionSchedule.productId,
+          productName: products.name,
+          productCode: productionSchedule.productCode,
+          batchNo: productionSchedule.batchNo,
+          totalQuantity: productionSchedule.totalQuantity,
+          unitType: productionSchedule.unitType,
+          actualQuantityPackets: productionSchedule.actualQuantityPackets,
+          priority: productionSchedule.priority,
+          productionStartTime: productionSchedule.productionStartTime,
+          productionEndTime: productionSchedule.productionEndTime,
+          assignedTo: productionSchedule.assignedTo,
+          notes: productionSchedule.notes,
+          status: productionSchedule.status,
+          scheduleDate: productionSchedule.scheduleDate,
+          shift: productionSchedule.shift,
+          plannedBy: productionSchedule.plannedBy,
+          approvedBy: productionSchedule.approvedBy,
+        })
+        .from(productionSchedule)
+        .leftJoin(products, eq(productionSchedule.productId, products.id))
+        .where(
+          and(
+            gte(productionSchedule.scheduleDate, targetDate.toISOString()),
+            lt(productionSchedule.scheduleDate, nextDay.toISOString())
+          )
+        );
+
+      if (itemsToClose.length === 0) {
+        return { message: "No production items found for the specified date", closedItems: [] };
+      }
+
+      // Insert items into history table
+      const historyData: InsertProductionScheduleHistory[] = itemsToClose.map(item => ({
+        originalScheduleId: item.id,
+        productId: item.productId,
+        productName: item.productName,
+        productCode: item.productCode,
+        batchNo: item.batchNo,
+        totalQuantity: item.totalQuantity,
+        unitType: item.unitType,
+        actualQuantityPackets: item.actualQuantityPackets,
+        priority: item.priority,
+        productionStartTime: item.productionStartTime,
+        productionEndTime: item.productionEndTime,
+        assignedTo: item.assignedTo,
+        notes: item.notes,
+        status: item.status,
+        scheduleDate: item.scheduleDate,
+        shift: item.shift,
+        plannedBy: item.plannedBy,
+        approvedBy: item.approvedBy,
+        closedBy: closedBy,
+        closedAt: new Date(),
+      }));
+
+      const insertedHistory = await this.db.insert(productionScheduleHistory).values(historyData).returning();
+
+      // Delete items from current production schedule
+      const itemIds = itemsToClose.map(item => item.id);
+      await this.db.delete(productionSchedule).where(
+        sql`${productionSchedule.id} = ANY(${itemIds})`
+      );
+
+      return {
+        message: `${itemsToClose.length} production items closed and moved to history`,
+        closedItems: insertedHistory
+      };
+    } catch (error) {
+      console.error("Error closing production day:", error);
+      throw error;
+    }
+  }
+
+  async getProductionScheduleHistory(date?: string): Promise<any[]> {
+    try {
+      let query = this.db
+        .select()
+        .from(productionScheduleHistory)
+        .orderBy(desc(productionScheduleHistory.closedAt));
+
+      if (date) {
+        const targetDate = new Date(date);
+        const nextDay = new Date(targetDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        query = query.where(
+          and(
+            gte(productionScheduleHistory.scheduleDate, targetDate.toISOString()),
+            lt(productionScheduleHistory.scheduleDate, nextDay.toISOString())
+          )
+        );
+      }
+
+      return await query;
+    } catch (error) {
+      console.error("Error fetching production schedule history:", error);
+      throw error;
+    }
   }
 
   // Media operations

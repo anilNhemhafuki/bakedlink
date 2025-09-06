@@ -61,6 +61,17 @@ interface ProductionItem {
   quantity: number;
   scheduledDate: string;
   status: string;
+  productCode?: string;
+  batchNo?: string;
+  totalQuantity?: number;
+  unitType?: string;
+  actualQuantityPackets?: number;
+  priority?: "low" | "medium" | "high";
+  shift?: string;
+  assignedTo?: string;
+  productionStartTime?: string;
+  productionEndTime?: string;
+  scheduleDate?: string; // Added for consistency with the new structure
 }
 
 export default function EnhancedDashboard() {

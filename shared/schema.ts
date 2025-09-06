@@ -1,3 +1,4 @@
+
 import { pgTable, serial, varchar, text, numeric, boolean, timestamp, integer, jsonb, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -222,20 +223,69 @@ export const purchaseItems = pgTable("purchase_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Production Schedule table
+// Enhanced Production Schedule table
 export const productionSchedule = pgTable("production_schedule", {
   id: serial("id").primaryKey(),
+  
+  // Schedule Information
+  scheduleDate: date("schedule_date").notNull(),
+  shift: varchar("shift", { length: 20 }).default("Morning"), // Morning, Afternoon, Night
+  plannedBy: varchar("planned_by", { length: 100 }),
+  approvedBy: varchar("approved_by", { length: 100 }),
+  status: varchar("status", { length: 50 }).default("draft").notNull(), // draft, scheduled, in_progress, completed, cancelled
+  
+  // Product Details
   productId: integer("product_id").references(() => products.id).notNull(),
+  productCode: varchar("product_code", { length: 50 }),
+  batchNo: varchar("batch_no", { length: 50 }),
+  
+  // Quantities
+  totalQuantity: numeric("total_quantity", { precision: 10, scale: 2 }).notNull(),
+  unitType: varchar("unit_type", { length: 50 }).default("kg"),
+  actualQuantityPackets: numeric("actual_quantity_packets", { precision: 10, scale: 2 }),
+  
+  // Production Details
+  priority: varchar("priority", { length: 20 }).default("medium"), // high, medium, low
+  productionStartTime: timestamp("production_start_time"),
+  productionEndTime: timestamp("production_end_time"),
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  notes: text("notes"),
+  
+  // Legacy fields for compatibility
   quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
   actualQuantity: numeric("actual_quantity", { precision: 10, scale: 2 }),
   scheduledDate: date("scheduled_date").notNull(),
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
-  assignedTo: varchar("assigned_to").references(() => users.id),
-  notes: text("notes"),
-  status: varchar("status", { length: 50 }).default("scheduled").notNull(),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Production Schedule History table
+export const productionScheduleHistory = pgTable("production_schedule_history", {
+  id: serial("id").primaryKey(),
+  originalScheduleId: integer("original_schedule_id"),
+  productId: integer("product_id").notNull(),
+  productName: varchar("product_name", { length: 200 }),
+  productCode: varchar("product_code", { length: 50 }),
+  batchNo: varchar("batch_no", { length: 50 }),
+  totalQuantity: numeric("total_quantity", { precision: 10, scale: 2 }),
+  unitType: varchar("unit_type", { length: 50 }),
+  actualQuantityPackets: numeric("actual_quantity_packets", { precision: 10, scale: 2 }),
+  priority: varchar("priority", { length: 20 }),
+  productionStartTime: timestamp("production_start_time"),
+  productionEndTime: timestamp("production_end_time"),
+  assignedTo: varchar("assigned_to"),
+  notes: text("notes"),
+  status: varchar("status", { length: 50 }),
+  scheduleDate: date("schedule_date"),
+  shift: varchar("shift", { length: 20 }),
+  plannedBy: varchar("planned_by", { length: 100 }),
+  approvedBy: varchar("approved_by", { length: 100 }),
+  closedAt: timestamp("closed_at").defaultNow(),
+  closedBy: varchar("closed_by", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Inventory Transactions table
@@ -551,6 +601,8 @@ export type PurchaseItem = typeof purchaseItems.$inferSelect;
 export type InsertPurchaseItem = typeof purchaseItems.$inferInsert;
 export type ProductionScheduleItem = typeof productionSchedule.$inferSelect;
 export type InsertProductionScheduleItem = typeof productionSchedule.$inferInsert;
+export type ProductionScheduleHistoryItem = typeof productionScheduleHistory.$inferSelect;
+export type InsertProductionScheduleHistoryItem = typeof productionScheduleHistory.$inferInsert;
 export type InventoryTransaction = typeof inventoryTransactions.$inferSelect;
 export type InsertInventoryTransaction = typeof inventoryTransactions.$inferInsert;
 export type Expense = typeof expenses.$inferSelect;
