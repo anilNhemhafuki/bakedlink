@@ -224,6 +224,7 @@ export interface IStorage {
   updateSettings(settingsData: any): Promise<any>;
   updateOrCreateSetting(key: string, value: string): Promise<any>;
   saveCompanySettings(settings: any): Promise<void>;
+  getSetting(key: string): Promise<string | null>;
 
   // Analytics operations
   getDashboardStats(): Promise<any>;
@@ -1925,41 +1926,101 @@ export class Storage implements IStorage {
   }
 
   async getSettings(): Promise<any> {
-    const settingsResult = await this.db.select().from(settings);
-    const settingsObj: any = {};
-    settingsResult.forEach((setting) => {
-      settingsObj[setting.key] = setting.value;
-    });
-    return settingsObj;
+    try {
+      const allSettings = await db.select().from(settings);
+      console.log("📊 Retrieved settings from database:", allSettings.length, "settings");
+      return allSettings;
+    } catch (error) {
+      console.error("❌ Error fetching settings:", error);
+      throw error;
+    }
   }
 
   async updateSettings(settingsData: any): Promise<any> {
-    for (const [key, value] of Object.entries(settingsData)) {
-      await this.updateOrCreateSetting(key, value as string);
+    try {
+      console.log("💾 Updating settings with data:", Object.keys(settingsData));
+
+      // Update or create each setting individually
+      const updatePromises = [];
+      for (const [key, value] of Object.entries(settingsData)) {
+        if (value !== null && value !== undefined) {
+          console.log(`Setting ${key} = ${value} (${typeof value})`);
+          updatePromises.push(this.updateOrCreateSetting(key, String(value)));
+        }
+      }
+
+      const results = await Promise.all(updatePromises);
+      console.log(`✅ Successfully processed ${results.length} settings`);
+
+      // Return all settings in the expected format
+      const allSettings = await this.getSettings();
+      const settingsObject: any = {};
+      allSettings.forEach((setting: any) => {
+        settingsObject[setting.key] = setting.value;
+      });
+
+      return { 
+        success: true, 
+        settings: settingsObject,
+        message: "Settings updated successfully"
+      };
+    } catch (error) {
+      console.error("❌ Error updating settings:", error);
+      throw error;
     }
-    return settingsData;
   }
 
-  async updateOrCreateSetting(key: string, value: string): Promise<any> {
-    const existing = await this.db
-      .select()
-      .from(settings)
-      .where(eq(settings.key, key))
-      .limit(1);
+  async updateOrCreateSetting(key: string, value: string): Promise<void> {
+    try {
+      console.log(`🔧 Processing setting: ${key} = ${value}`);
 
-    if (existing.length > 0) {
-      const [updated] = await this.db
-        .update(settings)
-        .set({ value, updatedAt: new Date() })
+      // Check if setting exists
+      const existingSettings = await db
+        .select()
+        .from(settings)
         .where(eq(settings.key, key))
-        .returning();
-      return updated;
-    } else {
-      const [created] = await this.db
-        .insert(settings)
-        .values({ key, value, type: "string" })
-        .returning();
-      return created;
+        .limit(1);
+
+      if (existingSettings.length > 0) {
+        // Update existing setting
+        const result = await db
+          .update(settings)
+          .set({ 
+            value: value,
+            updatedAt: new Date()
+          })
+          .where(eq(settings.key, key))
+          .returning();
+        console.log(`✅ Updated setting ${key}:`, result.length > 0 ? "success" : "failed");
+      } else {
+        // Create new setting
+        const result = await db.insert(settings).values({
+          key: key,
+          value: value,
+          type: 'string',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }).returning();
+        console.log(`✅ Created setting ${key}:`, result.length > 0 ? "success" : "failed");
+      }
+    } catch (error) {
+      console.error(`❌ Error processing setting ${key}:`, error);
+      throw error;
+    }
+  }
+
+  async getSetting(key: string): Promise<string | null> {
+    try {
+      const result = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.key, key))
+        .limit(1);
+
+      return result.length > 0 ? result[0].value : null;
+    } catch (error) {
+      console.error(`❌ Error getting setting ${key}:`, error);
+      return null;
     }
   }
 
@@ -2060,7 +2121,7 @@ export class Storage implements IStorage {
   }
 
   // Customer operations
-  async getCustomers(): Promise<Customer[]> {
+  async getCustomers(): Promise<Customer[]>{
     return await this.db.select().from(customers).orderBy(customers.name);
   }
 

@@ -331,7 +331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(401).json({ message: "User not found in session" });
       }
-      
+
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
@@ -504,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const products = await storage.getProductsWithIngredients();
       console.log(`✅ Fetched ${products.length} products successfully`);
-      
+
       // Ensure consistent response format
       res.json({
         success: true,
@@ -807,12 +807,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid unit ID" });
       }
-      
+
       await storage.deleteUnit(id);
       res.json({ message: "Unit deleted successfully" });
     } catch (error) {
       console.error("Error deleting unit:", error);
-      
+
       // Check if it's a foreign key constraint error
       if (error instanceof Error && error.message.includes("Cannot delete unit: it is being used")) {
         return res.status(409).json({ 
@@ -820,7 +820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: "FOREIGN_KEY_CONSTRAINT"
         });
       }
-      
+
       res.status(500).json({ 
         message: "Failed to delete unit",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -987,7 +987,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/inventory", async (req, res) => {
     try {
       console.log("📦 Fetching inventory items with params:", req.query);
-      
+
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50; // Increase default limit
       const search = req.query.search as string || "";
@@ -1091,7 +1091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle group field - convert string groups to proper categoryId or isIngredient flag
       let categoryId = null;
       let isIngredient = false;
-      
+
       if (req.body.group) {
         if (req.body.group === "ingredients") {
           isIngredient = true;
@@ -1099,7 +1099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           categoryId = parseInt(req.body.group);
         }
       }
-      
+
       if (req.body.categoryId && !isNaN(parseInt(req.body.categoryId))) {
         categoryId = parseInt(req.body.categoryId);
       }
@@ -1930,34 +1930,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Settings
-  app.get("/api/settings", isAuthenticated, async (req, res) => {
+  app.get("/api/settings", async (req, res) => {
     try {
-      const settings = await storage.getSettings();
-      res.json(settings);
-    } catch (error) {
-      console.error("Error fetching settings:", error);
-      res.status(500).json({ message: "Failed to fetch settings" });
-    }
-  });
+      console.log("🔍 GET /api/settings - Fetching settings...");
+      const allSettings = await storage.getSettings();
+      console.log(`📊 Found ${allSettings.length} settings in database`);
 
-  app.put("/api/settings", isAuthenticated, async (req, res) => {
-    try {
-      console.log("Updating settings with data:", req.body);
+      // Convert settings array to object format
+      const settings: any = {};
+      allSettings.forEach((setting: any) => {
+        settings[setting.key] = setting.value;
+        console.log(`  - ${setting.key}: ${setting.value}`);
+      });
 
-      // Handle theme color specifically
-      if (req.body.themeColor) {
-        await storage.updateOrCreateSetting("themeColor", req.body.themeColor);
+      // Ensure default values are set if not present
+      const defaultSettings = {
+        companyName: "Bake Sewa",
+        companyAddress: "",
+        companyPhone: "",
+        companyEmail: "info@bakesewa.com",
+        companyRegNo: "",
+        companyDtqocNo: "",
+        companyLogo: "",
+        themeColor: "#507e96",
+        currency: "USD",
+        timezone: "UTC",
+        emailNotifications: "true",
+        lowStockAlerts: "true",
+        orderNotifications: "true",
+        productionReminders: "true",
+        twoFactorAuth: "false",
+        sessionTimeout: "60",
+        passwordPolicy: "medium",
+        defaultPrinter: "",
+        labelSize: "small",
+        labelOrientation: "portrait",
+        labelMarginTop: "2",
+        labelMarginBottom: "2",
+        labelMarginLeft: "2",
+        labelMarginRight: "2",
+        customLabelWidth: "",
+        customLabelHeight: "",
+      };
+
+      const mergedSettings = { ...defaultSettings, ...settings };
+
+      // Convert string booleans back to booleans for certain fields
+      const booleanFields = ['emailNotifications', 'lowStockAlerts', 'orderNotifications', 'productionReminders', 'twoFactorAuth'];
+      booleanFields.forEach(field => {
+        if (typeof mergedSettings[field] === 'string') {
+          mergedSettings[field] = mergedSettings[field] === 'true';
+        }
+      });
+
+      // Convert string numbers back to numbers
+      if (typeof mergedSettings.sessionTimeout === 'string') {
+        mergedSettings.sessionTimeout = parseInt(mergedSettings.sessionTimeout);
       }
 
-      // Handle other settings
-      const settings = await storage.updateSettings(req.body);
-      console.log("Updated settings:", settings);
-      res.json(settings);
+      console.log("✅ Returning merged settings");
+      res.json({
+        success: true,
+        settings: mergedSettings,
+      });
     } catch (error) {
-      console.error("Error updating settings:", error);
-      res.status(500).json({ message: "Failed to update settings" });
+      console.error("❌ Error fetching settings:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch settings",
+        error: error instanceof Error ? error.message : "Unknown error",
+        settings: {},
+      });
     }
   });
+
+  app.put(
+    "/api/settings",
+    isAuthenticated,
+    auditLogger("UPDATE", "settings"),
+    async (req, res) => {
+      try {
+        const settingsData = req.body;
+        console.log("🔄 PUT /api/settings - Updating settings...");
+        console.log("📝 Received data:", Object.keys(settingsData));
+
+        // Validate that we have data to update
+        if (!settingsData || Object.keys(settingsData).length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: "No settings data provided",
+          });
+        }
+
+        // Use the storage method to update settings
+        const result = await storage.updateSettings(settingsData);
+
+        console.log("✅ Settings update completed successfully");
+        res.json(result);
+      } catch (error) {
+        console.error("❌ Error updating settings:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update settings",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+  );
 
   // Expense routes
   app.get("/api/expenses", isAuthenticated, async (req, res) => {
@@ -3260,13 +3339,15 @@ Form Version: ${formVersion || "1.0"}`,
 
   app.get("/api/settings", async (req, res) => {
     try {
+      console.log("🔍 GET /api/settings - Fetching settings...");
       const allSettings = await storage.getSettings();
-      console.log("Fetched settings:", allSettings);
+      console.log(`📊 Found ${allSettings.length} settings in database`);
 
       // Convert settings array to object format
       const settings: any = {};
       allSettings.forEach((setting: any) => {
         settings[setting.key] = setting.value;
+        console.log(`  - ${setting.key}: ${setting.value}`);
       });
 
       // Ensure default values are set if not present
@@ -3278,15 +3359,15 @@ Form Version: ${formVersion || "1.0"}`,
         companyRegNo: "",
         companyDtqocNo: "",
         companyLogo: "",
-        themeColor: "#8B4513",
+        themeColor: "#507e96",
         currency: "USD",
         timezone: "UTC",
-        emailNotifications: true,
-        lowStockAlerts: true,
-        orderNotifications: true,
-        productionReminders: true,
-        twoFactorAuth: false,
-        sessionTimeout: 60,
+        emailNotifications: "true",
+        lowStockAlerts: "true",
+        orderNotifications: "true",
+        productionReminders: "true",
+        twoFactorAuth: "false",
+        sessionTimeout: "60",
         passwordPolicy: "medium",
         defaultPrinter: "",
         labelSize: "small",
@@ -3301,16 +3382,31 @@ Form Version: ${formVersion || "1.0"}`,
 
       const mergedSettings = { ...defaultSettings, ...settings };
 
+      // Convert string booleans back to booleans for certain fields
+      const booleanFields = ['emailNotifications', 'lowStockAlerts', 'orderNotifications', 'productionReminders', 'twoFactorAuth'];
+      booleanFields.forEach(field => {
+        if (typeof mergedSettings[field] === 'string') {
+          mergedSettings[field] = mergedSettings[field] === 'true';
+        }
+      });
+
+      // Convert string numbers back to numbers
+      if (typeof mergedSettings.sessionTimeout === 'string') {
+        mergedSettings.sessionTimeout = parseInt(mergedSettings.sessionTimeout);
+      }
+
+      console.log("✅ Returning merged settings");
       res.json({
         success: true,
         settings: mergedSettings,
       });
     } catch (error) {
-      console.error("Error fetching settings:", error);
+      console.error("❌ Error fetching settings:", error);
       res.status(500).json({
         success: false,
         message: "Failed to fetch settings",
         error: error instanceof Error ? error.message : "Unknown error",
+        settings: {},
       });
     }
   });
@@ -3322,66 +3418,24 @@ Form Version: ${formVersion || "1.0"}`,
     async (req, res) => {
       try {
         const settingsData = req.body;
-        console.log("Updating settings with data:", settingsData);
+        console.log("🔄 PUT /api/settings - Updating settings...");
+        console.log("📝 Received data:", Object.keys(settingsData));
 
-        // Update each setting individually
-        const updatePromises = [];
-        for (const [key, value] of Object.entries(settingsData)) {
-          if (value !== null && value !== undefined) {
-            updatePromises.push(
-              storage.updateOrCreateSetting(key, String(value)),
-            );
-          }
+        // Validate that we have data to update
+        if (!settingsData || Object.keys(settingsData).length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: "No settings data provided",
+          });
         }
 
-        await Promise.all(updatePromises);
+        // Use the storage method to update settings
+        const result = await storage.updateSettings(settingsData);
 
-        // Fetch updated settings
-        const allSettings = await storage.getSettings();
-        const settings: any = {};
-        allSettings.forEach((setting: any) => {
-          settings[setting.key] = setting.value;
-        });
-
-        // Ensure default values are maintained including new printing settings
-        const defaultSettings = {
-          companyName: "Bake Sewa",
-          companyAddress: "",
-          companyPhone: "",
-          companyEmail: "info@bakesewa.com",
-          companyRegNo: "",
-          companyDtqocNo: "",
-          companyLogo: "",
-          themeColor: "#8B4513",
-          currency: "USD",
-          timezone: "UTC",
-          emailNotifications: true,
-          lowStockAlerts: true,
-          orderNotifications: true,
-          productionReminders: true,
-          twoFactorAuth: false,
-          sessionTimeout: 60,
-          passwordPolicy: "medium",
-          defaultPrinter: "",
-          labelSize: "small",
-          labelOrientation: "portrait",
-          labelMarginTop: "2",
-          labelMarginBottom: "2",
-          labelMarginLeft: "2",
-          labelMarginRight: "2",
-          customLabelWidth: "",
-          customLabelHeight: "",
-        };
-
-        const mergedSettings = { ...defaultSettings, ...settings };
-
-        res.json({
-          success: true,
-          message: "Settings updated successfully",
-          settings: mergedSettings,
-        });
+        console.log("✅ Settings update completed successfully");
+        res.json(result);
       } catch (error) {
-        console.error("Error updating settings:", error);
+        console.error("❌ Error updating settings:", error);
         res.status(500).json({
           success: false,
           message: "Failed to update settings",
@@ -4389,7 +4443,7 @@ Form Version: ${formVersion || "1.0"}`,
   );
 
   // Enhanced Security Monitoring API Endpoints
-  
+
   app.get(
     "/api/security/comprehensive-metrics",
     isAuthenticated,
@@ -4413,7 +4467,7 @@ Form Version: ${formVersion || "1.0"}`,
       try {
         const activeAlerts = securityMonitor.getActiveAlerts();
         const dashboardAlerts = alertService.getDashboardAlerts();
-        
+
         res.json({
           activeAlerts,
           dashboardAlerts,
@@ -4450,22 +4504,22 @@ Form Version: ${formVersion || "1.0"}`,
     async (req, res) => {
       try {
         const { timeframe = '24h' } = req.query;
-        
+
         let hours = 24;
         if (timeframe === '1h') hours = 1;
         else if (timeframe === '12h') hours = 12;
         else if (timeframe === '7d') hours = 24 * 7;
         else if (timeframe === '30d') hours = 24 * 30;
-        
+
         const timeThreshold = new Date(Date.now() - hours * 60 * 60 * 1000);
 
         const [totalLogins, failedLogins, uniqueUsers] = await Promise.all([
           db.select({ count: count() }).from(loginLogs)
             .where(sql`${loginLogs.loginTime} >= ${timeThreshold}`),
-            
+
           db.select({ count: count() }).from(loginLogs)
             .where(sql`${loginLogs.status} = 'failed' AND ${loginLogs.loginTime} >= ${timeThreshold}`),
-            
+
           db.select({ count: sql<number>`COUNT(DISTINCT ${loginLogs.userId})` }).from(loginLogs)
             .where(sql`${loginLogs.loginTime} >= ${timeThreshold}`),
         ]);
@@ -4490,7 +4544,7 @@ Form Version: ${formVersion || "1.0"}`,
       console.log("📋 Fetching production schedule labels...");
       const labels = await storage.getProductionScheduleLabels();
       console.log(`✅ Retrieved ${labels.length} production schedule labels`);
-      
+
       // Return consistent format
       res.json({
         success: true,
@@ -4511,16 +4565,16 @@ Form Version: ${formVersion || "1.0"}`,
   app.post("/api/production-schedule-labels", isAuthenticated, async (req: any, res) => {
     try {
       console.log("📋 Creating production schedule label with data:", req.body);
-      
+
       const labelData = {
         ...req.body,
         createdBy: req.user?.email || req.user?.firstName + ' ' + req.user?.lastName || 'Unknown User',
         updatedBy: req.user?.email || req.user?.firstName + ' ' + req.user?.lastName || 'Unknown User',
       };
-      
+
       const newLabel = await storage.createProductionScheduleLabel(labelData);
       console.log("✅ Production schedule label created successfully:", newLabel.id);
-      
+
       res.json({
         success: true,
         label: newLabel,
@@ -4541,7 +4595,7 @@ Form Version: ${formVersion || "1.0"}`,
       const id = parseInt(req.params.id);
       const labelData = req.body;
       labelData.updatedBy = req.user?.email;
-      
+
       const updatedLabel = await storage.updateProductionScheduleLabel(id, labelData);
       res.json(updatedLabel);
     } catch (error) {

@@ -109,7 +109,13 @@ function ThemeColorSelector({
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
     applyThemeColor(color);
+    
+    // Immediately save the theme color to ensure it persists
+    console.log("🎨 Applying theme color:", color);
     onUpdate({ themeColor: color });
+    
+    // Also store in localStorage as backup
+    localStorage.setItem('themeColor', color);
   };
 
   // Apply theme color on component mount if settings exist
@@ -195,15 +201,24 @@ export default function Settings() {
   }, [settings.labelSize]);
 
   const updateSettingsMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("PUT", "/api/settings", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
-      toast({ title: "Success", description: "Settings updated successfully" });
+    mutationFn: (data: any) => {
+      console.log("🚀 Sending settings update:", data);
+      return apiRequest("PUT", "/api/settings", data);
     },
-    onError: () => {
+    onSuccess: (response) => {
+      console.log("✅ Settings update successful:", response);
+      queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
+      toast({ 
+        title: "Success", 
+        description: response?.message || "Settings updated successfully" 
+      });
+    },
+    onError: (error: any) => {
+      console.error("❌ Settings update failed:", error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to update settings";
       toast({
         title: "Error",
-        description: "Failed to update settings",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -224,7 +239,7 @@ export default function Settings() {
       currency: formData.get("currency")?.toString() || "USD",
     };
 
-    console.log("Saving general settings:", data);
+    console.log("📝 Saving general settings:", data);
     updateSettingsMutation.mutate(data);
   };
 
@@ -233,12 +248,13 @@ export default function Settings() {
     const formData = new FormData(e.target as HTMLFormElement);
 
     const data = {
-      emailNotifications: formData.get("emailNotifications") === "on",
-      lowStockAlerts: formData.get("lowStockAlerts") === "on",
-      orderNotifications: formData.get("orderNotifications") === "on",
-      productionReminders: formData.get("productionReminders") === "on",
+      emailNotifications: formData.get("emailNotifications") === "on" ? "true" : "false",
+      lowStockAlerts: formData.get("lowStockAlerts") === "on" ? "true" : "false",
+      orderNotifications: formData.get("orderNotifications") === "on" ? "true" : "false",
+      productionReminders: formData.get("productionReminders") === "on" ? "true" : "false",
     };
 
+    console.log("📝 Saving notification settings:", data);
     updateSettingsMutation.mutate(data);
   };
 
@@ -247,11 +263,12 @@ export default function Settings() {
     const formData = new FormData(e.target as HTMLFormElement);
 
     const data = {
-      twoFactorAuth: formData.get("twoFactorAuth") === "on",
-      sessionTimeout: parseInt(formData.get("sessionTimeout") as string),
-      passwordPolicy: formData.get("passwordPolicy"),
+      twoFactorAuth: formData.get("twoFactorAuth") === "on" ? "true" : "false",
+      sessionTimeout: formData.get("sessionTimeout")?.toString() || "60",
+      passwordPolicy: formData.get("passwordPolicy")?.toString() || "medium",
     };
 
+    console.log("📝 Saving security settings:", data);
     updateSettingsMutation.mutate(data);
   };
 
@@ -464,11 +481,11 @@ export default function Settings() {
       labelMarginBottom: formData.get("labelMarginBottom")?.toString() || "2",
       labelMarginLeft: formData.get("labelMarginLeft")?.toString() || "2",
       labelMarginRight: formData.get("labelMarginRight")?.toString() || "2",
-      customLabelWidth: customWidth,
-      customLabelHeight: customHeight,
+      customLabelWidth: customWidth || "",
+      customLabelHeight: customHeight || "",
     };
 
-    console.log("Saving printing settings:", data);
+    console.log("📝 Saving printing settings:", data);
     updateSettingsMutation.mutate(data);
   };
 
@@ -656,7 +673,7 @@ export default function Settings() {
                   <Switch
                     id="emailNotifications"
                     name="emailNotifications"
-                    defaultChecked={settings.emailNotifications !== false}
+                    defaultChecked={settings.emailNotifications === true || settings.emailNotifications === "true"}
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -669,7 +686,7 @@ export default function Settings() {
                   <Switch
                     id="lowStockAlerts"
                     name="lowStockAlerts"
-                    defaultChecked={settings.lowStockAlerts !== false}
+                    defaultChecked={settings.lowStockAlerts === true || settings.lowStockAlerts === "true"}
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -684,7 +701,7 @@ export default function Settings() {
                   <Switch
                     id="orderNotifications"
                     name="orderNotifications"
-                    defaultChecked={settings.orderNotifications !== false}
+                    defaultChecked={settings.orderNotifications === true || settings.orderNotifications === "true"}
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -699,7 +716,7 @@ export default function Settings() {
                   <Switch
                     id="productionReminders"
                     name="productionReminders"
-                    defaultChecked={settings.productionReminders !== false}
+                    defaultChecked={settings.productionReminders === true || settings.productionReminders === "true"}
                   />
                 </div>
                 <Button
@@ -738,7 +755,7 @@ export default function Settings() {
                   <Switch
                     id="twoFactorAuth"
                     name="twoFactorAuth"
-                    defaultChecked={settings.twoFactorAuth === true}
+                    defaultChecked={settings.twoFactorAuth === true || settings.twoFactorAuth === "true"}
                   />
                 </div>
                 <div>
