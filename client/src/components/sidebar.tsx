@@ -87,220 +87,229 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
     );
   };
 
-  const navigationSections = [
-    {
-      id: "core",
-      items: [
-        {
-          name: "Dashboard",
-          href: "/",
-          resource: "dashboard",
-          icon: "fas fa-tachometer-alt",
-        },
-        {
-          name: "Notifications",
-          href: "/notifications",
-          resource: "notifications",
-          icon: "fas fa-bell",
-        },
-      ],
-    },
+  const getNavigationSections = () => {
+    const allSections = [
+      {
+        id: "core",
+        items: [
+          {
+            name: "Dashboard",
+            href: "/",
+            resource: "dashboard",
+            icon: "fas fa-tachometer-alt",
+          },
+          {
+            name: "Notifications",
+            href: "/notifications",
+            resource: "dashboard",
+            icon: "fas fa-bell",
+          },
+        ],
+      },
+      {
+        id: "Finance",
+        title: "Finance",
+        items: [
+          {
+            name: "Day Book",
+            href: "/day-book",
+            icon: "fas fa-shopping-cart",
+            resource: "sales",
+          },
+          {
+            name: "Transactions",
+            href: "/transactions",
+            icon: "fas fa-exchange-alt",
+            resource: "sales",
+          },
+          {
+            name: "Orders",
+            href: "/orders",
+            icon: "fas fa-shopping-cart",
+            resource: "orders",
+          },
+          {
+            name: "Sales",
+            href: "/sales",
+            icon: "fas fa-cash-register",
+            resource: "sales",
+          },
+          {
+            name: "Purchases",
+            href: "/purchases",
+            icon: "fas fa-shopping-bag",
+            resource: "purchases",
+          },
+          {
+            name: "Income & Expenses",
+            href: "/expenses",
+            icon: "fas fa-receipt",
+            resource: "expenses",
+          },
+          {
+            name: "Assets",
+            href: "/assets",
+            icon: "fas fa-building",
+            resource: "assets",
+          },
+        ],
+      },
+      {
+        id: "Stock",
+        title: "Product & Inventory",
+        items: [
+          {
+            name: "Recipes",
+            href: "/recipes",
+            icon: "fas fa-utensils",
+            resource: "products",
+          },
+          {
+            name: "Products",
+            href: "/products",
+            icon: "fas fa-cookie-bite",
+            resource: "products",
+          },
+          {
+            name: "Stock & Ingredients",
+            href: "/stock",
+            icon: "fas fa-boxes",
+            resource: "inventory",
+          },
+          {
+            name: "Production",
+            href: "/production",
+            icon: "fas fa-industry",
+            resource: "production",
+          },
+          {
+            name: "Label Printing",
+            href: "/label-printing",
+            icon: "fas fa-print",
+            resource: "production",
+          },
+          {
+            name: "Ingredients",
+            href: "/ingredients",
+            icon: "fas fa-seedling",
+            resource: "inventory",
+          },
+        ],
+      },
+      {
+        id: "management",
+        title: "Management",
+        items: [
+          {
+            name: "Customers",
+            href: "/customers",
+            icon: "fas fa-users",
+            resource: "customers",
+          },
+          {
+            name: "Parties",
+            href: "/parties",
+            icon: "fas fa-handshake",
+            resource: "parties",
+          },
+        ],
+      },
+      {
+        id: "Staff",
+        title: "Staff Management",
+        items: [
+          {
+            name: "Staff Directory",
+            href: "/staff",
+            icon: "fas fa-users",
+            resource: "staff",
+          },
+          {
+            name: "Attendance",
+            href: "/attendance",
+            icon: "fas fa-clock",
+            resource: "staff",
+          },
+          {
+            name: "Salary Management",
+            href: "/salary",
+            icon: "fas fa-money-bill-wave",
+            resource: "staff",
+          },
+          {
+            name: "Leave Requests",
+            href: "/leave-requests",
+            icon: "fas fa-calendar-times",
+            resource: "staff",
+          },
+          {
+            name: "Staff Schedules",
+            href: "/staff-schedules",
+            icon: "fas fa-calendar-alt",
+            resource: "staff",
+          },
+        ],
+      },
+      {
+        id: "reports",
+        title: "Reports & Analytics",
+        items: [
+          {
+            name: "Reports",
+            href: "/reports",
+            icon: "fas fa-chart-bar",
+            resource: "reports",
+          },
+          {
+            name: "Billing & Subscription",
+            href: "/billing",
+            icon: "fas fa-file-invoice-dollar",
+            resource: "billing",
+          },
+        ],
+      },
+      {
+        id: "administration",
+        title: "Administration",
+        items: [
+          {
+            name: "User Management",
+            href: "/admin/users",
+            icon: "fas fa-users-cog text-base",
+            resource: "users",
+          },
+          {
+            name: "Audit Logs",
+            href: "/admin/login-logs",
+            icon: "fas fa-shield-alt text-base",
+            resource: "admin",
+          },
+          {
+            name: "Category Management",
+            href: "/category-management",
+            icon: "fas fa-tags text-base",
+            resource: "settings",
+          },
+          {
+            name: "Measuring Units",
+            href: "/units",
+            icon: "fas fa-ruler text-base",
+            resource: "settings",
+          },
+        ],
+      },
+    ];
 
-    {
-      id: "Finance",
-      title: "Finance",
-      items: [
-        {
-          name: "Day Book",
-          href: "/day-book",
-          icon: "fas fa-shopping-cart",
-          resource: "sales",
-        },
-        {
-          name: "Transactions",
-          href: "/transactions",
-          icon: "fas fa-exchange-alt",
-          resource: "sales",
-        },
-        {
-          name: "Orders",
-          href: "/orders",
-          icon: "fas fa-shopping-cart",
-          resource: "orders",
-        },
-        {
-          name: "Sales",
-          href: "/sales",
-          icon: "fas fa-cash-register",
-          resource: "sales",
-        },
-        {
-          name: "Purchases",
-          href: "/purchases",
-          icon: "fas fa-shopping-bag",
-          resource: "purchases",
-        },
-        {
-          name: "Income & Expenses",
-          href: "/expenses",
-          icon: "fas fa-receipt",
-          resource: "expenses",
-        },
-        {
-          name: "Assets",
-          href: "/assets",
-          icon: "fas fa-building",
-          resource: "assets",
-        },
-      ],
-    },
+    // Filter sections based on user role
+    return allSections.map(section => ({
+      ...section,
+      items: section.items.filter(item =>
+        canAccessSidebarItem(item.resource, "read")
+      )
+    })).filter(section => section.items.length > 0); // Remove empty sections
+  };
 
-    {
-      id: "Stock",
-      title: "Product & Inventory",
-      items: [
-        {
-          name: "Recipes",
-          href: "/recipes",
-          icon: "fas fa-utensils",
-          resource: "products",
-        },
-        {
-          name: "Products",
-          href: "/products",
-          icon: "fas fa-cookie-bite",
-          resource: "products",
-        },
-        {
-          name: "Stock & Ingredients",
-          href: "/stock",
-          icon: "fas fa-boxes",
-          resource: "inventory",
-        },
-        {
-          name: "Production",
-          href: "/production",
-          icon: "fas fa-industry",
-          resource: "production",
-        },
-        {
-          name: "Label Printing",
-          href: "/label-printing",
-          icon: "fas fa-print",
-          resource: "production",
-        },
-        {
-          name: "Ingredients",
-          href: "/ingredients",
-          icon: "fas fa-seedling",
-          resource: "inventory",
-        },
-      ],
-    },
-
-    {
-      id: "management",
-      title: "Management",
-      items: [
-        {
-          name: "Customers",
-          href: "/customers",
-          icon: "fas fa-users",
-          resource: "customers",
-        },
-        {
-          name: "Parties",
-          href: "/parties",
-          icon: "fas fa-handshake",
-          resource: "parties",
-        },
-      ],
-    },
-    {
-      id: "Staff",
-      title: "Staff Management",
-      items: [
-        {
-          name: "Staff Directory",
-          href: "/staff",
-          icon: "fas fa-users",
-          resource: "staff",
-        },
-        {
-          name: "Attendance",
-          href: "/attendance",
-          icon: "fas fa-clock",
-          resource: "staff",
-        },
-        {
-          name: "Salary Management",
-          href: "/salary",
-          icon: "fas fa-money-bill-wave",
-          resource: "staff",
-        },
-        {
-          name: "Leave Requests",
-          href: "/leave-requests",
-          icon: "fas fa-calendar-times",
-          resource: "staff",
-        },
-        {
-          name: "Staff Schedules",
-          href: "/staff-schedules",
-          icon: "fas fa-calendar-alt",
-          resource: "staff",
-        },
-      ],
-    },
-    {
-      id: "reports",
-      title: "Reports & Analytics",
-      items: [
-        {
-          name: "Reports",
-          href: "/reports",
-          icon: "fas fa-chart-bar",
-          resource: "reports",
-        },
-        {
-          name: "Billing & Subscription",
-          href: "/billing",
-          icon: "fas fa-file-invoice-dollar",
-          resource: "billing",
-        },
-      ],
-    },
-    {
-      id: "administration",
-      title: "Administration",
-      items: [
-        {
-          name: "User Management",
-          href: "/admin/users",
-          icon: "fas fa-users-cog text-base",
-          resource: "users",
-        },
-        {
-          name: "Audit Logs",
-          href: "/admin/login-logs",
-          icon: "fas fa-shield-alt text-base",
-          resource: "admin",
-        },
-        {
-          name: "Category Management",
-          href: "/category-management",
-          icon: "fas fa-tags text-base",
-          resource: "settings",
-        },
-        {
-          name: "Measuring Units",
-          href: "/units",
-          icon: "fas fa-ruler text-base",
-          resource: "settings",
-        },
-      ],
-    },
-  ];
+  const navigationSections = getNavigationSections();
 
   const isActive = (href: string) => {
     if (href === "/") {

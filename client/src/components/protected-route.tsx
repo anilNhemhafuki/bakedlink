@@ -36,8 +36,10 @@ export function ProtectedRoute({
     return <>{children}</>;
   }
 
-  // Check permissions for other roles
-  if (!hasPermission(resource, action)) {
+  // Check permissions using the role access hook
+  const { canAccessPage } = useRoleAccess();
+  
+  if (!canAccessPage(resource, action)) {
     return (
       fallback || (
         <div className="flex items-center justify-center min-h-[400px] p-6">
