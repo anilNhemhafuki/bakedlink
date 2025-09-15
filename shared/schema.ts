@@ -1,4 +1,3 @@
-
 import { pgTable, serial, varchar, text, numeric, boolean, timestamp, integer, jsonb, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -196,6 +195,36 @@ export const orderItems = pgTable("order_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Sales table
+export const sales = pgTable("sales", {
+  id: serial("id").primaryKey(),
+  customerName: varchar("customer_name", { length: 200 }).notNull(),
+  customerId: integer("customer_id"),
+  customerEmail: varchar("customer_email", { length: 100 }),
+  customerPhone: varchar("customer_phone", { length: 20 }),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(),
+  saleDate: timestamp("sale_date").defaultNow(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Sale Items table
+export const saleItems = pgTable("sale_items", {
+  id: serial("id").primaryKey(),
+  saleId: integer("sale_id").notNull(),
+  productId: integer("product_id").notNull(),
+  quantity: integer("quantity").notNull(),
+  unit: varchar("unit", { length: 50 }), // Unit name/abbreviation
+  unitId: integer("unit_id"), // Reference to units table
+  unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
+  totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+
 // Purchases table
 export const purchases = pgTable("purchases", {
   id: serial("id").primaryKey(),
@@ -226,38 +255,38 @@ export const purchaseItems = pgTable("purchase_items", {
 // Enhanced Production Schedule table
 export const productionSchedule = pgTable("production_schedule", {
   id: serial("id").primaryKey(),
-  
+
   // Schedule Information
   scheduleDate: date("schedule_date").notNull(),
   shift: varchar("shift", { length: 20 }).default("Morning"), // Morning, Afternoon, Night
   plannedBy: varchar("planned_by", { length: 100 }),
   approvedBy: varchar("approved_by", { length: 100 }),
   status: varchar("status", { length: 50 }).default("draft").notNull(), // draft, scheduled, in_progress, completed, cancelled
-  
+
   // Product Details
   productId: integer("product_id").references(() => products.id).notNull(),
   productCode: varchar("product_code", { length: 50 }),
   batchNo: varchar("batch_no", { length: 50 }),
-  
+
   // Quantities
   totalQuantity: numeric("total_quantity", { precision: 10, scale: 2 }).notNull(),
   unitType: varchar("unit_type", { length: 50 }).default("kg"),
   actualQuantityPackets: numeric("actual_quantity_packets", { precision: 10, scale: 2 }),
-  
+
   // Production Details
   priority: varchar("priority", { length: 20 }).default("medium"), // high, medium, low
   productionStartTime: timestamp("production_start_time"),
   productionEndTime: timestamp("production_end_time"),
   assignedTo: varchar("assigned_to").references(() => users.id),
   notes: text("notes"),
-  
+
   // Legacy fields for compatibility
   quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
   actualQuantity: numeric("actual_quantity", { precision: 10, scale: 2 }),
   scheduledDate: date("scheduled_date").notNull(),
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -513,56 +542,56 @@ export const staffSchedules = pgTable("staff_schedules", {
 // Production Schedule Labels table
 export const productionScheduleLabels = pgTable("production_schedule_labels", {
   id: serial("id").primaryKey(),
-  
+
   // Order Information
   orderId: integer("order_id"),
   orderNumber: varchar("order_number", { length: 100 }),
   customerName: varchar("customer_name", { length: 200 }),
   orderDate: timestamp("order_date"),
-  
+
   // Product Details
   productId: integer("product_id"),
   productSku: varchar("product_sku", { length: 50 }),
   productName: varchar("product_name", { length: 200 }).notNull(),
   productDescription: text("product_description"),
-  
+
   // Target Quantities
   targetedQuantity: numeric("targeted_quantity", { precision: 10, scale: 2 }).notNull(),
   unit: varchar("unit", { length: 50 }),
   unitId: integer("unit_id"),
-  
+
   // Actual Production Data
   actualQuantity: numeric("actual_quantity", { precision: 10, scale: 2 }),
   startDatetime: timestamp("start_datetime"),
   endDatetime: timestamp("end_datetime"),
-  
+
   // Labeling and Packaging
   batchNumber: varchar("batch_number", { length: 100 }),
   expiryDate: date("expiry_date"),
   weightVolume: varchar("weight_volume", { length: 100 }),
   packagingType: varchar("packaging_type", { length: 100 }),
-  
+
   // Production Status and Tracking
   status: varchar("status", { length: 50 }).default("draft"), // draft, in_progress, completed, cancelled
   priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
   assignedTo: varchar("assigned_to", { length: 100 }),
   shift: varchar("shift", { length: 50 }),
-  
+
   // Quality Control
   qualityCheckPassed: boolean("quality_check_passed").default(false),
   qualityNotes: text("quality_notes"),
-  
+
   // Draft/Day-end functionality
   isDraft: boolean("is_draft").default(true),
   dayClosed: boolean("day_closed").default(false),
   dayClosedAt: timestamp("day_closed_at"),
   dayClosedBy: varchar("day_closed_by", { length: 100 }),
-  
+
   // Additional Information
   remarks: text("remarks"),
   notes: text("notes"),
   specialInstructions: text("special_instructions"),
-  
+
   // Audit Trail
   createdBy: varchar("created_by", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow(),
@@ -595,6 +624,10 @@ export type Order = typeof orders.$inferSelect;
 export type InsertOrder = typeof orders.$inferInsert;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = typeof orderItems.$inferInsert;
+export type Sale = typeof sales.$inferSelect;
+export type InsertSale = typeof sales.$inferInsert;
+export type SaleItem = typeof saleItems.$inferSelect;
+export type InsertSaleItem = typeof saleItems.$inferInsert;
 export type Purchase = typeof purchases.$inferSelect;
 export type InsertPurchase = typeof purchases.$inferInsert;
 export type PurchaseItem = typeof purchaseItems.$inferSelect;
@@ -635,10 +668,10 @@ export type ProductionScheduleLabel = typeof productionScheduleLabels.$inferSele
 export type InsertProductionScheduleLabel = typeof productionScheduleLabels.$inferInsert;
 
 // Insert schemas for validation
-export const insertUserSchema = createInsertSchema(users).omit({ 
-  id: true, 
-  createdAt: true, 
-  updatedAt: true 
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
 });
 
 export const insertCategorySchema = createInsertSchema(categories).omit({
@@ -768,4 +801,16 @@ export const insertAssetSchema = createInsertSchema(assets).omit({
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   id: true,
   timestamp: true,
+});
+
+// Insert schemas for sales and saleItems
+export const insertSaleSchema = createInsertSchema(sales).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSaleItemSchema = createInsertSchema(saleItems).omit({
+  id: true,
+  createdAt: true,
 });

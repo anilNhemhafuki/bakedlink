@@ -442,6 +442,68 @@ router.post('/api/products', requireAuth, async (req, res) => {
   }
 });
 
+// Sales routes
+router.get('/api/sales', async (req, res) => {
+  try {
+    console.log('💰 Fetching sales...');
+    const result = await storage.getSales();
+    console.log(`✅ Found ${result.length} sales`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching sales:', error);
+    res.json([]);
+  }
+});
+
+router.post('/api/sales', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating sale with customer transaction:', req.body);
+    const result = await storage.createSaleWithTransaction(req.body);
+
+    // Log the sale creation to audit logs
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        req.session.user.email,
+        `${req.session.user.firstName} ${req.session.user.lastName}`,
+        'CREATE',
+        'sales',
+        result.id?.toString(),
+        { 
+          customerName: req.body.customerName, 
+          totalAmount: req.body.totalAmount,
+          items: req.body.items?.length || 0,
+          paymentMethod: req.body.paymentMethod
+        },
+        undefined,
+        req.body,
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add sale creation notification
+    addNotification({
+      type: "order",
+      title: "Sale Recorded",
+      description: `Sale to ${req.body.customerName} - Total: ₹${req.body.totalAmount}`,
+      priority: "high",
+      actionUrl: "/sales",
+      data: {
+        customerName: req.body.customerName,
+        totalAmount: req.body.totalAmount,
+        saleNumber: result.id || 'N/A'
+      }
+    });
+
+    console.log('✅ Sale created successfully with customer transaction');
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error creating sale:', error);
+    res.status(500).json({ error: 'Failed to create sale' });
+  }
+});
+
 // Order routes
 router.get('/api/orders', async (req, res) => {
   try {

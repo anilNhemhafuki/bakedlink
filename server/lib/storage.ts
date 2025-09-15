@@ -94,7 +94,9 @@ import {
   type InsertProductionScheduleLabel,
   productionScheduleHistory,
   type ProductionScheduleHistory,
-  type InsertProductionScheduleHistory
+  type InsertProductionScheduleHistory,
+  sales,
+  saleItems
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
 import fs from "fs";
@@ -386,7 +388,6 @@ export interface IStorage {
   closeDayProductionSchedule(date: string, closedBy: string): Promise<any>;
   getProductionScheduleHistory(date?: string): Promise<any[]>;
 
-
   // Media operations
   getMediaItems(): Promise<any[]>;
   uploadMedia(userId: string, file: any): Promise<any>;
@@ -424,6 +425,10 @@ export interface IStorage {
   getSupplierLedger(supplierId: number): Promise<any>;
   updateSupplierLedger(supplierId: number, purchaseData: any): Promise<void>;
   calculateSupplierBalance(supplierId: number): Promise<number>;
+
+  // Sales operations
+  getSales(): Promise<any[]>;
+  createSaleWithTransaction(saleData: any): Promise<any>;
 }
 
 export class Storage implements IStorage {
@@ -2622,19 +2627,16 @@ export class Storage implements IStorage {
   }
 
   async getProductionSchedule(): Promise<any[]> {
-    return await this.db
-      .select({
-        id: productionSchedule.id,
-        productId: productionSchedule.productId,
-        quantity: productionSchedule.quantity,
-        scheduledDate: productionSchedule.scheduledDate,
-        status: productionSchedule.status,
-        notes: productionSchedule.notes,
-        productName: products.name,
-      })
-      .from(productionSchedule)
-      .leftJoin(products, eq(productionSchedule.productId, products.id))
-      .orderBy(desc(productionSchedule.scheduledDate));
+    try {
+      const result = await this.db
+        .select()
+        .from(productionSchedule)
+        .orderBy(desc(productionSchedule.createdAt));
+      return result;
+    } catch (error) {
+      console.error('❌ Error getting production schedule:', error);
+      return [];
+    }
   }
 
   async createProductionScheduleItem(
@@ -3908,6 +3910,212 @@ export class Storage implements IStorage {
     } catch (error) {
       console.error("❌ Error calculating supplier balance:", error);
       return 0;
+    }
+  }
+
+  // Sales methods
+  async getSales(): Promise<any[]> {
+    try {
+      const result = await this.db.query.sales.findMany({
+        with: {
+          items: {
+            with: {
+              product: true
+            }
+          },
+          customer: true
+        },
+        orderBy: desc(sales.createdAt)
+      });
+
+      return result.map(sale => ({
+        ...sale,
+        items: sale.items?.map(item => ({
+          ...item,
+          productName: item.product?.name || 'Unknown Product'
+        })) || []
+      }));
+    } catch (error) {
+      console.error('❌ Error getting sales:', error);
+
+      // Fallback query without relations
+      try {
+        const salesData = await this.db
+          .select()
+          .from(sales)
+          .orderBy(desc(sales.createdAt));
+
+        // Get items for each sale
+        const salesWithItems = await Promise.all(salesData.map(async (sale) => {
+          try {
+            const items = await this.db
+              .select()
+              .from(saleItems)
+              .where(eq(saleItems.saleId, sale.id));
+
+            // Get product names for items
+            const itemsWithProducts = await Promise.all(items.map(async (item) => {
+              try {
+                const product = await this.db
+                  .select()
+                  .from(products)
+                  .where(eq(products.id, item.productId))
+                  .limit(1);
+
+                return {
+                  ...item,
+                  productName: product[0]?.name || 'Unknown Product'
+                };
+              } catch (err) {
+                return {
+                  ...item,
+                  productName: 'Unknown Product'
+                };
+              }
+            }));
+
+            return {
+              ...sale,
+              items: itemsWithProducts
+            };
+          } catch (err) {
+            return {
+              ...sale,
+              items: []
+            };
+          }
+        }));
+
+        return salesWithItems;
+      } catch (fallbackError) {
+        console.error('❌ Fallback sales query failed:', fallbackError);
+        return [];
+      }
+    }
+  }
+
+  async createSaleWithTransaction(saleData: any): Promise<any> {
+    try {
+      // Start a transaction
+      return await this.db.transaction(async (tx) => {
+        // 1. Create or find customer
+        let customerId = saleData.customerId;
+        if (!customerId && saleData.customerName) {
+          // Try to find existing customer
+          const existingCustomer = await tx
+            .select()
+            .from(customers)
+            .where(eq(customers.name, saleData.customerName))
+            .limit(1);
+
+          if (existingCustomer.length > 0) {
+            customerId = existingCustomer[0].id;
+          } else {
+            // Create new customer
+            const newCustomer = await tx
+              .insert(customers)
+              .values({
+                name: saleData.customerName,
+                email: saleData.customerEmail || null,
+                phone: saleData.customerPhone || null,
+                currentBalance: '0',
+                totalOrders: 0,
+                totalSpent: '0'
+              })
+              .returning();
+            customerId = newCustomer[0].id;
+          }
+        }
+
+        // 2. Create the sale
+        const newSale = await tx
+          .insert(sales)
+          .values({
+            customerName: saleData.customerName,
+            customerId: customerId,
+            customerEmail: saleData.customerEmail,
+            customerPhone: saleData.customerPhone,
+            totalAmount: saleData.totalAmount,
+            paymentMethod: saleData.paymentMethod,
+            status: saleData.status || 'completed',
+            saleDate: new Date(),
+            notes: saleData.notes
+          })
+          .returning();
+
+        const sale = newSale[0];
+
+        // 3. Create sale items
+        if (saleData.items && saleData.items.length > 0) {
+          await tx.insert(saleItems).values(
+            saleData.items.map((item: any) => ({
+              saleId: sale.id,
+              productId: item.productId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: item.totalPrice,
+            }))
+          );
+        }
+
+        // 4. Record customer ledger transaction (Debit - Customer owes money or paid)
+        if (customerId) {
+          // Get current balance
+          const customer = await tx
+            .select()
+            .from(customers)
+            .where(eq(customers.id, customerId))
+            .limit(1);
+
+          const currentBalance = parseFloat(customer[0]?.currentBalance || '0');
+          const saleAmount = parseFloat(saleData.totalAmount);
+
+          // For completed sales, customer has paid (Credit to clear any previous debt)
+          // For pending sales, customer owes money (Debit)
+          const isCompleted = saleData.status === 'completed';
+          const debitAmount = isCompleted ? '0' : saleData.totalAmount;
+          const creditAmount = isCompleted ? saleData.totalAmount : '0';
+
+          // Calculate running balance
+          const balanceChange = isCompleted ? -saleAmount : saleAmount;
+          const runningBalance = currentBalance + balanceChange;
+
+          // Create ledger transaction
+          await tx.insert(ledgerTransactions).values({
+            customerOrPartyId: customerId,
+            entityType: 'customer',
+            transactionDate: new Date(),
+            description: `Sale - INV-${sale.id}`,
+            referenceNumber: `INV-${sale.id}`,
+            debitAmount: debitAmount,
+            creditAmount: creditAmount,
+            runningBalance: runningBalance.toString(),
+            transactionType: 'sale',
+            relatedOrderId: null,
+            relatedPurchaseId: null,
+            paymentMethod: saleData.paymentMethod,
+            notes: saleData.notes,
+            createdBy: saleData.createdBy || 'system'
+          });
+
+          // Update customer balance and totals
+          await tx
+            .update(customers)
+            .set({
+              currentBalance: runningBalance.toString(),
+              totalOrders: customer[0].totalOrders + 1,
+              totalSpent: (parseFloat(customer[0].totalSpent || '0') + saleAmount).toString(),
+              updatedAt: new Date()
+            })
+            .where(eq(customers.id, customerId));
+        }
+
+        console.log('✅ Sale created with customer transaction successfully');
+        return sale;
+      });
+    } catch (error) {
+      console.error('❌ Error creating sale with transaction:', error);
+      throw error;
     }
   }
 }
