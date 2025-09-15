@@ -595,6 +595,69 @@ router.get('/api/units', async (req, res) => {
   }
 });
 
+// Supplier Ledger API endpoints
+router.get('/api/supplier-ledgers', async (req, res) => {
+  try {
+    console.log('📊 Fetching supplier ledgers...');
+
+    const supplierLedgers = await storage.getSupplierLedgers();
+
+    // Check for overdue suppliers and create notifications
+    supplierLedgers.forEach(ledger => {
+      if (ledger.currentBalance > 0) {
+        const overdueAmount = ledger.currentBalance;
+        // Check if notification already exists for this supplier
+        const existingNotification = notifications.find(n => 
+          n.type === 'system' && 
+          n.data?.supplierId === ledger.supplierId &&
+          n.data?.type === 'overdue' &&
+          !n.read
+        );
+
+        if (!existingNotification && overdueAmount > 100) { // Only notify for amounts > 100
+          addNotification({
+            type: "system",
+            title: "Overdue Payment Alert",
+            description: `Payment of Rs. ${overdueAmount.toFixed(2)} is due to ${ledger.supplierName}`,
+            priority: "high",
+            actionUrl: "/transactions",
+            data: {
+              supplierId: ledger.supplierId,
+              supplierName: ledger.supplierName,
+              overdueAmount,
+              type: 'overdue'
+            }
+          });
+        }
+      }
+    });
+
+    console.log(`✅ Found ${supplierLedgers.length} supplier ledgers`);
+    res.json(supplierLedgers);
+  } catch (error) {
+    console.error('❌ Error fetching supplier ledgers:', error);
+    res.json([]);
+  }
+});
+
+router.get('/api/supplier-ledgers/:supplierId', async (req, res) => {
+  try {
+    const supplierId = parseInt(req.params.supplierId);
+    console.log(`📊 Fetching ledger for supplier ${supplierId}...`);
+
+    const ledger = await storage.getSupplierLedger(supplierId);
+    if (ledger) {
+      console.log(`✅ Found ledger for supplier ${supplierId}`);
+      res.json(ledger);
+    } else {
+      res.status(404).json({ error: 'Supplier ledger not found' });
+    }
+  } catch (error) {
+    console.error('❌ Error fetching supplier ledger:', error);
+    res.status(500).json({ error: 'Failed to fetch supplier ledger' });
+  }
+});
+
 // Error handling middleware
 router.use((error: any, req: any, res: any, next: any) => {
   console.error('🚨 API Error:', error);

@@ -418,6 +418,12 @@ export interface IStorage {
   createProductionScheduleLabel(data: InsertProductionScheduleLabel): Promise<ProductionScheduleLabel>;
   updateProductionScheduleLabel(id: number, data: Partial<InsertProductionScheduleLabel>): Promise<ProductionScheduleLabel>;
   closeDayForLabels(ids: number[], closedBy: string): Promise<any>;
+
+  // Supplier Ledger operations
+  getSupplierLedgers(): Promise<any[]>;
+  getSupplierLedger(supplierId: number): Promise<any>;
+  updateSupplierLedger(supplierId: number, purchaseData: any): Promise<void>;
+  calculateSupplierBalance(supplierId: number): Promise<number>;
 }
 
 export class Storage implements IStorage {
@@ -1998,8 +2004,8 @@ export class Storage implements IStorage {
         settingsObject[setting.key] = setting.value;
       });
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         settings: settingsObject,
         message: "Settings updated successfully"
       };
@@ -2024,7 +2030,7 @@ export class Storage implements IStorage {
         // Update existing setting
         const result = await db
           .update(settings)
-          .set({ 
+          .set({
             value: value,
             updatedAt: new Date()
           })
@@ -2050,7 +2056,7 @@ export class Storage implements IStorage {
 
   async getSetting(key: string): Promise<string | null> {
     try {
-      const result = await db
+      const result = await this.db
         .select()
         .from(settings)
         .where(eq(settings.key, key))
@@ -3576,20 +3582,23 @@ export class Storage implements IStorage {
     ipAddress: string,
   ): Promise<void> {
     try {
-      await this.createAuditLog({
-        userId,
-        userEmail,
-        userName,
+      const logData = {
+        userId: userId,
+        userEmail: userEmail,
+        userName: userName,
         action: "LOGOUT",
-        resource: "authentication",
-        details: {
-          timestamp: new Date().toISOString(),
-        },
-        ipAddress,
+        resource: "auth",
+        resourceId: userId,
+        details: { logoutTime: new Date().toISOString() },
+        ipAddress: ipAddress,
+        userAgent: "System",
+        timestamp: new Date(),
         status: "success",
-      });
+      };
+
+      await this.createAuditLog(logData);
     } catch (error) {
-      console.error("Failed to log logout event:", error);
+      console.error("Failed to log logout:", error);
     }
   }
 
@@ -3713,13 +3722,180 @@ export class Storage implements IStorage {
         .where(sql`${productionScheduleLabels.id} = ANY(${ids})`)
         .returning();
 
-      return { 
+      return {
         message: `${result.length} labels closed successfully`,
-        closedLabels: result 
+        closedLabels: result
       };
     } catch (error) {
       console.error("Error closing day for labels:", error);
       throw error;
+    }
+  }
+
+  // Supplier Ledger operations
+  async getSupplierLedgers(): Promise<any[]> {
+    try {
+      console.log("📊 Fetching supplier ledgers...");
+
+      // Get all suppliers with their purchase data
+      const suppliersWithPurchases = await this.db
+        .select({
+          supplierId: parties.id,
+          supplierName: parties.name,
+          currentBalance: parties.currentBalance,
+          purchaseId: purchases.id,
+          purchaseDate: purchases.purchaseDate,
+          invoiceNumber: purchases.invoiceNumber,
+          totalAmount: purchases.totalAmount,
+          paymentMethod: purchases.paymentMethod,
+          status: purchases.status,
+          createdAt: purchases.createdAt,
+        })
+        .from(parties)
+        .leftJoin(purchases, eq(parties.id, purchases.partyId))
+        .where(eq(parties.type, 'supplier'))
+        .orderBy(parties.name, desc(purchases.purchaseDate));
+
+      // Group by supplier and calculate balances
+      const ledgerMap = new Map();
+
+      for (const row of suppliersWithPurchases) {
+        if (!ledgerMap.has(row.supplierId)) {
+          ledgerMap.set(row.supplierId, {
+            supplierId: row.supplierId,
+            supplierName: row.supplierName,
+            currentBalance: parseFloat(row.currentBalance || "0"),
+            totalPurchases: 0,
+            totalPaid: 0,
+            totalOutstanding: 0,
+            transactions: [],
+          });
+        }
+
+        const ledger = ledgerMap.get(row.supplierId);
+
+        if (row.purchaseId) {
+          const totalAmount = parseFloat(row.totalAmount || "0");
+          const amountPaid = row.status === "completed" ? totalAmount : 0;
+          const outstanding = totalAmount - amountPaid;
+
+          // Get purchase items
+          const purchaseItems = await this.db
+            .select({
+              inventoryItemName: inventoryItems.name,
+              quantity: purchaseItems.quantity,
+            })
+            .from(purchaseItems)
+            .leftJoin(inventoryItems, eq(purchaseItems.inventoryItemId, inventoryItems.id))
+            .where(eq(purchaseItems.purchaseId, row.purchaseId));
+
+          const itemsDescription = purchaseItems.length > 0
+            ? purchaseItems.map(item => `${item.inventoryItemName} (${item.quantity})`).join(", ")
+            : "N/A";
+
+          ledger.transactions.push({
+            id: row.purchaseId,
+            date: row.purchaseDate || row.createdAt,
+            invoiceNumber: row.invoiceNumber,
+            items: itemsDescription,
+            totalAmount,
+            amountPaid,
+            outstanding,
+            paymentStatus: row.status === "completed" ? "Paid" : outstanding > 0 ? (amountPaid > 0 ? "Partial" : "Due") : "Paid",
+            paymentMethod: row.paymentMethod,
+            transactionType: "Purchase",
+          });
+
+          ledger.totalPurchases += totalAmount;
+          ledger.totalPaid += amountPaid;
+          ledger.totalOutstanding += outstanding;
+        }
+      }
+
+      // Calculate running balances for each supplier
+      const ledgers = Array.from(ledgerMap.values());
+      ledgers.forEach((ledger) => {
+        let runningBalance = 0;
+
+        // Sort transactions by date
+        ledger.transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        // Calculate running balance
+        ledger.transactions.forEach((transaction) => {
+          if (transaction.transactionType === "Purchase") {
+            runningBalance += transaction.outstanding; // Debit increases payable
+          }
+          transaction.runningBalance = runningBalance;
+        });
+
+        ledger.currentBalance = runningBalance;
+      });
+
+      return ledgers.filter(ledger => ledger.transactions.length > 0);
+    } catch (error) {
+      console.error("❌ Error fetching supplier ledgers:", error);
+      return [];
+    }
+  }
+
+  async getSupplierLedger(supplierId: number): Promise<any> {
+    try {
+      const allLedgers = await this.getSupplierLedgers();
+      return allLedgers.find(ledger => ledger.supplierId === supplierId) || null;
+    } catch (error) {
+      console.error("❌ Error fetching supplier ledger:", error);
+      return null;
+    }
+  }
+
+  async updateSupplierLedger(supplierId: number, purchaseData: any): Promise<void> {
+    try {
+      // This method is called when a purchase is made
+      // Update the supplier's current balance
+      const currentBalance = await this.calculateSupplierBalance(supplierId);
+
+      await this.db
+        .update(parties)
+        .set({
+          currentBalance: currentBalance.toString(),
+          updatedAt: new Date()
+        })
+        .where(eq(parties.id, supplierId));
+
+      console.log(`✅ Updated supplier ${supplierId} balance to ${currentBalance}`);
+    } catch (error) {
+      console.error("❌ Error updating supplier ledger:", error);
+      throw error;
+    }
+  }
+
+  async calculateSupplierBalance(supplierId: number): Promise<number> {
+    try {
+      // Calculate total purchases
+      const purchasesResult = await this.db
+        .select({
+          totalPurchases: sql<number>`COALESCE(SUM(${purchases.totalAmount}), 0)`,
+        })
+        .from(purchases)
+        .where(eq(purchases.partyId, supplierId));
+
+      const totalPurchases = purchasesResult[0]?.totalPurchases || 0;
+
+      // Calculate total payments (for now, we assume completed purchases are paid)
+      const paymentsResult = await this.db
+        .select({
+          totalPayments: sql<number>`COALESCE(SUM(${purchases.totalAmount}), 0)`,
+        })
+        .from(purchases)
+        .where(and(eq(purchases.partyId, supplierId), eq(purchases.status, 'completed')));
+
+      const totalPayments = paymentsResult[0]?.totalPayments || 0;
+
+      // Balance = Total Purchases - Total Payments (positive = amount owed, negative = advance paid)
+      return totalPurchases - totalPayments;
+    } catch (error) {
+      console.error("❌ Error calculating supplier balance:", error);
+      return 0;
     }
   }
 }

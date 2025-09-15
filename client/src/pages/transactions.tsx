@@ -20,7 +20,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Filter, Download, Eye, Calendar } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Search, Filter, Download, Eye, Calendar, FileText, Users, TrendingUp, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
 import { format } from "date-fns";
@@ -175,11 +189,44 @@ interface Transaction {
   category: string;
 }
 
+interface SupplierTransaction {
+  id: number;
+  supplierId: number;
+  supplierName: string;
+  purchaseId: number;
+  date: string;
+  invoiceNumber?: string;
+  items: string;
+  totalAmount: number;
+  amountPaid: number;
+  outstanding: number;
+  runningBalance: number;
+  paymentStatus: "Paid" | "Partial" | "Due";
+  paymentMethod: string;
+  transactionType: "Purchase" | "Payment";
+}
+
+interface SupplierLedger {
+  supplierId: number;
+  supplierName: string;
+  totalPurchases: number;
+  totalPaid: number;
+  totalOutstanding: number;
+  currentBalance: number;
+  transactions: SupplierTransaction[];
+}
+
 export default function Transactions() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState("30");
+  const [activeTab, setActiveTab] = useState("all");
+  const [supplierLedgerOpen, setSupplierLedgerOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<SupplierLedger | null>(null);
+  const [supplierFilter, setSupplierFilter] = useState("all");
+  const [supplierDateRange, setSupplierDateRange] = useState("all");
+  const [supplierPaymentStatus, setSupplierPaymentStatus] = useState("all");
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
@@ -198,6 +245,14 @@ export default function Transactions() {
 
   const { data: expenses = [] } = useQuery({
     queryKey: ["/api/expenses"],
+  });
+
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ["/api/parties"],
+  });
+
+  const { data: supplierLedgers = [] } = useQuery({
+    queryKey: ["/api/supplier-ledgers"],
   });
 
   // Combine all transactions
@@ -377,6 +432,155 @@ export default function Transactions() {
     return { sales, purchases, income, expenses, paymentIn, paymentOut };
   }, [filteredTransactions]);
 
+  // Process supplier ledger data
+  const processedSupplierLedgers = useMemo(() => {
+    const ledgerMap = new Map<number, SupplierLedger>();
+
+    // Initialize ledgers for all suppliers
+    suppliers.forEach((supplier: any) => {
+      ledgerMap.set(supplier.id, {
+        supplierId: supplier.id,
+        supplierName: supplier.name,
+        totalPurchases: 0,
+        totalPaid: 0,
+        totalOutstanding: 0,
+        currentBalance: 0,
+        transactions: [],
+      });
+    });
+
+    // Process purchases
+    purchases.forEach((purchase: any) => {
+      if (!purchase.partyId) return;
+      
+      const ledger = ledgerMap.get(purchase.partyId);
+      if (!ledger) return;
+
+      const totalAmount = parseFloat(purchase.totalAmount || "0");
+      const amountPaid = purchase.status === "completed" ? totalAmount : 0;
+      const outstanding = totalAmount - amountPaid;
+
+      const transaction: SupplierTransaction = {
+        id: purchase.id,
+        supplierId: purchase.partyId,
+        supplierName: purchase.supplierName,
+        purchaseId: purchase.id,
+        date: purchase.purchaseDate || purchase.createdAt,
+        invoiceNumber: purchase.invoiceNumber,
+        items: purchase.items?.map((item: any) => item.inventoryItemName).join(", ") || "N/A",
+        totalAmount,
+        amountPaid,
+        outstanding,
+        runningBalance: 0, // Will be calculated
+        paymentStatus: purchase.status === "completed" ? "Paid" : outstanding > 0 ? (amountPaid > 0 ? "Partial" : "Due") : "Paid",
+        paymentMethod: purchase.paymentMethod || "Cash",
+        transactionType: "Purchase",
+      };
+
+      ledger.transactions.push(transaction);
+      ledger.totalPurchases += totalAmount;
+      ledger.totalPaid += amountPaid;
+      ledger.totalOutstanding += outstanding;
+    });
+
+    // Calculate running balances and current balance for each supplier
+    ledgerMap.forEach((ledger) => {
+      let runningBalance = 0;
+      
+      // Sort transactions by date
+      ledger.transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      // Calculate running balance
+      ledger.transactions.forEach((transaction) => {
+        if (transaction.transactionType === "Purchase") {
+          runningBalance += transaction.outstanding; // Debit (increases payable)
+        }
+        transaction.runningBalance = runningBalance;
+      });
+      
+      ledger.currentBalance = runningBalance;
+    });
+
+    return Array.from(ledgerMap.values()).filter(ledger => ledger.transactions.length > 0);
+  }, [purchases, suppliers]);
+
+  // Filter supplier ledgers
+  const filteredSupplierLedgers = useMemo(() => {
+    let filtered = processedSupplierLedgers;
+
+    if (supplierFilter !== "all") {
+      filtered = filtered.filter(ledger => ledger.supplierId.toString() === supplierFilter);
+    }
+
+    if (supplierPaymentStatus !== "all") {
+      filtered = filtered.filter(ledger => {
+        return ledger.transactions.some(t => t.paymentStatus.toLowerCase() === supplierPaymentStatus.toLowerCase());
+      });
+    }
+
+    if (supplierDateRange !== "all") {
+      const days = parseInt(supplierDateRange);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      
+      filtered = filtered.map(ledger => ({
+        ...ledger,
+        transactions: ledger.transactions.filter(t => new Date(t.date) >= cutoffDate)
+      })).filter(ledger => ledger.transactions.length > 0);
+    }
+
+    return filtered;
+  }, [processedSupplierLedgers, supplierFilter, supplierPaymentStatus, supplierDateRange]);
+
+  const handleSupplierLedgerView = (ledger: SupplierLedger) => {
+    setSelectedSupplier(ledger);
+    setSupplierLedgerOpen(true);
+  };
+
+  const getPaymentStatusBadge = (status: string, balance: number) => {
+    if (balance > 0) {
+      return <Badge variant="destructive" className="bg-red-100 text-red-800">🔴 Due</Badge>;
+    } else if (balance < 0) {
+      return <Badge variant="secondary" className="bg-blue-100 text-blue-800">🔵 Advance</Badge>;
+    } else {
+      return <Badge variant="default" className="bg-green-100 text-green-800">🟢 Paid</Badge>;
+    }
+  };
+
+  const exportSupplierLedger = (ledger?: SupplierLedger) => {
+    const dataToExport = ledger ? [ledger] : filteredSupplierLedgers;
+    
+    const csvContent = [
+      ["Supplier", "Date", "Invoice", "Items", "Total Amount", "Amount Paid", "Outstanding", "Running Balance", "Payment Status"].join(","),
+      ...dataToExport.flatMap(ledger => 
+        ledger.transactions.map(txn => [
+          ledger.supplierName,
+          format(new Date(txn.date), "yyyy-MM-dd"),
+          txn.invoiceNumber || "N/A",
+          txn.items,
+          txn.totalAmount,
+          txn.amountPaid,
+          txn.outstanding,
+          txn.runningBalance,
+          txn.paymentStatus,
+        ].join(","))
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `supplier-ledger-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export Successful",
+      description: "Supplier ledger exported to CSV file",
+    });
+  };
+
   const exportTransactions = () => {
     const csvContent = [
       [
@@ -428,17 +632,33 @@ export default function Transactions() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
+          <h1 className="text-2xl font-bold">Transaction Management</h1>
           <p className="text-gray-600">
-            All financial transactions in one place
+            All financial transactions and supplier ledgers in one place
           </p>
         </div>
         <div className="flex gap-2">
+          {activeTab === "supplier" && (
+            <Button onClick={() => exportSupplierLedger()} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Export Ledger
+            </Button>
+          )}
           <Button onClick={exportTransactions} variant="outline">
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Export Transactions
           </Button>
         </div>
       </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="all">All Transactions</TabsTrigger>
+          <TabsTrigger value="supplier">Supplier Ledger</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all" className="space-y-6">
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
@@ -741,6 +961,314 @@ export default function Transactions() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="supplier" className="space-y-6">
+          {/* Supplier Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">
+                  Total Suppliers
+                </div>
+                <div className="text-lg font-bold">
+                  {filteredSupplierLedgers.length}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">
+                  Total Purchases
+                </div>
+                <div className="text-lg font-bold text-blue-600">
+                  {formatCurrency(filteredSupplierLedgers.reduce((sum, ledger) => sum + ledger.totalPurchases, 0))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">
+                  Total Outstanding
+                </div>
+                <div className="text-lg font-bold text-red-600">
+                  {formatCurrency(filteredSupplierLedgers.reduce((sum, ledger) => sum + Math.max(0, ledger.currentBalance), 0))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">
+                  Advance Paid
+                </div>
+                <div className="text-lg font-bold text-green-600">
+                  {formatCurrency(Math.abs(filteredSupplierLedgers.reduce((sum, ledger) => sum + Math.min(0, ledger.currentBalance), 0)))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Supplier Filters */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <SearchBar
+                    placeholder="Search supplier ledgers..."
+                    value={searchTerm}
+                    onChange={setSearchTerm}
+                    className="w-full"
+                  />
+                </div>
+                <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="All Suppliers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Suppliers</SelectItem>
+                    {suppliers.map((supplier: any) => (
+                      <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={supplierPaymentStatus} onValueChange={setSupplierPaymentStatus}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Payment Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="partial">Partial</SelectItem>
+                    <SelectItem value="due">Due</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={supplierDateRange} onValueChange={setSupplierDateRange}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Date Range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">Last 30 days</SelectItem>
+                    <SelectItem value="90">Last 90 days</SelectItem>
+                    <SelectItem value="365">Last year</SelectItem>
+                    <SelectItem value="all">All time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Supplier Ledger Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Supplier Ledgers</span>
+                <Badge variant="secondary">
+                  {filteredSupplierLedgers.length} suppliers
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Supplier Name</TableHead>
+                      <TableHead className="text-right">Total Purchases</TableHead>
+                      <TableHead className="text-right">Amount Paid</TableHead>
+                      <TableHead className="text-right">Outstanding</TableHead>
+                      <TableHead className="text-right">Current Balance</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSupplierLedgers.length > 0 ? (
+                      filteredSupplierLedgers.map((ledger) => (
+                        <TableRow key={ledger.supplierId}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-blue-500" />
+                              {ledger.supplierName}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(ledger.totalPurchases)}
+                          </TableCell>
+                          <TableCell className="text-right text-green-600">
+                            {formatCurrency(ledger.totalPaid)}
+                          </TableCell>
+                          <TableCell className="text-right text-red-600">
+                            {formatCurrency(ledger.totalOutstanding)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            <span className={ledger.currentBalance > 0 ? "text-red-600" : ledger.currentBalance < 0 ? "text-blue-600" : "text-green-600"}>
+                              {formatCurrency(Math.abs(ledger.currentBalance))}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {getPaymentStatusBadge("", ledger.currentBalance)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSupplierLedgerView(ledger)}
+                                title="View Ledger Details"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => exportSupplierLedger(ledger)}
+                                title="Export Ledger"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          <div className="flex flex-col items-center text-muted-foreground">
+                            <AlertCircle className="h-12 w-12 mb-4 opacity-50" />
+                            <p>No supplier ledgers found</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Supplier Ledger Detail Dialog */}
+      <Dialog open={supplierLedgerOpen} onOpenChange={setSupplierLedgerOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              {selectedSupplier?.supplierName} - Transaction Ledger
+            </DialogTitle>
+            <DialogDescription>
+              Complete transaction history and balance details
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedSupplier && (
+            <div className="space-y-6">
+              {/* Supplier Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-sm font-medium text-muted-foreground">Total Purchases</div>
+                    <div className="text-lg font-bold text-blue-600">
+                      {formatCurrency(selectedSupplier.totalPurchases)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-sm font-medium text-muted-foreground">Amount Paid</div>
+                    <div className="text-lg font-bold text-green-600">
+                      {formatCurrency(selectedSupplier.totalPaid)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-sm font-medium text-muted-foreground">Outstanding</div>
+                    <div className="text-lg font-bold text-red-600">
+                      {formatCurrency(selectedSupplier.totalOutstanding)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-sm font-medium text-muted-foreground">Current Balance</div>
+                    <div className={`text-lg font-bold ${selectedSupplier.currentBalance > 0 ? "text-red-600" : selectedSupplier.currentBalance < 0 ? "text-blue-600" : "text-green-600"}`}>
+                      {formatCurrency(Math.abs(selectedSupplier.currentBalance))}
+                      {selectedSupplier.currentBalance > 0 && " (Due)"}
+                      {selectedSupplier.currentBalance < 0 && " (Advance)"}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Transaction History */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Transaction History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Invoice #</TableHead>
+                          <TableHead>Items</TableHead>
+                          <TableHead className="text-right">Total Amount</TableHead>
+                          <TableHead className="text-right">Amount Paid</TableHead>
+                          <TableHead className="text-right">Outstanding</TableHead>
+                          <TableHead className="text-right">Running Balance</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Payment Method</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedSupplier.transactions.map((transaction) => (
+                          <TableRow key={transaction.id}>
+                            <TableCell>
+                              {format(new Date(transaction.date), "dd/MM/yyyy")}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="font-mono text-xs">
+                                {transaction.invoiceNumber || `PUR-${transaction.purchaseId}`}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate" title={transaction.items}>
+                              {transaction.items}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(transaction.totalAmount)}
+                            </TableCell>
+                            <TableCell className="text-right text-green-600">
+                              {formatCurrency(transaction.amountPaid)}
+                            </TableCell>
+                            <TableCell className="text-right text-red-600">
+                              {formatCurrency(transaction.outstanding)}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              <span className={transaction.runningBalance > 0 ? "text-red-600" : transaction.runningBalance < 0 ? "text-blue-600" : "text-green-600"}>
+                                {formatCurrency(Math.abs(transaction.runningBalance))}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {getPaymentStatusBadge(transaction.paymentStatus, transaction.runningBalance)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{transaction.paymentMethod}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
