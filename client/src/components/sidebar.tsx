@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronsLeft,
   ChevronsRight,
+  Building2,
 } from "lucide-react";
 import { Receipt } from "lucide-react";
 import {
@@ -48,7 +49,16 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { branding } = useCompanyBranding();
-  const { canAccessSidebarItem, isSuperAdmin } = useRoleAccess();
+  const {
+    canAccessSidebarItem,
+    isSuperAdmin,
+    isAdmin,
+    isManager,
+    canManageUsers,
+    canManageStaff,
+    canViewFinance,
+    canManageBranches,
+  } = useRoleAccess();
   const { toast } = useToast();
 
   // Sidebar collapse state
@@ -300,13 +310,33 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       },
     ];
 
-    // Filter sections based on user role
-    return allSections.map(section => ({
-      ...section,
-      items: section.items.filter(item =>
-        canAccessSidebarItem(item.resource, "read")
-      )
-    })).filter(section => section.items.length > 0); // Remove empty sections
+    // Filter sections based on user role and add branch management if permitted
+    return allSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          canAccessSidebarItem(item.resource, "read"),
+        ),
+      }))
+      .filter((section) => section.items.length > 0) // Remove empty sections
+      .concat(
+        canManageBranches()
+          ? [
+              {
+                id: "branches",
+                title: "Branch Management",
+                items: [
+                  {
+                    name: "Branches",
+                    href: "/branches",
+                    icon: "fas fa-building", // Assuming a relevant icon
+                    resource: "branches",
+                  },
+                ],
+              },
+            ]
+          : [],
+      );
   };
 
   const navigationSections = getNavigationSections();
@@ -325,9 +355,9 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       <Link
         key={item.name}
         href={item.href}
-        className={`sidebar-item flex items-center transition-all duration-300 text-sm font-medium relative overflow-hidden 
-                ${isCollapsed ? "justify-center px-2 py-3" : isSubItem ? "space-x-3 px-3 py-2 ml-4" : "space-x-3 px-3 py-3"} 
-                rounded-xl 
+        className={`sidebar-item flex items-center transition-all duration-300 text-sm font-medium relative overflow-hidden
+                ${isCollapsed ? "justify-center px-2 py-3" : isSubItem ? "space-x-3 px-3 py-2 ml-4" : "space-x-3 px-3 py-3"}
+                rounded-xl
                 ${
                   active
                     ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/25 scale-105"
@@ -381,14 +411,14 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
       <aside
         className={`h-screen flex flex-col
-          fixed inset-y-0 left-0 z-50 
+          fixed inset-y-0 left-0 z-50
           bg-white/95 backdrop-blur-md
           shadow-xl border-r border-gray-200/60
           flex-shrink-0
           transform transition-all duration-300 ease-in-out
           ${isOpen ? "translate-x-0 opacity-100" : "-translate-x-full lg:translate-x-0 opacity-95 lg:opacity-100"}
           ${isCollapsed ? "w-20" : "w-64"}
-          before:absolute before:inset-0 before:bg-gradient-to-r before:from-primary/0 before:to-transparent before:opacity-0 
+          before:absolute before:inset-0 before:bg-gradient-to-r before:from-primary/0 before:to-transparent before:opacity-0
           before:transition-opacity before:duration-300 hover:before:opacity-0
         `}
       >
@@ -399,8 +429,8 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-50"></div>
           <Link href="/" className="flex items-center group relative z-10">
             <div
-              className={`bg-white/15 backdrop-blur-md rounded-2xl flex items-center justify-center 
-                          shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 
+              className={`bg-white/15 backdrop-blur-md rounded-2xl flex items-center justify-center
+                          shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300
                           group-hover:shadow-xl group-hover:bg-white/20 relative overflow-hidden
                           before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/20 before:to-transparent
                           before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300
@@ -487,13 +517,13 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                           onOpenChange={() => toggleSection(section.id)}
                         >
                           <CollapsibleTrigger
-                            className="flex items-center w-full px-3 py-3 text-left text-sm font-semibold 
-                                                                 text-gray-800 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100/50 
-                                                                 hover:text-gray-900 rounded-xl transition-all duration-300 group 
+                            className="flex items-center w-full px-3 py-3 text-left text-sm font-semibold
+                                                                 text-gray-800 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100/50
+                                                                 hover:text-gray-900 rounded-xl transition-all duration-300 group
                                                                  hover:shadow-sm hover:scale-102 relative overflow-hidden"
                           >
                             <span
-                              className="text-xs uppercase tracking-wider font-bold text-gray-600 group-hover:text-gray-800 
+                              className="text-xs uppercase tracking-wider font-bold text-gray-600 group-hover:text-gray-800
                                            transition-all duration-300 group-hover:tracking-wide"
                             >
                               {section.title}
@@ -530,34 +560,34 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className={`flex items-center w-full bg-gradient-to-r from-gray-50/80 to-white/80 backdrop-blur-sm 
-                           rounded-2xl border border-gray-200/60 hover:shadow-2xl hover:shadow-primary/20 
-                           transition-all duration-500 hover:scale-[1.02] group text-left cursor-pointer 
-                           relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r 
-                           before:from-primary/5 before:to-transparent before:opacity-0 hover:before:opacity-100 
+                className={`flex items-center w-full bg-gradient-to-r from-gray-50/80 to-white/80 backdrop-blur-sm
+                           rounded-2xl border border-gray-200/60 hover:shadow-2xl hover:shadow-primary/20
+                           transition-all duration-500 hover:scale-[1.02] group text-left cursor-pointer
+                           relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r
+                           before:from-primary/5 before:to-transparent before:opacity-0 hover:before:opacity-100
                            before:transition-opacity before:duration-300 ${isCollapsed ? "p-2" : "p-3"}`}
                 aria-expanded="false"
                 aria-haspopup="true"
               >
                 <div
-                  className={`bg-gradient-to-br from-primary via-primary/90 to-primary/70 rounded-xl 
-                             flex items-center justify-center transition-all duration-300 
-                             group-hover:scale-110 group-hover:rotate-3 relative overflow-hidden 
-                             before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/30 
-                             before:to-transparent before:opacity-0 group-hover:before:opacity-100 
+                  className={`bg-gradient-to-br from-primary via-primary/90 to-primary/70 rounded-xl
+                             flex items-center justify-center transition-all duration-300
+                             group-hover:scale-110 group-hover:rotate-3 relative overflow-hidden
+                             before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/30
+                             before:to-transparent before:opacity-0 group-hover:before:opacity-100
                              before:transition-opacity before:duration-300 ${isCollapsed ? "w-10 h-10" : "w-12 h-12"}`}
                 >
                   {user?.profileImageUrl ? (
                     <img
                       src={user.profileImageUrl}
                       alt="Profile"
-                      className={`rounded-xl object-cover relative z-10 transition-transform duration-300 
+                      className={`rounded-xl object-cover relative z-10 transition-transform duration-300
                                  group-hover:scale-110 ${isCollapsed ? "w-8 h-8" : "w-10 h-10"}`}
                     />
                   ) : (
                     <i
-                      className={`fas fa-user text-primary-foreground relative z-10 
-                                 transition-transform duration-300 group-hover:scale-110 
+                      className={`fas fa-user text-primary-foreground relative z-10
+                                 transition-transform duration-300 group-hover:scale-110
                                  ${isCollapsed ? "text-sm" : "text-base"}`}
                     ></i>
                   )}

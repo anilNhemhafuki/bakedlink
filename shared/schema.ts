@@ -2,6 +2,22 @@ import { pgTable, serial, varchar, text, numeric, boolean, timestamp, integer, j
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Branches table
+export const branches = pgTable("branches", {
+  id: serial("id").primaryKey(),
+  branchCode: varchar("branch_code", { length: 20 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  address: text("address"),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 100 }),
+  managerName: varchar("manager_name", { length: 100 }),
+  isHeadOffice: boolean("is_head_office").default(false),
+  isActive: boolean("is_active").default(true),
+  settings: jsonb("settings"), // Branch-specific settings
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Users table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey(),
@@ -11,6 +27,8 @@ export const users = pgTable("users", {
   lastName: varchar("last_name", { length: 100 }),
   profileImageUrl: varchar("profile_image_url", { length: 500 }),
   role: varchar("role", { length: 20 }).notNull().default("staff"), // super_admin, admin, manager, supervisor, marketer, staff
+  branchId: integer("branch_id"), // Branch assignment
+  canAccessAllBranches: boolean("can_access_all_branches").default(false), // For super admins and some admins
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -35,6 +53,8 @@ export const products = pgTable("products", {
   sku: varchar("sku", { length: 50 }).unique(),
   unit: varchar("unit", { length: 50 }),
   unitId: integer("unit_id"),
+  branchId: integer("branch_id"), // Branch-specific products
+  isGlobal: boolean("is_global").default(false), // Available across all branches
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -68,6 +88,7 @@ export const inventoryItems = pgTable("inventory_items", {
   costPerUnit: numeric("cost_per_unit", { precision: 10, scale: 2 }).notNull(),
   supplier: varchar("supplier", { length: 200 }),
   categoryId: integer("category_id"),
+  branchId: integer("branch_id"), // Branch-specific inventory
   isIngredient: boolean("is_ingredient").default(false),
   notes: text("notes"),
   lastRestocked: timestamp("last_restocked"),
@@ -177,6 +198,7 @@ export const orders = pgTable("orders", {
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   paymentMethod: varchar("payment_method", { length: 50 }).notNull(),
   deliveryDate: timestamp("delivery_date"),
+  branchId: integer("branch_id"), // Branch where order was created
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -206,6 +228,7 @@ export const sales = pgTable("sales", {
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   paymentMethod: varchar("payment_method", { length: 50 }).notNull(),
   saleDate: timestamp("sale_date").defaultNow(),
+  branchId: integer("branch_id"), // Branch where sale occurred
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -235,6 +258,7 @@ export const purchases = pgTable("purchases", {
   status: varchar("status", { length: 50 }).notNull().default("pending"),
   purchaseDate: timestamp("purchase_date").defaultNow(),
   invoiceNumber: varchar("invoice_number", { length: 100 }),
+  branchId: integer("branch_id"), // Branch where purchase was made
   notes: text("notes"),
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -262,6 +286,7 @@ export const productionSchedule = pgTable("production_schedule", {
   plannedBy: varchar("planned_by", { length: 100 }),
   approvedBy: varchar("approved_by", { length: 100 }),
   status: varchar("status", { length: 50 }).default("draft").notNull(), // draft, scheduled, in_progress, completed, cancelled
+  branchId: integer("branch_id"), // Branch where production is scheduled
 
   // Product Details
   productId: integer("product_id").references(() => products.id).notNull(),
@@ -600,6 +625,8 @@ export const productionScheduleLabels = pgTable("production_schedule_labels", {
 });
 
 // Type definitions
+export type Branch = typeof branches.$inferSelect;
+export type InsertBranch = typeof branches.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
 export type Category = typeof categories.$inferSelect;
@@ -668,6 +695,12 @@ export type ProductionScheduleLabel = typeof productionScheduleLabels.$inferSele
 export type InsertProductionScheduleLabel = typeof productionScheduleLabels.$inferInsert;
 
 // Insert schemas for validation
+export const insertBranchSchema = createInsertSchema(branches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,

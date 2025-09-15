@@ -101,6 +101,31 @@ export function useRoleAccess() {
     }
   };
 
+  const canAccessAllBranches = () => {
+    return isSuperAdmin() || user?.canAccessAllBranches === true;
+  };
+
+  const canManageBranches = () => {
+    return isSuperAdmin() || isAdmin();
+  };
+
+  const getUserBranchId = () => {
+    return user?.branchId;
+  };
+
+  const canAccessBranchData = (branchId?: number) => {
+    if (canAccessAllBranches()) return true;
+    if (!branchId) return true; // Global data
+    return getUserBranchId() === branchId;
+  };
+
+  const getBranchDisplayName = () => {
+    if (canAccessAllBranches()) {
+      return 'All Branches';
+    }
+    return user?.branchName || 'Unknown Branch';
+  };
+
   return {
     isSuperAdmin,
     isAdmin,
@@ -115,6 +140,11 @@ export function useRoleAccess() {
     canManageStaff,
     canViewFinance,
     canManageSettings,
+    canAccessAllBranches,
+    canManageBranches,
+    getUserBranchId,
+    canAccessBranchData,
+    getBranchDisplayName,
     getRoleDisplayName,
     user,
   };

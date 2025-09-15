@@ -406,11 +406,133 @@ router.put('/api/settings', requireAuth, async (req, res) => {
   }
 });
 
-// Product routes
+// Branch Management Routes
+router.get('/api/branches', requireAuth, async (req, res) => {
+  try {
+    console.log('🏢 Fetching branches...');
+    const result = await storage.getBranches();
+    console.log(`✅ Found ${result.length} branches`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching branches:', error);
+    res.json([]);
+  }
+});
+
+router.post('/api/branches', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating branch:', req.body.name);
+    const result = await storage.createBranch(req.body);
+
+    // Add branch creation notification
+    addNotification({
+      type: "system",
+      title: "Branch Created",
+      description: `New branch "${req.body.name}" has been created`,
+      priority: "medium",
+      actionUrl: "/branches"
+    });
+
+    console.log('✅ Branch created successfully');
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error creating branch:', error);
+    res.status(500).json({ error: 'Failed to create branch' });
+  }
+});
+
+router.put('/api/branches/:id', requireAuth, async (req, res) => {
+  try {
+    const branchId = parseInt(req.params.id);
+    console.log('💾 Updating branch:', branchId);
+    const result = await storage.updateBranch(branchId, req.body);
+
+    // Add branch update notification
+    addNotification({
+      type: "system",
+      title: "Branch Updated",
+      description: `Branch "${result.name}" has been updated`,
+      priority: "medium",
+      actionUrl: "/branches"
+    });
+
+    console.log('✅ Branch updated successfully');
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error updating branch:', error);
+    res.status(500).json({ error: 'Failed to update branch' });
+  }
+});
+
+router.delete('/api/branches/:id', requireAuth, async (req, res) => {
+  try {
+    const branchId = parseInt(req.params.id);
+    console.log('🗑️ Deleting branch:', branchId);
+    await storage.deleteBranch(branchId);
+
+    // Add branch deletion notification
+    addNotification({
+      type: "system",
+      title: "Branch Deleted",
+      description: `Branch has been deactivated`,
+      priority: "medium",
+      actionUrl: "/branches"
+    });
+
+    console.log('✅ Branch deleted successfully');
+    res.json({ message: 'Branch deleted successfully' });
+  } catch (error) {
+    console.error('❌ Error deleting branch:', error);
+    res.status(500).json({ error: 'Failed to delete branch' });
+  }
+});
+
+router.post('/api/users/:userId/assign-branch', requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { branchId } = req.body;
+    
+    console.log('🔄 Assigning user to branch:', { userId, branchId });
+    await storage.assignUserToBranch(userId, branchId);
+
+    // Add user assignment notification
+    addNotification({
+      type: "system",
+      title: "User Branch Assignment",
+      description: `User has been assigned to a new branch`,
+      priority: "medium",
+      actionUrl: "/admin-users"
+    });
+
+    console.log('✅ User assigned to branch successfully');
+    res.json({ message: 'User assigned to branch successfully' });
+  } catch (error) {
+    console.error('❌ Error assigning user to branch:', error);
+    res.status(500).json({ error: 'Failed to assign user to branch' });
+  }
+});
+
+router.get('/api/users/with-branches', requireAuth, async (req, res) => {
+  try {
+    console.log('👥 Fetching users with branch info...');
+    const result = await storage.getUsersWithBranches();
+    console.log(`✅ Found ${result.length} users with branch info`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching users with branches:', error);
+    res.json([]);
+  }
+});
+
+// Product routes (updated to support branch filtering)
 router.get('/api/products', async (req, res) => {
   try {
     console.log('📦 Fetching products...');
-    const result = await storage.getProducts();
+    const user = req.session?.user;
+    const userBranchId = user?.branchId;
+    const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin';
+    
+    const result = await storage.getProducts(userBranchId, canAccessAllBranches);
     console.log(`✅ Found ${result.length} products`);
     res.json(result);
   } catch (error) {
@@ -600,11 +722,15 @@ router.post('/api/production-schedule', requireAuth, async (req, res) => {
   }
 });
 
-// Inventory routes
+// Inventory routes (updated to support branch filtering)
 router.get('/api/inventory-items', async (req, res) => {
   try {
     console.log('📦 Fetching inventory items...');
-    const result = await storage.getInventoryItems();
+    const user = req.session?.user;
+    const userBranchId = user?.branchId;
+    const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin';
+    
+    const result = await storage.getInventoryItems(userBranchId, canAccessAllBranches);
     console.log(`✅ Found ${result.length} inventory items`);
 
     // Check for low stock items and create notifications

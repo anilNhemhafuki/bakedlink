@@ -45,6 +45,7 @@ import Salary from "@/pages/salary";
 import LeaveRequests from "@/pages/leave-requests";
 import { ProtectedRoute } from "@/components/protected-route";
 import ProductionPage from "@/pages/production";
+import Branches from "./pages/branches";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -405,6 +406,7 @@ function AuthenticatedApp({
                 </ProtectedRoute>
               )}
             />
+            <Route path="/branches" element={<Branches />} />
             <Route component={NotFound} />
           </Switch>
         </div>

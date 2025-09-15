@@ -1,4 +1,4 @@
-import { eq, desc, count, sql, and, gte, lte, lt, or, ilike, isNull } from "drizzle-orm";
+import { eq, desc, count, sql, and, gte, lte, lt, or, ilike, isNull, asc } from "drizzle-orm";
 import { db } from "../db";
 import {
   users,
@@ -96,7 +96,10 @@ import {
   type ProductionScheduleHistory,
   type InsertProductionScheduleHistory,
   sales,
-  saleItems
+  saleItems,
+  branches,
+  type Branch,
+  type InsertBranch
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
 import fs from "fs";
@@ -124,7 +127,7 @@ export interface IStorage {
   deleteCategory(id: number): Promise<void>;
 
   // Product operations
-  getProducts(): Promise<Product[]>;
+  getProducts(userBranchId?: number, canAccessAllBranches?: boolean): Promise<Product[]>;
   getProductById(id: number): Promise<Product | undefined>;
   getProductsWithIngredients(): Promise<any[]>;
   createProduct(product: InsertProduct): Promise<Product>;
@@ -165,6 +168,7 @@ export interface IStorage {
     currentPage: number;
     itemsPerPage: number;
   }>;
+  getInventoryItems(userBranchId?: number, canAccessAllBranches?: boolean): Promise<InventoryItem[]>;
   getAllInventoryItems(): Promise<InventoryItem[]>;
   getInventoryItemById(id: number): Promise<InventoryItem | undefined>;
   createInventoryItem(data: any): Promise<InventoryItem>;
@@ -198,14 +202,10 @@ export interface IStorage {
     transaction: InsertInventoryTransaction,
   ): Promise<InventoryTransaction>;
   getInventoryTransactions(itemId?: number): Promise<any[]>;
-  getLowStockItems(): Promise<InventoryItem[]>;
+  getLowStockItems();
   getIngredients(): Promise<InventoryItem[]>;
   syncStockFromPurchases();
-  updateInventoryStockAndCost(
-    itemId: number,
-    addedQuantity: number,
-    newCostPerUnit: number,
-  );
+  updateInventoryStockAndCost(itemId: number, addedQuantity: number, newCostPerUnit: number);
   updateInventoryPurchaseStock(itemId: number, purchasedQuantity: number);
 
   // Permission operations
@@ -309,6 +309,7 @@ export interface IStorage {
   getLedgerTransactions(
     entityId: number,
     entityType: "customer" | "party",
+    limit?: number
   ): Promise<any[]>;
   updateLedgerTransaction(id: number, data: any): Promise<any>;
   deleteLedgerTransaction(id: number): Promise<void>;
@@ -429,6 +430,14 @@ export interface IStorage {
   // Sales operations
   getSales(): Promise<any[]>;
   createSaleWithTransaction(saleData: any): Promise<any>;
+
+  // Branch Management methods
+  getBranches(): Promise<Branch[]>;
+  createBranch(branchData: InsertBranch): Promise<Branch>;
+  updateBranch(id: number, branchData: Partial<InsertBranch>): Promise<Branch>;
+  deleteBranch(id: number): Promise<void>;
+  assignUserToBranch(userId: string, branchId: number): Promise<void>;
+  getUsersWithBranches(): Promise<any[]>;
 }
 
 export class Storage implements IStorage {
@@ -480,13 +489,13 @@ export class Storage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const { email, password, firstName, lastName, profileImageUrl, role } =
+    const { email, password, firstName, lastName, profileImageUrl, role, branchId, canAccessAllBranches } =
       userData;
 
     const existingUser = await this.getUserByEmail(email);
 
     if (existingUser) {
-      const updateData: any = { firstName, lastName, profileImageUrl, role };
+      const updateData: any = { firstName, lastName, profileImageUrl, role, branchId, canAccessAllBranches };
       if (password) {
         updateData.password = await bcrypt.hash(password, 10);
       }
@@ -512,6 +521,8 @@ export class Storage implements IStorage {
           lastName,
           profileImageUrl,
           role: role || "staff",
+          branchId: branchId || null,
+          canAccessAllBranches: canAccessAllBranches || false
         })
         .returning();
 
@@ -558,6 +569,7 @@ export class Storage implements IStorage {
         firstName: "Super",
         lastName: "Admin",
         role: "super_admin",
+        canAccessAllBranches: true // Super admin can access all branches
       });
       console.log("✅ Default superadmin user created");
     }
@@ -570,6 +582,7 @@ export class Storage implements IStorage {
         firstName: "Admin",
         lastName: "User",
         role: "admin",
+        canAccessAllBranches: true // Admins can access all branches by default
       });
       console.log("✅ Default admin user created");
     }
@@ -582,6 +595,7 @@ export class Storage implements IStorage {
         firstName: "Manager",
         lastName: "User",
         role: "manager",
+        // Branch assignment can be done later, or set a default if needed
       });
       console.log("✅ Default manager user created");
     }
@@ -594,6 +608,7 @@ export class Storage implements IStorage {
         firstName: "Staff",
         lastName: "User",
         role: "staff",
+        // Branch assignment can be done later
       });
       console.log("✅ Default staff user created");
     }
@@ -611,8 +626,39 @@ export class Storage implements IStorage {
   }
 
   // Category operations
-  async getCategories(): Promise<Category[]> {
-    return await this.db.select().from(categories).orderBy(categories.name);
+  async getCategories(): Promise<Category[]>;
+  async getCategories(userBranchId?: number, canAccessAllBranches?: boolean): Promise<Category[]> {
+    try {
+      let query = this.db
+        .select({
+          id: categories.id,
+          name: categories.name,
+          description: categories.description,
+          branchId: categories.branchId,
+          isGlobal: categories.isGlobal,
+          createdAt: categories.createdAt,
+          updatedAt: categories.updatedAt
+        })
+        .from(categories);
+
+      // Apply branch filtering if user doesn't have access to all branches
+      if (!canAccessAllBranches && userBranchId) {
+        query = query.where(
+          or(
+            eq(categories.branchId, userBranchId),
+            eq(categories.isGlobal, true),
+            isNull(categories.branchId)
+          )
+        );
+      }
+
+      const result = await query.orderBy(categories.name);
+      console.log(`✅ Found ${result.length} categories`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error fetching categories:', error);
+      return [];
+    }
   }
 
   async createCategory(category: InsertCategory): Promise<Category> {
@@ -640,8 +686,50 @@ export class Storage implements IStorage {
   }
 
   // Product operations
-  async getProducts(): Promise<Product[]> {
-    return await this.db.select().from(products).orderBy(products.name);
+  async getProducts(userBranchId?: number, canAccessAllBranches?: boolean): Promise<Product[]> {
+    try {
+      let query = this.db
+        .select({
+          id: products.id,
+          name: products.name,
+          description: products.description,
+          categoryId: products.categoryId,
+          price: products.price,
+          cost: products.cost,
+          margin: products.margin,
+          sku: products.sku,
+          unit: products.unit,
+          unitId: products.unitId,
+          branchId: products.branchId,
+          isGlobal: products.isGlobal,
+          isActive: products.isActive,
+          createdAt: products.createdAt,
+          updatedAt: products.updatedAt,
+          categoryName: categories.name,
+        })
+        .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .where(eq(products.isActive, true));
+
+      // Apply branch filtering if user doesn't have access to all branches
+      if (!canAccessAllBranches && userBranchId) {
+        query = query.where(
+          or(
+            eq(products.branchId, userBranchId),
+            eq(products.isGlobal, true),
+            isNull(products.branchId)
+          )
+        );
+      }
+
+      const result = await query.orderBy(products.name);
+
+      console.log(`✅ Found ${result.length} products for branch access`);
+      return result as Product[];
+    } catch (error) {
+      console.error('❌ Error fetching products:', error);
+      return [];
+    }
   }
 
   async getProductById(id: number): Promise<Product | undefined> {
@@ -1001,6 +1089,7 @@ export class Storage implements IStorage {
           costPerUnit: inventoryItems.costPerUnit,
           supplier: inventoryItems.supplier,
           categoryId: inventoryItems.categoryId,
+          branchId: inventoryItems.branchId,
           isIngredient: inventoryItems.isIngredient,
           lastRestocked: inventoryItems.lastRestocked,
           createdAt: inventoryItems.createdAt,
@@ -1126,6 +1215,57 @@ export class Storage implements IStorage {
     }
   }
 
+  async getInventoryItems(userBranchId?: number, canAccessAllBranches?: boolean): Promise<InventoryItem[]> {
+    try {
+      let query = this.db
+        .select({
+          id: inventoryItems.id,
+          invCode: inventoryItems.invCode,
+          name: inventoryItems.name,
+          currentStock: inventoryItems.currentStock,
+          openingStock: inventoryItems.openingStock,
+          purchasedQuantity: inventoryItems.purchasedQuantity,
+          consumedQuantity: inventoryItems.consumedQuantity,
+          closingStock: inventoryItems.closingStock,
+          minLevel: inventoryItems.minLevel,
+          unit: inventoryItems.unit,
+          unitId: inventoryItems.unitId,
+          secondaryUnitId: inventoryItems.secondaryUnitId,
+          conversionRate: inventoryItems.conversionRate,
+          costPerUnit: inventoryItems.costPerUnit,
+          supplier: inventoryItems.supplier,
+          categoryId: inventoryItems.categoryId,
+          branchId: inventoryItems.branchId,
+          isIngredient: inventoryItems.isIngredient,
+          notes: inventoryItems.notes,
+          lastRestocked: inventoryItems.lastRestocked,
+          createdAt: inventoryItems.createdAt,
+          updatedAt: inventoryItems.updatedAt,
+          categoryName: inventoryCategories.name,
+        })
+        .from(inventoryItems)
+        .leftJoin(inventoryCategories, eq(inventoryItems.categoryId, inventoryCategories.id));
+
+      // Apply branch filtering if user doesn't have access to all branches
+      if (!canAccessAllBranches && userBranchId) {
+        query = query.where(
+          or(
+            eq(inventoryItems.branchId, userBranchId),
+            isNull(inventoryItems.branchId)
+          )
+        );
+      }
+
+      const result = await query.orderBy(inventoryItems.name);
+
+      console.log(`✅ Found ${result.length} inventory items for branch access`);
+      return result as InventoryItem[];
+    } catch (error) {
+      console.error('❌ Error fetching inventory items:', error);
+      return [];
+    }
+  }
+
   async getAllInventoryItems(): Promise<InventoryItem[]> {
     try {
       return await this.db
@@ -1180,6 +1320,7 @@ export class Storage implements IStorage {
         costPerUnit: data.costPerUnit ? String(data.costPerUnit) : "0",
         supplier: data.supplier || null,
         categoryId: data.categoryId || null,
+        branchId: data.branchId || null, // Assign branchId
         isIngredient: data.isIngredient || false,
         lastRestocked: data.lastRestocked ? new Date(data.lastRestocked) : new Date(),
         notes: data.notes || null,
@@ -1769,9 +1910,9 @@ export class Storage implements IStorage {
           description: permissions.description,
           granted: userPermissions.granted,
         })
-        .from(permissions)
+        .from(userPermissions)
         .innerJoin(
-          userPermissions,
+          permissions,
           eq(permissions.id, userPermissions.permissionId),
         )
         .where(eq(userPermissions.userId, userId))
@@ -2719,8 +2860,8 @@ export class Storage implements IStorage {
         .leftJoin(products, eq(productionSchedule.productId, products.id))
         .where(
           and(
-            gte(productionSchedule.scheduleDate, targetDate.toISOString()),
-            lt(productionSchedule.scheduleDate, nextDay.toISOString())
+            gte(productionSchedule.scheduledDate, targetDate.toISOString()),
+            lt(productionSchedule.scheduledDate, nextDay.toISOString())
           )
         );
 
@@ -2784,8 +2925,8 @@ export class Storage implements IStorage {
 
         query = query.where(
           and(
-            gte(productionScheduleHistory.scheduleDate, targetDate.toISOString()),
-            lt(productionScheduleHistory.scheduleDate, nextDay.toISOString())
+            gte(productionScheduleHistory.scheduleDate, targetDate),
+            lte(productionScheduleHistory.scheduleDate, nextDay),
           )
         );
       }
@@ -2827,7 +2968,8 @@ export class Storage implements IStorage {
   }
 
   // Enhanced notification system
-  async getNotifications(userId?: string): Promise<any[]> {
+  async getNotifications(userId?: string): Promise<any[]>;
+  async getNotifications(userId?: string, userBranchId?: number, canAccessAllBranches?: boolean): Promise<any[]> {
     try {
       // Return sample notifications for now - in production this would fetch from database
       const sampleNotifications = [
@@ -4115,6 +4257,120 @@ export class Storage implements IStorage {
       });
     } catch (error) {
       console.error('❌ Error creating sale with transaction:', error);
+      throw error;
+    }
+  }
+
+  // Branch Management methods
+  async getBranches(): Promise<Branch[]> {
+    try {
+      const result = await this.db
+        .select()
+        .from(branches)
+        .where(eq(branches.isActive, true))
+        .orderBy(asc(branches.name));
+
+      console.log(`✅ Found ${result.length} active branches`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error fetching branches:', error);
+      throw error;
+    }
+  }
+
+  async createBranch(branchData: InsertBranch): Promise<Branch> {
+    try {
+      const [newBranch] = await this.db
+        .insert(branches)
+        .values({
+          ...branchData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      console.log(`✅ Created branch: ${newBranch.name}`);
+      return newBranch;
+    } catch (error) {
+      console.error('❌ Error creating branch:', error);
+      throw error;
+    }
+  }
+
+  async updateBranch(id: number, branchData: Partial<InsertBranch>): Promise<Branch> {
+    try {
+      const [updatedBranch] = await this.db
+        .update(branches)
+        .set({
+          ...branchData,
+          updatedAt: new Date(),
+        })
+        .where(eq(branches.id, id))
+        .returning();
+
+      if (!updatedBranch) {
+        throw new Error('Branch not found');
+      }
+
+      console.log(`✅ Updated branch: ${updatedBranch.name}`);
+      return updatedBranch;
+    } catch (error) {
+      console.error('❌ Error updating branch:', error);
+      throw error;
+    }
+  }
+
+  async deleteBranch(id: number): Promise<void> {
+    try {
+      // Soft delete: Deactivate the branch
+      await this.db
+        .update(branches)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(branches.id, id));
+
+      console.log(`✅ Deactivated branch ID: ${id}`);
+    } catch (error) {
+      console.error('❌ Error deleting branch:', error);
+      throw error;
+    }
+  }
+
+  async assignUserToBranch(userId: string, branchId: number): Promise<void> {
+    try {
+      await this.db
+        .update(users)
+        .set({ branchId, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+
+      console.log(`✅ Assigned user ${userId} to branch ${branchId}`);
+    } catch (error) {
+      console.error('❌ Error assigning user to branch:', error);
+      throw error;
+    }
+  }
+
+  async getUsersWithBranches(): Promise<any[]> {
+    try {
+      const result = await this.db
+        .select({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+          branchId: users.branchId,
+          canAccessAllBranches: users.canAccessAllBranches,
+          branchName: branches.name,
+          branchCode: branches.branchCode,
+        })
+        .from(users)
+        .leftJoin(branches, eq(users.branchId, branches.id))
+        .orderBy(users.firstName);
+
+      console.log(`✅ Found ${result.length} users with branch info`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error fetching users with branches:', error);
       throw error;
     }
   }
