@@ -245,7 +245,7 @@ export default function Products() {
   useEffect(() => {
     setLabelData((prev) => ({
       ...prev,
-      companyName: settings.companyName || "Baked Link",
+      companyName: settings.companyName || "Mero BakeSoft",
       companyLocation: settings.companyAddress || "",
       regNo: settings.companyRegNo || "",
       dtqocNo: settings.companyDtqocNo || "",

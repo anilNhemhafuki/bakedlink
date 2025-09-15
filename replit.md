@@ -1,4 +1,4 @@
-# Bake Sewa Management System
+# Mero BakeSoft - Bakery Management System
 
 ## Overview
 

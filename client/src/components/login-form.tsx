@@ -57,10 +57,14 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
             <div className="flex items-center justify-center w-30 h-30 rounded-xl mb-4 mx-auto">
               <img
                 src={Client_Logo}
-                alt="Logo"
+                alt="Mero BakeSoft Logo"
                 className="h-30 w-30 object-contain rounded"
                 loading="lazy"
               />
+            </div>
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-primary mb-2">Mero BakeSoft</h1>
+              <p className="text-sm text-gray-600">Professional Bakery Management System</p>
             </div>
           </CardHeader>
           <CardContent>

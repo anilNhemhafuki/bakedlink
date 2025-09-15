@@ -411,7 +411,7 @@ export default function Settings() {
       </head>
       <body>
         <div class="header">
-          ${settings.companyName || "Bake Sewa"}
+          ${settings.companyName || "Mero BakeSoft"}
         </div>
         
         <div class="content">

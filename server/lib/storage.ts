@@ -533,10 +533,10 @@ export class Storage implements IStorage {
   }
 
   async ensureDefaultAdmin(): Promise<void> {
-    const superAdminEmail = "superadmin@bakesewa.com";
-    const adminEmail = "admin@bakesewa.com";
-    const managerEmail = "manager@bakesewa.com";
-    const staffEmail = "staff@bakesewa.com";
+    const superAdminEmail = "superadmin@merobakesoft.com";
+    const adminEmail = "admin@merobakesoft.com";
+    const managerEmail = "manager@merobakesoft.com";
+    const staffEmail = "staff@merobakesoft.com";
 
     // Create superadmin user
     const existingSuperAdmin = await this.getUserByEmail(superAdminEmail);
@@ -1364,7 +1364,7 @@ export class Storage implements IStorage {
     }
   }
 
-  async getInventoryCategories(): Promise<InventoryCategory[]> {
+  async getInventoryCategories(): Promise<InventoryCategory[]>{
     return await this.db
       .select()
       .from(inventoryCategories)
@@ -1936,7 +1936,36 @@ export class Storage implements IStorage {
     try {
       const allSettings = await db.select().from(settings);
       console.log("📊 Retrieved settings from database:", allSettings.length, "settings");
-      return allSettings;
+      // Ensure default settings are present if none exist
+      if (allSettings.length === 0) {
+        console.log("No settings found, creating default settings...");
+        const defaultSettings = {
+          companyName: "Mero BakeSoft",
+          companyPhone: "+977-1-234567",
+          companyAddress: "Kathmandu, Nepal",
+          companyEmail: "info@merobakesoft.com",
+          currency: "NPR",
+          timezone: "Asia/Kathmandu",
+          themeColor: "#efa14b",
+          language: "en",
+          companyRegNo: "12345/067-68",
+          companyDtqocNo: "DTQOC-001",
+        };
+        const settingPromises = Object.entries(defaultSettings).map(([key, value]) =>
+          this.updateOrCreateSetting(key, String(value))
+        );
+        await Promise.all(settingPromises);
+        console.log("Default settings created.");
+        return defaultSettings; // Return the defaults
+      }
+
+      // Convert settings array to an object
+      const settingsObject: any = {};
+      allSettings.forEach((setting: any) => {
+        settingsObject[setting.key] = setting.value;
+      });
+      return settingsObject;
+
     } catch (error) {
       console.error("❌ Error fetching settings:", error);
       throw error;

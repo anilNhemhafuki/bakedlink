@@ -10,7 +10,7 @@ export default function Landing() {
             <i className="fas fa-bread-slice text-white text-2xl"></i>
           </div>
           <CardTitle className="text-3xl font-bold text-[#8B4513]">
-            Bake Sewa
+            Mero BakeSoft
           </CardTitle>
           <p className="text-[#8B4513]/80 mt-2">
             Professional Bakery Management System

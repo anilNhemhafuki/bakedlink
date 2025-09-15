@@ -24,7 +24,7 @@ export function useCompanyBranding() {
   const settings = settingsResponse?.settings || {};
 
   const branding: CompanyBranding = {
-    companyName: settings?.companyName || "Baked Link",
+    companyName: settings?.companyName || "Mero BakeSoft",
     companyLogo: settings?.companyLogo || "",
     themeColor: settings?.themeColor || "#efa14b",
     currency: settings?.currency || "NPR",
@@ -154,7 +154,9 @@ export function useCompanyBranding() {
   // Update document title
   useEffect(() => {
     if (branding.companyName) {
-      document.title = `${branding.companyName} - System`;
+      document.title = `${branding.companyName} - Bakery Management System`;
+    } else {
+      document.title = "Mero BakeSoft - Bakery Management System";
     }
   }, [branding.companyName]);
 

@@ -237,7 +237,7 @@ export default function EnhancedDashboard() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
             <Activity className="h-8 w-8 text-primary" />
-            Bakery Dashboard
+            Mero BakeSoft Dashboard
           </h1>
           <p className="text-gray-600 mt-1">
             Welcome back, {user?.firstName || user?.email}! You're logged in as {getRoleDisplayName()}.
