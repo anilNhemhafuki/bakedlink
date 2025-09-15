@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -22,9 +23,9 @@ import {
   CheckCheck,
   Clock,
   ArrowRight,
+  Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { activityTracker } from "@/lib/activityTracker";
 
 interface Notification {
   id: string;
@@ -77,7 +78,7 @@ const notificationConfig = {
     bgColor: "bg-red-50",
     borderColor: "border-red-200",
     label: "System",
-    emoji: "⚠️",
+    emoji: "⚙️",
   },
 };
 
@@ -109,11 +110,13 @@ export default function NotificationDropdown() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch notifications
-  const { data: notifications = [], isLoading } = useQuery({
+  // Fetch notifications with auto-refresh
+  const { data: notifications = [], isLoading, error } = useQuery({
     queryKey: ["/api/notifications"],
-    // refetchInterval: 30000, // Poll every 30 seconds
-    // refetchIntervalInBackground: true,
+    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchIntervalInBackground: true,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // Mark notification as read
@@ -132,6 +135,13 @@ export default function NotificationDropdown() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to mark notification as read",
+        variant: "destructive",
+      });
+    },
   });
 
   // Mark all as read
@@ -149,6 +159,39 @@ export default function NotificationDropdown() {
       toast({
         title: "Success",
         description: "All notifications marked as read",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to mark all notifications as read",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Send test notification
+  const sendTestNotificationMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/notifications/test", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to send test notification");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      toast({
+        title: "Test Notification Sent",
+        description: "Check your notifications to see the test message",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to send test notification",
+        variant: "destructive",
       });
     },
   });
@@ -209,12 +252,6 @@ export default function NotificationDropdown() {
       markAsReadMutation.mutate(notification.id);
     }
 
-    // Track activity
-    activityTracker.track("CLICK", "notification", notification.id, {
-      type: notification.type,
-      priority: notification.priority,
-    });
-
     // Navigate to action URL if provided
     if (notification.actionUrl) {
       window.location.href = notification.actionUrl;
@@ -225,6 +262,10 @@ export default function NotificationDropdown() {
 
   const handleMarkAllAsRead = () => {
     markAllAsReadMutation.mutate();
+  };
+
+  const handleSendTestNotification = () => {
+    sendTestNotificationMutation.mutate();
   };
 
   const getNotificationIcon = (type: string) => {
@@ -243,7 +284,7 @@ export default function NotificationDropdown() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="relative p-2">
           {criticalCount > 0 ? (
-            <BellRing className="h-6 w-6 " />
+            <BellRing className="h-6 w-6 text-red-600 animate-pulse" />
           ) : (
             <Bell className="h-6 w-6" />
           )}
@@ -251,7 +292,7 @@ export default function NotificationDropdown() {
             <Badge
               variant="destructive"
               className={`absolute -top-1 -right-1 h-5 w-5 text-xs flex items-center justify-center ${
-                criticalCount > 0 ? "bg-red-600" : ""
+                criticalCount > 0 ? "bg-red-600 animate-pulse" : ""
               }`}
             >
               {unreadCount > 99 ? "99+" : unreadCount}
@@ -276,146 +317,171 @@ export default function NotificationDropdown() {
               </Badge>
             )}
           </div>
-          {unreadCount > 0 && (
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleMarkAllAsRead}
-              disabled={markAllAsReadMutation.isPending}
+              onClick={handleSendTestNotification}
+              disabled={sendTestNotificationMutation.isPending}
               className="text-xs"
             >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              Mark all read
+              Test
             </Button>
-          )}
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleMarkAllAsRead}
+                disabled={markAllAsReadMutation.isPending}
+                className="text-xs"
+              >
+                <CheckCheck className="h-3 w-3 mr-1" />
+                Mark all read
+              </Button>
+            )}
+          </div>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="p-4 text-center text-muted-foreground">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
+            Loading notifications...
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="p-4 text-center text-red-600">
+            <AlertTriangle className="h-6 w-6 mx-auto mb-2" />
+            Failed to load notifications
+          </div>
+        )}
+
         {/* Notifications List */}
-        <ScrollArea className="max-h-96">
-          {isLoading ? (
-            <div className="p-4 text-center text-muted-foreground">
-              Loading notifications...
-            </div>
-          ) : sortedNotifications.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-sm">No notifications</p>
-              <p className="text-xs mt-1">You're all caught up!</p>
-            </div>
-          ) : (
-            <div className="p-2">
-              {Object.entries(groupedNotifications).map(
-                ([type, typeNotifications]: [string, any]) => {
-                  const config =
-                    notificationConfig[type as keyof typeof notificationConfig];
-                  const unreadInGroup = typeNotifications.filter(
-                    (n: Notification) => !n.read,
-                  ).length;
+        {!isLoading && !error && (
+          <ScrollArea className="max-h-96">
+            {sortedNotifications.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">No notifications</p>
+                <p className="text-xs mt-1">You're all caught up!</p>
+              </div>
+            ) : (
+              <div className="p-2">
+                {Object.entries(groupedNotifications).map(
+                  ([type, typeNotifications]: [string, any]) => {
+                    const config =
+                      notificationConfig[type as keyof typeof notificationConfig];
+                    const unreadInGroup = typeNotifications.filter(
+                      (n: Notification) => !n.read,
+                    ).length;
 
-                  return (
-                    <div key={type} className="mb-4">
-                      {/* Group Header */}
-                      <div className="flex items-center gap-2 px-2 py-1 mb-2">
-                        <span className="text-lg">{config?.emoji}</span>
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {config?.label}
-                        </span>
-                        {unreadInGroup > 0 && (
-                          <Badge variant="outline" className="text-xs h-5">
-                            {unreadInGroup}
-                          </Badge>
-                        )}
-                      </div>
+                    return (
+                      <div key={type} className="mb-4">
+                        {/* Group Header */}
+                        <div className="flex items-center gap-2 px-2 py-1 mb-2">
+                          <span className="text-lg">{config?.emoji}</span>
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {config?.label}
+                          </span>
+                          {unreadInGroup > 0 && (
+                            <Badge variant="outline" className="text-xs h-5">
+                              {unreadInGroup}
+                            </Badge>
+                          )}
+                        </div>
 
-                      {/* Notifications in Group */}
-                      {typeNotifications.map((notification: Notification) => {
-                        const priorityStyle =
-                          priorityConfig[notification.priority];
+                        {/* Notifications in Group */}
+                        {typeNotifications.map((notification: Notification) => {
+                          const priorityStyle =
+                            priorityConfig[notification.priority];
 
-                        return (
-                          <DropdownMenuItem
-                            key={notification.id}
-                            className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-muted/50 ${
-                              !notification.read
-                                ? `${config?.bgColor} ${config?.borderColor} border-l-4`
-                                : ""
-                            } ${notification.priority === "critical" ? "ring-1 ring-red-200" : ""}`}
-                            onClick={() =>
-                              handleNotificationClick(notification)
-                            }
-                          >
-                            <div className="flex-shrink-0 mt-1">
-                              <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center ${config?.bgColor}`}
-                              >
-                                {getNotificationIcon(type)}
+                          return (
+                            <DropdownMenuItem
+                              key={notification.id}
+                              className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-muted/50 ${
+                                !notification.read
+                                  ? `${config?.bgColor} ${config?.borderColor} border-l-4`
+                                  : ""
+                              } ${notification.priority === "critical" ? "ring-1 ring-red-200" : ""}`}
+                              onClick={() =>
+                                handleNotificationClick(notification)
+                              }
+                            >
+                              <div className="flex-shrink-0 mt-1">
+                                <div
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center ${config?.bgColor}`}
+                                >
+                                  {getNotificationIcon(type)}
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h4
-                                      className={`text-sm font-medium truncate ${
-                                        !notification.read
-                                          ? "font-semibold"
-                                          : ""
-                                      }`}
-                                    >
-                                      {notification.title}
-                                    </h4>
-                                    {!notification.read && (
-                                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                                    {notification.description}
-                                  </p>
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <div className="flex items-center gap-1">
-                                        <Clock className="h-3 w-3 text-muted-foreground" />
-                                        <span className="text-xs text-muted-foreground">
-                                          {formatTimeAgo(
-                                            notification.timestamp,
-                                          )}
-                                        </span>
-                                      </div>
-                                      {notification.priority !== "low" && (
-                                        <Badge
-                                          variant="outline"
-                                          className={`text-xs h-4 px-1 ${priorityStyle.textColor}`}
-                                        >
-                                          <div
-                                            className={`w-2 h-2 rounded-full mr-1 ${priorityStyle.color}`}
-                                          />
-                                          {priorityStyle.label}
-                                        </Badge>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h4
+                                        className={`text-sm font-medium truncate ${
+                                          !notification.read
+                                            ? "font-semibold"
+                                            : ""
+                                        }`}
+                                      >
+                                        {notification.title}
+                                      </h4>
+                                      {!notification.read && (
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                                       )}
                                     </div>
-                                    {notification.actionUrl && (
-                                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                    )}
+                                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                                      {notification.description}
+                                    </p>
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3 text-muted-foreground" />
+                                          <span className="text-xs text-muted-foreground">
+                                            {formatTimeAgo(
+                                              notification.timestamp,
+                                            )}
+                                          </span>
+                                        </div>
+                                        {notification.priority !== "low" && (
+                                          <Badge
+                                            variant="outline"
+                                            className={`text-xs h-4 px-1 ${priorityStyle.textColor}`}
+                                          >
+                                            <div
+                                              className={`w-2 h-2 rounded-full mr-1 ${priorityStyle.color}`}
+                                            />
+                                            {priorityStyle.label}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {notification.actionUrl && (
+                                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          </DropdownMenuItem>
-                        );
-                      })}
+                            </DropdownMenuItem>
+                          );
+                        })}
 
-                      {Object.keys(groupedNotifications).indexOf(type) <
-                        Object.keys(groupedNotifications).length - 1 && (
-                        <Separator className="my-2" />
-                      )}
-                    </div>
-                  );
-                },
-              )}
-            </div>
-          )}
-        </ScrollArea>
+                        {Object.keys(groupedNotifications).indexOf(type) <
+                          Object.keys(groupedNotifications).length - 1 && (
+                          <Separator className="my-2" />
+                        )}
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+            )}
+          </ScrollArea>
+        )}
 
         {/* Footer */}
         {sortedNotifications.length > 0 && (

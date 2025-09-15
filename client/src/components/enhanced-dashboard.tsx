@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Import useEffect
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,7 @@ import {
   Zap,
   CheckCircle,
   Target,
+  Settings, // Added Settings icon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,6 +64,10 @@ import AdminUserManagement from "@/components/admin-user-management";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useRoleAccess } from "@/hooks/useRoleAccess"; // Import useRoleAccess hook
+import Link from "next/link"; // Import Link from next/link
+import { format } from "date-fns"; // Import format from date-fns
+import { Separator } from "@/components/ui/separator"; // Import Separator
+import { ArrowUpRight, ArrowDownRight } from "lucide-react"; // Import trend icons
 
 interface ProductionItem {
   id: number;
@@ -183,6 +188,13 @@ export default function EnhancedDashboard() {
     queryKey: ["/api/products"],
     select: (data: any) => data.filter((p: any) => p.isActive),
     enabled: canAccessPage('products'), // Conditionally enable the query
+  });
+
+  // Fetch notifications, only if the user has access to view them
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["/api/notifications"],
+    refetchInterval: 60000, // Refetch every minute
+    enabled: canAccessPage('notifications'), // Conditionally enable the query
   });
 
   const { formatCurrencyWithCommas } = useCurrency();
@@ -634,6 +646,8 @@ export default function EnhancedDashboard() {
                 variant: "success",
               });
               setIsProductionDialogOpen(false);
+              // Trigger notification after scheduling
+              queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
             }}
           >
             <div className="grid gap-4 py-4">
@@ -739,6 +753,8 @@ export default function EnhancedDashboard() {
                 });
                 setIsProductionDialogOpen(false);
                 setEditingProduction(null);
+                // Trigger notification after updating
+                queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
               }
             }}
           >
