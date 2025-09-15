@@ -9,6 +9,16 @@ if (!process.env.DATABASE_URL) {
 
 console.log('🔌 Connecting to database...');
 
+// Log database target for debugging (mask credentials)
+if (process.env.DATABASE_URL) {
+  try {
+    const url = new URL(process.env.DATABASE_URL);
+    console.log(`📍 DB target: ${url.host}${url.pathname}`);
+  } catch (e) {
+    console.log('📍 DB target: [invalid URL format]');
+  }
+}
+
 const client = postgres(process.env.DATABASE_URL, {
   prepare: false,
   max: 10,
@@ -24,7 +34,7 @@ export async function testDatabaseConnection(): Promise<boolean> {
     await client`SELECT 1`;
     return true;
   } catch (error) {
-    console.warn("⚠️ Database connection failed:", error.message);
+    console.warn("⚠️ Database connection failed:", error instanceof Error ? error.message : String(error));
     return false;
   }
 }

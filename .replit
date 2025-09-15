@@ -91,3 +91,4 @@ args = "npm run dev"
 
 [agent]
 expertMode = true
+integrations = ["javascript_database:1.0.0"]
