@@ -3554,24 +3554,36 @@ export class Storage implements IStorage {
     errorMessage?: string,
   ): Promise<void> {
     try {
+      // Log to login_logs table
+      await this.db.insert(loginLogs).values({
+        userId,
+        email: userEmail,
+        ipAddress,
+        userAgent,
+        status: success ? 'success' : 'failed',
+        location: 'Unknown', // You can enhance this with IP geolocation
+        deviceType: userAgent?.includes('Mobile') ? 'mobile' : 'desktop',
+      });
+
+      // Also log to audit_logs for comprehensive tracking
       await this.createAuditLog({
         userId,
         userEmail,
         userName,
-        action: "LOGIN",
-        resource: "authentication",
+        action: 'LOGIN',
+        resource: 'authentication',
         details: {
           userAgent,
           success,
-          timestamp: new Date().toISOString(),
+          errorMessage
         },
         ipAddress,
         userAgent,
-        status: success ? "success" : "failed",
-        errorMessage,
+        status: success ? 'success' : 'failed',
+        errorMessage: success ? null : errorMessage,
       });
     } catch (error) {
-      console.error("Failed to log login event:", error);
+      console.error('Failed to log login event:', error);
     }
   }
 

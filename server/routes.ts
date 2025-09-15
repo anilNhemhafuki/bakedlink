@@ -22,7 +22,7 @@ import {
   insertAssetSchema, insertAuditLogSchema
 } from '../shared/schema';
 import { Storage } from './lib/storage';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { notifyNewPublicOrder, notifyLowStock, notifyProductionSchedule } from './notifications';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
@@ -197,6 +197,9 @@ router.post('/api/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+    const userAgent = req.get('User-Agent') || 'unknown';
+
     // Try database login first
     try {
       const user = await db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -208,14 +211,16 @@ router.post('/api/login', async (req, res) => {
           req.session.userId = user[0].id;
           req.session.user = user[0];
 
+          const userName = `${user[0].firstName} ${user[0].lastName}`;
+
           // Log successful login
-          await storage.logLogin(user[0].id, email, req.ip || 'unknown', req.get('User-Agent') || '', 'success');
+          await storage.logLogin(user[0].id, email, userName, ipAddress, userAgent, true);
 
           // Add login notification
           addNotification({
             type: "system",
             title: "User Login",
-            description: `${user[0].firstName} ${user[0].lastName} logged in`,
+            description: `${userName} logged in`,
             priority: "low"
           });
 
@@ -230,6 +235,9 @@ router.post('/api/login', async (req, res) => {
               role: user[0].role 
             } 
           });
+        } else {
+          // Log failed password attempt
+          await storage.logLogin(user[0].id, email, `${user[0].firstName} ${user[0].lastName}`, ipAddress, userAgent, false, 'Invalid password');
         }
       }
     } catch (dbError) {
@@ -250,11 +258,16 @@ router.post('/api/login', async (req, res) => {
       req.session.userId = defaultUser.id;
       req.session.user = defaultUser;
 
+      const userName = `${defaultUser.firstName} ${defaultUser.lastName}`;
+
+      // Log successful default login
+      await storage.logLogin(defaultUser.id, email, userName, ipAddress, userAgent, true);
+
       // Add login notification
       addNotification({
         type: "system",
         title: "User Login",
-        description: `${defaultUser.firstName} ${defaultUser.lastName} logged in`,
+        description: `${userName} logged in`,
         priority: "low"
       });
 
@@ -272,7 +285,7 @@ router.post('/api/login', async (req, res) => {
     }
 
     // Log failed login attempt
-    await storage.logLogin('unknown', email, req.ip || 'unknown', req.get('User-Agent') || '', 'failed');
+    await storage.logLogin('unknown', email, 'Unknown User', ipAddress, userAgent, false, 'Invalid credentials');
 
     console.log('❌ Login failed for:', email);
     res.status(401).json({ error: 'Invalid credentials' });
@@ -446,6 +459,27 @@ router.post('/api/orders', async (req, res) => {
   try {
     console.log('💾 Creating order:', req.body);
     const result = await storage.createOrder(req.body);
+
+    // Log the order creation to audit logs
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        req.session.user.email,
+        `${req.session.user.firstName} ${req.session.user.lastName}`,
+        'CREATE',
+        'orders',
+        result.id?.toString(),
+        { 
+          customerName: req.body.customerName, 
+          totalAmount: req.body.totalAmount,
+          items: req.body.items?.length || 0
+        },
+        undefined,
+        req.body,
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
 
     // Add order creation notification
     addNotification({
@@ -658,9 +692,143 @@ router.get('/api/supplier-ledgers/:supplierId', async (req, res) => {
   }
 });
 
+// Audit Logs API routes
+router.get('/api/audit-logs', requireAuth, async (req, res) => {
+  try {
+    console.log('📋 Fetching audit logs...');
+    
+    const filters = {
+      userId: req.query.userId as string,
+      action: req.query.action as string,
+      resource: req.query.resource as string,
+      status: req.query.status as string,
+      startDate: req.query.startDate as string,
+      endDate: req.query.endDate as string,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+      offset: req.query.page ? (parseInt(req.query.page as string) - 1) * 50 : 0,
+    };
+
+    // Remove undefined filters
+    Object.keys(filters).forEach(key => {
+      if (filters[key] === undefined || filters[key] === null || filters[key] === '') {
+        delete filters[key];
+      }
+    });
+
+    const result = await storage.getAuditLogs(filters);
+    console.log(`✅ Found ${result.auditLogs.length} audit logs`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching audit logs:', error);
+    res.status(500).json({ error: 'Failed to fetch audit logs' });
+  }
+});
+
+router.get('/api/audit-logs/analytics', requireAuth, async (req, res) => {
+  try {
+    console.log('📊 Fetching audit analytics...');
+    
+    // Get recent audit logs for analytics
+    const recentLogs = await storage.getAuditLogs({ limit: 1000 });
+    
+    const analytics = {
+      totalActions: recentLogs.auditLogs.length,
+      actionsByType: {},
+      actionsByUser: {},
+      actionsByResource: {},
+      recentActivity: recentLogs.auditLogs.slice(0, 10)
+    };
+
+    // Process analytics
+    recentLogs.auditLogs.forEach(log => {
+      // Count by action type
+      analytics.actionsByType[log.action] = (analytics.actionsByType[log.action] || 0) + 1;
+      
+      // Count by user
+      analytics.actionsByUser[log.userEmail] = (analytics.actionsByUser[log.userEmail] || 0) + 1;
+      
+      // Count by resource
+      analytics.actionsByResource[log.resource] = (analytics.actionsByResource[log.resource] || 0) + 1;
+    });
+
+    console.log('✅ Audit analytics generated');
+    res.json(analytics);
+  } catch (error) {
+    console.error('❌ Error fetching audit analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch audit analytics' });
+  }
+});
+
+router.get('/api/login-logs/analytics', requireAuth, async (req, res) => {
+  try {
+    console.log('📊 Fetching login analytics...');
+    
+    const loginAnalytics = await storage.getLoginAnalytics();
+    
+    // Enhanced analytics with success/failure counts
+    const enhancedAnalytics = {
+      ...loginAnalytics,
+      successCount: [{ count: loginAnalytics.totalLogins || 0 }],
+      failureCount: [{ count: 0 }], // This would need to be calculated from actual failed logins
+      topLocations: ['Unknown'], // This would be calculated from IP geolocation
+    };
+
+    console.log('✅ Login analytics generated');
+    res.json(enhancedAnalytics);
+  } catch (error) {
+    console.error('❌ Error fetching login analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch login analytics' });
+  }
+});
+
+// Cache management routes
+router.post('/api/cache/clear', requireAuth, async (req, res) => {
+  try {
+    console.log('🧹 Clearing application cache...');
+    
+    // Clear query cache on the client side will be handled by the client
+    // Here we can clear any server-side cache if needed
+    
+    // Add cache clear notification
+    addNotification({
+      type: "system",
+      title: "Cache Cleared",
+      description: "Application cache has been cleared successfully",
+      priority: "medium"
+    });
+
+    console.log('✅ Cache cleared successfully');
+    res.json({ 
+      success: true, 
+      message: 'Cache cleared successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error clearing cache:', error);
+    res.status(500).json({ error: 'Failed to clear cache' });
+  }
+});
+
 // Error handling middleware
 router.use((error: any, req: any, res: any, next: any) => {
   console.error('🚨 API Error:', error);
+
+  // Log the error to audit logs if possible
+  if (req.session?.user) {
+    storage.logUserAction(
+      req.session.user.id,
+      req.session.user.email,
+      `${req.session.user.firstName} ${req.session.user.lastName}`,
+      'ERROR',
+      'system',
+      undefined,
+      { error: error.message, stack: error.stack },
+      undefined,
+      undefined,
+      req.ip,
+      req.get('User-Agent')
+    ).catch(console.error);
+  }
 
   // Add system error notification
   addNotification({

@@ -16,7 +16,7 @@ localPort = 5000
 externalPort = 80
 
 [workflows]
-runButton = "Project"
+runButton = "Start Development Server"
 
 [[workflows.workflow]]
 name = "Project"
@@ -84,6 +84,19 @@ args = "sleep 2"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "echo \"🚀 Starting development server...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Start Development Server"
+author = 47262856
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

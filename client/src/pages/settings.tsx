@@ -28,9 +28,16 @@ import {
   Shield,
   Database,
   Check,
+  Printer,
+  Settings,
+  RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCompanyBranding } from "@/hooks/use-company-branding";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { Separator } from "@/components/ui/separator";
 
 // Function to convert hex to HSL
 function hexToHsl(hex: string) {
@@ -109,11 +116,11 @@ function ThemeColorSelector({
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
     applyThemeColor(color);
-    
+
     // Immediately save the theme color to ensure it persists
     console.log("🎨 Applying theme color:", color);
     onUpdate({ themeColor: color });
-    
+
     // Also store in localStorage as backup
     localStorage.setItem('themeColor', color);
   };
@@ -208,9 +215,9 @@ export default function Settings() {
     onSuccess: (response) => {
       console.log("✅ Settings update successful:", response);
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
-      toast({ 
-        title: "Success", 
-        description: response?.message || "Settings updated successfully" 
+      toast({
+        title: "Success",
+        description: response?.message || "Settings updated successfully"
       });
     },
     onError: (error: any) => {
@@ -295,7 +302,7 @@ export default function Settings() {
       toast({
         title: "Error",
         description: "Please allow pop-ups for test printing",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -303,7 +310,7 @@ export default function Settings() {
     // Get paper dimensions
     let paperWidth = "50mm";
     let paperHeight = "30mm";
-    
+
     switch (printSettings.labelSize) {
       case "A4":
         paperWidth = "210mm";
@@ -351,7 +358,7 @@ export default function Settings() {
             size: ${paperWidth} ${paperHeight};
             margin: ${printSettings.margins.top} ${printSettings.margins.right} ${printSettings.margins.bottom} ${printSettings.margins.left};
           }
-          
+
           body {
             font-family: Arial, sans-serif;
             font-size: 12px;
@@ -364,14 +371,14 @@ export default function Settings() {
             flex-direction: column;
             justify-content: space-between;
           }
-          
+
           .header {
             text-align: center;
             font-weight: bold;
             font-size: 14px;
             margin-bottom: 10px;
           }
-          
+
           .content {
             flex: 1;
             display: flex;
@@ -380,13 +387,13 @@ export default function Settings() {
             align-items: center;
             text-align: center;
           }
-          
+
           .product-name {
             font-size: 16px;
             font-weight: bold;
             margin: 10px 0;
           }
-          
+
           .qr-placeholder {
             width: 60px;
             height: 60px;
@@ -397,13 +404,13 @@ export default function Settings() {
             justify-content: center;
             font-size: 8px;
           }
-          
+
           .footer {
             text-align: center;
             font-size: 10px;
             margin-top: 10px;
           }
-          
+
           @media print {
             body { -webkit-print-color-adjust: exact; }
           }
@@ -413,14 +420,14 @@ export default function Settings() {
         <div class="header">
           ${settings.companyName || "Mero BakeSoft"}
         </div>
-        
+
         <div class="content">
           <div class="product-name">Sample Product</div>
           <div class="qr-placeholder">QR CODE</div>
           <div>Weight: 500g</div>
           <div>SKU: TEST001</div>
         </div>
-        
+
         <div class="footer">
           ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
         </div>
@@ -430,7 +437,7 @@ export default function Settings() {
 
     printWindow.document.write(testLabelHTML);
     printWindow.document.close();
-    
+
     // Auto-trigger print dialog after a short delay
     setTimeout(() => {
       printWindow.print();
@@ -452,24 +459,24 @@ export default function Settings() {
     // Handle custom size
     if (labelSize === "custom" && customWidth && customHeight) {
       customSizeName = `Custom (${customWidth}x${customHeight}mm)`;
-      
+
       // Add to custom sizes list if not already exists
       const newCustomSize = {
         name: customSizeName,
         width: customWidth,
         height: customHeight
       };
-      
+
       const existingIndex = customSizes.findIndex(
         size => size.width === customWidth && size.height === customHeight
       );
-      
+
       if (existingIndex === -1) {
         const updatedSizes = [...customSizes, newCustomSize];
         setCustomSizes(updatedSizes);
         localStorage.setItem('customLabelSizes', JSON.stringify(updatedSizes));
       }
-      
+
       labelSize = customSizeName;
     }
 
@@ -488,6 +495,46 @@ export default function Settings() {
     console.log("📝 Saving printing settings:", data);
     updateSettingsMutation.mutate(data);
   };
+
+  // Cache reset functionality
+  const clearCacheMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/cache/clear', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to clear cache');
+      return response.json();
+    },
+    onSuccess: () => {
+      // Clear React Query cache
+      queryClient.clear();
+
+      // Clear localStorage cache
+      localStorage.clear();
+
+      // Clear sessionStorage cache
+      sessionStorage.clear();
+
+      toast({
+        title: "Cache Cleared",
+        description: "Application cache has been cleared successfully. Please refresh the page.",
+        variant: "default",
+      });
+
+      // Optionally reload the page after a short delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to clear cache. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -961,15 +1008,90 @@ export default function Settings() {
                   >
                     Save Printing Settings
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleTestPrint}
-                  >
-                    Test Print
-                  </Button>
+                  {/* Test Print Button */}
+                    <div className="flex justify-end gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleTestPrint}
+                        disabled={!settings}
+                      >
+                        <Printer className="h-4 w-4 mr-2" />
+                        Test Print
+                      </Button>
+                    </div>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+
+          {/* System Maintenance Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                System Maintenance
+              </CardTitle>
+              <CardDescription>
+                System maintenance and troubleshooting tools
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-semibold">Cache Management</Label>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Clear application cache to resolve performance issues or display problems.
+                    This will clear all cached data and you may need to refresh the page.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => clearCacheMutation.mutate()}
+                    disabled={clearCacheMutation.isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    {clearCacheMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                        Clearing Cache...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Clear Application Cache
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <Label className="text-base font-semibold">System Information</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Application Version:</span>
+                        <span className="text-sm">1.0.0</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Last Cache Clear:</span>
+                        <span className="text-sm">{localStorage.getItem('lastCacheClear') || 'Never'}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Browser:</span>
+                        <span className="text-sm">{navigator.userAgent.split(' ')[0]}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Platform:</span>
+                        <span className="text-sm">{navigator.platform}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
