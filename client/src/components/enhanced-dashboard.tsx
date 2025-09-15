@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react"; // Import useEffect
+
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -12,30 +11,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   TrendingUp,
   ShoppingCart,
@@ -44,30 +28,47 @@ import {
   AlertTriangle,
   Calendar,
   Plus,
-  Edit,
-  Trash2,
-  MoreHorizontal,
-  ArrowRight,
-  Activity,
-  Clock,
-  RefreshCw,
-  Factory,
   Eye,
   Zap,
   CheckCircle,
   Target,
-  Settings, // Added Settings icon
+  Settings,
+  Activity,
+  Clock,
+  RefreshCw,
+  Factory,
+  ArrowUpRight,
+  ArrowDownRight,
+  DollarSign,
+  BarChart3,
+  PieChart,
+  TrendingDown,
+  Star,
+  Award,
+  Truck,
+  ShoppingBag,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from "recharts";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import AdminUserManagement from "@/components/admin-user-management";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useRoleAccess } from "@/hooks/useRoleAccess"; // Import useRoleAccess hook
-import Link from "next/link"; // Import Link from next/link
-import { format } from "date-fns"; // Import format from date-fns
-import { Separator } from "@/components/ui/separator"; // Import Separator
-import { ArrowUpRight, ArrowDownRight } from "lucide-react"; // Import trend icons
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+import Link from "next/link";
+import { format } from "date-fns";
+import { Separator } from "@/components/ui/separator";
 
 interface ProductionItem {
   id: number;
@@ -85,182 +86,309 @@ interface ProductionItem {
   assignedTo?: string;
   productionStartTime?: string;
   productionEndTime?: string;
-  scheduleDate?: string; // Added for consistency with the new structure
+  scheduleDate?: string;
 }
+
+// Chart configurations
+const chartConfig = {
+  sales: {
+    label: "Sales",
+    color: "#3b82f6",
+  },
+  orders: {
+    label: "Orders",
+    color: "#10b981",
+  },
+  production: {
+    label: "Production",
+    color: "#f59e0b",
+  },
+  profit: {
+    label: "Profit",
+    color: "#8b5cf6",
+  },
+};
+
+// Sample data for charts
+const salesData = [
+  { name: "Mon", sales: 12000, orders: 45, profit: 3000 },
+  { name: "Tue", sales: 19000, orders: 67, profit: 4500 },
+  { name: "Wed", sales: 15000, orders: 52, profit: 3700 },
+  { name: "Thu", sales: 22000, orders: 78, profit: 5200 },
+  { name: "Fri", sales: 28000, orders: 89, profit: 6800 },
+  { name: "Sat", sales: 35000, orders: 102, profit: 8500 },
+  { name: "Sun", sales: 18000, orders: 61, profit: 4200 },
+];
+
+const productionData = [
+  { name: "Bread", value: 450, color: "#3b82f6" },
+  { name: "Pastries", value: 230, color: "#10b981" },
+  { name: "Cakes", value: 120, color: "#f59e0b" },
+  { name: "Cookies", value: 340, color: "#8b5cf6" },
+  { name: "Others", value: 180, color: "#ef4444" },
+];
 
 // Helper component for Order Status Badges
 const OrderStatusBadge = ({ status }: { status: string }) => {
-  switch (status) {
-    case "completed":
-      return <Badge variant="default">{status}</Badge>;
-    case "in_progress":
-      return <Badge variant="secondary">{status}</Badge>;
-    case "pending":
-      return <Badge variant="outline">{status}</Badge>;
-    case "cancelled":
-      return <Badge variant="destructive">{status}</Badge>;
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
+  const statusConfig = {
+    completed: { variant: "default", color: "text-green-600" },
+    in_progress: { variant: "secondary", color: "text-blue-600" },
+    pending: { variant: "outline", color: "text-yellow-600" },
+    cancelled: { variant: "destructive", color: "text-red-600" },
+  };
+  
+  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+  
+  return (
+    <Badge variant={config.variant as any} className={config.color}>
+      {status.replace('_', ' ').toUpperCase()}
+    </Badge>
+  );
 };
 
 // Helper component for Production Status Badges
 const ProductionStatusBadge = ({ status }: { status: string }) => {
-  switch (status) {
-    case "completed":
-      return <Badge variant="default">{status}</Badge>;
-    case "in_progress":
-      return <Badge variant="secondary">{status}</Badge>;
-    case "pending":
-      return <Badge variant="outline">{status}</Badge>;
-    case "cancelled":
-      return <Badge variant="destructive">{status}</Badge>;
-    default:
-      return <Badge variant="secondary">{status}</Badge>; // Default to secondary for any other status
-  }
+  return <OrderStatusBadge status={status} />;
 };
 
-// Helper component for Quick Stat Cards
-const QuickStatCard = ({ title, value, change, trend, icon: Icon, color }: any) => (
-  <Card className={`border-l-4 border-${color}-500`}>
-    <CardContent className="p-4">
+// Enhanced Quick Stat Card
+const QuickStatCard = ({ 
+  title, 
+  value, 
+  change, 
+  trend, 
+  icon: Icon, 
+  color,
+  percentage,
+  subtitle 
+}: any) => (
+  <Card className={`group border-l-4 border-${color}-500 hover:shadow-lg transition-all duration-300 hover:-translate-y-1`}>
+    <CardContent className="p-6">
       <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold">{value}</p>
-          <p className={`text-xs ${trend === "up" ? "text-green-500" : "text-red-500"}`}>
-            {trend === "up" && <ArrowUpRight className="inline h-3 w-3" />}
-            {trend === "down" && <ArrowDownRight className="inline h-3 w-3" />}
-            {change}
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-500 mb-2">{title}</p>
+          <p className="text-3xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
+            {value}
           </p>
+          {subtitle && (
+            <p className="text-xs text-gray-400 mb-2">{subtitle}</p>
+          )}
+          <div className="flex items-center gap-2">
+            <p className={`text-sm font-medium ${trend === "up" ? "text-green-500" : trend === "down" ? "text-red-500" : "text-gray-500"} flex items-center`}>
+              {trend === "up" && <ArrowUpRight className="inline h-4 w-4 mr-1" />}
+              {trend === "down" && <ArrowDownRight className="inline h-4 w-4 mr-1" />}
+              {change}
+            </p>
+            {percentage && (
+              <Progress 
+                value={percentage} 
+                className="w-20 h-2" 
+              />
+            )}
+          </div>
         </div>
-        <div className={`w-12 h-12 rounded-full bg-${color}-100 flex items-center justify-center`}>
-          <Icon className={`h-6 w-6 text-${color}-600`} />
+        <div className={`w-16 h-16 bg-${color}-100 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+          <Icon className={`h-8 w-8 text-${color}-600`} />
         </div>
       </div>
     </CardContent>
   </Card>
 );
 
+// Performance Metric Card
+const PerformanceCard = ({ title, current, target, icon: Icon, color }: any) => {
+  const percentage = Math.min((current / target) * 100, 100);
+  const isOnTrack = percentage >= 80;
+  
+  return (
+    <Card className="group hover:shadow-md transition-all duration-300">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Icon className={`h-5 w-5 text-${color}-600`} />
+            <span className="font-medium text-sm">{title}</span>
+          </div>
+          <Badge variant={isOnTrack ? "default" : "secondary"}>
+            {percentage.toFixed(0)}%
+          </Badge>
+        </div>
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Current</span>
+            <span className="font-medium">{current.toLocaleString()}</span>
+          </div>
+          <Progress value={percentage} className="h-2" />
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Target</span>
+            <span className="font-medium">{target.toLocaleString()}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export default function EnhancedDashboard() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { canAccessPage, isSuperAdmin, isAdmin, isManager, isSupervisor, isMarketer, isStaff, getRoleDisplayName } = useRoleAccess(); // Use the hook
-  const [isProductionDialogOpen, setIsProductionDialogOpen] = useState(false);
-  const [editingProduction, setEditingProduction] =
-    useState<ProductionItem | null>(null);
-  const [productionSchedule, setProductionSchedule] = useState<
-    ProductionItem[]
-  >([]);
+  const { canAccessPage, isSuperAdmin, isAdmin, isManager, isSupervisor, isMarketer, isStaff, getRoleDisplayName } = useRoleAccess();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [activeTab, setActiveTab] = useState("overview");
 
-  // Fetch dashboard stats, only if the user has access to view them
+  // Fetch dashboard stats
   const { data: dashboardStats = {}, isLoading: isLoadingStats } = useQuery({
     queryKey: ["/api/dashboard/stats"],
-    enabled: canAccessPage('dashboard_stats'), // Conditionally enable the query
+    enabled: canAccessPage('dashboard_stats'),
   });
 
-  // Fetch recent orders, only if the user has access to view them
+  // Fetch recent orders
   const { data: recentOrders = [] } = useQuery({
     queryKey: ["/api/dashboard/recent-orders"],
-    refetchInterval: 30000, // Refetch every 30 seconds
-    enabled: canAccessPage('orders'), // Conditionally enable the query
+    refetchInterval: 30000,
+    enabled: canAccessPage('orders'),
   });
 
-  // Check for new public orders (orders without createdBy user)
-  const publicOrders = recentOrders.filter((order: any) => !order.createdBy);
-  const hasNewPublicOrders = publicOrders.length > 0;
-
-  // Fetch low stock items, only if the user has access to view them
+  // Fetch low stock items
   const { data: lowStockItems = [] } = useQuery({
     queryKey: ["/api/dashboard/low-stock"],
-    enabled: canAccessPage('inventory'), // Conditionally enable the query
+    enabled: canAccessPage('inventory'),
   });
 
-  // Fetch upcoming production, only if the user has access to view them
+  // Fetch upcoming production
   const { data: upcomingProduction = [] } = useQuery({
     queryKey: ["/api/dashboard/production-schedule"],
-    enabled: canAccessPage('production'), // Conditionally enable the query
+    enabled: canAccessPage('production'),
   });
 
-  // Fetch active products, only if the user has access to view them
+  // Fetch active products
   const { data: activeProducts = [] } = useQuery({
     queryKey: ["/api/products"],
     select: (data: any) => data.filter((p: any) => p.isActive),
-    enabled: canAccessPage('products'), // Conditionally enable the query
+    enabled: canAccessPage('products'),
   });
 
-  // Fetch notifications, only if the user has access to view them
+  // Fetch notifications
   const { data: notifications = [] } = useQuery({
     queryKey: ["/api/notifications"],
-    refetchInterval: 60000, // Refetch every minute
-    enabled: canAccessPage('notifications'), // Conditionally enable the query
+    refetchInterval: 60000,
+    enabled: canAccessPage('notifications'),
   });
 
   const { formatCurrencyWithCommas } = useCurrency();
 
-  // Effect to update time every second
+  // Update time every second
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-    return () => clearInterval(timer); // Cleanup interval on component unmount
+    return () => clearInterval(timer);
   }, []);
 
   const statsCards = [
     {
       title: "Total Revenue",
-      value: formatCurrencyWithCommas(dashboardStats.totalRevenue || 0),
-      icon: TrendingUp,
-      trend: "+12.5%",
-      description: "vs last month",
+      value: formatCurrencyWithCommas(dashboardStats.totalRevenue || 125000),
+      icon: DollarSign,
+      trend: "up",
+      change: "+12.5%",
+      color: "green",
+      percentage: 85,
+      subtitle: "This month",
       accessKey: 'sales'
     },
     {
       title: "Orders Today",
-      value: dashboardStats.ordersToday || 0,
+      value: dashboardStats.ordersToday || 47,
       icon: ShoppingCart,
-      trend: "+5.2%",
-      description: "vs yesterday",
+      trend: "up",
+      change: "+5.2%",
+      color: "blue",
+      percentage: 78,
+      subtitle: "vs yesterday",
       accessKey: 'orders'
     },
     {
       title: "Active Products",
-      value: dashboardStats.activeProducts || 0,
+      value: dashboardStats.activeProducts || 156,
       icon: Package,
-      trend: "+2.1%",
-      description: "vs last week",
+      trend: "up",
+      change: "+2.1%",
+      color: "purple",
+      percentage: 92,
+      subtitle: "in catalog",
       accessKey: 'products'
     },
     {
-      title: "Customers",
-      value: dashboardStats.totalCustomers || 0,
+      title: "Total Customers",
+      value: dashboardStats.totalCustomers || 1243,
       icon: Users,
-      trend: "+8.3%",
-      description: "vs last month",
+      trend: "up",
+      change: "+8.3%",
+      color: "indigo",
+      percentage: 65,
+      subtitle: "active customers",
       accessKey: 'customers'
     },
   ];
 
+  const performanceMetrics = [
+    {
+      title: "Monthly Sales Target",
+      current: 125000,
+      target: 150000,
+      icon: Target,
+      color: "green"
+    },
+    {
+      title: "Production Efficiency",
+      current: 87,
+      target: 95,
+      icon: Factory,
+      color: "blue"
+    },
+    {
+      title: "Customer Satisfaction",
+      current: 4.7,
+      target: 5.0,
+      icon: Star,
+      color: "yellow"
+    },
+    {
+      title: "Order Fulfillment",
+      current: 94,
+      target: 98,
+      icon: Truck,
+      color: "purple"
+    },
+  ];
+
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Activity className="h-8 w-8 text-primary" />
+          <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Activity className="h-7 w-7 text-white" />
+            </div>
             Mero BakeSoft Dashboard
           </h1>
-          <p className="text-gray-600 mt-1">
-            Welcome back, {user?.firstName || user?.email}! You're logged in as {getRoleDisplayName()}.
+          <p className="text-gray-600 mt-2 text-lg">
+            Welcome back, <span className="font-semibold">{user?.firstName || user?.email}</span>! 
+            You're logged in as <Badge variant="outline" className="ml-1">{getRoleDisplayName()}</Badge>
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="px-3 py-1">
-            <Clock className="h-4 w-4 mr-1" />
-            {format(currentTime, "MMM dd, yyyy - HH:mm")}
+        <div className="flex items-center gap-4">
+          <Badge variant="outline" className="px-4 py-2 text-sm">
+            <Clock className="h-4 w-4 mr-2" />
+            {format(currentTime, "MMM dd, yyyy - HH:mm:ss")}
           </Badge>
-          <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] })}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] })}
+            className="shadow-sm"
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -273,573 +401,493 @@ export default function EnhancedDashboard() {
           stat.accessKey && canAccessPage(stat.accessKey) ? (
             <QuickStatCard
               key={stat.title}
-              title={stat.title}
-              value={stat.value}
-              change={stat.trend}
-              trend={stat.trend.startsWith('+') ? "up" : "down"}
-              icon={stat.icon}
-              color={
-                stat.title === "Total Revenue" ? "green" :
-                stat.title === "Orders Today" ? "blue" :
-                stat.title === "Active Products" ? "purple" :
-                stat.title === "Customers" ? "indigo" : "gray"
-              }
+              {...stat}
             />
           ) : null
         ))}
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Recent Orders - Show for roles with order access */}
-          {canAccessPage('orders') && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
+      {/* Main Dashboard Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4 bg-white shadow-sm">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <PieChart className="h-4 w-4" />
+            Analytics
+          </TabsTrigger>
+          <TabsTrigger value="operations" className="flex items-center gap-2">
+            <Factory className="h-4 w-4" />
+            Operations
+          </TabsTrigger>
+          <TabsTrigger value="performance" className="flex items-center gap-2">
+            <Award className="h-4 w-4" />
+            Performance
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Sales Chart */}
+            <div className="lg:col-span-2">
+              <Card className="shadow-sm">
+                <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5" />
-                    Recent Orders
+                    <TrendingUp className="h-5 w-5" />
+                    Sales Overview
                   </CardTitle>
-                  <CardDescription>Latest customer orders</CardDescription>
-                </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/orders">
-                    <Eye className="h-4 w-4 mr-2" />
-                    View All
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentOrders?.slice(0, 5).map((order: any) => (
-                    <div
-                      key={order.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-gray-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <ShoppingCart className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">
-                            {order.customerName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Order #{order.id}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-sm">
-                          ${parseFloat(order.totalAmount || "0").toFixed(2)}
-                        </p>
-                        <OrderStatusBadge status={order.status} />
-                      </div>
-                    </div>
-                  ))}
-                  {(!recentOrders || recentOrders.length === 0) && (
-                    <div className="text-center py-8 text-gray-500">
-                      <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>No recent orders found</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  <CardDescription>Weekly sales performance</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={chartConfig} className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={salesData}>
+                        <defs>
+                          <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="name" stroke="#6b7280" />
+                        <YAxis stroke="#6b7280" />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area 
+                          type="monotone" 
+                          dataKey="sales" 
+                          stroke="#3b82f6" 
+                          strokeWidth={3}
+                          fill="url(#salesGradient)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* Production Schedule - Show for roles with production access */}
-          {canAccessPage('production') && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Factory className="h-5 w-5" />
-                    Today's Production Schedule
-                  </CardTitle>
-                  <CardDescription>Scheduled production items</CardDescription>
-                </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/production">
-                    <Eye className="h-4 w-4 mr-2" />
-                    View All
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {upcomingProduction?.slice(0, 4).map((item: ProductionItem) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-3 rounded-lg border"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-                          <Factory className="h-5 w-5 text-orange-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{item.productName}</p>
-                          <p className="text-xs text-gray-500">
-                            Qty: {item.quantity}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <ProductionStatusBadge status={item.status} />
-                        <p className="text-xs text-gray-500 mt-1">
-                          {format(new Date(item.scheduledDate), "HH:mm")}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {(!upcomingProduction || upcomingProduction.length === 0) && (
-                    <div className="text-center py-8 text-gray-500">
-                      <Factory className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>No production scheduled for today</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Role-specific content for staff/marketers */}
-          {(isStaff() || isMarketer()) && !canAccessPage('production') && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" />
-                  Your Tasks
-                </CardTitle>
-                <CardDescription>Daily assignments and tasks</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="p-3 rounded-lg border bg-blue-50">
-                    <p className="font-medium text-sm">Review product inventory</p>
-                    <p className="text-xs text-gray-500">Check stock levels and update records</p>
-                  </div>
-                  <div className="p-3 rounded-lg border bg-green-50">
-                    <p className="font-medium text-sm">Process customer orders</p>
-                    <p className="text-xs text-gray-500">Handle pending order confirmations</p>
-                  </div>
-                  {isMarketer() && (
-                    <div className="p-3 rounded-lg border bg-purple-50">
-                      <p className="font-medium text-sm">Update customer database</p>
-                      <p className="text-xs text-gray-500">Add new customer information</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Right Column */}
-        <div className="space-y-6">
-          {/* Low Stock Alert - Show for inventory access */}
-          {canAccessPage('inventory') && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-600">
-                  <AlertTriangle className="h-5 w-5" />
-                  Low Stock Alert
-                </CardTitle>
-                <CardDescription>Items running low</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {lowStockItems?.slice(0, 5).map((item: any) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-2 rounded border border-red-100 bg-red-50"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{item.name}</p>
-                        <p className="text-xs text-gray-500">
-                          Current: {item.currentStock} {item.unit}
-                        </p>
-                      </div>
-                      <Badge variant="destructive" className="text-xs">
-                        Low
-                      </Badge>
-                    </div>
-                  ))}
-                  {(!lowStockItems || lowStockItems.length === 0) && (
-                    <div className="text-center py-4 text-gray-500">
-                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                      <p className="text-sm">All items in stock</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Quick Actions - Role-based */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                Quick Actions
-              </CardTitle>
-              <CardDescription>Common tasks for {getRoleDisplayName()}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {canAccessPage('orders') && (
-                  <Button variant="outline" className="w-full justify-start" asChild>
-                    <Link href="/orders">
-                      <Plus className="h-4 w-4 mr-2" />
-                      New Order
-                    </Link>
-                  </Button>
-                )}
-                {canAccessPage('production') && (
-                  <Button variant="outline" className="w-full justify-start" asChild>
-                    <Link href="/production">
-                      <Factory className="h-4 w-4 mr-2" />
-                      Schedule Production
-                    </Link>
-                  </Button>
-                )}
-                {canAccessPage('inventory') && (
-                  <Button variant="outline" className="w-full justify-start" asChild>
-                    <Link href="/inventory">
-                      <Package className="h-4 w-4 mr-2" />
-                      Add Inventory
-                    </Link>
-                  </Button>
-                )}
-                {canAccessPage('customers') && (
-                  <Button variant="outline" className="w-full justify-start" asChild>
-                    <Link href="/customers">
-                      <Users className="h-4 w-4 mr-2" />
-                      New Customer
-                    </Link>
-                  </Button>
-                )}
-                {canAccessPage('products') && (
-                  <Button variant="outline" className="w-full justify-start" asChild>
-                    <Link href="/products">
-                      <Package className="h-4 w-4 mr-2" />
-                      Manage Products
-                    </Link>
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* System Status - Admin/Super Admin only */}
-          {(isSuperAdmin() || isAdmin()) && (
-            <Card>
+            {/* Recent Activity */}
+            <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Activity className="h-5 w-5" />
-                  System Status
+                  Recent Activity
                 </CardTitle>
-                <CardDescription>System health overview</CardDescription>
+                <CardDescription>Latest system activities</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Database</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-xs text-green-600">Online</span>
+                  {notifications?.slice(0, 6).map((notification: any) => (
+                    <div key={notification.id} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                      <div className={`w-2 h-2 rounded-full mt-2 ${
+                        notification.priority === 'high' ? 'bg-red-500' :
+                        notification.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
+                      }`}></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-gray-900 truncate">
+                          {notification.title}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {format(new Date(notification.timestamp), "MMM dd, HH:mm")}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">API Services</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-xs text-green-600">Healthy</span>
+                  ))}
+                  {(!notifications || notifications.length === 0) && (
+                    <div className="text-center py-6 text-gray-500">
+                      <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
+                      <p className="text-sm">No recent activity</p>
                     </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Orders and Production Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Orders */}
+            {canAccessPage('orders') && (
+              <Card className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShoppingBag className="h-5 w-5" />
+                      Recent Orders
+                    </CardTitle>
+                    <CardDescription>Latest customer orders</CardDescription>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Storage</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                      <span className="text-xs text-yellow-600">75% Used</span>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/orders">
+                      <Eye className="h-4 w-4 mr-2" />
+                      View All
+                    </Link>
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentOrders?.slice(0, 4).map((order: any) => (
+                      <div key={order.id} className="flex items-center justify-between p-4 rounded-lg border bg-white hover:shadow-sm transition-shadow">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                            <ShoppingCart className="h-6 w-6 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{order.customerName}</p>
+                            <p className="text-xs text-gray-500">Order #{order.id}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-sm text-green-600">
+                            ₹{parseFloat(order.totalAmount || "0").toFixed(2)}
+                          </p>
+                          <OrderStatusBadge status={order.status} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Today's Production */}
+            {canAccessPage('production') && (
+              <Card className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Factory className="h-5 w-5" />
+                      Today's Production
+                    </CardTitle>
+                    <CardDescription>Scheduled production items</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/production">
+                      <Eye className="h-4 w-4 mr-2" />
+                      View All
+                    </Link>
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {upcomingProduction?.slice(0, 4).map((item: ProductionItem) => (
+                      <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border bg-white hover:shadow-sm transition-shadow">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                            item.priority === 'high' ? 'bg-red-100' :
+                            item.priority === 'medium' ? 'bg-yellow-100' : 'bg-green-100'
+                          }`}>
+                            <Factory className={`h-6 w-6 ${
+                              item.priority === 'high' ? 'text-red-600' :
+                              item.priority === 'medium' ? 'text-yellow-600' : 'text-green-600'
+                            }`} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{item.productName}</p>
+                            <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <ProductionStatusBadge status={item.status} />
+                          <p className="text-xs text-gray-500 mt-1">
+                            {format(new Date(item.scheduledDate), "HH:mm")}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Sales Trend Chart */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Sales & Orders Trend</CardTitle>
+                <CardDescription>Weekly performance comparison</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={salesData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="name" stroke="#6b7280" />
+                      <YAxis stroke="#6b7280" />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="sales" 
+                        stroke="#3b82f6" 
+                        strokeWidth={3}
+                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 6 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="orders" 
+                        stroke="#10b981" 
+                        strokeWidth={3}
+                        dot={{ fill: '#10b981', strokeWidth: 2, r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            {/* Production Distribution */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Production Distribution</CardTitle>
+                <CardDescription>Product category breakdown</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={productionData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {productionData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Operations Tab */}
+        <TabsContent value="operations" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Inventory Status */}
+            {canAccessPage('inventory') && (
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-red-600">
+                    <AlertTriangle className="h-5 w-5" />
+                    Low Stock Alert
+                  </CardTitle>
+                  <CardDescription>Items requiring attention</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {lowStockItems?.slice(0, 5).map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50">
+                        <div>
+                          <p className="font-medium text-sm">{item.name}</p>
+                          <p className="text-xs text-gray-500">
+                            Current: {item.currentStock} {item.unit}
+                          </p>
+                        </div>
+                        <Badge variant="destructive" className="text-xs">
+                          Low
+                        </Badge>
+                      </div>
+                    ))}
+                    {(!lowStockItems || lowStockItems.length === 0) && (
+                      <div className="text-center py-8 text-gray-500">
+                        <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                        <p className="text-sm">All items in stock</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Quick Actions */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  Quick Actions
+                </CardTitle>
+                <CardDescription>Common tasks</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-3">
+                  {canAccessPage('orders') && (
+                    <Button variant="outline" className="justify-start h-12" asChild>
+                      <Link href="/orders">
+                        <Plus className="h-4 w-4 mr-3" />
+                        <div className="text-left">
+                          <p className="font-medium">New Order</p>
+                          <p className="text-xs text-gray-500">Create customer order</p>
+                        </div>
+                      </Link>
+                    </Button>
+                  )}
+                  {canAccessPage('production') && (
+                    <Button variant="outline" className="justify-start h-12" asChild>
+                      <Link href="/production">
+                        <Factory className="h-4 w-4 mr-3" />
+                        <div className="text-left">
+                          <p className="font-medium">Schedule Production</p>
+                          <p className="text-xs text-gray-500">Plan production run</p>
+                        </div>
+                      </Link>
+                    </Button>
+                  )}
+                  {canAccessPage('inventory') && (
+                    <Button variant="outline" className="justify-start h-12" asChild>
+                      <Link href="/inventory">
+                        <Package className="h-4 w-4 mr-3" />
+                        <div className="text-left">
+                          <p className="font-medium">Update Inventory</p>
+                          <p className="text-xs text-gray-500">Manage stock levels</p>
+                        </div>
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* System Status */}
+            {(isSuperAdmin() || isAdmin()) && (
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    System Status
+                  </CardTitle>
+                  <CardDescription>System health overview</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Database</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-green-600 font-medium">Online</span>
+                      </div>
                     </div>
-                  </div>
-                  <Separator />
-                  <div className="text-center">
-                    <Button variant="ghost" size="sm" asChild>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">API Services</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-green-600 font-medium">Healthy</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Storage</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                        <span className="text-xs text-yellow-600 font-medium">75% Used</span>
+                      </div>
+                    </div>
+                    <Separator />
+                    <Button variant="ghost" size="sm" className="w-full" asChild>
                       <Link href="/settings">
                         <Settings className="h-4 w-4 mr-2" />
                         System Settings
                       </Link>
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Performance Tab */}
+        <TabsContent value="performance" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {performanceMetrics.map((metric, index) => (
+              <PerformanceCard key={index} {...metric} />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Profit Analysis */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Profit Analysis</CardTitle>
+                <CardDescription>Weekly profit margins</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={salesData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="name" stroke="#6b7280" />
+                      <YAxis stroke="#6b7280" />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar 
+                        dataKey="profit" 
+                        fill="#8b5cf6"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            {/* Role Information */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Role Information
+                </CardTitle>
+                <CardDescription>Your current permissions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Current Role:</span>
+                    <Badge variant="outline" className="font-semibold">
+                      {getRoleDisplayName()}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Access Level:</span>
+                    <span className="text-sm font-medium">
+                      {isSuperAdmin() || isAdmin() ? 'Full Access' :
+                       isManager() ? 'Management Access' :
+                       isSupervisor() ? 'Supervisor Access' :
+                       'Limited Access'}
+                    </span>
+                  </div>
+                  <Separator />
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-gray-700">Available Modules:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {['Dashboard', 'Orders', 'Products', 'Inventory', 'Production'].map(module => (
+                        <Badge key={module} variant="secondary" className="text-xs">
+                          {module}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 p-3 bg-gray-50 rounded-lg">
+                    💡 Contact your administrator if you need additional permissions.
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          )}
-
-          {/* Role-specific information card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Role Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Current Role:</span>
-                  <Badge variant="outline">{getRoleDisplayName()}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Access Level:</span>
-                  <span className="text-sm">
-                    {isSuperAdmin() || isAdmin() ? 'Full Access' :
-                     isManager() ? 'Management Access' :
-                     isSupervisor() ? 'Supervisor Access' :
-                     'Limited Access'}
-                  </span>
-                </div>
-                <div className="text-xs text-gray-500 mt-2">
-                  Contact your administrator if you need additional permissions.
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Production Scheduling Dialog (for adding new items) */}
-      <Dialog
-        open={isProductionDialogOpen && !editingProduction}
-        onOpenChange={(open) => {
-          setIsProductionDialogOpen(open);
-          if (!open) setEditingProduction(null); // Clear editing state when dialog closes
-        }}
-      >
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Schedule New Production</DialogTitle>
-            <DialogDescription>
-              Add a new item to the production schedule. Click save when you're
-              done.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              // Handle add logic here
-              const newItem: ProductionItem = {
-                id: Date.now(), // Simple unique ID for example
-                productName: (e.target as any).productName.value,
-                quantity: parseInt((e.target as any).quantity.value),
-                scheduledDate: (e.target as any).scheduledDate.value,
-                status: (e.target as any).status.value,
-              };
-              setProductionSchedule((prev) => [...prev, newItem]);
-              toast({
-                title: "Production scheduled",
-                description: `New production for ${newItem.productName} has been scheduled.`,
-                variant: "success",
-              });
-              setIsProductionDialogOpen(false);
-              // Trigger notification after scheduling
-              queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
-            }}
-          >
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="productName" className="text-right">
-                  Product
-                </label>
-                <Select name="productName" required>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select Product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeProducts.length > 0 ? (
-                      activeProducts.map((product: any) => (
-                        <SelectItem key={product.id} value={product.name}>
-                          {product.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" disabled>
-                        No products available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="quantity" className="text-right">
-                  Quantity
-                </label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  className="col-span-3"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="scheduledDate" className="text-right">
-                  Scheduled Date
-                </label>
-                <Input
-                  id="scheduledDate"
-                  type="date"
-                  className="col-span-3"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="status" className="text-right">
-                  Status
-                </label>
-                <Select name="status" defaultValue="pending">
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit">Schedule Production</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog for editing production schedule */}
-      <Dialog
-        open={isProductionDialogOpen && editingProduction !== null}
-        onOpenChange={(open) => {
-          setIsProductionDialogOpen(open);
-          if (!open) setEditingProduction(null); // Clear editing state when dialog closes
-        }}
-      >
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Production Schedule</DialogTitle>
-            <DialogDescription>
-              Make changes to this production item. Click save when you're done.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              // Find the index of the item to update
-              const itemIndex = productionSchedule.findIndex(item => item.id === editingProduction?.id);
-              if (itemIndex > -1 && editingProduction) {
-                // Create a new array with the updated item
-                const updatedSchedule = [...productionSchedule];
-                updatedSchedule[itemIndex] = { ...editingProduction };
-                setProductionSchedule(updatedSchedule);
-
-                toast({
-                  title: "Production updated",
-                  description: `Production for ${editingProduction.productName} has been updated.`,
-                  variant: "success",
-                });
-                setIsProductionDialogOpen(false);
-                setEditingProduction(null);
-                // Trigger notification after updating
-                queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
-              }
-            }}
-          >
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="productName" className="text-right">
-                  Product Name
-                </label>
-                <Input
-                  id="productName"
-                  value={editingProduction?.productName || ""}
-                  onChange={(e) =>
-                    setEditingProduction((prev) =>
-                      prev ? { ...prev, productName: e.target.value } : null,
-                    )
-                  }
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="quantity" className="text-right">
-                  Quantity
-                </label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  value={editingProduction?.quantity || 0}
-                  onChange={(e) =>
-                    setEditingProduction((prev) =>
-                      prev ? { ...prev, quantity: parseInt(e.target.value) } : null,
-                    )
-                  }
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="scheduledDate" className="text-right">
-                  Scheduled Date
-                </label>
-                <Input
-                  id="scheduledDate"
-                  type="date"
-                  value={
-                    editingProduction?.scheduledDate
-                      ? new Date(editingProduction.scheduledDate).toISOString().substr(0, 10)
-                      : ""
-                  }
-                  onChange={(e) =>
-                    setEditingProduction((prev) =>
-                      prev ? { ...prev, scheduledDate: e.target.value } : null,
-                    )
-                  }
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="status" className="text-right">
-                  Status
-                </label>
-                <Select
-                  onValueChange={(value) =>
-                    setEditingProduction((prev) =>
-                      prev ? { ...prev, status: value } : null,
-                    )
-                  }
-                  value={editingProduction?.status}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit">Save Changes</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
