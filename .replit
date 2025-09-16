@@ -16,7 +16,7 @@ localPort = 5000
 externalPort = 80
 
 [workflows]
-runButton = "Project"
+runButton = "Start Clean Server"
 
 [[workflows.workflow]]
 name = "Project"
@@ -97,6 +97,39 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Start Clean Server"
+author = 47647466
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🧹 Stopping any existing processes...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"tsx server/index.ts\" || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"node.*server\" || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"npm run dev\" || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 3"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting fresh development server...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

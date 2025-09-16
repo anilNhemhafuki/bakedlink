@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -93,7 +92,7 @@ const QuickStatCard = ({
   value,
   change,
   trend,
-  icon: Icon,
+  Icon,
   color,
   percentage,
   subtitle,
@@ -180,7 +179,7 @@ export default function EnhancedDashboard() {
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log("✅ Dashboard stats loaded successfully:", data);
@@ -221,7 +220,7 @@ export default function EnhancedDashboard() {
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log("✅ Recent orders loaded successfully:", data.length, "orders");
@@ -483,7 +482,7 @@ export default function EnhancedDashboard() {
                 queryClient.invalidateQueries({ queryKey: ["/api/dashboard/production-schedule"] }),
                 queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
               ]);
-              
+
               // Force immediate refetch
               Promise.all([
                 refetchStats(),
