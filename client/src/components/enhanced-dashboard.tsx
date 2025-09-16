@@ -92,7 +92,7 @@ const QuickStatCard = ({
   value,
   change,
   trend,
-  Icon,
+  icon: Icon,
   color,
   percentage,
   subtitle,
