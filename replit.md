@@ -121,9 +121,10 @@ A comprehensive bakery management system built with React, TypeScript, and Postg
 - **PORT**: Server port (default: 5000)
 
 ### Default User Accounts
-- **Admin**: admin@sweetreats.com / admin123 (Full access)
-- **Manager**: manager@sweetreats.com / manager123 (Management features)
-- **Staff**: staff@sweetreats.com / staff123 (Basic operations)
+- **Super Admin**: superadmin@bakesewa.com / superadmin123 (Full system access)
+- **Admin**: admin@bakesewa.com / admin123 (Administrative access)
+- **Manager**: manager@bakesewa.com / manager123 (Management features)
+- **Staff**: staff@bakesewa.com / staff123 (Basic operations)
 
 Changelog:
 - June 24, 2025. Initial setup
@@ -138,6 +139,7 @@ Changelog:
 - July 25, 2025. Implemented comprehensive interactive table sorting functionality across all listing pages with clickable column headers, ascending/descending toggle, and visual sort indicators
 - July 29, 2025. Successfully migrated from Replit Agent to standard Replit environment with PostgreSQL database provisioning, schema migrations, and unit system fixes
 - August 28, 2025. Completed full migration to Replit environment - resolved all 137 TypeScript diagnostics, fixed staff management system, added missing storage methods (getAssetById, getPartyById), corrected authentication interfaces, and ensured all 6 staff management subcategories are fully operational
+- September 16, 2025. Successfully configured GitHub import for Replit environment - provisioned PostgreSQL database, applied schema migrations, configured Vite for proxy support with allowedHosts: true, and verified all system components are working properly
 
 User Preferences:
 Preferred communication style: Simple, everyday language.
