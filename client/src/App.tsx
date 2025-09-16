@@ -72,6 +72,7 @@ function Router() {
           />
         ) : (
           <AuthenticatedApp
+            user={user}
             sidebarOpen={sidebarOpen}
             setSidebarOpen={setSidebarOpen}
             key={user?.id || 'authenticated'} // Force re-render on user change
@@ -83,9 +84,11 @@ function Router() {
 }
 
 function AuthenticatedApp({
+  user,
   sidebarOpen,
   setSidebarOpen,
 }: {
+  user: any;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
 }) {
