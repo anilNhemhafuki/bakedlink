@@ -67,7 +67,12 @@ function Router() {
         {!user ? (
           <LoginForm
             onSuccess={() => {
+              // Force a complete refresh of auth state
               queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+              // Small delay to ensure the query has time to refetch
+              setTimeout(() => {
+                window.location.href = "/dashboard";
+              }, 300);
             }}
           />
         ) : (
@@ -139,7 +144,7 @@ function AuthenticatedApp({
             <Route
               path="/"
               component={() => (
-                <ProtectedRoute resource="dashboard" action="read" user={user}>
+                <ProtectedRoute resource="dashboard" action="read">
                   <Dashboard />
                 </ProtectedRoute>
               )}
@@ -147,7 +152,7 @@ function AuthenticatedApp({
             <Route
               path="/dashboard"
               component={() => (
-                <ProtectedRoute resource="dashboard" action="read" user={user}>
+                <ProtectedRoute resource="dashboard" action="read">
                   <Dashboard />
                 </ProtectedRoute>
               )}

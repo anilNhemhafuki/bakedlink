@@ -40,12 +40,12 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           title: "Success",
           description: "Logged in successfully",
         });
-        // Small delay to ensure session is properly established
         // Invalidate auth query to trigger re-fetch
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        // Give a moment for the query to refetch
         setTimeout(() => {
           onSuccess();
-        }, 100);
+        }, 200);
       } else {
         throw new Error("No user data received");
       }

@@ -15,13 +15,13 @@ export function useAuth() {
     error,
     refetch,
   } = useQuery<User | null>({
-    queryKey: ["auth", "user"],
+    queryKey: ["/api/auth/user"],
     queryFn: getQueryFn<User | null>({ on401: "returnNull" }),
     retry: false,
     staleTime: 1000 * 60 * 10, // 10 minutes
     gcTime: 1000 * 60 * 60, // 1 hour
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchInterval: false,
   });
 
@@ -31,8 +31,8 @@ export function useAuth() {
     } catch (err) {
       console.warn("Network error during logout (proceeding anyway):", err);
     } finally {
-      queryClient.setQueryData(["auth", "user"], null);
-      queryClient.removeQueries({ queryKey: ["auth", "user"] });
+      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
       window.location.href = "/login";
     }
   };

@@ -7,7 +7,7 @@ import { usePermissions } from "@/hooks/usePermissions";
  * All functions are memoized by reference since they're static per-user
  */
 export function useRoleAccess() {
-  const { user } = useAuth();
+  const { user } = useAuth(); // ✅ Always called unconditionally
   const { hasPermission } = usePermissions();
 
   // Role checkers — safe even if user is null (returns false)

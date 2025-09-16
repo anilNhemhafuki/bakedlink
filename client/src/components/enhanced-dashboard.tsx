@@ -392,7 +392,7 @@ export default function EnhancedDashboard() {
             </div>
             Mero BakeSoft Dashboard
           </h1>
-          <p className="text-gray-600 mt-2 text-lg">
+          <div className="text-gray-600 mt-2 text-lg">
             Welcome back,{" "}
             <span className="font-semibold">
               {user?.firstName || user?.email}
@@ -401,7 +401,7 @@ export default function EnhancedDashboard() {
             <Badge variant="outline" className="ml-1">
               {getRoleDisplayName()}
             </Badge>
-          </p>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <Badge variant="outline" className="px-4 py-2 text-sm">

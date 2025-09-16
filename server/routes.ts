@@ -325,6 +325,17 @@ router.get('/api/me', (req, res) => {
   }
 });
 
+// Add auth/user endpoint that frontend expects
+router.get('/api/auth/user', (req, res) => {
+  if (req.session?.userId) {
+    console.log('✅ Auth check - User authenticated:', req.session.user?.email);
+    res.json(req.session.user);
+  } else {
+    console.log('❌ Auth check - No active session');
+    res.status(401).json({ error: 'Not authenticated' });
+  }
+});
+
 // Settings routes
 router.get('/api/settings', async (req, res) => {
   try {
