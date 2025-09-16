@@ -1,9 +1,10 @@
+
 // src/hooks/useRoleAccess.ts
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 
 export function useRoleAccess() {
-  const { user } = useAuth(); // ✅ Safe: called unconditionally inside hook
+  const { user } = useAuth(); // ✅ Always called unconditionally
   const { hasPermission } = usePermissions();
 
   const isSuperAdmin = () => user?.role === "super_admin";

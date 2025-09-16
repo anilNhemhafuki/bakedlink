@@ -140,7 +140,7 @@ function AuthenticatedApp({
             <Route
               path="/"
               component={() => (
-                <ProtectedRoute resource="dashboard" action="read">
+                <ProtectedRoute resource="dashboard" action="read" user={user}>
                   <Dashboard />
                 </ProtectedRoute>
               )}
@@ -148,7 +148,7 @@ function AuthenticatedApp({
             <Route
               path="/dashboard"
               component={() => (
-                <ProtectedRoute resource="dashboard" action="read">
+                <ProtectedRoute resource="dashboard" action="read" user={user}>
                   <Dashboard />
                 </ProtectedRoute>
               )}

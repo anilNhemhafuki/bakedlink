@@ -9,6 +9,7 @@ interface ProtectedRouteProps {
   action: "read" | "write" | "read_write";
   children: ReactNode;
   fallback?: ReactNode;
+  user?: any;
 }
 
 export function ProtectedRoute({
@@ -16,9 +17,10 @@ export function ProtectedRoute({
   action,
   children,
   fallback,
+  user,
 }: ProtectedRouteProps) {
   const { hasPermission, isLoading } = usePermissions();
-  const { isSuperAdmin } = useRoleAccess();
+  const { isSuperAdmin } = useRoleAccess(user);
 
   if (isLoading) {
     return (
@@ -37,7 +39,7 @@ export function ProtectedRoute({
   }
 
   // Check permissions using the role access hook
-  const { canAccessPage } = useRoleAccess();
+  const { canAccessPage } = useRoleAccess(user);
   
   if (!canAccessPage(resource, action)) {
     return (
