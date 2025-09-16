@@ -74,6 +74,7 @@ function Router() {
           <AuthenticatedApp
             sidebarOpen={sidebarOpen}
             setSidebarOpen={setSidebarOpen}
+            key={user?.id || 'authenticated'} // Force re-render on user change
           />
         )}
       </Route>

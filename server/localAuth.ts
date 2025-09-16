@@ -244,11 +244,11 @@ export async function setupAuth(app: Express) {
 
             console.log('User logged in successfully:', user.email);
             
-            // Set session data
+            // Set session data explicitly
             (req.session as any).userId = user.id;
             (req.session as any).user = user;
             
-            // Save session explicitly
+            // Save session and wait for it
             req.session.save((err) => {
               if (err) {
                 console.error('Session save error:', err);
@@ -256,10 +256,16 @@ export async function setupAuth(app: Express) {
               }
               
               console.log('Session saved successfully for user:', user.email);
+              console.log('Session ID:', req.sessionID);
               
               // Return user data (excluding password)
               const { password: _, ...userWithoutPassword } = user;
-              res.json({ user: userWithoutPassword });
+              res.json({ 
+                success: true,
+                message: 'Login successful',
+                user: userWithoutPassword,
+                sessionId: req.sessionID
+              });
             });
           });
         })(req, res, next);
@@ -301,6 +307,23 @@ export async function setupAuth(app: Express) {
           res.status(500).json({ message: "Logout failed" });
         }
       });
+
+    // Add user authentication check endpoint
+    app.get("/api/auth/user", (req, res) => {
+      console.log('Checking authentication status:', {
+        isAuthenticated: req.isAuthenticated(),
+        sessionID: req.sessionID,
+        userId: (req.session as any)?.userId,
+        user: req.user ? 'present' : 'absent'
+      });
+      
+      if (req.isAuthenticated() && req.user) {
+        const { password: _, ...userWithoutPassword } = req.user as any;
+        res.json(userWithoutPassword);
+      } else {
+        res.status(401).json({ message: 'Not authenticated' });
+      }
+    });
 
   } catch (error) {
     console.error("❌ Authentication setup failed:", error);

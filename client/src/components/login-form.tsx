@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanyBranding } from "@/hooks/use-company-branding";
 import LoginFooter from "@/components/login-footer";
@@ -32,16 +32,28 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     setIsLoading(true);
 
     try {
-      await apiRequest("POST", "/api/auth/login", loginData);
-      toast({
-        title: "Success",
-        description: "Logged in successfully",
-      });
-      onSuccess();
+      const response = await apiRequest("POST", "/api/auth/login", loginData);
+      console.log('Login response:', response);
+      
+      if (response && response.user) {
+        toast({
+          title: "Success",
+          description: "Logged in successfully",
+        });
+        // Small delay to ensure session is properly established
+        // Invalidate auth query to trigger re-fetch
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        setTimeout(() => {
+          onSuccess();
+        }, 100);
+      } else {
+        throw new Error("No user data received");
+      }
     } catch (error) {
+      console.error('Login error:', error);
       toast({
         title: "Error",
-        description: "Invalid credentials",
+        description: error?.message || "Invalid credentials",
         variant: "destructive",
       });
     } finally {
