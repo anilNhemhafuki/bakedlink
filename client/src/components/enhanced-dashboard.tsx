@@ -66,7 +66,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import Link from "next/link";
+import { Link } from "wouter";
 import { format } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 

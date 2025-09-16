@@ -4,7 +4,7 @@ import { createServer } from "http";
 import { setupVite, serveStatic } from "./vite";
 import { setupAuth } from "./localAuth";
 import { initializeDatabase } from "./init-db";
-import { registerRoutes } from "./routes";
+import router from "./routes";
 import { initializeUnits } from "./init-units"; // Import initializeUnits
 import { securityMonitor } from "./securityMonitor";
 import { alertService } from "./alertService";
@@ -78,7 +78,8 @@ async function startServer() {
     await setupAuth(app);
 
     // Register routes
-    const server = await registerRoutes(app);
+    app.use('/api', router);
+    const server = createServer(app);
 
     const port = parseInt(process.env.PORT || "5000");
 

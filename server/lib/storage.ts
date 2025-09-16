@@ -2095,7 +2095,15 @@ export class Storage implements IStorage {
         const defaultSettings = {
           companyName: "Mero BakeSoft",
           companyPhone: "+977-1-234567",
-
+        };
+        return defaultSettings;
+      }
+      return allSettings[0] || {};
+    } catch (error) {
+      console.error("❌ Error fetching settings:", error);
+      return {};
+    }
+  }
 
   // Branch Management implementation
   async getBranches(): Promise<Branch[]> {
@@ -2208,36 +2216,6 @@ export class Storage implements IStorage {
     } catch (error) {
       console.error('❌ Error fetching users with branches:', error);
       return [];
-    }
-  }
-
-          companyAddress: "Kathmandu, Nepal",
-          companyEmail: "info@merobakesoft.com",
-          currency: "NPR",
-          timezone: "Asia/Kathmandu",
-          themeColor: "#efa14b",
-          language: "en",
-          companyRegNo: "12345/067-68",
-          companyDtqocNo: "DTQOC-001",
-        };
-        const settingPromises = Object.entries(defaultSettings).map(([key, value]) =>
-          this.updateOrCreateSetting(key, String(value))
-        );
-        await Promise.all(settingPromises);
-        console.log("Default settings created.");
-        return defaultSettings; // Return the defaults
-      }
-
-      // Convert settings array to an object
-      const settingsObject: any = {};
-      allSettings.forEach((setting: any) => {
-        settingsObject[setting.key] = setting.value;
-      });
-      return settingsObject;
-
-    } catch (error) {
-      console.error("❌ Error fetching settings:", error);
-      throw error;
     }
   }
 

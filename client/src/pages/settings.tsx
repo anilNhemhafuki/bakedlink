@@ -29,7 +29,7 @@ import {
   Database,
   Check,
   Printer,
-  Settings,
+  Settings as SettingsIcon,
   RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -1029,7 +1029,7 @@ export default function Settings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
+                <SettingsIcon className="h-5 w-5" />
                 System Maintenance
               </CardTitle>
               <CardDescription>
