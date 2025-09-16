@@ -98,54 +98,56 @@ const QuickStatCard = ({
   percentage,
   subtitle,
   href,
-}: any) => (
-  <Card
-    className={`group border-l-4 border-${color}-500 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
-  >
-    <CardContent className="p-6">
-      {href ? (
-        <Link href={href} className="block">
-          <CardContentInner />
-        </Link>
-      ) : (
-        <CardContentInner />
-      )}
-    </CardContent>
-  </Card>
-);
-
-const CardContentInner = ({ title, value, change, trend, Icon, color, percentage, subtitle }: any) => (
-  <div className="flex items-center justify-between">
-    <div className="flex-1">
-      <p className="text-sm font-medium text-gray-500 mb-2">{title}</p>
-      <p className="text-3xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
-        {value}
-      </p>
-      {subtitle && <p className="text-xs text-gray-400 mb-2">{subtitle}</p>}
-      <div className="flex items-center gap-2">
-        <p
-          className={`text-sm font-medium ${
-            trend === "up"
-              ? "text-green-500"
-              : trend === "down"
-                ? "text-red-500"
-                : "text-gray-500"
-          } flex items-center`}
-        >
-          {trend === "up" && <ArrowUpRight className="inline h-4 w-4 mr-1" />}
-          {trend === "down" && <ArrowDownRight className="inline h-4 w-4 mr-1" />}
-          {change}
+}: any) => {
+  const content = (
+    <div className="flex items-center justify-between">
+      <div className="flex-1">
+        <p className="text-sm font-medium text-gray-500 mb-2">{title}</p>
+        <p className="text-3xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
+          {value}
         </p>
-        {percentage && <Progress value={percentage} className="w-20 h-2" />}
+        {subtitle && <p className="text-xs text-gray-400 mb-2">{subtitle}</p>}
+        <div className="flex items-center gap-2">
+          <p
+            className={`text-sm font-medium ${
+              trend === "up"
+                ? "text-green-500"
+                : trend === "down"
+                  ? "text-red-500"
+                  : "text-gray-500"
+            } flex items-center`}
+          >
+            {trend === "up" && <ArrowUpRight className="inline h-4 w-4 mr-1" />}
+            {trend === "down" && <ArrowDownRight className="inline h-4 w-4 mr-1" />}
+            {change}
+          </p>
+          {percentage && <Progress value={percentage} className="w-20 h-2" />}
+        </div>
+      </div>
+      <div
+        className={`w-16 h-16 bg-${color}-100 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}
+      >
+        <Icon className={`h-8 w-8 text-${color}-600`} />
       </div>
     </div>
-    <div
-      className={`w-16 h-16 bg-${color}-100 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}
+  );
+
+  return (
+    <Card
+      className={`group border-l-4 border-${color}-500 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
     >
-      <Icon className={`h-8 w-8 text-${color}-600`} />
-    </div>
-  </div>
-);
+      <CardContent className="p-6">
+        {href ? (
+          <Link href={href} className="block">
+            {content}
+          </Link>
+        ) : (
+          content
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 export default function EnhancedDashboard() {
   const { toast } = useToast();
