@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -136,12 +135,13 @@ const OrderStatusBadge = ({ status }: { status: string }) => {
     pending: { variant: "outline", color: "text-yellow-600" },
     cancelled: { variant: "destructive", color: "text-red-600" },
   };
-  
-  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-  
+
+  const config =
+    statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+
   return (
     <Badge variant={config.variant as any} className={config.color}>
-      {status.replace('_', ' ').toUpperCase()}
+      {status.replace("_", " ").toUpperCase()}
     </Badge>
   );
 };
@@ -152,17 +152,19 @@ const ProductionStatusBadge = ({ status }: { status: string }) => {
 };
 
 // Enhanced Quick Stat Card
-const QuickStatCard = ({ 
-  title, 
-  value, 
-  change, 
-  trend, 
-  icon: Icon, 
+const QuickStatCard = ({
+  title,
+  value,
+  change,
+  trend,
+  icon: Icon,
   color,
   percentage,
-  subtitle 
+  subtitle,
 }: any) => (
-  <Card className={`group border-l-4 border-${color}-500 hover:shadow-lg transition-all duration-300 hover:-translate-y-1`}>
+  <Card
+    className={`group border-l-4 border-${color}-500 hover:shadow-lg transition-all duration-300 hover:-translate-y-1`}
+  >
     <CardContent className="p-6">
       <div className="flex items-center justify-between">
         <div className="flex-1">
@@ -170,24 +172,25 @@ const QuickStatCard = ({
           <p className="text-3xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
             {value}
           </p>
-          {subtitle && (
-            <p className="text-xs text-gray-400 mb-2">{subtitle}</p>
-          )}
+          {subtitle && <p className="text-xs text-gray-400 mb-2">{subtitle}</p>}
           <div className="flex items-center gap-2">
-            <p className={`text-sm font-medium ${trend === "up" ? "text-green-500" : trend === "down" ? "text-red-500" : "text-gray-500"} flex items-center`}>
-              {trend === "up" && <ArrowUpRight className="inline h-4 w-4 mr-1" />}
-              {trend === "down" && <ArrowDownRight className="inline h-4 w-4 mr-1" />}
+            <p
+              className={`text-sm font-medium ${trend === "up" ? "text-green-500" : trend === "down" ? "text-red-500" : "text-gray-500"} flex items-center`}
+            >
+              {trend === "up" && (
+                <ArrowUpRight className="inline h-4 w-4 mr-1" />
+              )}
+              {trend === "down" && (
+                <ArrowDownRight className="inline h-4 w-4 mr-1" />
+              )}
               {change}
             </p>
-            {percentage && (
-              <Progress 
-                value={percentage} 
-                className="w-20 h-2" 
-              />
-            )}
+            {percentage && <Progress value={percentage} className="w-20 h-2" />}
           </div>
         </div>
-        <div className={`w-16 h-16 bg-${color}-100 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+        <div
+          className={`w-16 h-16 bg-${color}-100 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}
+        >
           <Icon className={`h-8 w-8 text-${color}-600`} />
         </div>
       </div>
@@ -196,10 +199,16 @@ const QuickStatCard = ({
 );
 
 // Performance Metric Card
-const PerformanceCard = ({ title, current, target, icon: Icon, color }: any) => {
+const PerformanceCard = ({
+  title,
+  current,
+  target,
+  icon: Icon,
+  color,
+}: any) => {
   const percentage = Math.min((current / target) * 100, 100);
   const isOnTrack = percentage >= 80;
-  
+
   return (
     <Card className="group hover:shadow-md transition-all duration-300">
       <CardContent className="p-4">
@@ -231,47 +240,56 @@ const PerformanceCard = ({ title, current, target, icon: Icon, color }: any) => 
 export default function EnhancedDashboard() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { canAccessPage, isSuperAdmin, isAdmin, isManager, isSupervisor, isMarketer, isStaff, getRoleDisplayName } = useRoleAccess();
+  const {
+    canAccessPage,
+    isSuperAdmin,
+    isAdmin,
+    isManager,
+    isSupervisor,
+    isMarketer,
+    isStaff,
+    getRoleDisplayName,
+  } = useRoleAccess();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeTab, setActiveTab] = useState("overview");
 
   // Fetch dashboard stats
   const { data: dashboardStats = {}, isLoading: isLoadingStats } = useQuery({
     queryKey: ["/api/dashboard/stats"],
-    enabled: canAccessPage('dashboard_stats'),
+    enabled: canAccessPage("dashboard_stats"),
   });
 
   // Fetch recent orders
   const { data: recentOrders = [] } = useQuery({
     queryKey: ["/api/dashboard/recent-orders"],
     refetchInterval: 30000,
-    enabled: canAccessPage('orders'),
+    enabled: canAccessPage("orders"),
   });
 
   // Fetch low stock items
   const { data: lowStockItems = [] } = useQuery({
     queryKey: ["/api/dashboard/low-stock"],
-    enabled: canAccessPage('inventory'),
+    enabled: canAccessPage("inventory"),
   });
 
   // Fetch upcoming production
   const { data: upcomingProduction = [] } = useQuery({
     queryKey: ["/api/dashboard/production-schedule"],
-    enabled: canAccessPage('production'),
+    enabled: canAccessPage("production"),
   });
 
   // Fetch active products
   const { data: activeProducts = [] } = useQuery({
     queryKey: ["/api/products"],
     select: (data: any) => data.filter((p: any) => p.isActive),
-    enabled: canAccessPage('products'),
+    enabled: canAccessPage("products"),
   });
 
   // Fetch notifications
   const { data: notifications = [] } = useQuery({
     queryKey: ["/api/notifications"],
     refetchInterval: 60000,
-    enabled: canAccessPage('notifications'),
+    enabled: canAccessPage("notifications"),
   });
 
   const { formatCurrencyWithCommas } = useCurrency();
@@ -294,7 +312,7 @@ export default function EnhancedDashboard() {
       color: "green",
       percentage: 85,
       subtitle: "This month",
-      accessKey: 'sales'
+      accessKey: "sales",
     },
     {
       title: "Orders Today",
@@ -305,7 +323,7 @@ export default function EnhancedDashboard() {
       color: "blue",
       percentage: 78,
       subtitle: "vs yesterday",
-      accessKey: 'orders'
+      accessKey: "orders",
     },
     {
       title: "Active Products",
@@ -316,7 +334,7 @@ export default function EnhancedDashboard() {
       color: "purple",
       percentage: 92,
       subtitle: "in catalog",
-      accessKey: 'products'
+      accessKey: "products",
     },
     {
       title: "Total Customers",
@@ -327,7 +345,7 @@ export default function EnhancedDashboard() {
       color: "indigo",
       percentage: 65,
       subtitle: "active customers",
-      accessKey: 'customers'
+      accessKey: "customers",
     },
   ];
 
@@ -337,28 +355,28 @@ export default function EnhancedDashboard() {
       current: 125000,
       target: 150000,
       icon: Target,
-      color: "green"
+      color: "green",
     },
     {
       title: "Production Efficiency",
       current: 87,
       target: 95,
       icon: Factory,
-      color: "blue"
+      color: "blue",
     },
     {
       title: "Customer Satisfaction",
       current: 4.7,
       target: 5.0,
       icon: Star,
-      color: "yellow"
+      color: "yellow",
     },
     {
       title: "Order Fulfillment",
       current: 94,
       target: 98,
       icon: Truck,
-      color: "purple"
+      color: "purple",
     },
   ];
 
@@ -374,8 +392,14 @@ export default function EnhancedDashboard() {
             Mero BakeSoft Dashboard
           </h1>
           <p className="text-gray-600 mt-2 text-lg">
-            Welcome back, <span className="font-semibold">{user?.firstName || user?.email}</span>! 
-            You're logged in as <Badge variant="outline" className="ml-1">{getRoleDisplayName()}</Badge>
+            Welcome back,{" "}
+            <span className="font-semibold">
+              {user?.firstName || user?.email}
+            </span>
+            ! You're logged in as{" "}
+            <Badge variant="outline" className="ml-1">
+              {getRoleDisplayName()}
+            </Badge>
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -383,10 +407,14 @@ export default function EnhancedDashboard() {
             <Clock className="h-4 w-4 mr-2" />
             {format(currentTime, "MMM dd, yyyy - HH:mm:ss")}
           </Badge>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] })}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              queryClient.invalidateQueries({
+                queryKey: ["/api/dashboard/stats"],
+              })
+            }
             className="shadow-sm"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -397,18 +425,19 @@ export default function EnhancedDashboard() {
 
       {/* Quick Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statsCards.map((stat) => (
+        {statsCards.map((stat) =>
           stat.accessKey && canAccessPage(stat.accessKey) ? (
-            <QuickStatCard
-              key={stat.title}
-              {...stat}
-            />
-          ) : null
-        ))}
+            <QuickStatCard key={stat.title} {...stat} />
+          ) : null,
+        )}
       </div>
 
       {/* Main Dashboard Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4 bg-white shadow-sm">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -446,21 +475,35 @@ export default function EnhancedDashboard() {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={salesData}>
                         <defs>
-                          <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          <linearGradient
+                            id="salesGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="5%"
+                              stopColor="#3b82f6"
+                              stopOpacity={0.3}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor="#3b82f6"
+                              stopOpacity={0}
+                            />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                         <XAxis dataKey="name" stroke="#6b7280" />
                         <YAxis stroke="#6b7280" />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <Area 
-                          type="monotone" 
-                          dataKey="sales" 
-                          stroke="#3b82f6" 
+                        <Area
+                          type="monotone"
+                          dataKey="sales"
+                          stroke="#3b82f6"
                           strokeWidth={3}
-                          fill="url(#salesGradient)" 
+                          fill="url(#salesGradient)"
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -481,17 +524,28 @@ export default function EnhancedDashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {notifications?.slice(0, 6).map((notification: any) => (
-                    <div key={notification.id} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
-                      <div className={`w-2 h-2 rounded-full mt-2 ${
-                        notification.priority === 'high' ? 'bg-red-500' :
-                        notification.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}></div>
+                    <div
+                      key={notification.id}
+                      className="flex items-start gap-3 p-3 rounded-lg bg-gray-50"
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full mt-2 ${
+                          notification.priority === "high"
+                            ? "bg-red-500"
+                            : notification.priority === "medium"
+                              ? "bg-yellow-500"
+                              : "bg-green-500"
+                        }`}
+                      ></div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm text-gray-900 truncate">
                           {notification.title}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {format(new Date(notification.timestamp), "MMM dd, HH:mm")}
+                          {format(
+                            new Date(notification.timestamp),
+                            "MMM dd, HH:mm",
+                          )}
                         </p>
                       </div>
                     </div>
@@ -510,7 +564,7 @@ export default function EnhancedDashboard() {
           {/* Orders and Production Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Recent Orders */}
-            {canAccessPage('orders') && (
+            {canAccessPage("orders") && (
               <Card className="shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
@@ -530,14 +584,21 @@ export default function EnhancedDashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     {recentOrders?.slice(0, 4).map((order: any) => (
-                      <div key={order.id} className="flex items-center justify-between p-4 rounded-lg border bg-white hover:shadow-sm transition-shadow">
+                      <div
+                        key={order.id}
+                        className="flex items-center justify-between p-4 rounded-lg border bg-white hover:shadow-sm transition-shadow"
+                      >
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
                             <ShoppingCart className="h-6 w-6 text-blue-600" />
                           </div>
                           <div>
-                            <p className="font-medium text-sm">{order.customerName}</p>
-                            <p className="text-xs text-gray-500">Order #{order.id}</p>
+                            <p className="font-medium text-sm">
+                              {order.customerName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Order #{order.id}
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
@@ -554,7 +615,7 @@ export default function EnhancedDashboard() {
             )}
 
             {/* Today's Production */}
-            {canAccessPage('production') && (
+            {canAccessPage("production") && (
               <Card className="shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
@@ -562,7 +623,9 @@ export default function EnhancedDashboard() {
                       <Factory className="h-5 w-5" />
                       Today's Production
                     </CardTitle>
-                    <CardDescription>Scheduled production items</CardDescription>
+                    <CardDescription>
+                      Scheduled production items
+                    </CardDescription>
                   </div>
                   <Button variant="outline" size="sm" asChild>
                     <Link href="/production">
@@ -573,31 +636,50 @@ export default function EnhancedDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {upcomingProduction?.slice(0, 4).map((item: ProductionItem) => (
-                      <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border bg-white hover:shadow-sm transition-shadow">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                            item.priority === 'high' ? 'bg-red-100' :
-                            item.priority === 'medium' ? 'bg-yellow-100' : 'bg-green-100'
-                          }`}>
-                            <Factory className={`h-6 w-6 ${
-                              item.priority === 'high' ? 'text-red-600' :
-                              item.priority === 'medium' ? 'text-yellow-600' : 'text-green-600'
-                            }`} />
+                    {upcomingProduction
+                      ?.slice(0, 4)
+                      .map((item: ProductionItem) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between p-4 rounded-lg border bg-white hover:shadow-sm transition-shadow"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                                item.priority === "high"
+                                  ? "bg-red-100"
+                                  : item.priority === "medium"
+                                    ? "bg-yellow-100"
+                                    : "bg-green-100"
+                              }`}
+                            >
+                              <Factory
+                                className={`h-6 w-6 ${
+                                  item.priority === "high"
+                                    ? "text-red-600"
+                                    : item.priority === "medium"
+                                      ? "text-yellow-600"
+                                      : "text-green-600"
+                                }`}
+                              />
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">
+                                {item.productName}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Qty: {item.quantity}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-sm">{item.productName}</p>
-                            <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                          <div className="text-right">
+                            <ProductionStatusBadge status={item.status} />
+                            <p className="text-xs text-gray-500 mt-1">
+                              {format(new Date(item.scheduledDate), "HH:mm")}
+                            </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <ProductionStatusBadge status={item.status} />
-                          <p className="text-xs text-gray-500 mt-1">
-                            {format(new Date(item.scheduledDate), "HH:mm")}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </CardContent>
               </Card>
@@ -622,19 +704,19 @@ export default function EnhancedDashboard() {
                       <XAxis dataKey="name" stroke="#6b7280" />
                       <YAxis stroke="#6b7280" />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="sales" 
-                        stroke="#3b82f6" 
+                      <Line
+                        type="monotone"
+                        dataKey="sales"
+                        stroke="#3b82f6"
                         strokeWidth={3}
-                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 6 }}
+                        dot={{ fill: "#3b82f6", strokeWidth: 2, r: 6 }}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey="orders" 
-                        stroke="#10b981" 
+                      <Line
+                        type="monotone"
+                        dataKey="orders"
+                        stroke="#10b981"
                         strokeWidth={3}
-                        dot={{ fill: '#10b981', strokeWidth: 2, r: 6 }}
+                        dot={{ fill: "#10b981", strokeWidth: 2, r: 6 }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -659,7 +741,9 @@ export default function EnhancedDashboard() {
                         outerRadius={100}
                         fill="#8884d8"
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) =>
+                          `${name} ${(percent * 100).toFixed(0)}%`
+                        }
                       >
                         {productionData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
@@ -678,7 +762,7 @@ export default function EnhancedDashboard() {
         <TabsContent value="operations" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Inventory Status */}
-            {canAccessPage('inventory') && (
+            {canAccessPage("inventory") && (
               <Card className="shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-red-600">
@@ -690,7 +774,10 @@ export default function EnhancedDashboard() {
                 <CardContent>
                   <div className="space-y-3">
                     {lowStockItems?.slice(0, 5).map((item: any) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50">
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50"
+                      >
                         <div>
                           <p className="font-medium text-sm">{item.name}</p>
                           <p className="text-xs text-gray-500">
@@ -724,35 +811,53 @@ export default function EnhancedDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 gap-3">
-                  {canAccessPage('orders') && (
-                    <Button variant="outline" className="justify-start h-12" asChild>
+                  {canAccessPage("orders") && (
+                    <Button
+                      variant="outline"
+                      className="justify-start h-12"
+                      asChild
+                    >
                       <Link href="/orders">
                         <Plus className="h-4 w-4 mr-3" />
                         <div className="text-left">
                           <p className="font-medium">New Order</p>
-                          <p className="text-xs text-gray-500">Create customer order</p>
+                          <p className="text-xs text-gray-500">
+                            Create customer order
+                          </p>
                         </div>
                       </Link>
                     </Button>
                   )}
-                  {canAccessPage('production') && (
-                    <Button variant="outline" className="justify-start h-12" asChild>
+                  {canAccessPage("production") && (
+                    <Button
+                      variant="outline"
+                      className="justify-start h-12"
+                      asChild
+                    >
                       <Link href="/production">
                         <Factory className="h-4 w-4 mr-3" />
                         <div className="text-left">
                           <p className="font-medium">Schedule Production</p>
-                          <p className="text-xs text-gray-500">Plan production run</p>
+                          <p className="text-xs text-gray-500">
+                            Plan production run
+                          </p>
                         </div>
                       </Link>
                     </Button>
                   )}
-                  {canAccessPage('inventory') && (
-                    <Button variant="outline" className="justify-start h-12" asChild>
+                  {canAccessPage("inventory") && (
+                    <Button
+                      variant="outline"
+                      className="justify-start h-12"
+                      asChild
+                    >
                       <Link href="/inventory">
                         <Package className="h-4 w-4 mr-3" />
                         <div className="text-left">
                           <p className="font-medium">Update Inventory</p>
-                          <p className="text-xs text-gray-500">Manage stock levels</p>
+                          <p className="text-xs text-gray-500">
+                            Manage stock levels
+                          </p>
                         </div>
                       </Link>
                     </Button>
@@ -777,25 +882,36 @@ export default function EnhancedDashboard() {
                       <span className="text-sm">Database</span>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-green-600 font-medium">Online</span>
+                        <span className="text-xs text-green-600 font-medium">
+                          Online
+                        </span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">API Services</span>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-green-600 font-medium">Healthy</span>
+                        <span className="text-xs text-green-600 font-medium">
+                          Healthy
+                        </span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Storage</span>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                        <span className="text-xs text-yellow-600 font-medium">75% Used</span>
+                        <span className="text-xs text-yellow-600 font-medium">
+                          75% Used
+                        </span>
                       </div>
                     </div>
                     <Separator />
-                    <Button variant="ghost" size="sm" className="w-full" asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      asChild
+                    >
                       <Link href="/settings">
                         <Settings className="h-4 w-4 mr-2" />
                         System Settings
@@ -831,8 +947,8 @@ export default function EnhancedDashboard() {
                       <XAxis dataKey="name" stroke="#6b7280" />
                       <YAxis stroke="#6b7280" />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar 
-                        dataKey="profit" 
+                      <Bar
+                        dataKey="profit"
                         fill="#8b5cf6"
                         radius={[4, 4, 0, 0]}
                       />
@@ -862,25 +978,41 @@ export default function EnhancedDashboard() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Access Level:</span>
                     <span className="text-sm font-medium">
-                      {isSuperAdmin() || isAdmin() ? 'Full Access' :
-                       isManager() ? 'Management Access' :
-                       isSupervisor() ? 'Supervisor Access' :
-                       'Limited Access'}
+                      {isSuperAdmin() || isAdmin()
+                        ? "Full Access"
+                        : isManager()
+                          ? "Management Access"
+                          : isSupervisor()
+                            ? "Supervisor Access"
+                            : "Limited Access"}
                     </span>
                   </div>
                   <Separator />
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-700">Available Modules:</p>
+                    <p className="text-xs font-medium text-gray-700">
+                      Available Modules:
+                    </p>
                     <div className="flex flex-wrap gap-1">
-                      {['Dashboard', 'Orders', 'Products', 'Inventory', 'Production'].map(module => (
-                        <Badge key={module} variant="secondary" className="text-xs">
+                      {[
+                        "Dashboard",
+                        "Orders",
+                        "Products",
+                        "Inventory",
+                        "Production",
+                      ].map((module) => (
+                        <Badge
+                          key={module}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {module}
                         </Badge>
                       ))}
                     </div>
                   </div>
                   <div className="text-xs text-gray-500 p-3 bg-gray-50 rounded-lg">
-                    💡 Contact your administrator if you need additional permissions.
+                    💡 Contact your administrator if you need additional
+                    permissions.
                   </div>
                 </div>
               </CardContent>
