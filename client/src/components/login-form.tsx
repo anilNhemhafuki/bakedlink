@@ -33,8 +33,8 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
     try {
       const response = await apiRequest("POST", "/api/auth/login", loginData);
-      console.log('Login response:', response);
-      
+      console.log("Login response:", response);
+
       if (response && response.user) {
         toast({
           title: "Success",
@@ -50,7 +50,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         throw new Error("No user data received");
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       toast({
         title: "Error",
         description: error?.message || "Invalid credentials",
@@ -75,8 +75,12 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
               />
             </div>
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-primary mb-2">Mero BakeSoft</h1>
-              <p className="text-sm text-gray-600">Professional Bakery Management System</p>
+              <h1 className="text-2xl font-bold text-primary mb-2">
+                Mero BakeSoft
+              </h1>
+              <p className="text-sm text-gray-600">
+                Professional Bakery Management System
+              </p>
             </div>
           </CardHeader>
           <CardContent>
