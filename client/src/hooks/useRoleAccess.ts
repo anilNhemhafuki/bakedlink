@@ -126,6 +126,13 @@ export function useRoleAccess() {
     return user?.branchName || 'Unknown Branch';
   };
 
+  const getBranchFilterForUser = () => {
+    return {
+      userBranchId: getUserBranchId(),
+      canAccessAllBranches: canAccessAllBranches()
+    };
+  };
+
   return {
     isSuperAdmin,
     isAdmin,
@@ -145,6 +152,7 @@ export function useRoleAccess() {
     getUserBranchId,
     canAccessBranchData,
     getBranchDisplayName,
+    getBranchFilterForUser,
     getRoleDisplayName,
     user,
   };

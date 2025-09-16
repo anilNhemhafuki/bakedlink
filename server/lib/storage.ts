@@ -626,7 +626,6 @@ export class Storage implements IStorage {
   }
 
   // Category operations
-  async getCategories(): Promise<Category[]>;
   async getCategories(userBranchId?: number, canAccessAllBranches?: boolean): Promise<Category[]> {
     try {
       let query = this.db
@@ -645,9 +644,8 @@ export class Storage implements IStorage {
       if (!canAccessAllBranches && userBranchId) {
         query = query.where(
           or(
-            eq(categories.branchId, userBranchId),
-            eq(categories.isGlobal, true),
-            isNull(categories.branchId)
+            isNull(categories.branchId), // Global categories
+            eq(categories.branchId, userBranchId) // User's branch categories
           )
         );
       }
@@ -1051,7 +1049,7 @@ export class Storage implements IStorage {
   }
 
   // Inventory operations
-  async getInventoryItems(options?: {
+  async getInventoryItemsPaginated(options?: {
     page?: number;
     limit?: number;
     search?: string;
@@ -2097,6 +2095,122 @@ export class Storage implements IStorage {
         const defaultSettings = {
           companyName: "Mero BakeSoft",
           companyPhone: "+977-1-234567",
+
+
+  // Branch Management implementation
+  async getBranches(): Promise<Branch[]> {
+    try {
+      const result = await this.db
+        .select()
+        .from(branches)
+        .orderBy(branches.isHeadOffice, desc(branches.createdAt));
+      
+      console.log(`✅ Found ${result.length} branches`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error fetching branches:', error);
+      return [];
+    }
+  }
+
+  async createBranch(branchData: InsertBranch): Promise<Branch> {
+    try {
+      const [newBranch] = await this.db
+        .insert(branches)
+        .values(branchData)
+        .returning();
+      
+      console.log('✅ Branch created:', newBranch.name);
+      return newBranch;
+    } catch (error) {
+      console.error('❌ Error creating branch:', error);
+      throw error;
+    }
+  }
+
+  async updateBranch(id: number, branchData: Partial<InsertBranch>): Promise<Branch> {
+    try {
+      const [updatedBranch] = await this.db
+        .update(branches)
+        .set({ ...branchData, updatedAt: new Date() })
+        .where(eq(branches.id, id))
+        .returning();
+      
+      console.log('✅ Branch updated:', updatedBranch.name);
+      return updatedBranch;
+    } catch (error) {
+      console.error('❌ Error updating branch:', error);
+      throw error;
+    }
+  }
+
+  async deleteBranch(id: number): Promise<void> {
+    try {
+      // Check if this is the head office
+      const branch = await this.db
+        .select()
+        .from(branches)
+        .where(eq(branches.id, id))
+        .limit(1);
+
+      if (branch.length > 0 && branch[0].isHeadOffice) {
+        throw new Error('Cannot delete head office branch');
+      }
+
+      // Instead of deleting, mark as inactive
+      await this.db
+        .update(branches)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(branches.id, id));
+      
+      console.log('✅ Branch marked as inactive');
+    } catch (error) {
+      console.error('❌ Error deleting branch:', error);
+      throw error;
+    }
+  }
+
+  async assignUserToBranch(userId: string, branchId: number): Promise<void> {
+    try {
+      await this.db
+        .update(users)
+        .set({ branchId, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+      
+      console.log(`✅ User ${userId} assigned to branch ${branchId}`);
+    } catch (error) {
+      console.error('❌ Error assigning user to branch:', error);
+      throw error;
+    }
+  }
+
+  async getUsersWithBranches(): Promise<any[]> {
+    try {
+      const result = await this.db
+        .select({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+          branchId: users.branchId,
+          canAccessAllBranches: users.canAccessAllBranches,
+          branchName: branches.name,
+          branchCode: branches.branchCode,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .leftJoin(branches, eq(users.branchId, branches.id))
+        .orderBy(users.createdAt);
+      
+      console.log(`✅ Found ${result.length} users with branch information`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error fetching users with branches:', error);
+      return [];
+    }
+  }
+
           companyAddress: "Kathmandu, Nepal",
           companyEmail: "info@merobakesoft.com",
           currency: "NPR",

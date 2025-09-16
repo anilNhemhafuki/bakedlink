@@ -530,10 +530,10 @@ router.get('/api/products', async (req, res) => {
     console.log('📦 Fetching products...');
     const user = req.session?.user;
     const userBranchId = user?.branchId;
-    const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin';
+    const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin' || user?.role === 'admin';
     
     const result = await storage.getProducts(userBranchId, canAccessAllBranches);
-    console.log(`✅ Found ${result.length} products`);
+    console.log(`✅ Found ${result.length} products for user with branch access: ${canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`}`);
     res.json(result);
   } catch (error) {
     console.error('❌ Error fetching products:', error);
@@ -728,10 +728,10 @@ router.get('/api/inventory-items', async (req, res) => {
     console.log('📦 Fetching inventory items...');
     const user = req.session?.user;
     const userBranchId = user?.branchId;
-    const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin';
+    const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin' || user?.role === 'admin';
     
     const result = await storage.getInventoryItems(userBranchId, canAccessAllBranches);
-    console.log(`✅ Found ${result.length} inventory items`);
+    console.log(`✅ Found ${result.length} inventory items for user with branch access: ${canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`}`);
 
     // Check for low stock items and create notifications
     result.forEach(item => {

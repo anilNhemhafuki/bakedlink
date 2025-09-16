@@ -38,7 +38,10 @@ export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
+  branchId: integer("branch_id"), // Branch-specific categories
+  isGlobal: boolean("is_global").default(false), // Available across all branches
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Products table

@@ -406,7 +406,14 @@ function AuthenticatedApp({
                 </ProtectedRoute>
               )}
             />
-            <Route path="/branches" element={<Branches />} />
+            <Route
+              path="/branches"
+              component={() => (
+                <ProtectedRoute resource="branches" action="read">
+                  <Branches />
+                </ProtectedRoute>
+              )}
+            />
             <Route component={NotFound} />
           </Switch>
         </div>
