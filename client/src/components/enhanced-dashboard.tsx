@@ -125,18 +125,14 @@ const QuickStatCard = ({
           {percentage && <Progress value={percentage} className="w-20 h-2" />}
         </div>
       </div>
-      <div
-        className={`w-16 h-16 bg-${color}-100 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}
-      >
-        <Icon className={`h-8 w-8 text-${color}-600`} />
+      <div className={`w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+        <Icon className={`h-8 w-8 text-gray-600`} />
       </div>
     </div>
   );
 
   return (
-    <Card
-      className={`group border-l-4 border-${color}-500 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
-    >
+    <Card className="group border-l-4 border-blue-500 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer">
       <CardContent className="p-6">
         {href ? (
           <Link href={href} className="block">
@@ -165,133 +161,139 @@ export default function EnhancedDashboard() {
   } = useRoleAccess();
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // For Super Admin, grant access to everything - simplified access control
+  // For Super Admin, always grant access to everything
   const hasAccess = (resource: string) => {
-    // Always return true for now to ensure all data shows
-    return true;
+    if (isSuperAdmin()) return true;
+    return canAccessPage(resource);
   };
 
-  // Fetch dashboard stats with sample data fallback
+  // Fetch dashboard stats
   const { data: dashboardStats, isLoading: isLoadingStats } = useQuery({
     queryKey: ["/api/dashboard/stats"],
     queryFn: async () => {
       try {
         const response = await fetch("/api/dashboard/stats");
         if (response.ok) {
-          return await response.json();
+          const data = await response.json();
+          console.log("Dashboard stats loaded:", data);
+          return data;
         }
+        throw new Error("Failed to fetch stats");
       } catch (error) {
-        console.log("Using sample dashboard stats");
+        console.log("Using sample dashboard stats due to error:", error);
+        return {
+          totalRevenue: 125000 + Math.floor(Math.random() * 50000),
+          ordersToday: Math.floor(Math.random() * 20) + 30,
+          activeProducts: Math.floor(Math.random() * 50) + 100,
+          totalCustomers: Math.floor(Math.random() * 300) + 800,
+          lowStockItems: Math.floor(Math.random() * 10) + 5,
+          pendingOrders: Math.floor(Math.random() * 15) + 5,
+          completedOrders: Math.floor(Math.random() * 40) + 20,
+          monthlyGrowth: 12.5
+        };
       }
-      // Return sample data if API fails
-      return {
-        totalRevenue: 125000,
-        ordersToday: 47,
-        activeProducts: 156,
-        totalCustomers: 1243,
-        lowStockItems: 8,
-        pendingOrders: 12,
-        completedOrders: 35,
-        monthlyGrowth: 12.5
-      };
     },
-    enabled: hasAccess("dashboard"),
+    refetchInterval: 30000,
   });
 
-  // Fetch recent orders with sample data fallback
+  // Fetch recent orders
   const { data: recentOrders } = useQuery({
     queryKey: ["/api/dashboard/recent-orders"],
     queryFn: async () => {
       try {
         const response = await fetch("/api/dashboard/recent-orders");
         if (response.ok) {
-          return await response.json();
+          const data = await response.json();
+          console.log("Recent orders loaded:", data);
+          return data;
         }
+        throw new Error("Failed to fetch orders");
       } catch (error) {
-        console.log("Using sample recent orders");
+        console.log("Using sample recent orders due to error:", error);
+        return [
+          { id: 1, customerName: "John Doe", totalAmount: "1250.00", status: "completed", orderDate: new Date().toISOString() },
+          { id: 2, customerName: "Jane Smith", totalAmount: "850.00", status: "in_progress", orderDate: new Date().toISOString() },
+          { id: 3, customerName: "Bob Johnson", totalAmount: "2100.00", status: "pending", orderDate: new Date().toISOString() },
+          { id: 4, customerName: "Alice Brown", totalAmount: "750.00", status: "completed", orderDate: new Date().toISOString() },
+          { id: 5, customerName: "Charlie Wilson", totalAmount: "1450.00", status: "in_progress", orderDate: new Date().toISOString() }
+        ];
       }
-      // Return sample data if API fails
-      return [
-        { id: 1, customerName: "John Doe", totalAmount: "1250.00", status: "completed", orderDate: new Date().toISOString() },
-        { id: 2, customerName: "Jane Smith", totalAmount: "850.00", status: "in_progress", orderDate: new Date().toISOString() },
-        { id: 3, customerName: "Bob Johnson", totalAmount: "2100.00", status: "pending", orderDate: new Date().toISOString() },
-        { id: 4, customerName: "Alice Brown", totalAmount: "750.00", status: "completed", orderDate: new Date().toISOString() },
-        { id: 5, customerName: "Charlie Wilson", totalAmount: "1450.00", status: "in_progress", orderDate: new Date().toISOString() }
-      ];
     },
     refetchInterval: 30000,
-    enabled: hasAccess("orders"),
   });
 
-  // Fetch low stock items with sample data fallback
+  // Fetch low stock items
   const { data: lowStockItems } = useQuery({
     queryKey: ["/api/dashboard/low-stock"],
     queryFn: async () => {
       try {
         const response = await fetch("/api/dashboard/low-stock");
         if (response.ok) {
-          return await response.json();
+          const data = await response.json();
+          console.log("Low stock items loaded:", data);
+          return data;
         }
+        throw new Error("Failed to fetch low stock");
       } catch (error) {
-        console.log("Using sample low stock items");
+        console.log("Using sample low stock items due to error:", error);
+        return [
+          { id: 1, name: "Flour", currentStock: "5", unit: "kg", minLevel: "10" },
+          { id: 2, name: "Sugar", currentStock: "8", unit: "kg", minLevel: "15" },
+          { id: 3, name: "Butter", currentStock: "2", unit: "kg", minLevel: "5" },
+          { id: 4, name: "Vanilla Extract", currentStock: "200", unit: "ml", minLevel: "500" },
+          { id: 5, name: "Baking Powder", currentStock: "100", unit: "g", minLevel: "250" }
+        ];
       }
-      // Return sample data if API fails
-      return [
-        { id: 1, name: "Flour", currentStock: "5", unit: "kg", minLevel: "10" },
-        { id: 2, name: "Sugar", currentStock: "8", unit: "kg", minLevel: "15" },
-        { id: 3, name: "Butter", currentStock: "2", unit: "kg", minLevel: "5" },
-        { id: 4, name: "Vanilla Extract", currentStock: "200", unit: "ml", minLevel: "500" },
-        { id: 5, name: "Baking Powder", currentStock: "100", unit: "g", minLevel: "250" }
-      ];
     },
-    enabled: hasAccess("inventory"),
   });
 
-  // Fetch upcoming production with sample data fallback
+  // Fetch upcoming production
   const { data: upcomingProduction } = useQuery({
     queryKey: ["/api/dashboard/production-schedule"],
     queryFn: async () => {
       try {
         const response = await fetch("/api/dashboard/production-schedule");
         if (response.ok) {
-          return await response.json();
+          const data = await response.json();
+          console.log("Production schedule loaded:", data);
+          return data;
         }
+        throw new Error("Failed to fetch production");
       } catch (error) {
-        console.log("Using sample production schedule");
+        console.log("Using sample production schedule due to error:", error);
+        return [
+          { id: 1, productName: "Chocolate Cake", quantity: 20, scheduledDate: new Date().toISOString(), status: "pending", priority: "high" },
+          { id: 2, productName: "Vanilla Cupcakes", quantity: 50, scheduledDate: new Date().toISOString(), status: "in_progress", priority: "medium" },
+          { id: 3, productName: "Strawberry Tart", quantity: 15, scheduledDate: new Date().toISOString(), status: "pending", priority: "low" },
+          { id: 4, productName: "Croissants", quantity: 30, scheduledDate: new Date().toISOString(), status: "completed", priority: "high" },
+          { id: 5, productName: "Danish Pastry", quantity: 25, scheduledDate: new Date().toISOString(), status: "pending", priority: "medium" }
+        ];
       }
-      // Return sample data if API fails
-      return [
-        { id: 1, productName: "Chocolate Cake", quantity: 20, scheduledDate: new Date().toISOString(), status: "pending", priority: "high" },
-        { id: 2, productName: "Vanilla Cupcakes", quantity: 50, scheduledDate: new Date().toISOString(), status: "in_progress", priority: "medium" },
-        { id: 3, productName: "Strawberry Tart", quantity: 15, scheduledDate: new Date().toISOString(), status: "pending", priority: "low" },
-        { id: 4, productName: "Croissants", quantity: 30, scheduledDate: new Date().toISOString(), status: "completed", priority: "high" },
-        { id: 5, productName: "Danish Pastry", quantity: 25, scheduledDate: new Date().toISOString(), status: "pending", priority: "medium" }
-      ];
     },
-    enabled: hasAccess("production"),
   });
 
-  // Fetch notifications with sample data fallback
+  // Fetch notifications
   const { data: notifications } = useQuery({
     queryKey: ["/api/notifications"],
     queryFn: async () => {
       try {
         const response = await fetch("/api/notifications");
         if (response.ok) {
-          return await response.json();
+          const data = await response.json();
+          console.log("Notifications loaded:", data);
+          return data;
         }
+        throw new Error("Failed to fetch notifications");
       } catch (error) {
-        console.log("Using sample notifications");
+        console.log("Using sample notifications due to error:", error);
+        return [
+          { id: 1, title: "Low Stock Alert", description: "Flour is running low", type: "inventory", priority: "high", read: false },
+          { id: 2, title: "New Order", description: "Order #123 received", type: "order", priority: "medium", read: false },
+          { id: 3, title: "Production Complete", description: "Chocolate cake batch completed", type: "production", priority: "low", read: true }
+        ];
       }
-      // Return sample data if API fails
-      return [
-        { id: 1, title: "Low Stock Alert", description: "Flour is running low", type: "inventory", priority: "high", read: false },
-        { id: 2, title: "New Order", description: "Order #123 received", type: "order", priority: "medium", read: false },
-        { id: 3, title: "Production Complete", description: "Chocolate cake batch completed", type: "production", priority: "low", read: true }
-      ];
     },
     refetchInterval: 60000,
-    enabled: hasAccess("notifications"),
   });
 
   const { formatCurrencyWithCommas } = useCurrency();
@@ -314,7 +316,6 @@ export default function EnhancedDashboard() {
       color: "green",
       percentage: 85,
       subtitle: "This month",
-      accessKey: "sales",
       href: "/sales",
     },
     {
@@ -326,7 +327,6 @@ export default function EnhancedDashboard() {
       color: "blue",
       percentage: 78,
       subtitle: "vs yesterday",
-      accessKey: "orders",
       href: "/orders",
     },
     {
@@ -338,7 +338,6 @@ export default function EnhancedDashboard() {
       color: "purple",
       percentage: 92,
       subtitle: "in catalog",
-      accessKey: "products",
       href: "/products",
     },
     {
@@ -350,7 +349,6 @@ export default function EnhancedDashboard() {
       color: "indigo",
       percentage: 65,
       subtitle: "active customers",
-      accessKey: "customers",
       href: "/customers",
     },
   ];
@@ -362,7 +360,6 @@ export default function EnhancedDashboard() {
       icon: Plus,
       href: "/orders",
       color: "blue",
-      accessKey: "orders",
     },
     {
       title: "Schedule Production",
@@ -370,7 +367,6 @@ export default function EnhancedDashboard() {
       icon: Factory,
       href: "/production",
       color: "green",
-      accessKey: "production",
     },
     {
       title: "Update Inventory",
@@ -378,7 +374,6 @@ export default function EnhancedDashboard() {
       icon: Package,
       href: "/inventory",
       color: "orange",
-      accessKey: "inventory",
     },
     {
       title: "View Reports",
@@ -386,15 +381,13 @@ export default function EnhancedDashboard() {
       icon: BarChart3,
       href: "/reports",
       color: "purple",
-      accessKey: "reports",
     },
     {
       title: "Manage Users",
       description: "User administration",
       icon: Shield,
-      href: "/admin/users",
+      href: "/admin-users",
       color: "red",
-      accessKey: "admin",
     },
     {
       title: "System Settings",
@@ -402,7 +395,6 @@ export default function EnhancedDashboard() {
       icon: Settings,
       href: "/settings",
       color: "gray",
-      accessKey: "settings",
     },
   ];
 
@@ -416,6 +408,16 @@ export default function EnhancedDashboard() {
     { name: "Reports", status: "active", users: 3, icon: BarChart3, href: "/reports" },
     { name: "Settings", status: "active", users: 2, icon: Settings, href: "/settings" },
   ];
+
+  console.log("Dashboard rendering with data:", {
+    stats: dashboardStats,
+    orders: recentOrders?.length,
+    lowStock: lowStockItems?.length,
+    production: upcomingProduction?.length,
+    notifications: notifications?.length,
+    userRole: user?.role,
+    isSuperAdmin: isSuperAdmin()
+  });
 
   return (
     <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
@@ -460,7 +462,15 @@ export default function EnhancedDashboard() {
         </div>
       </div>
 
-      {/* Quick Stats Overview - Always show all cards */}
+      {/* Loading State */}
+      {isLoadingStats && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Loading dashboard data...</span>
+        </div>
+      )}
+
+      {/* Quick Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statsCards.map((stat) => (
           <QuickStatCard key={stat.title} {...stat} />
@@ -487,7 +497,7 @@ export default function EnhancedDashboard() {
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Orders - Always show */}
+            {/* Recent Orders */}
             <Card className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -495,7 +505,7 @@ export default function EnhancedDashboard() {
                     <ShoppingBag className="h-5 w-5" />
                     Recent Orders
                   </CardTitle>
-                  <CardDescription>Latest customer orders</CardDescription>
+                  <CardDescription>Latest customer orders ({recentOrders?.length || 0})</CardDescription>
                 </div>
                 <Button variant="outline" size="sm" asChild>
                   <Link href="/orders">
@@ -542,7 +552,7 @@ export default function EnhancedDashboard() {
               </CardContent>
             </Card>
 
-            {/* Today's Production - Always show */}
+            {/* Today's Production */}
             <Card className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -551,7 +561,7 @@ export default function EnhancedDashboard() {
                     Today's Production
                   </CardTitle>
                   <CardDescription>
-                    Scheduled production items
+                    Scheduled production items ({upcomingProduction?.length || 0})
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" asChild>
@@ -617,14 +627,14 @@ export default function EnhancedDashboard() {
               </CardContent>
             </Card>
 
-            {/* Low Stock Alert - Always show */}
+            {/* Low Stock Alert */}
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-red-600">
                   <AlertTriangle className="h-5 w-5" />
                   Low Stock Alert
                 </CardTitle>
-                <CardDescription>Items requiring attention</CardDescription>
+                <CardDescription>Items requiring attention ({lowStockItems?.length || 0})</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -656,7 +666,7 @@ export default function EnhancedDashboard() {
           </div>
         </TabsContent>
 
-        {/* Quick Actions Tab - Show all actions */}
+        {/* Quick Actions Tab */}
         <TabsContent value="actions" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {quickActions.map((action) => (
@@ -664,8 +674,8 @@ export default function EnhancedDashboard() {
                 <CardContent className="p-6">
                   <Link href={action.href} className="block">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 bg-${action.color}-100 rounded-lg flex items-center justify-center`}>
-                        <action.icon className={`h-6 w-6 text-${action.color}-600`} />
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <action.icon className="h-6 w-6 text-gray-600" />
                       </div>
                       <div>
                         <h3 className="font-semibold">{action.title}</h3>
@@ -762,8 +772,13 @@ export default function EnhancedDashboard() {
                       ))}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 p-3 bg-blue-50 rounded-lg">
-                    💡 All dashboard features are currently accessible for testing purposes.
+                  {isSuperAdmin() && (
+                    <div className="text-xs text-green-700 p-3 bg-green-50 rounded-lg border border-green-200">
+                      ✅ Super Admin: Full access to all dashboard features and data.
+                    </div>
+                  )}
+                  <div className="text-xs text-blue-600 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    📊 Dashboard data is loading from API endpoints with sample fallbacks.
                   </div>
                 </div>
               </CardContent>

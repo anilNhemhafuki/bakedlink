@@ -27,13 +27,18 @@ export function useRoleAccess() {
   ): boolean => {
     if (!user) return false;
 
-    // Super Admin has full access
-    if (isSuperAdmin()) return true;
+    // Super Admin has UNLIMITED access to everything
+    if (isSuperAdmin()) {
+      console.log(`✅ Super Admin access granted for: ${resource}`);
+      return true;
+    }
 
     // Admins can do almost everything except super_admin pages
     if (isAdmin()) {
       const restrictedResources = ["super_admin"];
-      return !restrictedResources.includes(resource);
+      const hasAccess = !restrictedResources.includes(resource);
+      console.log(`🔧 Admin access for ${resource}: ${hasAccess}`);
+      return hasAccess;
     }
 
     // Manager-level access
@@ -56,7 +61,9 @@ export function useRoleAccess() {
         "salary",
         "leave_requests",
       ];
-      return allowedResources.includes(resource);
+      const hasAccess = allowedResources.includes(resource);
+      console.log(`👔 Manager access for ${resource}: ${hasAccess}`);
+      return hasAccess;
     }
 
     // Supervisor access
@@ -71,7 +78,9 @@ export function useRoleAccess() {
         "staff",
         "attendance",
       ];
-      return allowedResources.includes(resource);
+      const hasAccess = allowedResources.includes(resource);
+      console.log(`👷 Supervisor access for ${resource}: ${hasAccess}`);
+      return hasAccess;
     }
 
     // Marketer access
@@ -84,7 +93,9 @@ export function useRoleAccess() {
         "sales",
         "reports",
       ];
-      return allowedResources.includes(resource);
+      const hasAccess = allowedResources.includes(resource);
+      console.log(`📈 Marketer access for ${resource}: ${hasAccess}`);
+      return hasAccess;
     }
 
     // Staff access
@@ -96,10 +107,13 @@ export function useRoleAccess() {
         "orders",
         "production",
       ];
-      return allowedResources.includes(resource);
+      const hasAccess = allowedResources.includes(resource);
+      console.log(`👨‍💼 Staff access for ${resource}: ${hasAccess}`);
+      return hasAccess;
     }
 
     // Fallback to fine-grained permissions system (if any)
+    console.log(`❌ No access for ${resource} - checking permissions`);
     return hasPermission(resource, action);
   };
 
