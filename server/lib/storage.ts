@@ -1,4 +1,17 @@
-import { eq, desc, count, sql, and, gte, lte, lt, or, ilike, isNull, asc } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  count,
+  sql,
+  and,
+  gte,
+  lte,
+  lt,
+  or,
+  ilike,
+  isNull,
+  asc,
+} from "drizzle-orm";
 import { db } from "../db";
 import {
   users,
@@ -99,7 +112,7 @@ import {
   saleItems,
   branches,
   type Branch,
-  type InsertBranch
+  type InsertBranch,
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
 import fs from "fs";
@@ -127,7 +140,10 @@ export interface IStorage {
   deleteCategory(id: number): Promise<void>;
 
   // Product operations
-  getProducts(userBranchId?: number, canAccessAllBranches?: boolean): Promise<Product[]>;
+  getProducts(
+    userBranchId?: number,
+    canAccessAllBranches?: boolean,
+  ): Promise<Product[]>;
   getProductById(id: number): Promise<Product | undefined>;
   getProductsWithIngredients(): Promise<any[]>;
   createProduct(product: InsertProduct): Promise<Product>;
@@ -168,7 +184,10 @@ export interface IStorage {
     currentPage: number;
     itemsPerPage: number;
   }>;
-  getInventoryItems(userBranchId?: number, canAccessAllBranches?: boolean): Promise<InventoryItem[]>;
+  getInventoryItems(
+    userBranchId?: number,
+    canAccessAllBranches?: boolean,
+  ): Promise<InventoryItem[]>;
   getAllInventoryItems(): Promise<InventoryItem[]>;
   getInventoryItemById(id: number): Promise<InventoryItem | undefined>;
   createInventoryItem(data: any): Promise<InventoryItem>;
@@ -205,7 +224,11 @@ export interface IStorage {
   getLowStockItems();
   getIngredients(): Promise<InventoryItem[]>;
   syncStockFromPurchases();
-  updateInventoryStockAndCost(itemId: number, addedQuantity: number, newCostPerUnit: number);
+  updateInventoryStockAndCost(
+    itemId: number,
+    addedQuantity: number,
+    newCostPerUnit: number,
+  );
   updateInventoryPurchaseStock(itemId: number, purchasedQuantity: number);
 
   // Permission operations
@@ -309,7 +332,7 @@ export interface IStorage {
   getLedgerTransactions(
     entityId: number,
     entityType: "customer" | "party",
-    limit?: number
+    limit?: number,
   ): Promise<any[]>;
   updateLedgerTransaction(id: number, data: any): Promise<any>;
   deleteLedgerTransaction(id: number): Promise<void>;
@@ -417,8 +440,13 @@ export interface IStorage {
 
   // Production Schedule Labels operations
   getProductionScheduleLabels(): Promise<ProductionScheduleLabel[]>;
-  createProductionScheduleLabel(data: InsertProductionScheduleLabel): Promise<ProductionScheduleLabel>;
-  updateProductionScheduleLabel(id: number, data: Partial<InsertProductionScheduleLabel>): Promise<ProductionScheduleLabel>;
+  createProductionScheduleLabel(
+    data: InsertProductionScheduleLabel,
+  ): Promise<ProductionScheduleLabel>;
+  updateProductionScheduleLabel(
+    id: number,
+    data: Partial<InsertProductionScheduleLabel>,
+  ): Promise<ProductionScheduleLabel>;
   closeDayForLabels(ids: number[], closedBy: string): Promise<any>;
 
   // Supplier Ledger operations
@@ -489,13 +517,28 @@ export class Storage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const { email, password, firstName, lastName, profileImageUrl, role, branchId, canAccessAllBranches } =
-      userData;
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      profileImageUrl,
+      role,
+      branchId,
+      canAccessAllBranches,
+    } = userData;
 
     const existingUser = await this.getUserByEmail(email);
 
     if (existingUser) {
-      const updateData: any = { firstName, lastName, profileImageUrl, role, branchId, canAccessAllBranches };
+      const updateData: any = {
+        firstName,
+        lastName,
+        profileImageUrl,
+        role,
+        branchId,
+        canAccessAllBranches,
+      };
       if (password) {
         updateData.password = await bcrypt.hash(password, 10);
       }
@@ -522,7 +565,7 @@ export class Storage implements IStorage {
           profileImageUrl,
           role: role || "staff",
           branchId: branchId || null,
-          canAccessAllBranches: canAccessAllBranches || false
+          canAccessAllBranches: canAccessAllBranches || false,
         })
         .returning();
 
@@ -555,10 +598,10 @@ export class Storage implements IStorage {
   }
 
   async ensureDefaultAdmin(): Promise<void> {
-    const superAdminEmail = "superadmin@merobakesoft.com";
-    const adminEmail = "admin@merobakesoft.com";
-    const managerEmail = "manager@merobakesoft.com";
-    const staffEmail = "staff@merobakesoft.com";
+    const superAdminEmail = "superadmin@merobakersoft.com";
+    const adminEmail = "admin@merobakersoft.com";
+    const managerEmail = "manager@merobakersoft.com";
+    const staffEmail = "staff@merobakersoft.com";
 
     // Create superadmin user
     const existingSuperAdmin = await this.getUserByEmail(superAdminEmail);
@@ -569,7 +612,7 @@ export class Storage implements IStorage {
         firstName: "Super",
         lastName: "Admin",
         role: "super_admin",
-        canAccessAllBranches: true // Super admin can access all branches
+        canAccessAllBranches: true, // Super admin can access all branches
       });
       console.log("✅ Default superadmin user created");
     }
@@ -582,7 +625,7 @@ export class Storage implements IStorage {
         firstName: "Admin",
         lastName: "User",
         role: "admin",
-        canAccessAllBranches: true // Admins can access all branches by default
+        canAccessAllBranches: true, // Admins can access all branches by default
       });
       console.log("✅ Default admin user created");
     }
@@ -626,7 +669,10 @@ export class Storage implements IStorage {
   }
 
   // Category operations
-  async getCategories(userBranchId?: number, canAccessAllBranches?: boolean): Promise<Category[]> {
+  async getCategories(
+    userBranchId?: number,
+    canAccessAllBranches?: boolean,
+  ): Promise<Category[]> {
     try {
       let query = this.db
         .select({
@@ -636,7 +682,7 @@ export class Storage implements IStorage {
           branchId: categories.branchId,
           isGlobal: categories.isGlobal,
           createdAt: categories.createdAt,
-          updatedAt: categories.updatedAt
+          updatedAt: categories.updatedAt,
         })
         .from(categories);
 
@@ -645,8 +691,8 @@ export class Storage implements IStorage {
         query = query.where(
           or(
             isNull(categories.branchId), // Global categories
-            eq(categories.branchId, userBranchId) // User's branch categories
-          )
+            eq(categories.branchId, userBranchId), // User's branch categories
+          ),
         );
       }
 
@@ -654,7 +700,7 @@ export class Storage implements IStorage {
       console.log(`✅ Found ${result.length} categories`);
       return result;
     } catch (error) {
-      console.error('❌ Error fetching categories:', error);
+      console.error("❌ Error fetching categories:", error);
       return [];
     }
   }
@@ -684,7 +730,10 @@ export class Storage implements IStorage {
   }
 
   // Product operations
-  async getProducts(userBranchId?: number, canAccessAllBranches?: boolean): Promise<Product[]> {
+  async getProducts(
+    userBranchId?: number,
+    canAccessAllBranches?: boolean,
+  ): Promise<Product[]> {
     try {
       let query = this.db
         .select({
@@ -715,8 +764,8 @@ export class Storage implements IStorage {
           or(
             eq(products.branchId, userBranchId),
             eq(products.isGlobal, true),
-            isNull(products.branchId)
-          )
+            isNull(products.branchId),
+          ),
         );
       }
 
@@ -725,7 +774,7 @@ export class Storage implements IStorage {
       console.log(`✅ Found ${result.length} products for branch access`);
       return result as Product[];
     } catch (error) {
-      console.error('❌ Error fetching products:', error);
+      console.error("❌ Error fetching products:", error);
       return [];
     }
   }
@@ -844,7 +893,7 @@ export class Storage implements IStorage {
           type: units.type,
           isActive: units.isActive,
           createdAt: units.createdAt,
-          updatedAt: units.updatedAt
+          updatedAt: units.updatedAt,
         })
         .from(units)
         .where(eq(units.isActive, true))
@@ -893,7 +942,7 @@ export class Storage implements IStorage {
         name: data.name,
         abbreviation: data.abbreviation,
         type: data.type,
-        isActive: data.isActive ?? true
+        isActive: data.isActive ?? true,
       };
 
       const [unit] = await this.db.insert(units).values(unitData).returning();
@@ -918,23 +967,46 @@ export class Storage implements IStorage {
       // Check if unit is being used in other tables before deletion
       const usageChecks = await Promise.all([
         // Check products table
-        this.db.select({ count: sql`count(*)` }).from(products).where(eq(products.unitId, id)),
+        this.db
+          .select({ count: sql`count(*)` })
+          .from(products)
+          .where(eq(products.unitId, id)),
         // Check inventory items table (primary unit)
-        this.db.select({ count: sql`count(*)` }).from(inventoryItems).where(eq(inventoryItems.unitId, id)),
+        this.db
+          .select({ count: sql`count(*)` })
+          .from(inventoryItems)
+          .where(eq(inventoryItems.unitId, id)),
         // Check inventory items table (secondary unit)
-        this.db.select({ count: sql`count(*)` }).from(inventoryItems).where(eq(inventoryItems.secondaryUnitId, id)),
+        this.db
+          .select({ count: sql`count(*)` })
+          .from(inventoryItems)
+          .where(eq(inventoryItems.secondaryUnitId, id)),
         // Check product ingredients table
-        this.db.select({ count: sql`count(*)` }).from(productIngredients).where(eq(productIngredients.unitId, id)),
+        this.db
+          .select({ count: sql`count(*)` })
+          .from(productIngredients)
+          .where(eq(productIngredients.unitId, id)),
         // Check unit conversions table (from unit)
-        this.db.select({ count: sql`count(*)` }).from(unitConversions).where(eq(unitConversions.fromUnitId, id)),
+        this.db
+          .select({ count: sql`count(*)` })
+          .from(unitConversions)
+          .where(eq(unitConversions.fromUnitId, id)),
         // Check unit conversions table (to unit)
-        this.db.select({ count: sql`count(*)` }).from(unitConversions).where(eq(unitConversions.toUnitId, id)),
+        this.db
+          .select({ count: sql`count(*)` })
+          .from(unitConversions)
+          .where(eq(unitConversions.toUnitId, id)),
       ]);
 
-      const totalUsage = usageChecks.reduce((sum, result) => sum + Number(result[0].count), 0);
+      const totalUsage = usageChecks.reduce(
+        (sum, result) => sum + Number(result[0].count),
+        0,
+      );
 
       if (totalUsage > 0) {
-        throw new Error(`Cannot delete unit: it is being used in ${totalUsage} record(s). Please remove all references to this unit before deleting it.`);
+        throw new Error(
+          `Cannot delete unit: it is being used in ${totalUsage} record(s). Please remove all references to this unit before deleting it.`,
+        );
       }
 
       // Safe to delete
@@ -1096,9 +1168,7 @@ export class Storage implements IStorage {
         .from(inventoryItems)
         .orderBy(desc(inventoryItems.createdAt));
 
-      let countQuery = this.db
-        .select({ count: count() })
-        .from(inventoryItems);
+      let countQuery = this.db.select({ count: count() }).from(inventoryItems);
 
       // Build where conditions
       const whereConditions = [];
@@ -1108,8 +1178,8 @@ export class Storage implements IStorage {
           or(
             ilike(inventoryItems.name, `%${search}%`),
             ilike(inventoryItems.supplier, `%${search}%`),
-            ilike(inventoryItems.invCode, `%${search}%`)
-          )
+            ilike(inventoryItems.invCode, `%${search}%`),
+          ),
         );
       }
 
@@ -1130,7 +1200,7 @@ export class Storage implements IStorage {
 
       const [items, totalResult] = await Promise.all([
         baseQuery.limit(limit).offset(offset),
-        countQuery
+        countQuery,
       ]);
 
       const totalCount = totalResult[0]?.count || 0;
@@ -1141,7 +1211,7 @@ export class Storage implements IStorage {
         items.map(async (item) => {
           let categoryName = null;
           let unitAbbreviation = item.unit;
-          let group = 'uncategorized';
+          let group = "uncategorized";
 
           // Get category name if categoryId exists
           if (item.categoryId) {
@@ -1156,7 +1226,10 @@ export class Storage implements IStorage {
                 group = item.categoryId.toString();
               }
             } catch (error) {
-              console.warn(`Failed to fetch category for item ${item.id}:`, error);
+              console.warn(
+                `Failed to fetch category for item ${item.id}:`,
+                error,
+              );
             }
           }
 
@@ -1178,7 +1251,7 @@ export class Storage implements IStorage {
 
           // Determine group
           if (item.isIngredient) {
-            group = 'ingredients';
+            group = "ingredients";
           }
 
           return {
@@ -1186,20 +1259,20 @@ export class Storage implements IStorage {
             categoryName,
             unitAbbreviation,
             group,
-            notes: ''
+            notes: "",
           };
-        })
+        }),
       );
 
       // Check for low stock items (notifications will be generated by the API route)
-      console.log('📦 Checking inventory levels for notifications...');
+      console.log("📦 Checking inventory levels for notifications...");
 
       return {
         items: enrichedItems,
         totalCount,
         totalPages,
         currentPage: page,
-        itemsPerPage: limit
+        itemsPerPage: limit,
       };
     } catch (error) {
       console.error("Error in getInventoryItems:", error);
@@ -1208,12 +1281,15 @@ export class Storage implements IStorage {
         totalCount: 0,
         totalPages: 0,
         currentPage: 1,
-        itemsPerPage: 10
+        itemsPerPage: 10,
       };
     }
   }
 
-  async getInventoryItems(userBranchId?: number, canAccessAllBranches?: boolean): Promise<InventoryItem[]> {
+  async getInventoryItems(
+    userBranchId?: number,
+    canAccessAllBranches?: boolean,
+  ): Promise<InventoryItem[]> {
     try {
       let query = this.db
         .select({
@@ -1242,24 +1318,29 @@ export class Storage implements IStorage {
           categoryName: inventoryCategories.name,
         })
         .from(inventoryItems)
-        .leftJoin(inventoryCategories, eq(inventoryItems.categoryId, inventoryCategories.id));
+        .leftJoin(
+          inventoryCategories,
+          eq(inventoryItems.categoryId, inventoryCategories.id),
+        );
 
       // Apply branch filtering if user doesn't have access to all branches
       if (!canAccessAllBranches && userBranchId) {
         query = query.where(
           or(
             eq(inventoryItems.branchId, userBranchId),
-            isNull(inventoryItems.branchId)
-          )
+            isNull(inventoryItems.branchId),
+          ),
         );
       }
 
       const result = await query.orderBy(inventoryItems.name);
 
-      console.log(`✅ Found ${result.length} inventory items for branch access`);
+      console.log(
+        `✅ Found ${result.length} inventory items for branch access`,
+      );
       return result as InventoryItem[];
     } catch (error) {
-      console.error('❌ Error fetching inventory items:', error);
+      console.error("❌ Error fetching inventory items:", error);
       return [];
     }
   }
@@ -1307,20 +1388,32 @@ export class Storage implements IStorage {
       const cleanData = {
         name: trimmedName,
         currentStock: data.currentStock ? String(data.currentStock) : "0",
-        openingStock: data.openingStock ? String(data.openingStock) : String(data.currentStock || "0"),
-        purchasedQuantity: data.purchasedQuantity ? String(data.purchasedQuantity) : "0",
-        consumedQuantity: data.consumedQuantity ? String(data.consumedQuantity) : "0",
-        closingStock: data.closingStock ? String(data.closingStock) : String(data.currentStock || "0"),
+        openingStock: data.openingStock
+          ? String(data.openingStock)
+          : String(data.currentStock || "0"),
+        purchasedQuantity: data.purchasedQuantity
+          ? String(data.purchasedQuantity)
+          : "0",
+        consumedQuantity: data.consumedQuantity
+          ? String(data.consumedQuantity)
+          : "0",
+        closingStock: data.closingStock
+          ? String(data.closingStock)
+          : String(data.currentStock || "0"),
         minLevel: data.minLevel ? String(data.minLevel) : "0",
         unitId: data.unitId || null,
         secondaryUnitId: data.secondaryUnitId || null,
-        conversionRate: data.conversionRate ? String(data.conversionRate) : null,
+        conversionRate: data.conversionRate
+          ? String(data.conversionRate)
+          : null,
         costPerUnit: data.costPerUnit ? String(data.costPerUnit) : "0",
         supplier: data.supplier || null,
         categoryId: data.categoryId || null,
         branchId: data.branchId || null, // Assign branchId
         isIngredient: data.isIngredient || false,
-        lastRestocked: data.lastRestocked ? new Date(data.lastRestocked) : new Date(),
+        lastRestocked: data.lastRestocked
+          ? new Date(data.lastRestocked)
+          : new Date(),
         notes: data.notes || null,
       };
 
@@ -1345,23 +1438,35 @@ export class Storage implements IStorage {
       const cleanData = { ...updateData };
 
       // Handle timestamp fields
-      if (cleanData.lastRestocked && typeof cleanData.lastRestocked !== 'string') {
+      if (
+        cleanData.lastRestocked &&
+        typeof cleanData.lastRestocked !== "string"
+      ) {
         cleanData.lastRestocked = new Date(cleanData.lastRestocked);
-      } else if (typeof cleanData.lastRestocked === 'string') {
+      } else if (typeof cleanData.lastRestocked === "string") {
         // Ensure string dates are parsed
         cleanData.lastRestocked = new Date(cleanData.lastRestocked);
       }
 
       // Ensure numeric fields are strings if they exist
-      const numericFields = ['currentStock', 'openingStock', 'purchasedQuantity', 'consumedQuantity', 'closingStock', 'minLevel', 'costPerUnit', 'conversionRate'];
-      numericFields.forEach(field => {
+      const numericFields = [
+        "currentStock",
+        "openingStock",
+        "purchasedQuantity",
+        "consumedQuantity",
+        "closingStock",
+        "minLevel",
+        "costPerUnit",
+        "conversionRate",
+      ];
+      numericFields.forEach((field) => {
         if (cleanData[field] !== undefined && cleanData[field] !== null) {
           cleanData[field] = String(cleanData[field]);
         }
       });
 
       // Remove undefined fields
-      Object.keys(cleanData).forEach(key => {
+      Object.keys(cleanData).forEach((key) => {
         if (cleanData[key] === undefined || cleanData[key] === null) {
           delete cleanData[key];
         }
@@ -1500,14 +1605,20 @@ export class Storage implements IStorage {
   async deleteInventoryItem(id: number): Promise<void> {
     try {
       // First check if item exists
-      const existingItem = await this.db.select().from(inventoryItems).where(eq(inventoryItems.id, id)).limit(1);
+      const existingItem = await this.db
+        .select()
+        .from(inventoryItems)
+        .where(eq(inventoryItems.id, id))
+        .limit(1);
 
       if (existingItem.length === 0) {
-        throw new Error('Inventory item not found');
+        throw new Error("Inventory item not found");
       }
 
       // Delete associated transactions
-      await this.db.delete(inventoryTransactions).where(eq(inventoryTransactions.itemId, id));
+      await this.db
+        .delete(inventoryTransactions)
+        .where(eq(inventoryTransactions.itemId, id));
 
       // Delete the item
       await this.db.delete(inventoryItems).where(eq(inventoryItems.id, id));
@@ -1517,7 +1628,7 @@ export class Storage implements IStorage {
     }
   }
 
-  async getInventoryCategories(): Promise<InventoryCategory[]>{
+  async getInventoryCategories(): Promise<InventoryCategory[]> {
     return await this.db
       .select()
       .from(inventoryCategories)
@@ -1657,9 +1768,10 @@ export class Storage implements IStorage {
 
       // Filter items that are suitable as ingredients
       const ingredients = allItems.filter((item: any) => {
-        const itemName = item.name?.toLowerCase() || '';
+        const itemName = item.name?.toLowerCase() || "";
 
-        return item.isIngredient === true ||
+        return (
+          item.isIngredient === true ||
           itemName.includes("flour") ||
           itemName.includes("sugar") ||
           itemName.includes("butter") ||
@@ -1673,7 +1785,8 @@ export class Storage implements IStorage {
           itemName.includes("cream") ||
           itemName.includes("oil") ||
           itemName.includes("spice") ||
-          itemName.includes("extract");
+          itemName.includes("extract")
+        );
       });
 
       console.log(`Filtered to ${ingredients.length} ingredients`);
@@ -1709,7 +1822,8 @@ export class Storage implements IStorage {
           const openingStock = parseFloat(item.openingStock || "0");
           const purchasedQuantity = aggregate.totalPurchased || 0;
           const consumedQuantity = parseFloat(item.consumedQuantity || "0");
-          const closingStock = openingStock + purchasedQuantity - consumedQuantity;
+          const closingStock =
+            openingStock + purchasedQuantity - consumedQuantity;
 
           await this.db
             .update(inventoryItems)
@@ -1730,7 +1844,11 @@ export class Storage implements IStorage {
     }
   }
 
-  async updateInventoryStockAndCost(itemId: number, addedQuantity: number, newCostPerUnit: number) {
+  async updateInventoryStockAndCost(
+    itemId: number,
+    addedQuantity: number,
+    newCostPerUnit: number,
+  ) {
     try {
       const item = await this.getInventoryItemById(itemId);
       if (!item) {
@@ -1741,9 +1859,11 @@ export class Storage implements IStorage {
       const currentCostPerUnit = parseFloat(item.costPerUnit);
 
       // Calculate weighted average cost
-      const totalValue = (currentStock * currentCostPerUnit) + (addedQuantity * newCostPerUnit);
+      const totalValue =
+        currentStock * currentCostPerUnit + addedQuantity * newCostPerUnit;
       const totalQuantity = currentStock + addedQuantity;
-      const newWeightedCost = totalQuantity > 0 ? totalValue / totalQuantity : newCostPerUnit;
+      const newWeightedCost =
+        totalQuantity > 0 ? totalValue / totalQuantity : newCostPerUnit;
 
       // Update inventory
       await this.db
@@ -1755,7 +1875,9 @@ export class Storage implements IStorage {
         })
         .where(eq(inventoryItems.id, itemId));
 
-      console.log(`Updated inventory item ${itemId}: stock=${totalQuantity}, cost=${newWeightedCost.toFixed(4)}`);
+      console.log(
+        `Updated inventory item ${itemId}: stock=${totalQuantity}, cost=${newWeightedCost.toFixed(4)}`,
+      );
     } catch (error) {
       console.error("Error updating inventory stock and cost:", error);
       throw error;
@@ -1763,19 +1885,25 @@ export class Storage implements IStorage {
   }
 
   // Update inventory stock specifically for purchases
-  async updateInventoryPurchaseStock(itemId: number, purchasedQuantity: number) {
+  async updateInventoryPurchaseStock(
+    itemId: number,
+    purchasedQuantity: number,
+  ) {
     try {
       const item = await this.getInventoryItemById(itemId);
       if (!item) {
         throw new Error("Inventory item not found");
       }
 
-      const openingStock = parseFloat(item.openingStock || item.currentStock || "0");
+      const openingStock = parseFloat(
+        item.openingStock || item.currentStock || "0",
+      );
       const currentPurchased = parseFloat(item.purchasedQuantity || "0");
       const consumedQuantity = parseFloat(item.consumedQuantity || "0");
 
       const newPurchasedQuantity = currentPurchased + purchasedQuantity;
-      const newClosingStock = openingStock + newPurchasedQuantity - consumedQuantity;
+      const newClosingStock =
+        openingStock + newPurchasedQuantity - consumedQuantity;
 
       // Update inventory with new purchase data
       await this.db
@@ -1788,7 +1916,9 @@ export class Storage implements IStorage {
         })
         .where(eq(inventoryItems.id, itemId));
 
-      console.log(`Updated purchase stock for item ${itemId}: purchased=${newPurchasedQuantity}, closing=${newClosingStock}`);
+      console.log(
+        `Updated purchase stock for item ${itemId}: purchased=${newPurchasedQuantity}, closing=${newClosingStock}`,
+      );
     } catch (error) {
       console.error("Error updating inventory purchase stock:", error);
       throw error;
@@ -2088,7 +2218,11 @@ export class Storage implements IStorage {
   async getSettings(): Promise<any> {
     try {
       const allSettings = await db.select().from(settings);
-      console.log("📊 Retrieved settings from database:", allSettings.length, "settings");
+      console.log(
+        "📊 Retrieved settings from database:",
+        allSettings.length,
+        "settings",
+      );
       // Ensure default settings are present if none exist
       if (allSettings.length === 0) {
         console.log("No settings found, creating default settings...");
@@ -2112,11 +2246,11 @@ export class Storage implements IStorage {
         .select()
         .from(branches)
         .orderBy(branches.isHeadOffice, desc(branches.createdAt));
-      
+
       console.log(`✅ Found ${result.length} branches`);
       return result;
     } catch (error) {
-      console.error('❌ Error fetching branches:', error);
+      console.error("❌ Error fetching branches:", error);
       return [];
     }
   }
@@ -2127,27 +2261,30 @@ export class Storage implements IStorage {
         .insert(branches)
         .values(branchData)
         .returning();
-      
-      console.log('✅ Branch created:', newBranch.name);
+
+      console.log("✅ Branch created:", newBranch.name);
       return newBranch;
     } catch (error) {
-      console.error('❌ Error creating branch:', error);
+      console.error("❌ Error creating branch:", error);
       throw error;
     }
   }
 
-  async updateBranch(id: number, branchData: Partial<InsertBranch>): Promise<Branch> {
+  async updateBranch(
+    id: number,
+    branchData: Partial<InsertBranch>,
+  ): Promise<Branch> {
     try {
       const [updatedBranch] = await this.db
         .update(branches)
         .set({ ...branchData, updatedAt: new Date() })
         .where(eq(branches.id, id))
         .returning();
-      
-      console.log('✅ Branch updated:', updatedBranch.name);
+
+      console.log("✅ Branch updated:", updatedBranch.name);
       return updatedBranch;
     } catch (error) {
-      console.error('❌ Error updating branch:', error);
+      console.error("❌ Error updating branch:", error);
       throw error;
     }
   }
@@ -2162,7 +2299,7 @@ export class Storage implements IStorage {
         .limit(1);
 
       if (branch.length > 0 && branch[0].isHeadOffice) {
-        throw new Error('Cannot delete head office branch');
+        throw new Error("Cannot delete head office branch");
       }
 
       // Instead of deleting, mark as inactive
@@ -2170,10 +2307,10 @@ export class Storage implements IStorage {
         .update(branches)
         .set({ isActive: false, updatedAt: new Date() })
         .where(eq(branches.id, id));
-      
-      console.log('✅ Branch marked as inactive');
+
+      console.log("✅ Branch marked as inactive");
     } catch (error) {
-      console.error('❌ Error deleting branch:', error);
+      console.error("❌ Error deleting branch:", error);
       throw error;
     }
   }
@@ -2184,10 +2321,10 @@ export class Storage implements IStorage {
         .update(users)
         .set({ branchId, updatedAt: new Date() })
         .where(eq(users.id, userId));
-      
+
       console.log(`✅ User ${userId} assigned to branch ${branchId}`);
     } catch (error) {
-      console.error('❌ Error assigning user to branch:', error);
+      console.error("❌ Error assigning user to branch:", error);
       throw error;
     }
   }
@@ -2210,11 +2347,11 @@ export class Storage implements IStorage {
         .from(users)
         .leftJoin(branches, eq(users.branchId, branches.id))
         .orderBy(users.createdAt);
-      
+
       console.log(`✅ Found ${result.length} users with branch information`);
       return result;
     } catch (error) {
-      console.error('❌ Error fetching users with branches:', error);
+      console.error("❌ Error fetching users with branches:", error);
       return [];
     }
   }
@@ -2245,7 +2382,7 @@ export class Storage implements IStorage {
       return {
         success: true,
         settings: settingsObject,
-        message: "Settings updated successfully"
+        message: "Settings updated successfully",
       };
     } catch (error) {
       console.error("❌ Error updating settings:", error);
@@ -2270,21 +2407,30 @@ export class Storage implements IStorage {
           .update(settings)
           .set({
             value: value,
-            updatedAt: new Date()
+            updatedAt: new Date(),
           })
           .where(eq(settings.key, key))
           .returning();
-        console.log(`✅ Updated setting ${key}:`, result.length > 0 ? "success" : "failed");
+        console.log(
+          `✅ Updated setting ${key}:`,
+          result.length > 0 ? "success" : "failed",
+        );
       } else {
         // Create new setting
-        const result = await db.insert(settings).values({
-          key: key,
-          value: value,
-          type: 'string',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }).returning();
-        console.log(`✅ Created setting ${key}:`, result.length > 0 ? "success" : "failed");
+        const result = await db
+          .insert(settings)
+          .values({
+            key: key,
+            value: value,
+            type: "string",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+        console.log(
+          `✅ Created setting ${key}:`,
+          result.length > 0 ? "success" : "failed",
+        );
       }
     } catch (error) {
       console.error(`❌ Error processing setting ${key}:`, error);
@@ -2404,7 +2550,7 @@ export class Storage implements IStorage {
   }
 
   // Customer operations
-  async getCustomers(): Promise<Customer[]>{
+  async getCustomers(): Promise<Customer[]> {
     return await this.db.select().from(customers).orderBy(customers.name);
   }
 
@@ -2442,7 +2588,7 @@ export class Storage implements IStorage {
   }
 
   // Party operations
-  async getParties(): Promise<Party[]>{
+  async getParties(): Promise<Party[]> {
     return await this.db.select().from(parties).orderBy(parties.name);
   }
 
@@ -2699,26 +2845,31 @@ export class Storage implements IStorage {
 
   async createOrder(orderData: any): Promise<Order> {
     try {
-      console.log('💾 Creating order with items:', orderData);
+      console.log("💾 Creating order with items:", orderData);
 
       // Ensure required fields exist
       if (!orderData.customerName || !orderData.totalAmount) {
-        throw new Error('Missing required order fields');
+        throw new Error("Missing required order fields");
       }
 
-      const newOrder = await db.insert(orders).values({
-        customerName: orderData.customerName,
-        customerId: orderData.customerId,
-        customerEmail: orderData.customerEmail,
-        customerPhone: orderData.customerPhone,
-        totalAmount: orderData.totalAmount.toString(),
-        status: orderData.status || 'pending',
-        paymentMethod: orderData.paymentMethod || 'cash',
-        deliveryDate: orderData.deliveryDate ? new Date(orderData.deliveryDate) : null,
-        notes: orderData.notes || null,
-      }).returning();
+      const newOrder = await db
+        .insert(orders)
+        .values({
+          customerName: orderData.customerName,
+          customerId: orderData.customerId,
+          customerEmail: orderData.customerEmail,
+          customerPhone: orderData.customerPhone,
+          totalAmount: orderData.totalAmount.toString(),
+          status: orderData.status || "pending",
+          paymentMethod: orderData.paymentMethod || "cash",
+          deliveryDate: orderData.deliveryDate
+            ? new Date(orderData.deliveryDate)
+            : null,
+          notes: orderData.notes || null,
+        })
+        .returning();
 
-      console.log('✅ Order created:', newOrder[0]);
+      console.log("✅ Order created:", newOrder[0]);
 
       if (orderData.items && orderData.items.length > 0) {
         const orderItemsData = orderData.items.map((item: any) => ({
@@ -2732,11 +2883,11 @@ export class Storage implements IStorage {
         }));
 
         await db.insert(orderItems).values(orderItemsData);
-        console.log('✅ Order items created');
+        console.log("✅ Order items created");
       }
 
       // Trigger notification for new order
-      console.log('📢 Triggering order notification...');
+      console.log("📢 Triggering order notification...");
       await this.triggerBusinessNotification("order_created", {
         orderNumber: newOrder[0].id,
         customerName: newOrder[0].customerName,
@@ -2745,7 +2896,7 @@ export class Storage implements IStorage {
 
       return newOrder[0];
     } catch (error) {
-      console.error('❌ Error creating order:', error);
+      console.error("❌ Error creating order:", error);
       throw error;
     }
   }
@@ -2867,7 +3018,7 @@ export class Storage implements IStorage {
         .orderBy(desc(productionSchedule.createdAt));
       return result;
     } catch (error) {
-      console.error('❌ Error getting production schedule:', error);
+      console.error("❌ Error getting production schedule:", error);
       return [];
     }
   }
@@ -2920,7 +3071,10 @@ export class Storage implements IStorage {
       .orderBy(productionSchedule.scheduledDate);
   }
 
-  async closeDayProductionSchedule(date: string, closedBy: string): Promise<any> {
+  async closeDayProductionSchedule(
+    date: string,
+    closedBy: string,
+  ): Promise<any> {
     try {
       const targetDate = new Date(date);
       const nextDay = new Date(targetDate);
@@ -2953,49 +3107,57 @@ export class Storage implements IStorage {
         .where(
           and(
             gte(productionSchedule.scheduledDate, targetDate.toISOString()),
-            lt(productionSchedule.scheduledDate, nextDay.toISOString())
-          )
+            lt(productionSchedule.scheduledDate, nextDay.toISOString()),
+          ),
         );
 
       if (itemsToClose.length === 0) {
-        return { message: "No production items found for the specified date", closedItems: [] };
+        return {
+          message: "No production items found for the specified date",
+          closedItems: [],
+        };
       }
 
       // Insert items into history table
-      const historyData: InsertProductionScheduleHistory[] = itemsToClose.map(item => ({
-        originalScheduleId: item.id,
-        productId: item.productId,
-        productName: item.productName,
-        productCode: item.productCode,
-        batchNo: item.batchNo,
-        totalQuantity: item.totalQuantity,
-        unitType: item.unitType,
-        actualQuantityPackets: item.actualQuantityPackets,
-        priority: item.priority,
-        productionStartTime: item.productionStartTime,
-        productionEndTime: item.productionEndTime,
-        assignedTo: item.assignedTo,
-        notes: item.notes,
-        status: item.status,
-        scheduleDate: item.scheduleDate,
-        shift: item.shift,
-        plannedBy: item.plannedBy,
-        approvedBy: item.approvedBy,
-        closedBy: closedBy,
-        closedAt: new Date(),
-      }));
+      const historyData: InsertProductionScheduleHistory[] = itemsToClose.map(
+        (item) => ({
+          originalScheduleId: item.id,
+          productId: item.productId,
+          productName: item.productName,
+          productCode: item.productCode,
+          batchNo: item.batchNo,
+          totalQuantity: item.totalQuantity,
+          unitType: item.unitType,
+          actualQuantityPackets: item.actualQuantityPackets,
+          priority: item.priority,
+          productionStartTime: item.productionStartTime,
+          productionEndTime: item.productionEndTime,
+          assignedTo: item.assignedTo,
+          notes: item.notes,
+          status: item.status,
+          scheduleDate: item.scheduleDate,
+          shift: item.shift,
+          plannedBy: item.plannedBy,
+          approvedBy: item.approvedBy,
+          closedBy: closedBy,
+          closedAt: new Date(),
+        }),
+      );
 
-      const insertedHistory = await this.db.insert(productionScheduleHistory).values(historyData).returning();
+      const insertedHistory = await this.db
+        .insert(productionScheduleHistory)
+        .values(historyData)
+        .returning();
 
       // Delete items from current production schedule
-      const itemIds = itemsToClose.map(item => item.id);
-      await this.db.delete(productionSchedule).where(
-        sql`${productionSchedule.id} = ANY(${itemIds})`
-      );
+      const itemIds = itemsToClose.map((item) => item.id);
+      await this.db
+        .delete(productionSchedule)
+        .where(sql`${productionSchedule.id} = ANY(${itemIds})`);
 
       return {
         message: `${itemsToClose.length} production items closed and moved to history`,
-        closedItems: insertedHistory
+        closedItems: insertedHistory,
       };
     } catch (error) {
       console.error("Error closing production day:", error);
@@ -3019,7 +3181,7 @@ export class Storage implements IStorage {
           and(
             gte(productionScheduleHistory.scheduleDate, targetDate),
             lte(productionScheduleHistory.scheduleDate, nextDay),
-          )
+          ),
         );
       }
 
@@ -3061,7 +3223,11 @@ export class Storage implements IStorage {
 
   // Enhanced notification system
   async getNotifications(userId?: string): Promise<any[]>;
-  async getNotifications(userId?: string, userBranchId?: number, canAccessAllBranches?: boolean): Promise<any[]> {
+  async getNotifications(
+    userId?: string,
+    userBranchId?: number,
+    canAccessAllBranches?: boolean,
+  ): Promise<any[]> {
     try {
       // Return sample notifications for now - in production this would fetch from database
       const sampleNotifications = [
@@ -3796,9 +3962,9 @@ export class Storage implements IStorage {
         email: userEmail,
         ipAddress,
         userAgent,
-        status: success ? 'success' : 'failed',
-        location: 'Unknown', // You can enhance this with IP geolocation
-        deviceType: userAgent?.includes('Mobile') ? 'mobile' : 'desktop',
+        status: success ? "success" : "failed",
+        location: "Unknown", // You can enhance this with IP geolocation
+        deviceType: userAgent?.includes("Mobile") ? "mobile" : "desktop",
       });
 
       // Also log to audit_logs for comprehensive tracking
@@ -3806,20 +3972,20 @@ export class Storage implements IStorage {
         userId,
         userEmail,
         userName,
-        action: 'LOGIN',
-        resource: 'authentication',
+        action: "LOGIN",
+        resource: "authentication",
         details: {
           userAgent,
           success,
-          errorMessage
+          errorMessage,
         },
         ipAddress,
         userAgent,
-        status: success ? 'success' : 'failed',
+        status: success ? "success" : "failed",
         errorMessage: success ? null : errorMessage,
       });
     } catch (error) {
-      console.error('Failed to log login event:', error);
+      console.error("Failed to log login event:", error);
     }
   }
 
@@ -3929,7 +4095,9 @@ export class Storage implements IStorage {
     }
   }
 
-  async createProductionScheduleLabel(data: InsertProductionScheduleLabel): Promise<ProductionScheduleLabel> {
+  async createProductionScheduleLabel(
+    data: InsertProductionScheduleLabel,
+  ): Promise<ProductionScheduleLabel> {
     try {
       const [newLabel] = await this.db
         .insert(productionScheduleLabels)
@@ -3942,7 +4110,10 @@ export class Storage implements IStorage {
     }
   }
 
-  async updateProductionScheduleLabel(id: number, data: Partial<InsertProductionScheduleLabel>): Promise<ProductionScheduleLabel> {
+  async updateProductionScheduleLabel(
+    id: number,
+    data: Partial<InsertProductionScheduleLabel>,
+  ): Promise<ProductionScheduleLabel> {
     try {
       const [updatedLabel] = await this.db
         .update(productionScheduleLabels)
@@ -3972,7 +4143,7 @@ export class Storage implements IStorage {
 
       return {
         message: `${result.length} labels closed successfully`,
-        closedLabels: result
+        closedLabels: result,
       };
     } catch (error) {
       console.error("Error closing day for labels:", error);
@@ -4001,7 +4172,7 @@ export class Storage implements IStorage {
         })
         .from(parties)
         .leftJoin(purchases, eq(parties.id, purchases.partyId))
-        .where(eq(parties.type, 'supplier'))
+        .where(eq(parties.type, "supplier"))
         .orderBy(parties.name, desc(purchases.purchaseDate));
 
       // Group by supplier and calculate balances
@@ -4034,12 +4205,18 @@ export class Storage implements IStorage {
               quantity: purchaseItems.quantity,
             })
             .from(purchaseItems)
-            .leftJoin(inventoryItems, eq(purchaseItems.inventoryItemId, inventoryItems.id))
+            .leftJoin(
+              inventoryItems,
+              eq(purchaseItems.inventoryItemId, inventoryItems.id),
+            )
             .where(eq(purchaseItems.purchaseId, row.purchaseId));
 
-          const itemsDescription = purchaseItems.length > 0
-            ? purchaseItems.map(item => `${item.inventoryItemName} (${item.quantity})`).join(", ")
-            : "N/A";
+          const itemsDescription =
+            purchaseItems.length > 0
+              ? purchaseItems
+                  .map((item) => `${item.inventoryItemName} (${item.quantity})`)
+                  .join(", ")
+              : "N/A";
 
           ledger.transactions.push({
             id: row.purchaseId,
@@ -4049,7 +4226,14 @@ export class Storage implements IStorage {
             totalAmount,
             amountPaid,
             outstanding,
-            paymentStatus: row.status === "completed" ? "Paid" : outstanding > 0 ? (amountPaid > 0 ? "Partial" : "Due") : "Paid",
+            paymentStatus:
+              row.status === "completed"
+                ? "Paid"
+                : outstanding > 0
+                  ? amountPaid > 0
+                    ? "Partial"
+                    : "Due"
+                  : "Paid",
             paymentMethod: row.paymentMethod,
             transactionType: "Purchase",
           });
@@ -4066,7 +4250,9 @@ export class Storage implements IStorage {
         let runningBalance = 0;
 
         // Sort transactions by date
-        ledger.transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        ledger.transactions.sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        );
 
         // Calculate running balance
         ledger.transactions.forEach((transaction) => {
@@ -4079,7 +4265,7 @@ export class Storage implements IStorage {
         ledger.currentBalance = runningBalance;
       });
 
-      return ledgers.filter(ledger => ledger.transactions.length > 0);
+      return ledgers.filter((ledger) => ledger.transactions.length > 0);
     } catch (error) {
       console.error("❌ Error fetching supplier ledgers:", error);
       return [];
@@ -4089,14 +4275,19 @@ export class Storage implements IStorage {
   async getSupplierLedger(supplierId: number): Promise<any> {
     try {
       const allLedgers = await this.getSupplierLedgers();
-      return allLedgers.find(ledger => ledger.supplierId === supplierId) || null;
+      return (
+        allLedgers.find((ledger) => ledger.supplierId === supplierId) || null
+      );
     } catch (error) {
       console.error("❌ Error fetching supplier ledger:", error);
       return null;
     }
   }
 
-  async updateSupplierLedger(supplierId: number, purchaseData: any): Promise<void> {
+  async updateSupplierLedger(
+    supplierId: number,
+    purchaseData: any,
+  ): Promise<void> {
     try {
       // This method is called when a purchase is made
       // Update the supplier's current balance
@@ -4106,11 +4297,13 @@ export class Storage implements IStorage {
         .update(parties)
         .set({
           currentBalance: currentBalance.toString(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(parties.id, supplierId));
 
-      console.log(`✅ Updated supplier ${supplierId} balance to ${currentBalance}`);
+      console.log(
+        `✅ Updated supplier ${supplierId} balance to ${currentBalance}`,
+      );
     } catch (error) {
       console.error("❌ Error updating supplier ledger:", error);
       throw error;
@@ -4135,7 +4328,12 @@ export class Storage implements IStorage {
           totalPayments: sql<number>`COALESCE(SUM(${purchases.totalAmount}), 0)`,
         })
         .from(purchases)
-        .where(and(eq(purchases.partyId, supplierId), eq(purchases.status, 'completed')));
+        .where(
+          and(
+            eq(purchases.partyId, supplierId),
+            eq(purchases.status, "completed"),
+          ),
+        );
 
       const totalPayments = paymentsResult[0]?.totalPayments || 0;
 
@@ -4154,23 +4352,24 @@ export class Storage implements IStorage {
         with: {
           items: {
             with: {
-              product: true
-            }
+              product: true,
+            },
           },
-          customer: true
+          customer: true,
         },
-        orderBy: desc(sales.createdAt)
+        orderBy: desc(sales.createdAt),
       });
 
-      return result.map(sale => ({
+      return result.map((sale) => ({
         ...sale,
-        items: sale.items?.map(item => ({
-          ...item,
-          productName: item.product?.name || 'Unknown Product'
-        })) || []
+        items:
+          sale.items?.map((item) => ({
+            ...item,
+            productName: item.product?.name || "Unknown Product",
+          })) || [],
       }));
     } catch (error) {
-      console.error('❌ Error getting sales:', error);
+      console.error("❌ Error getting sales:", error);
 
       // Fallback query without relations
       try {
@@ -4180,49 +4379,53 @@ export class Storage implements IStorage {
           .orderBy(desc(sales.createdAt));
 
         // Get items for each sale
-        const salesWithItems = await Promise.all(salesData.map(async (sale) => {
-          try {
-            const items = await this.db
-              .select()
-              .from(saleItems)
-              .where(eq(saleItems.saleId, sale.id));
+        const salesWithItems = await Promise.all(
+          salesData.map(async (sale) => {
+            try {
+              const items = await this.db
+                .select()
+                .from(saleItems)
+                .where(eq(saleItems.saleId, sale.id));
 
-            // Get product names for items
-            const itemsWithProducts = await Promise.all(items.map(async (item) => {
-              try {
-                const product = await this.db
-                  .select()
-                  .from(products)
-                  .where(eq(products.id, item.productId))
-                  .limit(1);
+              // Get product names for items
+              const itemsWithProducts = await Promise.all(
+                items.map(async (item) => {
+                  try {
+                    const product = await this.db
+                      .select()
+                      .from(products)
+                      .where(eq(products.id, item.productId))
+                      .limit(1);
 
-                return {
-                  ...item,
-                  productName: product[0]?.name || 'Unknown Product'
-                };
-              } catch (err) {
-                return {
-                  ...item,
-                  productName: 'Unknown Product'
-                };
-              }
-            }));
+                    return {
+                      ...item,
+                      productName: product[0]?.name || "Unknown Product",
+                    };
+                  } catch (err) {
+                    return {
+                      ...item,
+                      productName: "Unknown Product",
+                    };
+                  }
+                }),
+              );
 
-            return {
-              ...sale,
-              items: itemsWithProducts
-            };
-          } catch (err) {
-            return {
-              ...sale,
-              items: []
-            };
-          }
-        }));
+              return {
+                ...sale,
+                items: itemsWithProducts,
+              };
+            } catch (err) {
+              return {
+                ...sale,
+                items: [],
+              };
+            }
+          }),
+        );
 
         return salesWithItems;
       } catch (fallbackError) {
-        console.error('❌ Fallback sales query failed:', fallbackError);
+        console.error("❌ Fallback sales query failed:", fallbackError);
         return [];
       }
     }
@@ -4252,9 +4455,9 @@ export class Storage implements IStorage {
                 name: saleData.customerName,
                 email: saleData.customerEmail || null,
                 phone: saleData.customerPhone || null,
-                currentBalance: '0',
+                currentBalance: "0",
                 totalOrders: 0,
-                totalSpent: '0'
+                totalSpent: "0",
               })
               .returning();
             customerId = newCustomer[0].id;
@@ -4271,9 +4474,9 @@ export class Storage implements IStorage {
             customerPhone: saleData.customerPhone,
             totalAmount: saleData.totalAmount,
             paymentMethod: saleData.paymentMethod,
-            status: saleData.status || 'completed',
+            status: saleData.status || "completed",
             saleDate: new Date(),
-            notes: saleData.notes
+            notes: saleData.notes,
           })
           .returning();
 
@@ -4288,7 +4491,7 @@ export class Storage implements IStorage {
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               totalPrice: item.totalPrice,
-            }))
+            })),
           );
         }
 
@@ -4301,14 +4504,14 @@ export class Storage implements IStorage {
             .where(eq(customers.id, customerId))
             .limit(1);
 
-          const currentBalance = parseFloat(customer[0]?.currentBalance || '0');
+          const currentBalance = parseFloat(customer[0]?.currentBalance || "0");
           const saleAmount = parseFloat(saleData.totalAmount);
 
           // For completed sales, customer has paid (Credit to clear any previous debt)
           // For pending sales, customer owes money (Debit)
-          const isCompleted = saleData.status === 'completed';
-          const debitAmount = isCompleted ? '0' : saleData.totalAmount;
-          const creditAmount = isCompleted ? saleData.totalAmount : '0';
+          const isCompleted = saleData.status === "completed";
+          const debitAmount = isCompleted ? "0" : saleData.totalAmount;
+          const creditAmount = isCompleted ? saleData.totalAmount : "0";
 
           // Calculate running balance
           const balanceChange = isCompleted ? -saleAmount : saleAmount;
@@ -4317,19 +4520,19 @@ export class Storage implements IStorage {
           // Create ledger transaction
           await tx.insert(ledgerTransactions).values({
             customerOrPartyId: customerId,
-            entityType: 'customer',
+            entityType: "customer",
             transactionDate: new Date(),
             description: `Sale - INV-${sale.id}`,
             referenceNumber: `INV-${sale.id}`,
             debitAmount: debitAmount,
             creditAmount: creditAmount,
             runningBalance: runningBalance.toString(),
-            transactionType: 'sale',
+            transactionType: "sale",
             relatedOrderId: null,
             relatedPurchaseId: null,
             paymentMethod: saleData.paymentMethod,
             notes: saleData.notes,
-            createdBy: saleData.createdBy || 'system'
+            createdBy: saleData.createdBy || "system",
           });
 
           // Update customer balance and totals
@@ -4338,17 +4541,19 @@ export class Storage implements IStorage {
             .set({
               currentBalance: runningBalance.toString(),
               totalOrders: customer[0].totalOrders + 1,
-              totalSpent: (parseFloat(customer[0].totalSpent || '0') + saleAmount).toString(),
-              updatedAt: new Date()
+              totalSpent: (
+                parseFloat(customer[0].totalSpent || "0") + saleAmount
+              ).toString(),
+              updatedAt: new Date(),
             })
             .where(eq(customers.id, customerId));
         }
 
-        console.log('✅ Sale created with customer transaction successfully');
+        console.log("✅ Sale created with customer transaction successfully");
         return sale;
       });
     } catch (error) {
-      console.error('❌ Error creating sale with transaction:', error);
+      console.error("❌ Error creating sale with transaction:", error);
       throw error;
     }
   }
@@ -4365,7 +4570,7 @@ export class Storage implements IStorage {
       console.log(`✅ Found ${result.length} active branches`);
       return result;
     } catch (error) {
-      console.error('❌ Error fetching branches:', error);
+      console.error("❌ Error fetching branches:", error);
       throw error;
     }
   }
@@ -4384,12 +4589,15 @@ export class Storage implements IStorage {
       console.log(`✅ Created branch: ${newBranch.name}`);
       return newBranch;
     } catch (error) {
-      console.error('❌ Error creating branch:', error);
+      console.error("❌ Error creating branch:", error);
       throw error;
     }
   }
 
-  async updateBranch(id: number, branchData: Partial<InsertBranch>): Promise<Branch> {
+  async updateBranch(
+    id: number,
+    branchData: Partial<InsertBranch>,
+  ): Promise<Branch> {
     try {
       const [updatedBranch] = await this.db
         .update(branches)
@@ -4401,13 +4609,13 @@ export class Storage implements IStorage {
         .returning();
 
       if (!updatedBranch) {
-        throw new Error('Branch not found');
+        throw new Error("Branch not found");
       }
 
       console.log(`✅ Updated branch: ${updatedBranch.name}`);
       return updatedBranch;
     } catch (error) {
-      console.error('❌ Error updating branch:', error);
+      console.error("❌ Error updating branch:", error);
       throw error;
     }
   }
@@ -4422,7 +4630,7 @@ export class Storage implements IStorage {
 
       console.log(`✅ Deactivated branch ID: ${id}`);
     } catch (error) {
-      console.error('❌ Error deleting branch:', error);
+      console.error("❌ Error deleting branch:", error);
       throw error;
     }
   }
@@ -4436,7 +4644,7 @@ export class Storage implements IStorage {
 
       console.log(`✅ Assigned user ${userId} to branch ${branchId}`);
     } catch (error) {
-      console.error('❌ Error assigning user to branch:', error);
+      console.error("❌ Error assigning user to branch:", error);
       throw error;
     }
   }
@@ -4462,7 +4670,7 @@ export class Storage implements IStorage {
       console.log(`✅ Found ${result.length} users with branch info`);
       return result;
     } catch (error) {
-      console.error('❌ Error fetching users with branches:', error);
+      console.error("❌ Error fetching users with branches:", error);
       throw error;
     }
   }

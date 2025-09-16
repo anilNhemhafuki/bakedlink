@@ -25,23 +25,22 @@ export async function initializeDatabase() {
 
     // Initialize permissions
     await storage.initializeDefaultPermissions();
-    
+
     console.log("\n" + "=".repeat(60));
     console.log("🔑 SYSTEM LOGIN CREDENTIALS");
     console.log("=".repeat(60));
-    console.log("📧 Super Admin: superadmin@bakesewa.com");
+    console.log("📧 Super Admin: superadmin@merobakersoft.com");
     console.log("🔐 Password: superadmin123");
     console.log("---");
-    console.log("📧 Admin: admin@bakesewa.com");
+    console.log("📧 Admin: admin@merobakersoft.com");
     console.log("🔐 Password: admin123");
     console.log("---");
-    console.log("📧 Manager: manager@bakesewa.com");
+    console.log("📧 Manager: manager@merobakersoft.com");
     console.log("🔐 Password: manager123");
     console.log("---");
-    console.log("📧 Staff: staff@bakesewa.com");
+    console.log("📧 Staff: staff@merobakersoft.com");
     console.log("🔐 Password: staff123");
     console.log("=".repeat(60));
-
   } catch (error) {
     console.error("❌ Database initialization failed:", error);
   }
