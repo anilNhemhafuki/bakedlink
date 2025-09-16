@@ -75,7 +75,6 @@ function Router() {
             user={user}
             sidebarOpen={sidebarOpen}
             setSidebarOpen={setSidebarOpen}
-            key={user?.id || 'authenticated'} // Force re-render on user change
           />
         )}
       </Route>

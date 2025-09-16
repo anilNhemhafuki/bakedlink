@@ -198,20 +198,16 @@ export async function setupAuth(app: Express) {
 
     // Serialize user for session
     passport.serializeUser((user: any, done) => {
-      console.log('Serializing user:', user.id);
       done(null, user.id);
     });
 
     // Deserialize user from session
     passport.deserializeUser(async (id: string, done) => {
       try {
-        console.log('Deserializing user ID:', id);
         const user = await storage.getUserById(id);
         if (user) {
-          console.log('User found:', user.email);
           done(null, user);
         } else {
-          console.log('User not found for ID:', id);
           done(null, false);
         }
       } catch (error) {
@@ -310,13 +306,6 @@ export async function setupAuth(app: Express) {
 
     // Add user authentication check endpoint
     app.get("/api/auth/user", (req, res) => {
-      console.log('Checking authentication status:', {
-        isAuthenticated: req.isAuthenticated(),
-        sessionID: req.sessionID,
-        userId: (req.session as any)?.userId,
-        user: req.user ? 'present' : 'absent'
-      });
-      
       if (req.isAuthenticated() && req.user) {
         const { password: _, ...userWithoutPassword } = req.user as any;
         res.json(userWithoutPassword);
@@ -332,17 +321,9 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
-  console.log('Checking authentication:', {
-    isAuthenticated: req.isAuthenticated(),
-    sessionID: req.sessionID,
-    userId: (req.session as any)?.userId,
-    user: req.user ? 'present' : 'absent'
-  });
-  
   if (req.isAuthenticated() && req.user) {
     return next();
   }
   
-  console.log('Authentication failed - redirecting to login');
   res.status(401).json({ message: 'Authentication required' });
 };

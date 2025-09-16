@@ -1,12 +1,16 @@
-
 // src/hooks/useRoleAccess.ts
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 
+/**
+ * Hook to provide role-based access control (RBAC)
+ * All functions are memoized by reference since they're static per-user
+ */
 export function useRoleAccess() {
-  const { user } = useAuth(); // ✅ Always called unconditionally
+  const { user } = useAuth();
   const { hasPermission } = usePermissions();
 
+  // Role checkers — safe even if user is null (returns false)
   const isSuperAdmin = () => user?.role === "super_admin";
   const isAdmin = () => user?.role === "admin";
   const isManager = () => user?.role === "manager";
@@ -14,22 +18,27 @@ export function useRoleAccess() {
   const isMarketer = () => user?.role === "marketer";
   const isStaff = () => user?.role === "staff";
 
+  /**
+   * Check if current user can access a page/resource
+   */
   const canAccessPage = (
     resource: string,
-    action: "read" | "write" | "read_write" = "read",
-  ) => {
+    action: "read" | "write" | "read_write" = "read"
+  ): boolean => {
     if (!user) return false;
 
+    // Super Admin has full access
     if (isSuperAdmin()) return true;
 
+    // Admins can do almost everything except super_admin pages
     if (isAdmin()) {
       const restrictedResources = ["super_admin"];
-      if (restrictedResources.includes(resource)) return false;
-      return true;
+      return !restrictedResources.includes(resource);
     }
 
+    // Manager-level access
     if (isManager()) {
-      const managerResources = [
+      const allowedResources = [
         "dashboard",
         "products",
         "inventory",
@@ -47,11 +56,12 @@ export function useRoleAccess() {
         "salary",
         "leave_requests",
       ];
-      return managerResources.includes(resource);
+      return allowedResources.includes(resource);
     }
 
+    // Supervisor access
     if (isSupervisor()) {
-      const supervisorResources = [
+      const allowedResources = [
         "dashboard",
         "products",
         "inventory",
@@ -61,11 +71,12 @@ export function useRoleAccess() {
         "staff",
         "attendance",
       ];
-      return supervisorResources.includes(resource);
+      return allowedResources.includes(resource);
     }
 
+    // Marketer access
     if (isMarketer()) {
-      const marketerResources = [
+      const allowedResources = [
         "dashboard",
         "products",
         "customers",
@@ -73,44 +84,51 @@ export function useRoleAccess() {
         "sales",
         "reports",
       ];
-      return marketerResources.includes(resource);
+      return allowedResources.includes(resource);
     }
 
+    // Staff access
     if (isStaff()) {
-      const staffResources = [
+      const allowedResources = [
         "dashboard",
         "products",
         "inventory",
         "orders",
         "production",
       ];
-      return staffResources.includes(resource);
+      return allowedResources.includes(resource);
     }
 
+    // Fallback to fine-grained permissions system (if any)
     return hasPermission(resource, action);
   };
 
+  // Alias for sidebar rendering
   const canAccessSidebarItem = canAccessPage;
 
-  const canManageUsers = () => isSuperAdmin() || isAdmin();
-  const canViewSuperAdminUsers = () => isSuperAdmin();
-  const canManageStaff = () => isSuperAdmin() || isAdmin() || isManager();
-  const canViewFinance = () => isSuperAdmin() || isAdmin() || isManager();
-  const canManageSettings = () => isSuperAdmin() || isAdmin();
-  const canAccessAllBranches = () =>
-    isSuperAdmin() || user?.canAccessAllBranches === true;
-  const canManageBranches = () => isSuperAdmin() || isAdmin();
+  // High-level capability checks
+  const canManageUsers = (): boolean => isSuperAdmin() || isAdmin();
+  const canViewSuperAdminUsers = (): boolean => isSuperAdmin();
+  const canManageStaff = (): boolean => isSuperAdmin() || isAdmin() || isManager();
+  const canViewFinance = (): boolean => isSuperAdmin() || isAdmin() || isManager();
+  const canManageSettings = (): boolean => isSuperAdmin() || isAdmin();
+  const canManageBranches = (): boolean => isSuperAdmin() || isAdmin();
 
-  const getUserBranchId = () => user?.branchId;
-  const canAccessBranchData = (branchId?: number) => {
-    if (canAccessAllBranches()) return true;
+  // Branch access logic
+  const canAccessAllBranches = (): boolean =>
+    isSuperAdmin() || user?.canAccessAllBranches === true;
+
+  const getUserBranchId = (): number | undefined => user?.branchId ?? undefined;
+
+  const canAccessBranchData = (branchId?: number): boolean => {
     if (!branchId) return true;
+    if (canAccessAllBranches()) return true;
     return getUserBranchId() === branchId;
   };
 
-  const getBranchDisplayName = () => {
+  const getBranchDisplayName = (): string => {
     if (canAccessAllBranches()) return "All Branches";
-    return user?.branchName || "Unknown Branch";
+    return `Branch ${user?.branchId || 'Unknown'}`;
   };
 
   const getBranchFilterForUser = () => ({
@@ -118,7 +136,7 @@ export function useRoleAccess() {
     canAccessAllBranches: canAccessAllBranches(),
   });
 
-  const getRoleDisplayName = () => {
+  const getRoleDisplayName = (): string => {
     switch (user?.role) {
       case "super_admin":
         return "Super Admin";
@@ -133,31 +151,42 @@ export function useRoleAccess() {
       case "staff":
         return "Staff";
       default:
-        return "Unknown";
+        return "Unknown Role";
     }
   };
 
   return {
+    // Role checkers
     isSuperAdmin,
     isAdmin,
     isManager,
     isSupervisor,
     isMarketer,
     isStaff,
+
+    // Access control
     canAccessPage,
     canAccessSidebarItem,
+
+    // Capabilities
     canManageUsers,
     canViewSuperAdminUsers,
     canManageStaff,
     canViewFinance,
     canManageSettings,
-    canAccessAllBranches,
     canManageBranches,
+    canAccessAllBranches,
+
+    // Branch utilities
     getUserBranchId,
     canAccessBranchData,
     getBranchDisplayName,
     getBranchFilterForUser,
+
+    // Display helpers
     getRoleDisplayName,
+
+    // Raw user object (for advanced usage)
     user,
   };
 }
