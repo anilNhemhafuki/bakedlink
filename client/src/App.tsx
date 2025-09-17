@@ -144,7 +144,7 @@ function AuthenticatedApp({
   const isSuperAdmin = user?.role === "super_admin";
   
   // Component wrapper that conditionally adds protection
-  const RouteWrapper = ({ children, resource, action }: { children: React.ReactNode, resource: string, action: string }) => {
+  const RouteWrapper = ({ children, resource, action }: { children: React.ReactNode, resource: string, action: "read" | "write" | "read_write" }) => {
     if (isSuperAdmin) {
       return <>{children}</>;
     }
