@@ -1,5 +1,13 @@
 import express from 'express';
 import { db } from './db';
+
+// Extend session types
+declare module 'express-session' {
+  interface SessionData {
+    userId?: string;
+    user?: any;
+  }
+}
 import { eq, desc, and, or, isNull, sql, asc, gte, lte, count, sum, like } from 'drizzle-orm';
 import { 
   users, products, orders, orderItems, customers, 
@@ -32,7 +40,7 @@ import fs from 'fs/promises';
 const router = express.Router();
 
 // Create storage instance
-const storage = new Storage(db);
+const storage = new Storage();
 
 // Rate limiting for API routes
 const apiLimiter = rateLimit({
@@ -106,7 +114,7 @@ if (notifications.length === 0) {
 }
 
 // Notification Routes
-router.get('/api/notifications', async (req, res) => {
+router.get('/notifications', async (req, res) => {
   try {
     console.log('📋 Fetching notifications...');
 
@@ -123,7 +131,7 @@ router.get('/api/notifications', async (req, res) => {
   }
 });
 
-router.put('/api/notifications/:id/read', async (req, res) => {
+router.put('/notifications/:id/read', async (req, res) => {
   try {
     const { id } = req.params;
     const notification = notifications.find(n => n.id === id);
@@ -141,7 +149,7 @@ router.put('/api/notifications/:id/read', async (req, res) => {
   }
 });
 
-router.put('/api/notifications/mark-all-read', async (req, res) => {
+router.put('/notifications/mark-all-read', async (req, res) => {
   try {
     notifications.forEach(n => n.read = true);
     console.log('✅ Marked all notifications as read');
@@ -152,7 +160,7 @@ router.put('/api/notifications/mark-all-read', async (req, res) => {
   }
 });
 
-router.post('/api/notifications/test', async (req, res) => {
+router.post('/notifications/test', async (req, res) => {
   try {
     const testNotification = addNotification({
       type: "system",
@@ -188,7 +196,7 @@ function requireAdmin(req: any, res: any, next: any) {
 }
 
 // Authentication routes
-router.post('/api/login', async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log('🔐 Login attempt for:', email);
@@ -295,7 +303,7 @@ router.post('/api/login', async (req, res) => {
   }
 });
 
-router.post('/api/logout', (req, res) => {
+router.post('/logout', (req, res) => {
   const userEmail = req.session?.user?.email || 'Unknown';
 
   req.session.destroy((err) => {
@@ -317,7 +325,7 @@ router.post('/api/logout', (req, res) => {
   });
 });
 
-router.get('/api/me', (req, res) => {
+router.get('/me', (req, res) => {
   if (req.session?.userId) {
     res.json({ user: req.session.user });
   } else {
@@ -326,7 +334,7 @@ router.get('/api/me', (req, res) => {
 });
 
 // Add auth/user endpoint that frontend expects
-router.get('/api/auth/user', (req, res) => {
+router.get('/auth/user', (req, res) => {
   if (req.session?.userId) {
     console.log('✅ Auth check - User authenticated:', req.session.user?.email);
     res.json(req.session.user);
@@ -337,7 +345,7 @@ router.get('/api/auth/user', (req, res) => {
 });
 
 // Dashboard API endpoints
-router.get('/api/dashboard/stats', async (req, res) => {
+router.get('/dashboard/stats', async (req, res) => {
   try {
     console.log('📊 Fetching dashboard stats for user:', req.session?.user?.email);
 
@@ -363,7 +371,7 @@ router.get('/api/dashboard/stats', async (req, res) => {
       // Get today's orders
       const todayOrders = await db.select({ count: sql<number>`count(*)` })
         .from(orders)
-        .where(sql`DATE(${orders.orderDate}) = CURRENT_DATE`)
+        .where(sql`DATE(${orders.deliveryDate}) = CURRENT_DATE`)
         .catch(() => [{ count: 0 }]);
 
       // Calculate revenue (sample calculation)
@@ -395,7 +403,7 @@ router.get('/api/dashboard/stats', async (req, res) => {
       });
 
       res.json(stats);
-    } catch (dbError) {
+    } catch (dbError: any) {
       console.log('⚠️ Database error, using enhanced sample stats:', dbError.message);
 
       const enhancedSampleStats = {
@@ -423,7 +431,7 @@ router.get('/api/dashboard/stats', async (req, res) => {
   }
 });
 
-router.get('/api/dashboard/recent-orders', async (req, res) => {
+router.get('/dashboard/recent-orders', async (req, res) => {
   try {
     console.log('📋 Fetching recent orders...');
 
@@ -433,22 +441,22 @@ router.get('/api/dashboard/recent-orders', async (req, res) => {
         customerName: orders.customerName,
         totalAmount: orders.totalAmount,
         status: orders.status,
-        orderDate: orders.orderDate
+        deliveryDate: orders.deliveryDate
       })
       .from(orders)
-      .orderBy(desc(orders.orderDate))
+      .orderBy(desc(orders.deliveryDate))
       .limit(10);
 
       console.log(`✅ Found ${recentOrders.length} recent orders`);
       res.json(recentOrders);
-    } catch (dbError) {
+    } catch (dbError: any) {
       console.log('⚠️ Database error, using sample orders:', dbError.message);
       const sampleOrders = [
-        { id: 1, customerName: "John Doe", totalAmount: "1250.00", status: "completed", orderDate: new Date().toISOString() },
-        { id: 2, customerName: "Jane Smith", totalAmount: "850.00", status: "in_progress", orderDate: new Date().toISOString() },
-        { id: 3, customerName: "Bob Johnson", totalAmount: "2100.00", status: "pending", orderDate: new Date().toISOString() },
-        { id: 4, customerName: "Alice Brown", totalAmount: "750.00", status: "completed", orderDate: new Date().toISOString() },
-        { id: 5, customerName: "Charlie Wilson", totalAmount: "1450.00", status: "in_progress", orderDate: new Date().toISOString() }
+        { id: 1, customerName: "John Doe", totalAmount: "1250.00", status: "completed", deliveryDate: new Date().toISOString() },
+        { id: 2, customerName: "Jane Smith", totalAmount: "850.00", status: "in_progress", deliveryDate: new Date().toISOString() },
+        { id: 3, customerName: "Bob Johnson", totalAmount: "2100.00", status: "pending", deliveryDate: new Date().toISOString() },
+        { id: 4, customerName: "Alice Brown", totalAmount: "750.00", status: "completed", deliveryDate: new Date().toISOString() },
+        { id: 5, customerName: "Charlie Wilson", totalAmount: "1450.00", status: "in_progress", deliveryDate: new Date().toISOString() }
       ];
       res.json(sampleOrders);
     }
@@ -458,7 +466,7 @@ router.get('/api/dashboard/recent-orders', async (req, res) => {
   }
 });
 
-router.get('/api/dashboard/low-stock', async (req, res) => {
+router.get('/dashboard/low-stock', async (req, res) => {
   try {
     console.log('⚠️ Fetching low stock items...');
 
@@ -476,7 +484,7 @@ router.get('/api/dashboard/low-stock', async (req, res) => {
 
       console.log(`✅ Found ${lowStockItems.length} low stock items`);
       res.json(lowStockItems);
-    } catch (dbError) {
+    } catch (dbError: any) {
       console.log('⚠️ Database error, using sample low stock items:', dbError.message);
       const sampleLowStock = [
         { id: 1, name: "Flour", currentStock: "5", unit: "kg", minLevel: "10" },
@@ -493,14 +501,14 @@ router.get('/api/dashboard/low-stock', async (req, res) => {
   }
 });
 
-router.get('/api/dashboard/production-schedule', async (req, res) => {
+router.get('/dashboard/production-schedule', async (req, res) => {
   try {
     console.log('🏭 Fetching production schedule...');
 
     try {
       const productionItems = await db.select({
         id: productionSchedule.id,
-        productName: productionSchedule.productName,
+        productId: productionSchedule.productId,
         quantity: productionSchedule.quantity,
         scheduledDate: productionSchedule.scheduledDate,
         status: productionSchedule.status,
@@ -513,14 +521,14 @@ router.get('/api/dashboard/production-schedule', async (req, res) => {
 
       console.log(`✅ Found ${productionItems.length} production items`);
       res.json(productionItems);
-    } catch (dbError) {
+    } catch (dbError: any) {
       console.log('⚠️ Database error, using sample production schedule:', dbError.message);
       const sampleProduction = [
-        { id: 1, productName: "Chocolate Cake", quantity: 20, scheduledDate: new Date().toISOString(), status: "pending", priority: "high" },
-        { id: 2, productName: "Vanilla Cupcakes", quantity: 50, scheduledDate: new Date().toISOString(), status: "in_progress", priority: "medium" },
-        { id: 3, productName: "Strawberry Tart", quantity: 15, scheduledDate: new Date().toISOString(), status: "pending", priority: "low" },
-        { id: 4, productName: "Croissants", quantity: 30, scheduledDate: new Date().toISOString(), status: "completed", priority: "high" },
-        { id: 5, productName: "Danish Pastry", quantity: 25, scheduledDate: new Date().toISOString(), status: "pending", priority: "medium" }
+        { id: 1, productId: 1, quantity: 20, scheduledDate: new Date().toISOString(), status: "pending", priority: "high" },
+        { id: 2, productId: 2, quantity: 50, scheduledDate: new Date().toISOString(), status: "in_progress", priority: "medium" },
+        { id: 3, productId: 3, quantity: 15, scheduledDate: new Date().toISOString(), status: "pending", priority: "low" },
+        { id: 4, productId: 4, quantity: 30, scheduledDate: new Date().toISOString(), status: "completed", priority: "high" },
+        { id: 5, productId: 5, quantity: 25, scheduledDate: new Date().toISOString(), status: "pending", priority: "medium" }
       ];
       res.json(sampleProduction);
     }
@@ -531,7 +539,7 @@ router.get('/api/dashboard/production-schedule', async (req, res) => {
 });
 
 // Settings routes
-router.get('/api/settings', async (req, res) => {
+router.get('/settings', async (req, res) => {
   try {
     console.log('🔍 GET /api/settings - Fetching settings...');
 
@@ -575,7 +583,7 @@ router.get('/api/settings', async (req, res) => {
   }
 });
 
-router.put('/api/settings', requireAuth, async (req, res) => {
+router.put('/settings', requireAuth, async (req, res) => {
   try {
     console.log('💾 Saving settings:', req.body);
 
@@ -612,7 +620,7 @@ router.put('/api/settings', requireAuth, async (req, res) => {
 });
 
 // Branch Management Routes
-router.get('/api/branches', requireAuth, async (req, res) => {
+router.get('/branches', requireAuth, async (req, res) => {
   try {
     console.log('🏢 Fetching branches...');
     const result = await storage.getBranches();
@@ -624,7 +632,7 @@ router.get('/api/branches', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/api/branches', requireAuth, async (req, res) => {
+router.post('/branches', requireAuth, async (req, res) => {
   try {
     console.log('💾 Creating branch:', req.body.name);
     const result = await storage.createBranch(req.body);
@@ -646,7 +654,7 @@ router.post('/api/branches', requireAuth, async (req, res) => {
   }
 });
 
-router.put('/api/branches/:id', requireAuth, async (req, res) => {
+router.put('/branches/:id', requireAuth, async (req, res) => {
   try {
     const branchId = parseInt(req.params.id);
     console.log('💾 Updating branch:', branchId);
@@ -669,7 +677,7 @@ router.put('/api/branches/:id', requireAuth, async (req, res) => {
   }
 });
 
-router.delete('/api/branches/:id', requireAuth, async (req, res) => {
+router.delete('/branches/:id', requireAuth, async (req, res) => {
   try {
     const branchId = parseInt(req.params.id);
     console.log('🗑️ Deleting branch:', branchId);
@@ -692,7 +700,7 @@ router.delete('/api/branches/:id', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/api/users/:userId/assign-branch', requireAuth, async (req, res) => {
+router.post('/users/:userId/assign-branch', requireAuth, async (req, res) => {
   try {
     const { userId } = req.params;
     const { branchId } = req.body;
@@ -717,7 +725,7 @@ router.post('/api/users/:userId/assign-branch', requireAuth, async (req, res) =>
   }
 });
 
-router.get('/api/users/with-branches', requireAuth, async (req, res) => {
+router.get('/users/with-branches', requireAuth, async (req, res) => {
   try {
     console.log('👥 Fetching users with branch info...');
     const result = await storage.getUsersWithBranches();
@@ -730,7 +738,7 @@ router.get('/api/users/with-branches', requireAuth, async (req, res) => {
 });
 
 // Product routes (updated to support branch filtering and Super Admin access)
-router.get('/api/products', async (req, res) => {
+router.get('/products', async (req, res) => {
   try {
     console.log('📦 Fetching products...');
     const user = req.session?.user;
@@ -748,7 +756,7 @@ router.get('/api/products', async (req, res) => {
   }
 });
 
-router.post('/api/products', requireAuth, async (req, res) => {
+router.post('/products', requireAuth, async (req, res) => {
   try {
     console.log('💾 Creating product:', req.body.name);
     const result = await storage.createProduct(req.body);
@@ -771,7 +779,7 @@ router.post('/api/products', requireAuth, async (req, res) => {
 });
 
 // Sales routes
-router.get('/api/sales', async (req, res) => {
+router.get('/sales', async (req, res) => {
   try {
     console.log('💰 Fetching sales...');
     const result = await storage.getSales();
@@ -783,7 +791,7 @@ router.get('/api/sales', async (req, res) => {
   }
 });
 
-router.post('/api/sales', requireAuth, async (req, res) => {
+router.post('/sales', requireAuth, async (req, res) => {
   try {
     console.log('💾 Creating sale with customer transaction:', req.body);
     const result = await storage.createSaleWithTransaction(req.body);
@@ -792,19 +800,15 @@ router.post('/api/sales', requireAuth, async (req, res) => {
     if (req.session?.user) {
       await storage.logUserAction(
         req.session.user.id,
-        req.session.user.email,
-        `${req.session.user.firstName} ${req.session.user.lastName}`,
         'CREATE',
         'sales',
-        result.id?.toString(),
         { 
           customerName: req.body.customerName, 
           totalAmount: req.body.totalAmount,
           items: req.body.items?.length || 0,
-          paymentMethod: req.body.paymentMethod
+          paymentMethod: req.body.paymentMethod,
+          saleId: result.id
         },
-        undefined,
-        req.body,
         req.ip,
         req.get('User-Agent')
       );
@@ -833,7 +837,7 @@ router.post('/api/sales', requireAuth, async (req, res) => {
 });
 
 // Order routes
-router.get('/api/orders', async (req, res) => {
+router.get('/orders', async (req, res) => {
   try {
     console.log('📋 Fetching orders...');
     const result = await storage.getOrders();
@@ -845,7 +849,7 @@ router.get('/api/orders', async (req, res) => {
   }
 });
 
-router.post('/api/orders', async (req, res) => {
+router.post('/orders', async (req, res) => {
   try {
     console.log('💾 Creating order:', req.body);
     const result = await storage.createOrder(req.body);
@@ -854,18 +858,14 @@ router.post('/api/orders', async (req, res) => {
     if (req.session?.user) {
       await storage.logUserAction(
         req.session.user.id,
-        req.session.user.email,
-        `${req.session.user.firstName} ${req.session.user.lastName}`,
         'CREATE',
         'orders',
-        result.id?.toString(),
         { 
           customerName: req.body.customerName, 
           totalAmount: req.body.totalAmount,
-          items: req.body.items?.length || 0
+          items: req.body.items?.length || 0,
+          orderId: result.id
         },
-        undefined,
-        req.body,
         req.ip,
         req.get('User-Agent')
       );
@@ -894,7 +894,7 @@ router.post('/api/orders', async (req, res) => {
 });
 
 // Production Schedule routes
-router.get('/api/production-schedule', async (req, res) => {
+router.get('/production-schedule', async (req, res) => {
   try {
     console.log('🏭 Fetching production schedule...');
     const result = await storage.getProductionSchedule();
@@ -906,7 +906,7 @@ router.get('/api/production-schedule', async (req, res) => {
   }
 });
 
-router.post('/api/production-schedule', requireAuth, async (req, res) => {
+router.post('/production-schedule', requireAuth, async (req, res) => {
   try {
     console.log('💾 Creating production schedule item:', req.body);
     const result = await storage.createProductionScheduleItem(req.body);
@@ -929,7 +929,7 @@ router.post('/api/production-schedule', requireAuth, async (req, res) => {
 });
 
 // Inventory routes (updated to support branch filtering and Super Admin access)
-router.get('/api/inventory-items', async (req, res) => {
+router.get('/inventory-items', async (req, res) => {
   try {
     console.log('📦 Fetching inventory items...');
     const user = req.session?.user;
@@ -978,7 +978,7 @@ router.get('/api/inventory-items', async (req, res) => {
   }
 });
 
-router.post('/api/inventory-items', requireAuth, async (req, res) => {
+router.post('/inventory-items', requireAuth, async (req, res) => {
   try {
     console.log('💾 Creating inventory item:', req.body.name);
     const result = await storage.createInventoryItem(req.body);
@@ -1001,7 +1001,7 @@ router.post('/api/inventory-items', requireAuth, async (req, res) => {
 });
 
 // Units routes
-router.get('/api/units', async (req, res) => {
+router.get('/units', async (req, res) => {
   try {
     console.log('📏 Fetching units...');
     const result = await storage.getUnits();
@@ -1026,7 +1026,7 @@ router.get('/api/units', async (req, res) => {
   }
 });
 
-router.post('/api/units', requireAuth, async (req, res) => {
+router.post('/units', requireAuth, async (req, res) => {
   try {
     console.log('💾 Creating unit:', req.body.name);
     const result = await storage.createUnit(req.body);
@@ -1048,7 +1048,7 @@ router.post('/api/units', requireAuth, async (req, res) => {
   }
 });
 
-router.put('/api/units/:id', requireAuth, async (req, res) => {
+router.put('/units/:id', requireAuth, async (req, res) => {
   try {
     const unitId = parseInt(req.params.id);
     console.log('💾 Updating unit:', unitId);
@@ -1071,7 +1071,7 @@ router.put('/api/units/:id', requireAuth, async (req, res) => {
   }
 });
 
-router.delete('/api/units/:id', requireAuth, async (req, res) => {
+router.delete('/units/:id', requireAuth, async (req, res) => {
   try {
     const unitId = parseInt(req.params.id);
     console.log('🗑️ Deleting unit:', unitId);
@@ -1088,7 +1088,7 @@ router.delete('/api/units/:id', requireAuth, async (req, res) => {
 
     console.log('✅ Unit deleted successfully');
     res.json({ success: true, message: 'Unit deleted successfully' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error deleting unit:', error);
     
     if (error.message && error.message.includes('being used')) {
@@ -1104,7 +1104,7 @@ router.delete('/api/units/:id', requireAuth, async (req, res) => {
 });
 
 // Supplier Ledger API endpoints
-router.get('/api/supplier-ledgers', async (req, res) => {
+router.get('/supplier-ledgers', async (req, res) => {
   try {
     console.log('📊 Fetching supplier ledgers...');
 
@@ -1148,7 +1148,7 @@ router.get('/api/supplier-ledgers', async (req, res) => {
   }
 });
 
-router.get('/api/supplier-ledgers/:supplierId', async (req, res) => {
+router.get('/supplier-ledgers/:supplierId', async (req, res) => {
   try {
     const supplierId = parseInt(req.params.supplierId);
     console.log(`📊 Fetching ledger for supplier ${supplierId}...`);
@@ -1167,38 +1167,36 @@ router.get('/api/supplier-ledgers/:supplierId', async (req, res) => {
 });
 
 // Audit Logs API routes
-router.get('/api/audit-logs', requireAuth, async (req, res) => {
+router.get('/audit-logs', requireAuth, async (req, res) => {
   try {
     console.log('📋 Fetching audit logs...');
 
-    const filters = {
-      userId: req.query.userId as string,
-      action: req.query.action as string,
-      resource: req.query.resource as string,
-      status: req.query.status as string,
-      startDate: req.query.startDate as string,
-      endDate: req.query.endDate as string,
-      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
-      offset: req.query.page ? (parseInt(req.query.page as string) - 1) * 50 : 0,
-    };
+    const filters: any = {};
+    
+    if (req.query.userId) filters.userId = req.query.userId as string;
+    if (req.query.action) filters.action = req.query.action as string;
+    if (req.query.resource) filters.resource = req.query.resource as string;
+    if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
+    if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
+    
+    filters.limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+    filters.offset = req.query.page ? (parseInt(req.query.page as string) - 1) * 50 : 0;
 
-    // Remove undefined filters
-    Object.keys(filters).forEach(key => {
-      if (filters[key] === undefined || filters[key] === null || filters[key] === '') {
-        delete filters[key];
-      }
+    const logs = await storage.getAuditLogs(filters);
+    console.log(`✅ Found ${logs.length} audit logs`);
+    res.json({
+      success: true,
+      auditLogs: logs,
+      count: logs.length,
+      filters
     });
-
-    const result = await storage.getAuditLogs(filters);
-    console.log(`✅ Found ${result.auditLogs.length} audit logs`);
-    res.json(result);
   } catch (error) {
     console.error('❌ Error fetching audit logs:', error);
     res.status(500).json({ error: 'Failed to fetch audit logs' });
   }
 });
 
-router.get('/api/audit-logs/analytics', requireAuth, async (req, res) => {
+router.get('/audit-logs/analytics', requireAuth, async (req, res) => {
   try {
     console.log('📊 Fetching audit analytics...');
 
@@ -1206,15 +1204,15 @@ router.get('/api/audit-logs/analytics', requireAuth, async (req, res) => {
     const recentLogs = await storage.getAuditLogs({ limit: 1000 });
 
     const analytics = {
-      totalActions: recentLogs.auditLogs.length,
-      actionsByType: {},
-      actionsByUser: {},
-      actionsByResource: {},
-      recentActivity: recentLogs.auditLogs.slice(0, 10)
+      totalActions: recentLogs.length,
+      actionsByType: {} as any,
+      actionsByUser: {} as any,
+      actionsByResource: {} as any,
+      recentActivity: recentLogs.slice(0, 10)
     };
 
     // Process analytics
-    recentLogs.auditLogs.forEach(log => {
+    recentLogs.forEach((log: any) => {
       // Count by action type
       analytics.actionsByType[log.action] = (analytics.actionsByType[log.action] || 0) + 1;
 
@@ -1233,7 +1231,7 @@ router.get('/api/audit-logs/analytics', requireAuth, async (req, res) => {
   }
 });
 
-router.get('/api/login-logs/analytics', requireAuth, async (req, res) => {
+router.get('/login-logs/analytics', requireAuth, async (req, res) => {
   try {
     console.log('📊 Fetching login analytics...');
 
@@ -1256,7 +1254,7 @@ router.get('/api/login-logs/analytics', requireAuth, async (req, res) => {
 });
 
 // Cache management routes
-router.post('/api/cache/clear', requireAuth, async (req, res) => {
+router.post('/cache/clear', requireAuth, async (req, res) => {
   try {
     console.log('🧹 Clearing application cache...');
 
@@ -1291,14 +1289,9 @@ router.use((error: any, req: any, res: any, next: any) => {
   if (req.session?.user) {
     storage.logUserAction(
       req.session.user.id,
-      req.session.user.email,
-      `${req.session.user.firstName} ${req.session.user.lastName}`,
       'ERROR',
       'system',
-      undefined,
       { error: error.message, stack: error.stack },
-      undefined,
-      undefined,
       req.ip,
       req.get('User-Agent')
     ).catch(console.error);

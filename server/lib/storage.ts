@@ -242,6 +242,7 @@ export interface IStorage {
   // Settings operations
   getSettings(): Promise<any>;
   updateSettings(settingsData: any): Promise<any>;
+  saveSettings(settingsData: any): Promise<any>;
   updateOrCreateSetting(key: string, value: string): Promise<any>;
   saveCompanySettings(settings: any): Promise<void>;
   getSetting(key: string): Promise<string | null>;
@@ -350,6 +351,14 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<AuditLog[]>;
+  logUserAction(
+    userId: string,
+    action: string,
+    resource: string,
+    details?: any,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void>;
   logLogin(
     userId: string,
     userEmail: string,
@@ -2349,6 +2358,11 @@ export class Storage implements IStorage {
     }
   }
 
+  async saveSettings(settingsData: any): Promise<any> {
+    // For backwards compatibility, use updateSettings
+    return this.updateSettings(settingsData);
+  }
+
   async updateOrCreateSetting(key: string, value: string): Promise<void> {
     try {
       console.log(`🔧 Processing setting: ${key} = ${value}`);
@@ -3902,6 +3916,49 @@ export class Storage implements IStorage {
     } catch (error) {
       console.error("Failed to get audit logs:", error);
       return [];
+    }
+  }
+
+  async logUserAction(
+    userId: string,
+    action: string,
+    resource: string,
+    details?: any,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void> {
+    try {
+      // Get user info for audit log
+      let userName = 'Unknown User';
+      let userEmail = 'unknown@example.com';
+      
+      try {
+        const user = await this.getUserById(userId);
+        if (user) {
+          userName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+          userEmail = user.email || userEmail;
+        }
+      } catch (userError) {
+        console.warn('Could not fetch user details for audit log:', userError);
+      }
+
+      await this.createAuditLog({
+        userId,
+        userEmail,
+        userName,
+        action,
+        resource,
+        status: 'success',
+        ipAddress: ipAddress || '127.0.0.1',
+        userAgent: userAgent || 'Unknown',
+        details: details || null,
+        timestamp: new Date(),
+        resourceId: null,
+        errorMessage: null
+      });
+    } catch (error) {
+      console.error('❌ Error logging user action:', error);
+      // Don't throw error to prevent breaking the main flow
     }
   }
 
