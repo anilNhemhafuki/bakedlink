@@ -916,33 +916,6 @@ export class Storage implements IStorage {
     }
   }
 
-  async createUnit(data: InsertUnit): Promise<Unit> {
-    try {
-      // Only include fields that exist in the current schema
-      const unitData = {
-        name: data.name,
-        abbreviation: data.abbreviation,
-        type: data.type,
-        isActive: data.isActive ?? true,
-      };
-
-      const [unit] = await this.db.insert(units).values(unitData).returning();
-      return unit;
-    } catch (error) {
-      console.error("Error creating unit:", error);
-      throw error;
-    }
-  }
-
-  async updateUnit(id: number, data: Partial<InsertUnit>): Promise<Unit> {
-    const [updatedUnit] = await this.db
-      .update(units)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(units.id, id))
-      .returning();
-    return updatedUnit;
-  }
-
   async deleteUnit(id: number): Promise<void> {
     try {
       // Check if unit is being used in other tables before deletion

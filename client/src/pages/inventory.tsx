@@ -224,11 +224,11 @@ export default function Inventory() {
                         <TableCell>
                           <div className="font-medium">
                             {parseFloat(item.currentStock || 0).toFixed(2)}{" "}
-                            {item.unitAbbreviation || item.unit}
+                            {item.unitAbbreviation || item.unit || "units"}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             Min: {parseFloat(item.minLevel || 0).toFixed(2)}{" "}
-                            {item.unitAbbreviation || item.unit}
+                            {item.unitAbbreviation || item.unit || "units"}
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">

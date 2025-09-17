@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { UnitsProvider } from "@/contexts/UnitsContext";
 import { useState, useEffect } from "react";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
@@ -341,7 +342,7 @@ function AuthenticatedApp({
                 </ProtectedRoute>
               )}
             />
-            
+
             <Route
               path="/sales"
               component={() => (
@@ -426,12 +427,14 @@ function AuthenticatedApp({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </LanguageProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <UnitsProvider>
+            <Toaster />
+            <Router />
+          </UnitsProvider>
+        </LanguageProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

@@ -1006,21 +1006,100 @@ router.get('/api/units', async (req, res) => {
     console.log('📏 Fetching units...');
     const result = await storage.getUnits();
     console.log(`✅ Found ${result.length} units`);
-    res.json(result);
+    res.json({ success: true, data: result });
   } catch (error) {
     console.error('❌ Error fetching units:', error);
 
     // Return default units in offline mode
     const defaultUnits = [
-      { id: 1, name: 'Kilogram', abbreviation: 'kg', type: 'weight', baseUnit: 'gram', conversionFactor: '1000', isActive: true },
-      { id: 2, name: 'Gram', abbreviation: 'g', type: 'weight', baseUnit: 'gram', conversionFactor: '1', isActive: true },
-      { id: 3, name: 'Liter', abbreviation: 'L', type: 'volume', baseUnit: 'milliliter', conversionFactor: '1000', isActive: true },
-      { id: 4, name: 'Milliliter', abbreviation: 'ml', type: 'volume', baseUnit: 'milliliter', conversionFactor: '1', isActive: true },
-      { id: 5, name: 'Piece', abbreviation: 'pcs', type: 'count', baseUnit: 'piece', conversionFactor: '1', isActive: true },
-      { id: 6, name: 'Packet', abbreviation: 'pkt', type: 'count', baseUnit: 'piece', conversionFactor: '1', isActive: true }
+      { id: 1, name: 'Kilogram', abbreviation: 'kg', type: 'weight', isActive: true },
+      { id: 2, name: 'Gram', abbreviation: 'g', type: 'weight', isActive: true },
+      { id: 3, name: 'Liter', abbreviation: 'L', type: 'volume', isActive: true },
+      { id: 4, name: 'Milliliter', abbreviation: 'ml', type: 'volume', isActive: true },
+      { id: 5, name: 'Piece', abbreviation: 'pcs', type: 'count', isActive: true },
+      { id: 6, name: 'Packet', abbreviation: 'pkt', type: 'count', isActive: true },
+      { id: 7, name: 'Box', abbreviation: 'box', type: 'count', isActive: true },
+      { id: 8, name: 'Bag', abbreviation: 'bag', type: 'count', isActive: true }
     ];
 
-    res.json(defaultUnits);
+    res.json({ success: true, data: defaultUnits });
+  }
+});
+
+router.post('/api/units', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating unit:', req.body.name);
+    const result = await storage.createUnit(req.body);
+    
+    // Add unit creation notification
+    addNotification({
+      type: "system",
+      title: "Unit Created",
+      description: `New unit "${req.body.name}" has been added`,
+      priority: "medium",
+      actionUrl: "/units"
+    });
+
+    console.log('✅ Unit created successfully');
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('❌ Error creating unit:', error);
+    res.status(500).json({ error: 'Failed to create unit' });
+  }
+});
+
+router.put('/api/units/:id', requireAuth, async (req, res) => {
+  try {
+    const unitId = parseInt(req.params.id);
+    console.log('💾 Updating unit:', unitId);
+    const result = await storage.updateUnit(unitId, req.body);
+
+    // Add unit update notification
+    addNotification({
+      type: "system",
+      title: "Unit Updated",
+      description: `Unit "${result.name}" has been updated`,
+      priority: "medium",
+      actionUrl: "/units"
+    });
+
+    console.log('✅ Unit updated successfully');
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('❌ Error updating unit:', error);
+    res.status(500).json({ error: 'Failed to update unit' });
+  }
+});
+
+router.delete('/api/units/:id', requireAuth, async (req, res) => {
+  try {
+    const unitId = parseInt(req.params.id);
+    console.log('🗑️ Deleting unit:', unitId);
+    await storage.deleteUnit(unitId);
+
+    // Add unit deletion notification
+    addNotification({
+      type: "system",
+      title: "Unit Deleted",
+      description: `Unit has been deleted`,
+      priority: "medium",
+      actionUrl: "/units"
+    });
+
+    console.log('✅ Unit deleted successfully');
+    res.json({ success: true, message: 'Unit deleted successfully' });
+  } catch (error) {
+    console.error('❌ Error deleting unit:', error);
+    
+    if (error.message && error.message.includes('being used')) {
+      res.status(400).json({ 
+        error: 'Cannot delete unit',
+        message: error.message,
+        type: 'FOREIGN_KEY_CONSTRAINT'
+      });
+    } else {
+      res.status(500).json({ error: 'Failed to delete unit' });
+    }
   }
 });
 

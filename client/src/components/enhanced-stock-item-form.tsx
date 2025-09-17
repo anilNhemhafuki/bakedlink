@@ -166,7 +166,7 @@ export function EnhancedStockItemForm({
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  const { data: units = [], isLoading: unitsLoading } = useUnits();
+  const { data: units = [], isLoading: unitsLoading, error: unitsError } = useUnits();
 
   const { data: categories = [] } = useQuery({
     queryKey: ["/api/inventory-categories"],
@@ -491,6 +491,10 @@ export function EnhancedStockItemForm({
                         {unitsLoading ? (
                           <SelectItem value="loading" disabled>
                             Loading units...
+                          </SelectItem>
+                        ) : unitsError ? (
+                          <SelectItem value="error" disabled>
+                            Error loading units
                           </SelectItem>
                         ) : activeUnits.length > 0 ? (
                           activeUnits.map((unit: any) => (

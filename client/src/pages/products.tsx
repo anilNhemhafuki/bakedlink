@@ -558,7 +558,9 @@ export default function Products() {
                         {product.isActive ? "In stock" : "Out of stock"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{product.unitName || "—"}</TableCell>
+                    <TableCell>
+                      {product.unitName || product.unit || "—"}
+                    </TableCell>
                     <TableCell>{product.categoryName || "—"}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
