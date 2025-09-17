@@ -14,8 +14,38 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Building2,
+  Receipt,
+  BarChart3,
+  Bell,
+  ShoppingCart,
+  ArrowLeftRight,
+  CashRegister,
+  ShoppingBag,
+  Building,
+  UtensilsCrossed,
+  Cookie,
+  Boxes,
+  Factory,
+  Printer,
+  Sprout,
+  Users,
+  Handshake,
+  Clock,
+  DollarSign,
+  CalendarX,
+  Calendar,
+  UserCog,
+  Shield,
+  Ruler,
+  Settings,
+  Database,
+  Code,
+  Heart,
+  Lock,
+  TrendingUp,
+  Gauge,
+  Home,
 } from "lucide-react";
-import { Receipt } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -82,6 +112,55 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
         ? prev.filter((s) => s !== section)
         : [...prev, section],
     );
+  };
+
+  // Helper function to get Lucide icon component from string identifier
+  const getIconComponent = (iconString: string) => {
+    const iconMap: { [key: string]: any } = {
+      'fas fa-tachometer-alt': Home,
+      'fas fa-bell': Bell,
+      'fas fa-shopping-cart': ShoppingCart,
+      'fas fa-exchange-alt': ArrowLeftRight,
+      'fas fa-cash-register': CashRegister,
+      'fas fa-shopping-bag': ShoppingBag,
+      'fas fa-receipt': Receipt,
+      'fas fa-building': Building,
+      'fas fa-utensils': UtensilsCrossed,
+      'fas fa-cookie-bite': Cookie,
+      'fas fa-boxes': Boxes,
+      'fas fa-industry': Factory,
+      'fas fa-print': Printer,
+      'fas fa-seedling': Sprout,
+      'fas fa-users': Users,
+      'fas fa-handshake': Handshake,
+      'fas fa-clock': Clock,
+      'fas fa-money-bill-wave': DollarSign,
+      'fas fa-calendar-times': CalendarX,
+      'fas fa-calendar-alt': Calendar,
+      'fas fa-chart-bar': BarChart3,
+      'fas fa-file-invoice-dollar': Receipt,
+      'fas fa-users-cog': UserCog,
+      'fas fa-users-cog text-base': UserCog,
+      'fas fa-shield-alt': Shield,
+      'fas fa-shield-alt text-base': Shield,
+      'fas fa-ruler': Ruler,
+      'fas fa-ruler text-base': Ruler,
+      'fas fa-cogs': Settings,
+      'fas fa-cogs text-base': Settings,
+      'fas fa-database': Database,
+      'fas fa-database text-base': Database,
+      'fas fa-code': Code,
+      'fas fa-code text-base': Code,
+      'fas fa-heartbeat': Heart,
+      'fas fa-heartbeat text-base': Heart,
+      'fas fa-lock': Lock,
+      'fas fa-lock text-base': Lock,
+      'fas fa-chart-line': TrendingUp,
+      'fas fa-chart-line text-base': TrendingUp,
+      'fas fa-tachometer-alt text-base': Gauge,
+    };
+    
+    return iconMap[iconString] || Home;
   };
 
   const getNavigationSections = () => {
@@ -412,6 +491,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
   const renderMenuItem = (item: any, isSubItem = false) => {
     const active = isActive(item.href);
+    const IconComponent = getIconComponent(item.icon);
 
     const menuContent = (
       <Link
@@ -425,14 +505,16 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                     ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/25 scale-105"
                     : "text-gray-700 hover:bg-gradient-to-r hover:from-primary/10 hover:to-primary/5 hover:text-primary hover:scale-102 hover:shadow-md"
                 } group ${active ? "active" : ""}`}
+        aria-label={item.name}
+        data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
       >
-        <i
-          className={`${item.icon} text-base transition-all duration-300 ${
+        <IconComponent
+          className={`text-base transition-all duration-300 ${
             active
               ? "text-primary-foreground scale-110"
               : "text-gray-500 group-hover:text-primary group-hover:scale-110 group-hover:rotate-3"
-          } ${isCollapsed ? "text-lg" : ""}`}
-        ></i>
+          } ${isCollapsed ? "text-lg w-5 h-5" : "w-4 h-4"}`}
+        />
         {!isCollapsed && (
           <span className="font-medium transition-transform duration-300 group-hover:translate-x-1 whitespace-nowrap">
             {item.name}
@@ -451,8 +533,8 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       return (
         <Tooltip key={item.name}>
           <TooltipTrigger asChild>{menuContent}</TooltipTrigger>
-          <TooltipContent side="right" className="ml-2">
-            <p>{item.name}</p>
+          <TooltipContent side="right" className="ml-2" sideOffset={8}>
+            <p className="font-medium">{item.name}</p>
           </TooltipContent>
         </Tooltip>
       );
@@ -528,21 +610,24 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
             variant="ghost"
             size="sm"
             onClick={toggleCollapse}
-            className="lg:hidden text-gray-600 hover:text-gray-900 transition-colors duration-200"
+            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 
+                       focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            data-testid="button-toggle-sidebar"
           >
             {isCollapsed ? (
-              <ChevronsRight className="h-4 w-4 text-gray-600" />
+              <ChevronsRight className="h-4 w-4 text-gray-600 transition-transform duration-200 hover:scale-110" />
             ) : (
-              <ChevronsLeft className="h-4 w-4 text-gray-600" />
+              <ChevronsLeft className="h-4 w-4 text-gray-600 transition-transform duration-200 hover:scale-110" />
             )}
           </Button>
         </div>
 
         {/* Scrollable Navigation */}
         <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
+          <ScrollArea className="h-full" type="scroll">
             <div className={`py-4 space-y-2 ${isCollapsed ? "px-2" : "px-4"}`}>
-              <nav className="space-y-1">
+              <nav className="space-y-1" role="navigation" aria-label="Main navigation">
                 {/* Render top-level items directly without Collapsible */}
                 {navigationSections
                   .filter(
@@ -565,13 +650,15 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                     <div key={section.id} className="mb-3">
                       {isCollapsed ? (
                         // When collapsed, show items directly without grouping
-                        section.items
-                          .filter(
-                            (item) =>
-                              isSuperAdmin() ||
-                              canAccessSidebarItem(item.resource, "read"),
-                          )
-                          .map((item) => renderMenuItem(item))
+                        <div className="space-y-1">
+                          {section.items
+                            .filter(
+                              (item) =>
+                                isSuperAdmin() ||
+                                canAccessSidebarItem(item.resource, "read"),
+                            )
+                            .map((item) => renderMenuItem(item))}
+                        </div>
                       ) : (
                         // When expanded, show with collapsible sections
                         <Collapsible
@@ -582,7 +669,11 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                             className="flex items-center w-full px-3 py-3 text-left text-sm font-semibold
                                                                  text-gray-800 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100/50 
                                                                  hover:text-gray-900 rounded-xl transition-all duration-300 group
-                                                                 hover:shadow-sm hover:scale-102 relative overflow-hidden"
+                                                                 hover:shadow-sm hover:scale-102 relative overflow-hidden
+                                                                 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2"
+                            aria-expanded={openSections.includes(section.id)}
+                            aria-controls={`section-${section.id}`}
+                            data-testid={`button-toggle-${section.id}`}
                           >
                             <span
                               className="text-xs uppercase tracking-wider font-bold text-gray-600 group-hover:text-gray-800
@@ -598,7 +689,10 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                               )}
                             </div>
                           </CollapsibleTrigger>
-                          <CollapsibleContent className="mt-1 space-y-1">
+                          <CollapsibleContent 
+                            className="mt-1 space-y-1" 
+                            id={`section-${section.id}`}
+                          >
                             {section.items
                               .filter(
                                 (item) =>
