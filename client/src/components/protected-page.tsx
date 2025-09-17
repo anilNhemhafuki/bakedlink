@@ -19,8 +19,9 @@ export function ProtectedPage({
 }: ProtectedPageProps) {
   const { canAccessPage, isSuperAdmin, canBypassAllRestrictions } = useRoleAccess();
 
-  // Super Admin bypasses ALL page restrictions
+  // Super Admin bypasses ALL page restrictions immediately - no checks
   if (isSuperAdmin() || canBypassAllRestrictions()) {
+    console.log(`🚀 Super Admin page bypass for ${resource} (${action})`);
     return <>{children}</>;
   }
 

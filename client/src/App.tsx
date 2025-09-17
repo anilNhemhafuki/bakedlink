@@ -1,4 +1,4 @@
-// src/App.tsx
+
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -8,8 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { UnitsProvider } from "@/contexts/UnitsContext";
 import { useState, useEffect } from "react";
-
-
 
 // Page Components
 import Landing from "@/pages/landing";
@@ -66,7 +64,7 @@ function Router() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-lg">Loading...</div>
       </div>
     );
@@ -142,6 +140,21 @@ function AuthenticatedApp({
     };
   }, []);
 
+  // Super Admin gets unrestricted access - no ProtectedRoute wrapper needed
+  const isSuperAdmin = user?.role === "super_admin";
+  
+  // Component wrapper that conditionally adds protection
+  const RouteWrapper = ({ children, resource, action }: { children: React.ReactNode, resource: string, action: string }) => {
+    if (isSuperAdmin) {
+      return <>{children}</>;
+    }
+    return (
+      <ProtectedRoute resource={resource} action={action}>
+        {children}
+      </ProtectedRoute>
+    );
+  };
+
   return (
     <div className="h-screen flex bg-gray-50 overflow-hidden">
       <Sidebar
@@ -157,313 +170,313 @@ function AuthenticatedApp({
             <Route
               path="/"
               component={() => (
-                <ProtectedRoute resource="dashboard" action="read">
+                <RouteWrapper resource="dashboard" action="read">
                   <Dashboard />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/dashboard"
               component={() => (
-                <ProtectedRoute resource="dashboard" action="read">
+                <RouteWrapper resource="dashboard" action="read">
                   <Dashboard />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/production"
               component={() => (
-                <ProtectedRoute resource="production" action="read">
+                <RouteWrapper resource="production" action="read">
                   <ProductionPage />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/label-printing"
               component={() => (
-                <ProtectedRoute resource="production" action="read">
+                <RouteWrapper resource="production" action="read">
                   <LabelPrinting />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/recipes"
               component={() => (
-                <ProtectedRoute resource="products" action="read">
+                <RouteWrapper resource="products" action="read">
                   <Recipes />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/products"
               component={() => (
-                <ProtectedRoute resource="products" action="read">
+                <RouteWrapper resource="products" action="read">
                   <Products />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/inventory"
               component={() => (
-                <ProtectedRoute resource="inventory" action="read">
+                <RouteWrapper resource="inventory" action="read">
                   <Inventory />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/stock"
               component={() => (
-                <ProtectedRoute resource="inventory" action="read">
+                <RouteWrapper resource="inventory" action="read">
                   <Stock />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/ingredients"
               component={() => (
-                <ProtectedRoute resource="inventory" action="read">
+                <RouteWrapper resource="inventory" action="read">
                   <Ingredients />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/orders"
               component={() => (
-                <ProtectedRoute resource="orders" action="read">
+                <RouteWrapper resource="orders" action="read">
                   <Orders />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/customers"
               component={() => (
-                <ProtectedRoute resource="customers" action="read">
+                <RouteWrapper resource="customers" action="read">
                   <Customers />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/parties"
               component={() => (
-                <ProtectedRoute resource="parties" action="read">
+                <RouteWrapper resource="parties" action="read">
                   <Parties />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/assets"
               component={() => (
-                <ProtectedRoute resource="assets" action="read">
+                <RouteWrapper resource="assets" action="read">
                   <Assets />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/expenses"
               component={() => (
-                <ProtectedRoute resource="expenses" action="read">
+                <RouteWrapper resource="expenses" action="read">
                   <Expenses />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/reports"
               component={() => (
-                <ProtectedRoute resource="reports" action="read">
+                <RouteWrapper resource="reports" action="read">
                   <Reports />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/day-book"
               component={() => (
-                <ProtectedRoute resource="reports" action="read">
+                <RouteWrapper resource="reports" action="read">
                   <DayBook />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/transactions"
               component={() => (
-                <ProtectedRoute resource="reports" action="read">
+                <RouteWrapper resource="reports" action="read">
                   <Transactions />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/billing"
               component={() => (
-                <ProtectedRoute resource="orders" action="read">
+                <RouteWrapper resource="orders" action="read">
                   <Billing />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/settings"
               component={() => (
-                <ProtectedRoute resource="settings" action="read">
+                <RouteWrapper resource="settings" action="read">
                   <Settings />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/notifications"
               component={() => (
-                <ProtectedRoute resource="dashboard" action="read">
+                <RouteWrapper resource="dashboard" action="read">
                   <Notifications />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/notification-settings"
               component={() => (
-                <ProtectedRoute resource="settings" action="read">
+                <RouteWrapper resource="settings" action="read">
                   <NotificationSettings />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/admin/users"
               component={() => (
-                <ProtectedRoute resource="users" action="read_write">
+                <RouteWrapper resource="users" action="read_write">
                   <AdminUsers />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/admin/login-logs"
               component={() => (
-                <ProtectedRoute resource="admin" action="read_write">
+                <RouteWrapper resource="admin" action="read_write">
                   <LoginLogs />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/sales"
               component={() => (
-                <ProtectedRoute resource="sales" action="read">
+                <RouteWrapper resource="sales" action="read">
                   <Sales />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/purchases"
               component={() => (
-                <ProtectedRoute resource="purchases" action="read">
+                <RouteWrapper resource="purchases" action="read">
                   <Purchases />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/units"
               component={() => (
-                <ProtectedRoute resource="units" action="read">
+                <RouteWrapper resource="units" action="read">
                   <Units />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/staff"
               component={() => (
-                <ProtectedRoute resource="staff" action="read">
+                <RouteWrapper resource="staff" action="read">
                   <Staff />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/attendance"
               component={() => (
-                <ProtectedRoute resource="staff" action="read">
+                <RouteWrapper resource="staff" action="read">
                   <Attendance />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/salary"
               component={() => (
-                <ProtectedRoute resource="staff" action="read">
+                <RouteWrapper resource="staff" action="read">
                   <Salary />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/leave-requests"
               component={() => (
-                <ProtectedRoute resource="staff" action="read">
+                <RouteWrapper resource="staff" action="read">
                   <LeaveRequests />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/staff-schedules"
               component={() => (
-                <ProtectedRoute resource="staff" action="read">
+                <RouteWrapper resource="staff" action="read">
                   <LeaveRequests />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/branches"
               component={() => (
-                <ProtectedRoute resource="branches" action="read">
+                <RouteWrapper resource="branches" action="read">
                   <Branches />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/system-config"
               component={() => (
-                <ProtectedRoute resource="system" action="read_write">
+                <RouteWrapper resource="system" action="read_write">
                   <SystemConfig />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/database"
               component={() => (
-                <ProtectedRoute resource="database" action="read_write">
+                <RouteWrapper resource="database" action="read_write">
                   <DatabaseManager />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/api-docs"
               component={() => (
-                <ProtectedRoute resource="api" action="read">
+                <RouteWrapper resource="api" action="read">
                   <ApiDocs />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/system-health"
               component={() => (
-                <ProtectedRoute resource="monitoring" action="read">
+                <RouteWrapper resource="monitoring" action="read">
                   <SystemHealth />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/security-logs"
               component={() => (
-                <ProtectedRoute resource="security" action="read">
+                <RouteWrapper resource="security" action="read">
                   <SecurityLogs />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/monitoring"
               component={() => (
-                <ProtectedRoute resource="monitoring" action="read">
+                <RouteWrapper resource="monitoring" action="read">
                   <SystemMonitoring />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route
               path="/performance"
               component={() => (
-                <ProtectedRoute resource="performance" action="read">
+                <RouteWrapper resource="performance" action="read">
                   <PerformanceMetrics />
-                </ProtectedRoute>
+                </RouteWrapper>
               )}
             />
             <Route component={NotFound} />

@@ -1,6 +1,6 @@
-
-import { usePermissions } from "@/hooks/usePermissions";
 import { ReactNode } from "react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface PermissionWrapperProps {
   resource: string;
@@ -9,16 +9,19 @@ interface PermissionWrapperProps {
   fallback?: ReactNode;
 }
 
-export function PermissionWrapper({ 
-  resource, 
-  action, 
-  children, 
-  fallback = null 
+export function PermissionWrapper({
+  resource,
+  action,
+  children,
+  fallback = null,
 }: PermissionWrapperProps) {
-  const { hasPermission, isLoading } = usePermissions();
+  const { hasPermission } = usePermissions();
+  const { isSuperAdmin, canBypassAllRestrictions } = useRoleAccess();
 
-  if (isLoading) {
-    return <div className="animate-pulse bg-gray-200 h-4 w-full rounded"></div>;
+  // Super Admin bypasses ALL permission wrappers
+  if (isSuperAdmin() || canBypassAllRestrictions()) {
+    console.log(`🚀 Super Admin permission wrapper bypass for ${resource} (${action})`);
+    return <>{children}</>;
   }
 
   if (!hasPermission(resource, action)) {
@@ -34,10 +37,10 @@ interface ReadOnlyWrapperProps {
   readOnlyContent?: ReactNode;
 }
 
-export function ReadOnlyWrapper({ 
-  resource, 
-  children, 
-  readOnlyContent 
+export function ReadOnlyWrapper({
+  resource,
+  children,
+  readOnlyContent,
 }: ReadOnlyWrapperProps) {
   const { canWrite, canReadWrite } = usePermissions();
 

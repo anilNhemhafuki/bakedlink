@@ -27,9 +27,9 @@ export function useRoleAccess() {
   ): boolean => {
     if (!user) return false;
 
-    // Super Admin has UNLIMITED access to everything - no restrictions
+    // Super Admin has UNLIMITED access to everything - no restrictions whatsoever
     if (isSuperAdmin()) {
-      console.log(`✅ Super Admin FULL access granted for: ${resource} (${action})`);
+      console.log(`🚀 Super Admin UNLIMITED access granted for: ${resource} (${action}) - NO RESTRICTIONS`);
       return true;
     }
 
@@ -130,7 +130,13 @@ export function useRoleAccess() {
   const canAccessAuditLogs = (): boolean => isSuperAdmin() || isAdmin();
   const canViewSystemLogs = (): boolean => isSuperAdmin();
   const canAccessDeveloperTools = (): boolean => isSuperAdmin();
-  const canBypassAllRestrictions = (): boolean => isSuperAdmin();
+  const canBypassAllRestrictions = (): boolean => {
+    const bypass = isSuperAdmin();
+    if (bypass) {
+      console.log('🚀 Super Admin: ALL RESTRICTIONS BYPASSED');
+    }
+    return bypass;
+  };
   const canExportAllData = (): boolean => isSuperAdmin() || isAdmin();
   const canModifySystemConfig = (): boolean => isSuperAdmin();
   const canAccessAllReports = (): boolean => isSuperAdmin() || isAdmin() || isManager();

@@ -20,6 +20,12 @@ export function ProtectedRoute({
   const { hasPermission, isLoading } = usePermissions();
   const { isSuperAdmin, canAccessPage, canBypassAllRestrictions } = useRoleAccess();
 
+  // Super Admin bypasses ALL restrictions and guards immediately - no loading checks
+  if (isSuperAdmin() || canBypassAllRestrictions()) {
+    console.log(`🚀 Super Admin bypass for ${resource} (${action})`);
+    return <>{children}</>;
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -29,12 +35,6 @@ export function ProtectedRoute({
         </div>
       </div>
     );
-  }
-
-  // Super Admin bypasses ALL restrictions and guards
-  if (isSuperAdmin() || canBypassAllRestrictions()) {
-    console.log(`🚀 Super Admin bypass for ${resource} (${action})`);
-    return <>{children}</>;
   }
 
   // Check permissions using the role access hook
