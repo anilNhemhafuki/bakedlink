@@ -42,37 +42,7 @@
   --chart-5: 239 68 68;
 }
 
-.dark {
-  --background: hsl(224, 71%, 4%);
-  --foreground: hsl(213, 31%, 91%);
-  --muted: hsl(223, 47%, 11%);
-  --muted-foreground: hsl(215.4, 16.3%, 56.9%);
-  --popover: hsl(224, 71%, 4%);
-  --popover-foreground: hsl(213, 31%, 91%);
-  --card: hsl(224, 71%, 4%);
-  --card-foreground: hsl(213, 31%, 91%);
-  --border: hsl(216, 34%, 17%);
-  --input: hsl(216, 34%, 17%);
-  --primary: hsl(210, 40%, 98%);
-  --primary-foreground: hsl(222.2, 84%, 4.9%);
-  --secondary: hsl(222.2, 84%, 11%);
-  --secondary-foreground: hsl(213, 31%, 91%);
-  --accent: hsl(216, 34%, 17%);
-  --accent-foreground: hsl(210, 40%, 98%);
-  --destructive: hsl(0, 62.8%, 30.6%);
-  --destructive-foreground: hsl(210, 40%, 98%);
-  --ring: hsl(216, 34%, 17%);
 
-  /* Sidebar colors for dark mode */
-  --sidebar-background: hsl(224, 71%, 4%);
-  --sidebar-foreground: hsl(213, 31%, 91%);
-  --sidebar-primary: hsl(210, 40%, 98%);
-  --sidebar-primary-foreground: hsl(222.2, 84%, 4.9%);
-  --sidebar-accent: hsl(216, 34%, 17%);
-  --sidebar-accent-foreground: hsl(210, 40%, 98%);
-  --sidebar-border: hsl(216, 34%, 17%);
-  --sidebar-ring: hsl(217.2, 91.2%, 59.8%);
-}
 
 @layer base {
   * {
@@ -80,21 +50,7 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground text-sm transition-colors duration-200;
-  }
-
-  /* Prevent theme transition flicker */
-  html {
-    color-scheme: light;
-  }
-
-  html.dark {
-    color-scheme: dark;
-  }
-
-  /* Prevent flash during theme changes */
-  .theme-transition-disable * {
-    transition: none !important;
+    @apply font-sans antialiased bg-background text-foreground text-sm;
   }
 }
 

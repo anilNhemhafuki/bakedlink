@@ -62,9 +62,9 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-700 transition-all duration-300">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
       <div className="w-full max-w-md space-y-8">
-        <Card className="transition-all duration-300 hover:shadow-lg bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+        <Card className="transition-all duration-300 hover:shadow-lg bg-white/95 backdrop-blur-sm border border-gray-200/50">
           <CardHeader>
             <div className="flex items-center justify-center w-30 h-30 rounded-xl mx-auto">
               <img

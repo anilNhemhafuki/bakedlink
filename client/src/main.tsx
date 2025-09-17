@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "@/components/ui/toaster";
 import { setupAutoTracking } from "@/lib/activityTracker";
-import "./lib/theme-init";
+
 import App from "./App.tsx";
 import "./index.css";
 

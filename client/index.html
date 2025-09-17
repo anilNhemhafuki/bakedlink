@@ -15,16 +15,7 @@
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧁</text></svg>"
     />
-    <script>
-      // Prevent flash of unstyled content
-      (function() {
-        const theme = localStorage.getItem('mero-baker-theme') || 'system';
-        const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        if (isDark) {
-          document.documentElement.classList.add('dark');
-        }
-      })();
-    </script>
+    
   </head>
   <body>
     <div id="root"></div>

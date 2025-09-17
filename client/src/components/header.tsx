@@ -7,7 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useLocation, Link } from "wouter";
 import { useCompanyBranding } from "@/hooks/use-company-branding";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "next-themes";
+
 
 // UI Components
 import {
@@ -28,9 +28,6 @@ import {
   Calendar,
   Bell,
   HelpCircle,
-  Sun,
-  Moon,
-  Monitor,
 } from "lucide-react";
 
 // Sub-components
@@ -49,7 +46,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
-  const { theme, setTheme, systemTheme } = useTheme();
+  
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +115,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/60 px-4 py-3.5 shadow-sm flex-shrink-0 transition-colors duration-200">
+    <header className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-3.5 shadow-sm flex-shrink-0">
       <div className="flex items-center justify-between">
         {/* Left Section */}
         <div className="flex items-center space-x-4">
@@ -126,12 +123,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={onMenuClick}
-            className="lg:hidden hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105 text-gray-700 dark:text-gray-300"
+            className="lg:hidden hover:bg-gray-100 transition-all duration-200 hover:scale-105 text-gray-700"
           >
             <Menu className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900">
               {getPageTitle()}
             </h1>
           </div>
@@ -142,7 +139,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           {/* Date Display */}
           <div className="hidden lg:block">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 dark:bg-primary/20 rounded-lg">
+              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
                 <Calendar className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-primary">
                   {getCurrentDate()}
@@ -155,7 +152,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="p-2">
-                <Globe className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                <Globe className="h-5 w-5 text-gray-700" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -171,54 +168,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
           {/* Notifications */}
           <NotificationDropdown />
 
-          {/* Theme Toggle */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800">
-                {theme === "light" && (
-                  <Sun className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                )}
-                {theme === "dark" && (
-                  <Moon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                )}
-                {(theme === "system" || !theme) && (
-                  <Monitor className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem 
-                onClick={() => setTheme("light")}
-                className={theme === "light" ? "bg-accent" : ""}
-              >
-                <Sun className="mr-2 h-4 w-4 text-yellow-600" />
-                Light Mode
-                {theme === "light" && <span className="ml-auto">✓</span>}
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setTheme("dark")}
-                className={theme === "dark" ? "bg-accent" : ""}
-              >
-                <Moon className="mr-2 h-4 w-4 text-blue-600" />
-                Dark Mode
-                {theme === "dark" && <span className="ml-auto">✓</span>}
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setTheme("system")}
-                className={theme === "system" ? "bg-accent" : ""}
-              >
-                <Monitor className="mr-2 h-4 w-4 text-gray-600" />
-                System Preference
-                {theme === "system" && <span className="ml-auto">✓</span>}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           {/* Help / Info */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="p-2">
-                <HelpCircle className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                <HelpCircle className="h-5 w-5 text-gray-700" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -246,7 +200,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
+                  className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-full transition-all"
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-primary via-primary/90 to-primary/70 rounded-full flex items-center justify-center">
                     {user?.profileImageUrl ? (
@@ -259,7 +213,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                       <User className="h-4 w-4 text-primary-foreground" />
                     )}
                   </div>
-                  <span className="font-medium hidden md:inline text-gray-700 dark:text-gray-200">
+                  <span className="font-medium hidden md:inline text-gray-700">
                     {user?.firstName
                       ? `${user.firstName} ${user.lastName || ""}`.trim()
                       : user?.email?.split("@")[0] || "User"}
