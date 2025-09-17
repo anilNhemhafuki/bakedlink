@@ -1,3 +1,4 @@
+// src/components/header.tsx
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useLocation, Link } from "wouter";
 import { useCompanyBranding } from "@/hooks/use-company-branding";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "next-themes";
+
+// UI Components
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +17,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+
+// Icons
 import {
   Menu,
   Globe,
@@ -22,7 +28,12 @@ import {
   Calendar,
   Bell,
   HelpCircle,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
+
+// Sub-components
 import ProfileEditor from "./profile-editor";
 import NotificationDropdown from "./notification-dropdown";
 
@@ -37,6 +48,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const { t, language, setLanguage } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+
+  const { theme, setTheme } = useTheme(); // ← Moved outside inner function
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,29 +118,31 @@ export default function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b border-gray-200/60 px-4 py-3.5 shadow-sm flex-shrink-0">
+    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/60 px-4 py-3.5 shadow-sm flex-shrink-0">
       <div className="flex items-center justify-between">
+        {/* Left Section */}
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={onMenuClick}
-            className="lg:hidden hover:bg-gray-100 transition-all duration-200 hover:scale-105"
+            className="lg:hidden hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105"
           >
             <Menu className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {getPageTitle()}
             </h1>
           </div>
         </div>
 
+        {/* Right Section */}
         <div className="flex items-center space-x-2 lg:space-x-4">
-          {/* Page title and date */}
+          {/* Date Display */}
           <div className="hidden lg:block">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 dark:bg-primary/20 rounded-lg">
                 <Calendar className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-primary">
                   {getCurrentDate()}
@@ -140,18 +155,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="p-2">
-                <Globe className="h-5 w-5" />
-                {/* <span className="hidden lg:inline ml-2">
-                  {language === "en" ? "English" : "नेपाली"}
-                </span> */}
+                <Globe className="h-5 w-5 text-gray-700 dark:text-gray-300" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setLanguage("en")}>
-                <span className="mr-2">🇺🇸</span> English
+                🇺🇸 <span className="ml-1">English</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setLanguage("ne")}>
-                <span className="mr-2">🇳🇵</span> नेपाली
+                🇳🇵 <span className="ml-1">नेपाली</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -159,11 +171,40 @@ export default function Header({ onMenuClick }: HeaderProps) {
           {/* Notifications */}
           <NotificationDropdown />
 
-          {/* Info Selector */}
+          {/* Theme Toggle */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="p-2">
-                <HelpCircle className="h-6 w-6" />
+                {theme === "light" && (
+                  <Sun className="h-5 w-5 text-yellow-600" />
+                )}
+                {theme === "dark" && <Moon className="h-5 w-5 text-blue-400" />}
+                {theme === "system" && (
+                  <Monitor className="h-5 w-5 text-gray-700" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setTheme("light")}>
+                <Sun className="mr-2 h-4 w-4" />
+                Light Mode
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>
+                <Moon className="mr-2 h-4 w-4" />
+                Dark Mode
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("system")}>
+                <Monitor className="mr-2 h-4 w-4" />
+                System Preference
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Help / Info */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="p-2">
+                <HelpCircle className="h-5 w-5 text-gray-700 dark:text-gray-300" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -184,6 +225,43 @@ export default function Header({ onMenuClick }: HeaderProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* User Profile or Actions */}
+          {user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className="font-medium hidden md:inline text-gray-700 dark:text-gray-200">
+                    {user.firstName || user.email?.split("@")[0]}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem asChild>
+                  <Link href="/profile">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Settings className="mr-3 h-4 w-4 text-gray-500" />
+
+                  <Link href="/settings">Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-red-600 cursor-pointer"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
     </header>

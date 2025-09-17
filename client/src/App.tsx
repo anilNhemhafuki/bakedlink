@@ -1,3 +1,4 @@
+// src/App.tsx
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -7,6 +8,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { UnitsProvider } from "@/contexts/UnitsContext";
 import { useState, useEffect } from "react";
+
+// Import ThemeProvider from next-themes
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+
+// Page Components
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
@@ -223,14 +229,6 @@ function AuthenticatedApp({
               )}
             />
             <Route
-              path="/production"
-              component={() => (
-                <ProtectedRoute resource="production" action="read">
-                  <Production />
-                </ProtectedRoute>
-              )}
-            />
-            <Route
               path="/customers"
               component={() => (
                 <ProtectedRoute resource="customers" action="read">
@@ -267,14 +265,6 @@ function AuthenticatedApp({
               component={() => (
                 <ProtectedRoute resource="reports" action="read">
                   <Reports />
-                </ProtectedRoute>
-              )}
-            />
-            <Route
-              path="/billing"
-              component={() => (
-                <ProtectedRoute resource="billing" action="read">
-                  <Billing />
                 </ProtectedRoute>
               )}
             />
@@ -342,7 +332,6 @@ function AuthenticatedApp({
                 </ProtectedRoute>
               )}
             />
-
             <Route
               path="/sales"
               component={() => (
@@ -367,7 +356,6 @@ function AuthenticatedApp({
                 </ProtectedRoute>
               )}
             />
-
             <Route
               path="/staff"
               component={() => (
@@ -427,14 +415,17 @@ function AuthenticatedApp({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
+      {/* Wrap with ThemeProvider */}
+      <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
         <LanguageProvider>
           <UnitsProvider>
-            <Toaster />
-            <Router />
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
           </UnitsProvider>
         </LanguageProvider>
-      </ThemeProvider>
+      </NextThemesProvider>
     </QueryClientProvider>
   );
 }
