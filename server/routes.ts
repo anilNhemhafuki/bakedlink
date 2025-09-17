@@ -2,7 +2,7 @@ import express from 'express';
 import { db } from './db';
 import { eq, desc, and, or, isNull, sql, asc, gte, lte, count, sum, like } from 'drizzle-orm';
 import { 
-  users, products, categories, orders, orderItems, customers, 
+  users, products, orders, orderItems, customers, 
   inventoryItems, purchases, purchaseItems, expenses, 
   productionSchedule, inventoryTransactions, parties, assets,
   permissions, rolePermissions, userPermissions, settings,
@@ -12,7 +12,7 @@ import {
   productionScheduleHistory
 } from '../shared/schema';
 import { 
-  insertUserSchema, insertCategorySchema, insertProductSchema, 
+  insertUserSchema, insertProductSchema, 
   insertCustomerSchema, insertPurchaseSchema, insertExpenseSchema,
   insertPermissionSchema, insertRolePermissionSchema, insertUserPermissionSchema,
   insertLedgerTransactionSchema, insertLoginLogSchema, insertUnitConversionSchema,

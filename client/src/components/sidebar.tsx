@@ -294,12 +294,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
             icon: "fas fa-shield-alt text-base",
             resource: "admin",
           },
-          {
-            name: "Category Management",
-            href: "/category-management",
-            icon: "fas fa-tags text-base",
-            resource: "settings",
-          },
+          
           {
             name: "Measuring Units",
             href: "/units",

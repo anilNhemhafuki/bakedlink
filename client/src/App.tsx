@@ -29,7 +29,7 @@ import Sidebar from "@/components/sidebar";
 import Header from "@/components/header";
 import Customers from "@/pages/customers";
 import NotificationSettings from "@/components/notification-settings";
-import CategoryManagement from "@/pages/category-management";
+
 import Sales from "@/pages/sales";
 import Purchases from "@/pages/purchases";
 import PublicOrderForm from "@/components/public-order-form";
@@ -341,14 +341,7 @@ function AuthenticatedApp({
                 </ProtectedRoute>
               )}
             />
-            <Route
-              path="/category-management"
-              component={() => (
-                <ProtectedRoute resource="products" action="read_write">
-                  <CategoryManagement />
-                </ProtectedRoute>
-              )}
-            />
+            
             <Route
               path="/sales"
               component={() => (

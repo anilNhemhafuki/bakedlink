@@ -33,17 +33,6 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Categories table
-export const categories = pgTable("categories", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
-  description: text("description"),
-  branchId: integer("branch_id"), // Branch-specific categories
-  isGlobal: boolean("is_global").default(false), // Available across all branches
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 // Products table
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
@@ -632,8 +621,6 @@ export type Branch = typeof branches.$inferSelect;
 export type InsertBranch = typeof branches.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
-export type Category = typeof categories.$inferSelect;
-export type InsertCategory = typeof categories.$inferInsert;
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = typeof products.$inferInsert;
 export type InventoryCategory = typeof inventoryCategories.$inferSelect;
@@ -657,7 +644,7 @@ export type InsertOrderItem = typeof orderItems.$inferInsert;
 export type Sale = typeof sales.$inferSelect;
 export type InsertSale = typeof sales.$inferInsert;
 export type SaleItem = typeof saleItems.$inferSelect;
-export type InsertSaleItem = typeof saleItems.$inferInsert;
+export type InsertSaleItem = typeof saleItems.$insert;
 export type Purchase = typeof purchases.$inferSelect;
 export type InsertPurchase = typeof purchases.$inferInsert;
 export type PurchaseItem = typeof purchaseItems.$inferSelect;
@@ -693,7 +680,7 @@ export type InsertSalaryPayment = typeof salaryPayments.$inferInsert;
 export type LeaveRequest = typeof leaveRequests.$inferSelect;
 export type InsertLeaveRequest = typeof leaveRequests.$inferInsert;
 export type StaffSchedule = typeof staffSchedules.$inferSelect;
-export type InsertStaffSchedule = typeof staffSchedules.$inferInsert;
+export type InsertStaffSchedule = typeof staffSchedules.$insert;
 export type ProductionScheduleLabel = typeof productionScheduleLabels.$inferSelect;
 export type InsertProductionScheduleLabel = typeof productionScheduleLabels.$inferInsert;
 
@@ -708,11 +695,6 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
   updatedAt: true
-});
-
-export const insertCategorySchema = createInsertSchema(categories).omit({
-  id: true,
-  createdAt: true,
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({

@@ -15,7 +15,6 @@ import {
 import { db } from "../db";
 import {
   users,
-  categories,
   products,
   inventoryItems,
   inventoryCategories,
@@ -41,8 +40,7 @@ import {
   auditLogs,
   type User,
   type UpsertUser,
-  type Category,
-  type InsertCategory,
+  
   type Product,
   type InsertProduct,
   type InventoryItem,
@@ -130,14 +128,7 @@ export interface IStorage {
   ensureDefaultAdmin(): Promise<void>;
   getUserCount(excludeSuperAdmin?: boolean): Promise<number>;
 
-  // Category operations
-  getCategories(): Promise<Category[]>;
-  createCategory(category: InsertCategory): Promise<Category>;
-  updateCategory(
-    id: number,
-    category: Partial<InsertCategory>,
-  ): Promise<Category>;
-  deleteCategory(id: number): Promise<void>;
+  
 
   // Product operations
   getProducts(
@@ -668,66 +659,7 @@ export class Storage implements IStorage {
     return result[0].count;
   }
 
-  // Category operations
-  async getCategories(
-    userBranchId?: number,
-    canAccessAllBranches?: boolean,
-  ): Promise<Category[]> {
-    try {
-      let query = this.db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          description: categories.description,
-          branchId: categories.branchId,
-          isGlobal: categories.isGlobal,
-          createdAt: categories.createdAt,
-          updatedAt: categories.updatedAt,
-        })
-        .from(categories);
-
-      // Apply branch filtering if user doesn't have access to all branches
-      if (!canAccessAllBranches && userBranchId) {
-        query = query.where(
-          or(
-            isNull(categories.branchId), // Global categories
-            eq(categories.branchId, userBranchId), // User's branch categories
-          ),
-        );
-      }
-
-      const result = await query.orderBy(categories.name);
-      console.log(`✅ Found ${result.length} categories`);
-      return result;
-    } catch (error) {
-      console.error("❌ Error fetching categories:", error);
-      return [];
-    }
-  }
-
-  async createCategory(category: InsertCategory): Promise<Category> {
-    const [newCategory] = await this.db
-      .insert(categories)
-      .values(category)
-      .returning();
-    return newCategory;
-  }
-
-  async updateCategory(
-    id: number,
-    category: Partial<InsertCategory>,
-  ): Promise<Category> {
-    const [updatedCategory] = await this.db
-      .update(categories)
-      .set(category)
-      .where(eq(categories.id, id))
-      .returning();
-    return updatedCategory;
-  }
-
-  async deleteCategory(id: number): Promise<void> {
-    await this.db.delete(categories).where(eq(categories.id, id));
-  }
+  
 
   // Product operations
   async getProducts(
@@ -752,10 +684,8 @@ export class Storage implements IStorage {
           isActive: products.isActive,
           createdAt: products.createdAt,
           updatedAt: products.updatedAt,
-          categoryName: categories.name,
         })
         .from(products)
-        .leftJoin(categories, eq(products.categoryId, categories.id))
         .where(eq(products.isActive, true));
 
       // Apply branch filtering if user doesn't have access to all branches
@@ -796,7 +726,6 @@ export class Storage implements IStorage {
           name: products.name,
           description: products.description,
           categoryId: products.categoryId,
-          categoryName: categories.name,
           price: products.price,
           cost: products.cost,
           margin: products.margin,
@@ -809,7 +738,6 @@ export class Storage implements IStorage {
           updatedAt: products.updatedAt,
         })
         .from(products)
-        .leftJoin(categories, eq(products.categoryId, categories.id))
         .leftJoin(units, eq(products.unitId, units.id))
         .orderBy(desc(products.createdAt));
 
