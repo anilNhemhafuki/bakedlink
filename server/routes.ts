@@ -729,16 +729,17 @@ router.get('/api/users/with-branches', requireAuth, async (req, res) => {
   }
 });
 
-// Product routes (updated to support branch filtering)
+// Product routes (updated to support branch filtering and Super Admin access)
 router.get('/api/products', async (req, res) => {
   try {
     console.log('📦 Fetching products...');
     const user = req.session?.user;
     const userBranchId = user?.branchId;
+    const userRole = user?.role;
     const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin' || user?.role === 'admin';
 
-    const result = await storage.getProducts(userBranchId, canAccessAllBranches);
-    console.log(`✅ Found ${result.length} products for user with branch access: ${canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`}`);
+    const result = await storage.getProducts(userBranchId, canAccessAllBranches, userRole);
+    console.log(`✅ Found ${result.length} products for user with ${userRole === 'super_admin' ? 'Super Admin (ALL)' : canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`} access`);
     res.json(result);
   } catch (error) {
     console.error('❌ Error fetching products:', error);
@@ -927,16 +928,17 @@ router.post('/api/production-schedule', requireAuth, async (req, res) => {
   }
 });
 
-// Inventory routes (updated to support branch filtering)
+// Inventory routes (updated to support branch filtering and Super Admin access)
 router.get('/api/inventory-items', async (req, res) => {
   try {
     console.log('📦 Fetching inventory items...');
     const user = req.session?.user;
     const userBranchId = user?.branchId;
+    const userRole = user?.role;
     const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin' || user?.role === 'admin';
 
-    const result = await storage.getInventoryItems(userBranchId, canAccessAllBranches);
-    console.log(`✅ Found ${result.length} inventory items for user with branch access: ${canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`}`);
+    const result = await storage.getInventoryItems(userBranchId, canAccessAllBranches, userRole);
+    console.log(`✅ Found ${result.length} inventory items for user with ${userRole === 'super_admin' ? 'Super Admin (ALL)' : canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`} access`);
 
     // Check for low stock items and create notifications
     result.forEach(item => {

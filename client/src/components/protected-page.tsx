@@ -17,7 +17,12 @@ export function ProtectedPage({
   action = 'read', 
   fallback 
 }: ProtectedPageProps) {
-  const { canAccessPage } = useRoleAccess();
+  const { canAccessPage, isSuperAdmin, canBypassAllRestrictions } = useRoleAccess();
+
+  // Super Admin bypasses ALL page restrictions
+  if (isSuperAdmin() || canBypassAllRestrictions()) {
+    return <>{children}</>;
+  }
 
   if (!canAccessPage(resource, action)) {
     return fallback || (

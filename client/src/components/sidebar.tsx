@@ -294,7 +294,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
             icon: "fas fa-shield-alt text-base",
             resource: "admin",
           },
-          
           {
             name: "Measuring Units",
             href: "/units",
@@ -303,9 +302,89 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           },
         ],
       },
+      // Super Admin only sections
+      ...(isSuperAdmin() ? [
+        {
+          id: "developer",
+          title: "Developer Tools",
+          items: [
+            {
+              name: "System Configuration",
+              href: "/system-config",
+              icon: "fas fa-cogs text-base",
+              resource: "system",
+            },
+            {
+              name: "Database Manager",
+              href: "/database",
+              icon: "fas fa-database text-base",
+              resource: "database",
+            },
+            {
+              name: "API Documentation",
+              href: "/api-docs",
+              icon: "fas fa-code text-base",
+              resource: "api",
+            },
+            {
+              name: "System Health",
+              href: "/system-health",
+              icon: "fas fa-heartbeat text-base",
+              resource: "monitoring",
+            },
+          ],
+        },
+        {
+          id: "security",
+          title: "Security & Monitoring",
+          items: [
+            {
+              name: "Security Logs",
+              href: "/security-logs",
+              icon: "fas fa-lock text-base",
+              resource: "security",
+            },
+            {
+              name: "System Monitoring",
+              href: "/monitoring",
+              icon: "fas fa-chart-line text-base",
+              resource: "monitoring",
+            },
+            {
+              name: "Performance Metrics",
+              href: "/performance",
+              icon: "fas fa-tachometer-alt text-base",
+              resource: "performance",
+            },
+          ],
+        },
+      ] : []),
     ];
 
-    // Filter sections based on user role and add branch management if permitted
+    // Super Admin sees ALL sections without filtering
+    if (isSuperAdmin()) {
+      return allSections
+        .concat(
+          canManageBranches()
+            ? [
+                {
+                  id: "branches",
+                  title: "Branch Management",
+                  items: [
+                    {
+                      name: "Branches",
+                      href: "/branches",
+                      icon: "fas fa-building",
+                      resource: "branches",
+                    },
+                  ],
+                },
+              ]
+            : [],
+        );
+    }
+
+    // Filter sections based on user role for non-super-admin users
     return allSections
       .map((section) => ({
         ...section,
@@ -324,7 +403,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                   {
                     name: "Branches",
                     href: "/branches",
-                    icon: "fas fa-building", // Assuming a relevant icon
+                    icon: "fas fa-building",
                     resource: "branches",
                   },
                 ],

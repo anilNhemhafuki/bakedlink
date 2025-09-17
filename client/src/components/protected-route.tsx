@@ -18,7 +18,7 @@ export function ProtectedRoute({
   fallback,
 }: ProtectedRouteProps) {
   const { hasPermission, isLoading } = usePermissions();
-  const { isSuperAdmin, canAccessPage } = useRoleAccess();
+  const { isSuperAdmin, canAccessPage, canBypassAllRestrictions } = useRoleAccess();
 
   if (isLoading) {
     return (
@@ -31,8 +31,9 @@ export function ProtectedRoute({
     );
   }
 
-  // Superadmin has access to everything
-  if (isSuperAdmin()) {
+  // Super Admin bypasses ALL restrictions and guards
+  if (isSuperAdmin() || canBypassAllRestrictions()) {
+    console.log(`🚀 Super Admin bypass for ${resource} (${action})`);
     return <>{children}</>;
   }
 

@@ -665,6 +665,7 @@ export class Storage implements IStorage {
   async getProducts(
     userBranchId?: number,
     canAccessAllBranches?: boolean,
+    userRole?: string,
   ): Promise<Product[]> {
     try {
       let query = this.db
@@ -685,23 +686,30 @@ export class Storage implements IStorage {
           createdAt: products.createdAt,
           updatedAt: products.updatedAt,
         })
-        .from(products)
-        .where(eq(products.isActive, true));
+        .from(products);
 
-      // Apply branch filtering if user doesn't have access to all branches
-      if (!canAccessAllBranches && userBranchId) {
-        query = query.where(
-          or(
-            eq(products.branchId, userBranchId),
-            eq(products.isGlobal, true),
-            isNull(products.branchId),
-          ),
-        );
+      // Super Admin sees ALL products including inactive ones
+      if (userRole !== 'super_admin') {
+        query = query.where(eq(products.isActive, true));
+        
+        // Apply branch filtering if user doesn't have access to all branches
+        if (!canAccessAllBranches && userBranchId) {
+          query = query.where(
+            and(
+              eq(products.isActive, true),
+              or(
+                eq(products.branchId, userBranchId),
+                eq(products.isGlobal, true),
+                isNull(products.branchId),
+              ),
+            )
+          );
+        }
       }
 
       const result = await query.orderBy(products.name);
 
-      console.log(`✅ Found ${result.length} products for branch access`);
+      console.log(`✅ Found ${result.length} products for ${userRole === 'super_admin' ? 'Super Admin (ALL)' : 'branch access'}`);
       return result as Product[];
     } catch (error) {
       console.error("❌ Error fetching products:", error);
@@ -1262,6 +1270,7 @@ export class Storage implements IStorage {
   async getInventoryItems(
     userBranchId?: number,
     canAccessAllBranches?: boolean,
+    userRole?: string,
   ): Promise<InventoryItem[]> {
     try {
       let query = this.db
@@ -1296,20 +1305,23 @@ export class Storage implements IStorage {
           eq(inventoryItems.categoryId, inventoryCategories.id),
         );
 
-      // Apply branch filtering if user doesn't have access to all branches
-      if (!canAccessAllBranches && userBranchId) {
-        query = query.where(
-          or(
-            eq(inventoryItems.branchId, userBranchId),
-            isNull(inventoryItems.branchId),
-          ),
-        );
+      // Super Admin bypasses all branch filtering
+      if (userRole !== 'super_admin') {
+        // Apply branch filtering if user doesn't have access to all branches
+        if (!canAccessAllBranches && userBranchId) {
+          query = query.where(
+            or(
+              eq(inventoryItems.branchId, userBranchId),
+              isNull(inventoryItems.branchId),
+            ),
+          );
+        }
       }
 
       const result = await query.orderBy(inventoryItems.name);
 
       console.log(
-        `✅ Found ${result.length} inventory items for branch access`,
+        `✅ Found ${result.length} inventory items for ${userRole === 'super_admin' ? 'Super Admin (ALL)' : 'branch access'}`,
       );
       return result as InventoryItem[];
     } catch (error) {
@@ -1952,8 +1964,9 @@ export class Storage implements IStorage {
       const user = await this.getUserById(userId);
       if (!user) return [];
 
-      // Super admin gets all permissions
+      // Super admin gets ALL permissions without exception
       if (user.role === "super_admin") {
+        console.log(`🚀 Granting ALL permissions to Super Admin: ${user.email}`);
         return await this.db
           .select({
             id: permissions.id,

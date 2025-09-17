@@ -27,13 +27,13 @@ export function useRoleAccess() {
   ): boolean => {
     if (!user) return false;
 
-    // Super Admin has UNLIMITED access to everything
+    // Super Admin has UNLIMITED access to everything - no restrictions
     if (isSuperAdmin()) {
-      console.log(`✅ Super Admin access granted for: ${resource}`);
+      console.log(`✅ Super Admin FULL access granted for: ${resource} (${action})`);
       return true;
     }
 
-    // Admins can do almost everything except super_admin pages
+    // Admins can do almost everything except super_admin specific resources
     if (isAdmin()) {
       const restrictedResources = ["super_admin"];
       const hasAccess = !restrictedResources.includes(resource);
@@ -120,21 +120,30 @@ export function useRoleAccess() {
   // Alias for sidebar rendering
   const canAccessSidebarItem = canAccessPage;
 
-  // High-level capability checks
+  // High-level capability checks - Super Admin has ALL capabilities
   const canManageUsers = (): boolean => isSuperAdmin() || isAdmin();
   const canViewSuperAdminUsers = (): boolean => isSuperAdmin();
   const canManageStaff = (): boolean => isSuperAdmin() || isAdmin() || isManager();
   const canViewFinance = (): boolean => isSuperAdmin() || isAdmin() || isManager();
   const canManageSettings = (): boolean => isSuperAdmin() || isAdmin();
   const canManageBranches = (): boolean => isSuperAdmin() || isAdmin();
+  const canAccessAuditLogs = (): boolean => isSuperAdmin() || isAdmin();
+  const canViewSystemLogs = (): boolean => isSuperAdmin();
+  const canAccessDeveloperTools = (): boolean => isSuperAdmin();
+  const canBypassAllRestrictions = (): boolean => isSuperAdmin();
+  const canExportAllData = (): boolean => isSuperAdmin() || isAdmin();
+  const canModifySystemConfig = (): boolean => isSuperAdmin();
+  const canAccessAllReports = (): boolean => isSuperAdmin() || isAdmin() || isManager();
 
-  // Branch access logic
+  // Branch access logic - Super Admin bypasses all branch restrictions
   const canAccessAllBranches = (): boolean =>
     isSuperAdmin() || user?.canAccessAllBranches === true;
 
-  const getUserBranchId = (): number | undefined => user?.branchId ?? undefined;
+  const getUserBranchId = (): number | undefined => 
+    isSuperAdmin() ? undefined : user?.branchId ?? undefined;
 
   const canAccessBranchData = (branchId?: number): boolean => {
+    if (isSuperAdmin()) return true; // Super Admin can access ALL branch data
     if (!branchId) return true;
     if (canAccessAllBranches()) return true;
     return getUserBranchId() === branchId;
@@ -190,6 +199,13 @@ export function useRoleAccess() {
     canManageSettings,
     canManageBranches,
     canAccessAllBranches,
+    canAccessAuditLogs,
+    canViewSystemLogs,
+    canAccessDeveloperTools,
+    canBypassAllRestrictions,
+    canExportAllData,
+    canModifySystemConfig,
+    canAccessAllReports,
 
     // Branch utilities
     getUserBranchId,

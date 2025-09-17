@@ -18,12 +18,13 @@ export function requirePermission(resource: string, action: 'read' | 'write' | '
         return res.status(401).json({ message: "Authentication required" });
       }
 
-      // Super admin always has access to everything
+      // Super admin ALWAYS has access to EVERYTHING - no exceptions
       if (req.user.role === 'super_admin') {
+        console.log(`🚀 Super Admin access granted for ${resource} (${action})`);
         return next();
       }
 
-      // Admin has access to most things but never to superadmin-related functionality
+      // Admin has access to most things but not superadmin-related functionality
       if (req.user.role === 'admin' && resource !== 'super_admin') {
         return next();
       }
