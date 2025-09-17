@@ -923,10 +923,7 @@ export class Storage implements IStorage {
 
   async createUnit(data: InsertUnit): Promise<Unit> {
     try {
-      const result = await this.db
-        .insert(units)
-        .values(data)
-        .returning();
+      const result = await this.db.insert(units).values(data).returning();
       return result[0];
     } catch (error) {
       console.error("Error creating unit:", error);
@@ -941,11 +938,11 @@ export class Storage implements IStorage {
         .set({ ...data, updatedAt: new Date() })
         .where(eq(units.id, id))
         .returning();
-      
+
       if (result.length === 0) {
         throw new Error("Unit not found");
       }
-      
+
       return result[0];
     } catch (error) {
       console.error("Error updating unit:", error);
@@ -959,14 +956,13 @@ export class Storage implements IStorage {
         .delete(units)
         .where(eq(units.id, id))
         .returning();
-      
+
       if (result.length === 0) {
         throw new Error("Unit not found");
       }
     } catch (error) {
       console.error("Error deleting unit:", error);
       throw error;
-    }ow error;
     }
   }
 
