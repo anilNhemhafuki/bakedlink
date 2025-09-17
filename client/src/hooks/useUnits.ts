@@ -9,20 +9,24 @@ export const useUnits = () => {
     queryKey: ["units"],
     queryFn: async () => {
       try {
+        console.log("Fetching units from API...");
         const response = await apiRequest("GET", "/api/units");
         console.log("Units API response:", response);
 
         // Handle different response formats
         if (response?.success && response?.data) {
+          console.log("Using response.data:", response.data);
           return Array.isArray(response.data) ? response.data : [];
         }
 
         if (response?.data) {
+          console.log("Using response.data (fallback):", response.data);
           return Array.isArray(response.data) ? response.data : [];
         }
 
         // If response is directly an array
         if (Array.isArray(response)) {
+          console.log("Response is direct array:", response);
           return response;
         }
 
@@ -30,7 +34,10 @@ export const useUnits = () => {
         return [];
       } catch (error) {
         console.error("Error fetching units:", error);
-        // Return empty array instead of throwing to prevent crashes
+        if (isUnauthorizedError(error)) {
+          throw error; // Re-throw auth errors for proper handling
+        }
+        // Return empty array for other errors to prevent crashes
         return [];
       }
     },
@@ -38,6 +45,8 @@ export const useUnits = () => {
     gcTime: 10 * 60 * 1000, // 10 minutes
     // Ensure we always have a fallback
     placeholderData: [],
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };
 

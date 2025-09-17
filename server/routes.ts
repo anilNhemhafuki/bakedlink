@@ -340,7 +340,7 @@ router.get('/api/auth/user', (req, res) => {
 router.get('/api/dashboard/stats', async (req, res) => {
   try {
     console.log('📊 Fetching dashboard stats for user:', req.session?.user?.email);
-    
+
     // Check if user is authenticated
     if (!req.session?.userId) {
       console.log('❌ Unauthorized request for dashboard stats');
@@ -349,7 +349,7 @@ router.get('/api/dashboard/stats', async (req, res) => {
 
     const userRole = req.session.user?.role;
     console.log('👤 User role:', userRole);
-    
+
     // Try to get real data from database, with enhanced data for superadmin
     try {
       // Get comprehensive data
@@ -393,11 +393,11 @@ router.get('/api/dashboard/stats', async (req, res) => {
         customers: stats.totalCustomers,
         products: stats.activeProducts
       });
-      
+
       res.json(stats);
     } catch (dbError) {
       console.log('⚠️ Database error, using enhanced sample stats:', dbError.message);
-      
+
       const enhancedSampleStats = {
         totalRevenue: 285000 + Math.floor(Math.random() * 150000),
         ordersToday: Math.floor(Math.random() * 35) + 42,
@@ -414,7 +414,7 @@ router.get('/api/dashboard/stats', async (req, res) => {
         userRole: userRole,
         isDemo: true
       };
-      
+
       res.json(enhancedSampleStats);
     }
   } catch (error) {
@@ -426,7 +426,7 @@ router.get('/api/dashboard/stats', async (req, res) => {
 router.get('/api/dashboard/recent-orders', async (req, res) => {
   try {
     console.log('📋 Fetching recent orders...');
-    
+
     try {
       const recentOrders = await db.select({
         id: orders.id,
@@ -461,7 +461,7 @@ router.get('/api/dashboard/recent-orders', async (req, res) => {
 router.get('/api/dashboard/low-stock', async (req, res) => {
   try {
     console.log('⚠️ Fetching low stock items...');
-    
+
     try {
       const lowStockItems = await db.select({
         id: inventoryItems.id,
@@ -496,7 +496,7 @@ router.get('/api/dashboard/low-stock', async (req, res) => {
 router.get('/api/dashboard/production-schedule', async (req, res) => {
   try {
     console.log('🏭 Fetching production schedule...');
-    
+
     try {
       const productionItems = await db.select({
         id: productionSchedule.id,
@@ -696,7 +696,7 @@ router.post('/api/users/:userId/assign-branch', requireAuth, async (req, res) =>
   try {
     const { userId } = req.params;
     const { branchId } = req.body;
-    
+
     console.log('🔄 Assigning user to branch:', { userId, branchId });
     await storage.assignUserToBranch(userId, branchId);
 
@@ -736,7 +736,7 @@ router.get('/api/products', async (req, res) => {
     const user = req.session?.user;
     const userBranchId = user?.branchId;
     const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin' || user?.role === 'admin';
-    
+
     const result = await storage.getProducts(userBranchId, canAccessAllBranches);
     console.log(`✅ Found ${result.length} products for user with branch access: ${canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`}`);
     res.json(result);
@@ -934,7 +934,7 @@ router.get('/api/inventory-items', async (req, res) => {
     const user = req.session?.user;
     const userBranchId = user?.branchId;
     const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin' || user?.role === 'admin';
-    
+
     const result = await storage.getInventoryItems(userBranchId, canAccessAllBranches);
     console.log(`✅ Found ${result.length} inventory items for user with branch access: ${canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`}`);
 
@@ -1089,7 +1089,7 @@ router.get('/api/supplier-ledgers/:supplierId', async (req, res) => {
 router.get('/api/audit-logs', requireAuth, async (req, res) => {
   try {
     console.log('📋 Fetching audit logs...');
-    
+
     const filters = {
       userId: req.query.userId as string,
       action: req.query.action as string,
@@ -1120,10 +1120,10 @@ router.get('/api/audit-logs', requireAuth, async (req, res) => {
 router.get('/api/audit-logs/analytics', requireAuth, async (req, res) => {
   try {
     console.log('📊 Fetching audit analytics...');
-    
+
     // Get recent audit logs for analytics
     const recentLogs = await storage.getAuditLogs({ limit: 1000 });
-    
+
     const analytics = {
       totalActions: recentLogs.auditLogs.length,
       actionsByType: {},
@@ -1136,10 +1136,10 @@ router.get('/api/audit-logs/analytics', requireAuth, async (req, res) => {
     recentLogs.auditLogs.forEach(log => {
       // Count by action type
       analytics.actionsByType[log.action] = (analytics.actionsByType[log.action] || 0) + 1;
-      
+
       // Count by user
       analytics.actionsByUser[log.userEmail] = (analytics.actionsByUser[log.userEmail] || 0) + 1;
-      
+
       // Count by resource
       analytics.actionsByResource[log.resource] = (analytics.actionsByResource[log.resource] || 0) + 1;
     });
@@ -1155,9 +1155,9 @@ router.get('/api/audit-logs/analytics', requireAuth, async (req, res) => {
 router.get('/api/login-logs/analytics', requireAuth, async (req, res) => {
   try {
     console.log('📊 Fetching login analytics...');
-    
+
     const loginAnalytics = await storage.getLoginAnalytics();
-    
+
     // Enhanced analytics with success/failure counts
     const enhancedAnalytics = {
       ...loginAnalytics,
@@ -1178,10 +1178,10 @@ router.get('/api/login-logs/analytics', requireAuth, async (req, res) => {
 router.post('/api/cache/clear', requireAuth, async (req, res) => {
   try {
     console.log('🧹 Clearing application cache...');
-    
+
     // Clear query cache on the client side will be handled by the client
     // Here we can clear any server-side cache if needed
-    
+
     // Add cache clear notification
     addNotification({
       type: "system",

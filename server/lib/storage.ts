@@ -917,7 +917,56 @@ export class Storage implements IStorage {
       return result[0];
     } catch (error) {
       console.error("Error fetching unit by ID:", error);
+      return undefined;
+    }
+  }
+
+  async createUnit(data: InsertUnit): Promise<Unit> {
+    try {
+      const result = await this.db
+        .insert(units)
+        .values(data)
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error creating unit:", error);
       throw error;
+    }
+  }
+
+  async updateUnit(id: number, data: Partial<InsertUnit>): Promise<Unit> {
+    try {
+      const result = await this.db
+        .update(units)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(units.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Unit not found");
+      }
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error updating unit:", error);
+      throw error;
+    }
+  }
+
+  async deleteUnit(id: number): Promise<void> {
+    try {
+      const result = await this.db
+        .delete(units)
+        .where(eq(units.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Unit not found");
+      }
+    } catch (error) {
+      console.error("Error deleting unit:", error);
+      throw error;
+    }ow error;
     }
   }
 
