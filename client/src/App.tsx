@@ -9,8 +9,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { UnitsProvider } from "@/contexts/UnitsContext";
 import { useState, useEffect } from "react";
 
-// Import ThemeProvider from next-themes
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ThemeProvider } from "next-themes";
 
 // Page Components
 import Landing from "@/pages/landing";
@@ -137,7 +136,7 @@ function AuthenticatedApp({
   }, []);
 
   return (
-    <div className="h-screen flex bg-background overflow-hidden">
+    <div className="h-screen flex bg-background dark:bg-gray-900 overflow-hidden transition-colors duration-200">
       <Sidebar
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -146,7 +145,7 @@ function AuthenticatedApp({
         className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? "lg:ml-20" : "lg:ml-64"}`}
       >
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-        <div className="flex-1 overflow-y-auto bg-gray-50/30">
+        <div className="flex-1 overflow-y-auto bg-gray-50/30 dark:bg-gray-900/30 transition-colors duration-200">
           <Switch>
             <Route
               path="/"
@@ -415,8 +414,7 @@ function AuthenticatedApp({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Wrap with ThemeProvider */}
-      <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <LanguageProvider>
           <UnitsProvider>
             <TooltipProvider>
@@ -425,7 +423,7 @@ function App() {
             </TooltipProvider>
           </UnitsProvider>
         </LanguageProvider>
-      </NextThemesProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

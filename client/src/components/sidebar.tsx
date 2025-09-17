@@ -422,7 +422,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                 ${
                   active
                     ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/25 scale-105"
-                    : "text-gray-700 hover:bg-gradient-to-r hover:from-primary/10 hover:to-primary/5 hover:text-primary hover:scale-102 hover:shadow-md"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-primary/10 hover:to-primary/5 hover:text-primary hover:scale-102 hover:shadow-md"
                 } group ${active ? "active" : ""}`}
       >
         <i
@@ -473,8 +473,8 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       <aside
         className={`h-screen flex flex-col
           fixed inset-y-0 left-0 z-50
-          bg-white/95 backdrop-blur-md
-          shadow-xl border-r border-gray-200/60
+          bg-white/95 dark:bg-gray-900/95 backdrop-blur-md
+          shadow-xl border-r border-gray-200/60 dark:border-gray-700/60
           flex-shrink-0
           transform transition-all duration-300 ease-in-out
           ${isOpen ? "translate-x-0 opacity-100" : "-translate-x-full lg:translate-x-0 opacity-95 lg:opacity-100"}
@@ -485,7 +485,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       >
         {/* Dynamic Company Header */}
         <div
-          className={`px-4 lg:px-6 py-2 flex-shrink-0 relative overflow-hidden border-b border-gray-200 ${isCollapsed ? "px-2" : ""}`}
+          className={`px-4 lg:px-6 py-2 flex-shrink-0 relative overflow-hidden border-b border-gray-200 dark:border-gray-700 ${isCollapsed ? "px-2" : ""}`}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-50"></div>
           <Link href="/" className="flex items-center group relative z-10">
@@ -521,7 +521,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
         {/* Toggle Button */}
         <div
-          className={`flex ${isCollapsed ? "justify-center px-2" : "justify-end px-4"} py-2 border-b border-gray-200/30`}
+          className={`flex ${isCollapsed ? "justify-center px-2" : "justify-end px-4"} py-2 border-b border-gray-200/30 dark:border-gray-700/30`}
         >
           <Button
             variant="ghost"
@@ -579,12 +579,13 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                         >
                           <CollapsibleTrigger
                             className="flex items-center w-full px-3 py-3 text-left text-sm font-semibold
-                                                                 text-gray-800 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100/50
-                                                                 hover:text-gray-900 rounded-xl transition-all duration-300 group
+                                                                 text-gray-800 dark:text-gray-200 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100/50 
+                                                                 dark:hover:from-gray-800/50 dark:hover:to-gray-700/50
+                                                                 hover:text-gray-900 dark:hover:text-gray-100 rounded-xl transition-all duration-300 group
                                                                  hover:shadow-sm hover:scale-102 relative overflow-hidden"
                           >
                             <span
-                              className="text-xs uppercase tracking-wider font-bold text-gray-600 group-hover:text-gray-800
+                              className="text-xs uppercase tracking-wider font-bold text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200
                                            transition-all duration-300 group-hover:tracking-wide"
                             >
                               {section.title}

@@ -118,7 +118,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/60 px-4 py-3.5 shadow-sm flex-shrink-0">
+    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/60 px-4 py-3.5 shadow-sm flex-shrink-0 transition-colors duration-200">
       <div className="flex items-center justify-between">
         {/* Left Section */}
         <div className="flex items-center space-x-4">
@@ -126,7 +126,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={onMenuClick}
-            className="lg:hidden hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105"
+            className="lg:hidden hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105 text-gray-700 dark:text-gray-300"
           >
             <Menu className="h-5 w-5" />
           </Button>

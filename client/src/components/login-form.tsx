@@ -62,7 +62,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <div className="w-full max-w-md space-y-8">
         <Card className="transition-all duration-300 hover:shadow-lg">
           <CardHeader>
