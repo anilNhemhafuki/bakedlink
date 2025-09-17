@@ -52,6 +52,13 @@ import LeaveRequests from "@/pages/leave-requests";
 import { ProtectedRoute } from "@/components/protected-route";
 import ProductionPage from "@/pages/production";
 import Branches from "./pages/branches";
+import SystemConfig from "./pages/system-config";
+import DatabaseManager from "./pages/database";
+import ApiDocs from "./pages/api-docs";
+import SystemHealth from "./pages/system-health";
+import SecurityLogs from "./pages/security-logs";
+import SystemMonitoring from "./pages/monitoring";
+import PerformanceMetrics from "./pages/performance";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -400,6 +407,62 @@ function AuthenticatedApp({
               component={() => (
                 <ProtectedRoute resource="branches" action="read">
                   <Branches />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/system-config"
+              component={() => (
+                <ProtectedRoute resource="system" action="read_write">
+                  <SystemConfig />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/database"
+              component={() => (
+                <ProtectedRoute resource="database" action="read_write">
+                  <DatabaseManager />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/api-docs"
+              component={() => (
+                <ProtectedRoute resource="api" action="read">
+                  <ApiDocs />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/system-health"
+              component={() => (
+                <ProtectedRoute resource="monitoring" action="read">
+                  <SystemHealth />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/security-logs"
+              component={() => (
+                <ProtectedRoute resource="security" action="read">
+                  <SecurityLogs />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/monitoring"
+              component={() => (
+                <ProtectedRoute resource="monitoring" action="read">
+                  <SystemMonitoring />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/performance"
+              component={() => (
+                <ProtectedRoute resource="performance" action="read">
+                  <PerformanceMetrics />
                 </ProtectedRoute>
               )}
             />
