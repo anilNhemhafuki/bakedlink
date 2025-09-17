@@ -477,12 +477,18 @@ function AuthenticatedApp({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider 
+        attribute="class" 
+        defaultTheme="system" 
+        enableSystem
+        disableTransitionOnChange={false}
+        storageKey="mero-baker-theme"
+      >
         <LanguageProvider>
           <UnitsProvider>
             <TooltipProvider>
-              <Toaster />
               <Router />
+              <Toaster />
             </TooltipProvider>
           </UnitsProvider>
         </LanguageProvider>

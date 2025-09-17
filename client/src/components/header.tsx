@@ -49,7 +49,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
-  const { theme, setTheme } = useTheme(); // ← Moved outside inner function
+  const { theme, setTheme, systemTheme } = useTheme();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,28 +174,42 @@ export default function Header({ onMenuClick }: HeaderProps) {
           {/* Theme Toggle */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="p-2">
+              <Button variant="ghost" size="sm" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800">
                 {theme === "light" && (
-                  <Sun className="h-5 w-5 text-yellow-600" />
+                  <Sun className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                 )}
-                {theme === "dark" && <Moon className="h-5 w-5 text-blue-400" />}
-                {theme === "system" && (
-                  <Monitor className="h-5 w-5 text-gray-700" />
+                {theme === "dark" && (
+                  <Moon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                )}
+                {(theme === "system" || !theme) && (
+                  <Monitor className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme("light")}>
-                <Sun className="mr-2 h-4 w-4" />
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem 
+                onClick={() => setTheme("light")}
+                className={theme === "light" ? "bg-accent" : ""}
+              >
+                <Sun className="mr-2 h-4 w-4 text-yellow-600" />
                 Light Mode
+                {theme === "light" && <span className="ml-auto">✓</span>}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>
-                <Moon className="mr-2 h-4 w-4" />
+              <DropdownMenuItem 
+                onClick={() => setTheme("dark")}
+                className={theme === "dark" ? "bg-accent" : ""}
+              >
+                <Moon className="mr-2 h-4 w-4 text-blue-600" />
                 Dark Mode
+                {theme === "dark" && <span className="ml-auto">✓</span>}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>
-                <Monitor className="mr-2 h-4 w-4" />
+              <DropdownMenuItem 
+                onClick={() => setTheme("system")}
+                className={theme === "system" ? "bg-accent" : ""}
+              >
+                <Monitor className="mr-2 h-4 w-4 text-gray-600" />
                 System Preference
+                {theme === "system" && <span className="ml-auto">✓</span>}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
