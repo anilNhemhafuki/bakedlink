@@ -117,7 +117,9 @@ const QuickStatCard = ({
             } flex items-center`}
           >
             {trend === "up" && <ArrowUpRight className="inline h-4 w-4 mr-1" />}
-            {trend === "down" && <ArrowDownRight className="inline h-4 w-4 mr-1" />}
+            {trend === "down" && (
+              <ArrowDownRight className="inline h-4 w-4 mr-1" />
+            )}
             {change}
           </p>
           {percentage && <Progress value={percentage} className="w-20 h-2" />}
@@ -168,15 +170,19 @@ export default function EnhancedDashboard() {
   const queryClient = useQueryClient();
 
   // Fetch dashboard stats with proper authorization
-  const { data: dashboardStats, isLoading: isLoadingStats, refetch: refetchStats } = useQuery({
+  const {
+    data: dashboardStats,
+    isLoading: isLoadingStats,
+    refetch: refetchStats,
+  } = useQuery({
     queryKey: ["/api/dashboard/stats"],
     queryFn: async () => {
       try {
         console.log("🔄 Fetching dashboard stats...");
         const response = await fetch("/api/dashboard/stats", {
-          credentials: 'include',
+          credentials: "include",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         });
 
@@ -185,7 +191,11 @@ export default function EnhancedDashboard() {
           console.log("✅ Dashboard stats loaded successfully:", data);
           return data;
         } else {
-          console.warn("⚠️ Dashboard stats API failed:", response.status, response.statusText);
+          console.warn(
+            "⚠️ Dashboard stats API failed:",
+            response.status,
+            response.statusText,
+          );
           throw new Error(`API returned ${response.status}`);
         }
       } catch (error) {
@@ -200,7 +210,7 @@ export default function EnhancedDashboard() {
           pendingOrders: Math.floor(Math.random() * 20) + 8,
           completedOrders: Math.floor(Math.random() * 60) + 35,
           monthlyGrowth: 15.8,
-          isDemo: true
+          isDemo: true,
         };
       }
     },
@@ -215,15 +225,19 @@ export default function EnhancedDashboard() {
       try {
         console.log("🔄 Fetching recent orders...");
         const response = await fetch("/api/dashboard/recent-orders", {
-          credentials: 'include',
+          credentials: "include",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         });
 
         if (response.ok) {
           const data = await response.json();
-          console.log("✅ Recent orders loaded successfully:", data.length, "orders");
+          console.log(
+            "✅ Recent orders loaded successfully:",
+            data.length,
+            "orders",
+          );
           return data;
         } else {
           console.warn("⚠️ Recent orders API failed:", response.status);
@@ -232,13 +246,55 @@ export default function EnhancedDashboard() {
       } catch (error) {
         console.warn("⚠️ Using sample recent orders due to error:", error);
         return [
-          { id: 1, customerName: "John Doe", totalAmount: "1250.00", status: "completed", orderDate: new Date().toISOString() },
-          { id: 2, customerName: "Jane Smith", totalAmount: "850.00", status: "in_progress", orderDate: new Date().toISOString() },
-          { id: 3, customerName: "Bob Johnson", totalAmount: "2100.00", status: "pending", orderDate: new Date().toISOString() },
-          { id: 4, customerName: "Alice Brown", totalAmount: "750.00", status: "completed", orderDate: new Date().toISOString() },
-          { id: 5, customerName: "Charlie Wilson", totalAmount: "1450.00", status: "in_progress", orderDate: new Date().toISOString() },
-          { id: 6, customerName: "David Miller", totalAmount: "3200.00", status: "completed", orderDate: new Date().toISOString() },
-          { id: 7, customerName: "Sarah Davis", totalAmount: "925.00", status: "pending", orderDate: new Date().toISOString() }
+          {
+            id: 1,
+            customerName: "John Doe",
+            totalAmount: "1250.00",
+            status: "completed",
+            orderDate: new Date().toISOString(),
+          },
+          {
+            id: 2,
+            customerName: "Jane Smith",
+            totalAmount: "850.00",
+            status: "in_progress",
+            orderDate: new Date().toISOString(),
+          },
+          {
+            id: 3,
+            customerName: "Bob Johnson",
+            totalAmount: "2100.00",
+            status: "pending",
+            orderDate: new Date().toISOString(),
+          },
+          {
+            id: 4,
+            customerName: "Alice Brown",
+            totalAmount: "750.00",
+            status: "completed",
+            orderDate: new Date().toISOString(),
+          },
+          {
+            id: 5,
+            customerName: "Charlie Wilson",
+            totalAmount: "1450.00",
+            status: "in_progress",
+            orderDate: new Date().toISOString(),
+          },
+          {
+            id: 6,
+            customerName: "David Miller",
+            totalAmount: "3200.00",
+            status: "completed",
+            orderDate: new Date().toISOString(),
+          },
+          {
+            id: 7,
+            customerName: "Sarah Davis",
+            totalAmount: "925.00",
+            status: "pending",
+            orderDate: new Date().toISOString(),
+          },
         ];
       }
     },
@@ -261,11 +317,41 @@ export default function EnhancedDashboard() {
       } catch (error) {
         console.log("Using sample low stock items due to error:", error);
         return [
-          { id: 1, name: "Flour", currentStock: "5", unit: "kg", minLevel: "10" },
-          { id: 2, name: "Sugar", currentStock: "8", unit: "kg", minLevel: "15" },
-          { id: 3, name: "Butter", currentStock: "2", unit: "kg", minLevel: "5" },
-          { id: 4, name: "Vanilla Extract", currentStock: "200", unit: "ml", minLevel: "500" },
-          { id: 5, name: "Baking Powder", currentStock: "100", unit: "g", minLevel: "250" }
+          {
+            id: 1,
+            name: "Flour",
+            currentStock: "5",
+            unit: "kg",
+            minLevel: "10",
+          },
+          {
+            id: 2,
+            name: "Sugar",
+            currentStock: "8",
+            unit: "kg",
+            minLevel: "15",
+          },
+          {
+            id: 3,
+            name: "Butter",
+            currentStock: "2",
+            unit: "kg",
+            minLevel: "5",
+          },
+          {
+            id: 4,
+            name: "Vanilla Extract",
+            currentStock: "200",
+            unit: "ml",
+            minLevel: "500",
+          },
+          {
+            id: 5,
+            name: "Baking Powder",
+            currentStock: "100",
+            unit: "g",
+            minLevel: "250",
+          },
         ];
       }
     },
@@ -286,11 +372,46 @@ export default function EnhancedDashboard() {
       } catch (error) {
         console.log("Using sample production schedule due to error:", error);
         return [
-          { id: 1, productName: "Chocolate Cake", quantity: 20, scheduledDate: new Date().toISOString(), status: "pending", priority: "high" },
-          { id: 2, productName: "Vanilla Cupcakes", quantity: 50, scheduledDate: new Date().toISOString(), status: "in_progress", priority: "medium" },
-          { id: 3, productName: "Strawberry Tart", quantity: 15, scheduledDate: new Date().toISOString(), status: "pending", priority: "low" },
-          { id: 4, productName: "Croissants", quantity: 30, scheduledDate: new Date().toISOString(), status: "completed", priority: "high" },
-          { id: 5, productName: "Danish Pastry", quantity: 25, scheduledDate: new Date().toISOString(), status: "pending", priority: "medium" }
+          {
+            id: 1,
+            productName: "Chocolate Cake",
+            quantity: 20,
+            scheduledDate: new Date().toISOString(),
+            status: "pending",
+            priority: "high",
+          },
+          {
+            id: 2,
+            productName: "Vanilla Cupcakes",
+            quantity: 50,
+            scheduledDate: new Date().toISOString(),
+            status: "in_progress",
+            priority: "medium",
+          },
+          {
+            id: 3,
+            productName: "Strawberry Tart",
+            quantity: 15,
+            scheduledDate: new Date().toISOString(),
+            status: "pending",
+            priority: "low",
+          },
+          {
+            id: 4,
+            productName: "Croissants",
+            quantity: 30,
+            scheduledDate: new Date().toISOString(),
+            status: "completed",
+            priority: "high",
+          },
+          {
+            id: 5,
+            productName: "Danish Pastry",
+            quantity: 25,
+            scheduledDate: new Date().toISOString(),
+            status: "pending",
+            priority: "medium",
+          },
         ];
       }
     },
@@ -311,9 +432,30 @@ export default function EnhancedDashboard() {
       } catch (error) {
         console.log("Using sample notifications due to error:", error);
         return [
-          { id: 1, title: "Low Stock Alert", description: "Flour is running low", type: "inventory", priority: "high", read: false },
-          { id: 2, title: "New Order", description: "Order #123 received", type: "order", priority: "medium", read: false },
-          { id: 3, title: "Production Complete", description: "Chocolate cake batch completed", type: "production", priority: "low", read: true }
+          {
+            id: 1,
+            title: "Low Stock Alert",
+            description: "Flour is running low",
+            type: "inventory",
+            priority: "high",
+            read: false,
+          },
+          {
+            id: 2,
+            title: "New Order",
+            description: "Order #123 received",
+            type: "order",
+            priority: "medium",
+            read: false,
+          },
+          {
+            id: 3,
+            title: "Production Complete",
+            description: "Chocolate cake batch completed",
+            type: "production",
+            priority: "low",
+            read: true,
+          },
         ];
       }
     },
@@ -423,14 +565,62 @@ export default function EnhancedDashboard() {
   ];
 
   const systemModules = [
-    { name: "Dashboard", status: "active", users: 12, icon: Activity, href: "/dashboard" },
-    { name: "Orders", status: "active", users: 8, icon: ShoppingCart, href: "/orders" },
-    { name: "Products", status: "active", users: 5, icon: Package, href: "/products" },
-    { name: "Inventory", status: "active", users: 7, icon: Package, href: "/inventory" },
-    { name: "Production", status: "active", users: 4, icon: Factory, href: "/production" },
-    { name: "Customers", status: "active", users: 6, icon: Users, href: "/customers" },
-    { name: "Reports", status: "active", users: 3, icon: BarChart3, href: "/reports" },
-    { name: "Settings", status: "active", users: 2, icon: Settings, href: "/settings" },
+    {
+      name: "Dashboard",
+      status: "active",
+      users: 12,
+      icon: Activity,
+      href: "/dashboard",
+    },
+    {
+      name: "Orders",
+      status: "active",
+      users: 8,
+      icon: ShoppingCart,
+      href: "/orders",
+    },
+    {
+      name: "Products",
+      status: "active",
+      users: 5,
+      icon: Package,
+      href: "/products",
+    },
+    {
+      name: "Inventory",
+      status: "active",
+      users: 7,
+      icon: Package,
+      href: "/inventory",
+    },
+    {
+      name: "Production",
+      status: "active",
+      users: 4,
+      icon: Factory,
+      href: "/production",
+    },
+    {
+      name: "Customers",
+      status: "active",
+      users: 6,
+      icon: Users,
+      href: "/customers",
+    },
+    {
+      name: "Reports",
+      status: "active",
+      users: 3,
+      icon: BarChart3,
+      href: "/reports",
+    },
+    {
+      name: "Settings",
+      status: "active",
+      users: 2,
+      icon: Settings,
+      href: "/settings",
+    },
   ];
 
   console.log("Dashboard rendering with data:", {
@@ -440,7 +630,7 @@ export default function EnhancedDashboard() {
     production: upcomingProduction?.length,
     notifications: notifications?.length,
     userRole: user?.role,
-    isSuperAdmin: isSuperAdmin()
+    isSuperAdmin: isSuperAdmin(),
   });
 
   return (
@@ -448,21 +638,11 @@ export default function EnhancedDashboard() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <Activity className="h-7 w-7 text-white" />
-            </div>
-            Mero BakeSoft Dashboard
-          </h1>
           <div className="text-gray-600 mt-2 text-lg">
             Welcome back,{" "}
             <span className="font-semibold">
               {user?.firstName || user?.email || "User"}
             </span>
-            ! You're logged in as{" "}
-            <Badge variant="outline" className="ml-1">
-              {getRoleDisplayName()}
-            </Badge>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -476,18 +656,25 @@ export default function EnhancedDashboard() {
             onClick={async () => {
               console.log("🔄 Manually refreshing all dashboard data...");
               await Promise.all([
-                queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] }),
-                queryClient.invalidateQueries({ queryKey: ["/api/dashboard/recent-orders"] }),
-                queryClient.invalidateQueries({ queryKey: ["/api/dashboard/low-stock"] }),
-                queryClient.invalidateQueries({ queryKey: ["/api/dashboard/production-schedule"] }),
-                queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
+                queryClient.invalidateQueries({
+                  queryKey: ["/api/dashboard/stats"],
+                }),
+                queryClient.invalidateQueries({
+                  queryKey: ["/api/dashboard/recent-orders"],
+                }),
+                queryClient.invalidateQueries({
+                  queryKey: ["/api/dashboard/low-stock"],
+                }),
+                queryClient.invalidateQueries({
+                  queryKey: ["/api/dashboard/production-schedule"],
+                }),
+                queryClient.invalidateQueries({
+                  queryKey: ["/api/notifications"],
+                }),
               ]);
 
               // Force immediate refetch
-              Promise.all([
-                refetchStats(),
-                refetchOrders(),
-              ]).then(() => {
+              Promise.all([refetchStats(), refetchOrders()]).then(() => {
                 toast({
                   title: "Data Refreshed",
                   description: "Dashboard data has been updated successfully",
@@ -523,7 +710,9 @@ export default function EnhancedDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Dashboard Stats</span>
-                <Badge variant={dashboardStats?.isDemo ? "secondary" : "default"}>
+                <Badge
+                  variant={dashboardStats?.isDemo ? "secondary" : "default"}
+                >
                   {dashboardStats?.isDemo ? "Sample Data" : "Live Data"}
                 </Badge>
               </div>
@@ -533,7 +722,9 @@ export default function EnhancedDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Recent Orders</span>
-                <Badge variant="default">{recentOrders?.length || 0} Items</Badge>
+                <Badge variant="default">
+                  {recentOrders?.length || 0} Items
+                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -541,7 +732,9 @@ export default function EnhancedDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Low Stock Items</span>
-                <Badge variant="default">{lowStockItems?.length || 0} Items</Badge>
+                <Badge variant="default">
+                  {lowStockItems?.length || 0} Items
+                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -549,7 +742,9 @@ export default function EnhancedDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Production Schedule</span>
-                <Badge variant="default">{upcomingProduction?.length || 0} Items</Badge>
+                <Badge variant="default">
+                  {upcomingProduction?.length || 0} Items
+                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -591,7 +786,9 @@ export default function EnhancedDashboard() {
                     <ShoppingBag className="h-5 w-5" />
                     Recent Orders
                   </CardTitle>
-                  <CardDescription>Latest customer orders ({recentOrders?.length || 0})</CardDescription>
+                  <CardDescription>
+                    Latest customer orders ({recentOrders?.length || 0})
+                  </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" asChild>
                   <Link href="/orders">
@@ -647,7 +844,8 @@ export default function EnhancedDashboard() {
                     Today's Production
                   </CardTitle>
                   <CardDescription>
-                    Scheduled production items ({upcomingProduction?.length || 0})
+                    Scheduled production items (
+                    {upcomingProduction?.length || 0})
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" asChild>
@@ -720,7 +918,9 @@ export default function EnhancedDashboard() {
                   <AlertTriangle className="h-5 w-5" />
                   Low Stock Alert
                 </CardTitle>
-                <CardDescription>Items requiring attention ({lowStockItems?.length || 0})</CardDescription>
+                <CardDescription>
+                  Items requiring attention ({lowStockItems?.length || 0})
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -756,7 +956,10 @@ export default function EnhancedDashboard() {
         <TabsContent value="actions" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {quickActions.map((action) => (
-              <Card key={action.title} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <Card
+                key={action.title}
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+              >
                 <CardContent className="p-6">
                   <Link href={action.href} className="block">
                     <div className="flex items-center gap-4">
@@ -765,7 +968,9 @@ export default function EnhancedDashboard() {
                       </div>
                       <div>
                         <h3 className="font-semibold">{action.title}</h3>
-                        <p className="text-sm text-gray-500">{action.description}</p>
+                        <p className="text-sm text-gray-500">
+                          {action.description}
+                        </p>
                       </div>
                     </div>
                   </Link>
@@ -790,12 +995,17 @@ export default function EnhancedDashboard() {
               <CardContent>
                 <div className="space-y-3">
                   {systemModules.map((module) => (
-                    <div key={module.name} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div
+                      key={module.name}
+                      className="flex items-center justify-between p-3 rounded-lg border"
+                    >
                       <div className="flex items-center gap-3">
                         <module.icon className="h-5 w-5 text-blue-600" />
                         <div>
                           <p className="font-medium text-sm">{module.name}</p>
-                          <p className="text-xs text-gray-500">{module.users} active users</p>
+                          <p className="text-xs text-gray-500">
+                            {module.users} active users
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -852,7 +1062,11 @@ export default function EnhancedDashboard() {
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {systemModules.map((module) => (
-                        <Badge key={module.name} variant="secondary" className="text-xs">
+                        <Badge
+                          key={module.name}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {module.name}
                         </Badge>
                       ))}
@@ -860,11 +1074,13 @@ export default function EnhancedDashboard() {
                   </div>
                   {isSuperAdmin() && (
                     <div className="text-xs text-green-700 p-3 bg-green-50 rounded-lg border border-green-200">
-                      ✅ Super Admin: Full access to all dashboard features and data.
+                      ✅ Super Admin: Full access to all dashboard features and
+                      data.
                     </div>
                   )}
                   <div className="text-xs text-blue-600 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    📊 Dashboard data is loading from API endpoints with sample fallbacks.
+                    📊 Dashboard data is loading from API endpoints with sample
+                    fallbacks.
                   </div>
                 </div>
               </CardContent>

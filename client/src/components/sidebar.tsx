@@ -290,85 +290,86 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
         ],
       },
       // Super Admin only sections
-      ...(isSuperAdmin() ? [
-        {
-          id: "developer",
-          title: "Developer Tools",
-          items: [
+      ...(isSuperAdmin()
+        ? [
             {
-              name: "System Configuration",
-              href: "/system-config",
-              icon: "fas fa-cogs text-base",
-              resource: "system",
+              id: "developer",
+              title: "Developer Tools",
+              items: [
+                {
+                  name: "System Configuration",
+                  href: "/system-config",
+                  icon: "fas fa-cogs text-base",
+                  resource: "system",
+                },
+                {
+                  name: "Database Manager",
+                  href: "/database",
+                  icon: "fas fa-database text-base",
+                  resource: "database",
+                },
+                {
+                  name: "API Documentation",
+                  href: "/api-docs",
+                  icon: "fas fa-code text-base",
+                  resource: "api",
+                },
+                {
+                  name: "System Health",
+                  href: "/system-health",
+                  icon: "fas fa-heartbeat text-base",
+                  resource: "monitoring",
+                },
+              ],
             },
             {
-              name: "Database Manager",
-              href: "/database",
-              icon: "fas fa-database text-base",
-              resource: "database",
+              id: "security",
+              title: "Security & Monitoring",
+              items: [
+                {
+                  name: "Security Logs",
+                  href: "/security-logs",
+                  icon: "fas fa-lock text-base",
+                  resource: "security",
+                },
+                {
+                  name: "System Monitoring",
+                  href: "/monitoring",
+                  icon: "fas fa-chart-line text-base",
+                  resource: "monitoring",
+                },
+                {
+                  name: "Performance Metrics",
+                  href: "/performance",
+                  icon: "fas fa-tachometer-alt text-base",
+                  resource: "performance",
+                },
+              ],
             },
-            {
-              name: "API Documentation",
-              href: "/api-docs",
-              icon: "fas fa-code text-base",
-              resource: "api",
-            },
-            {
-              name: "System Health",
-              href: "/system-health",
-              icon: "fas fa-heartbeat text-base",
-              resource: "monitoring",
-            },
-          ],
-        },
-        {
-          id: "security",
-          title: "Security & Monitoring",
-          items: [
-            {
-              name: "Security Logs",
-              href: "/security-logs",
-              icon: "fas fa-lock text-base",
-              resource: "security",
-            },
-            {
-              name: "System Monitoring",
-              href: "/monitoring",
-              icon: "fas fa-chart-line text-base",
-              resource: "monitoring",
-            },
-            {
-              name: "Performance Metrics",
-              href: "/performance",
-              icon: "fas fa-tachometer-alt text-base",
-              resource: "performance",
-            },
-          ],
-        },
-      ] : []),
+          ]
+        : []),
     ];
 
     // Super Admin sees ALL sections without filtering
     if (isSuperAdmin()) {
-      return allSections
-        .concat(
-          canManageBranches()
-            ? [
-                {
-                  id: "branches",
-                  title: "Branch Management",
-                  items: [
-                    {
-                      name: "Branches",
-                      href: "/branches",
-                      icon: "fas fa-building",
-                      resource: "branches",
-                    },
-                  ],
-                },
-              ]
-            : [],
-        );
+      return allSections.concat(
+        canManageBranches()
+          ? [
+              {
+                id: "branches",
+                title: "Branch Management",
+                items: [
+                  {
+                    name: "Branches",
+                    href: "/branches",
+                    icon: "fas fa-building",
+                    resource: "branches",
+                  },
+                ],
+              },
+            ]
+          : [],
+      );
     }
 
     // Filter sections based on user role for non-super-admin users
@@ -485,7 +486,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       >
         {/* Dynamic Company Header */}
         <div
-          className={`px-4 lg:px-6 py-2 flex-shrink-0 relative overflow-hidden border-b border-gray-200 ${isCollapsed ? "px-2" : ""}`}
+          className={`px-4 lg:px-6 py-2.5 flex-shrink-0 relative overflow-hidden border-b border-gray-200 ${isCollapsed ? "px-2" : ""}`}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-50"></div>
           <Link href="/" className="flex items-center group relative z-10">
@@ -495,7 +496,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
                           group-hover:shadow-xl group-hover:bg-white/20 relative overflow-hidden
                           before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/20 before:to-transparent
                           before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300
-                          ${isCollapsed ? "w-12 h-12" : "w-14 h-14"}`}
+                          ${isCollapsed ? "w-12 h-12" : "w-12 h-12"}`}
             >
               {branding.companyLogo ? (
                 <img
@@ -614,8 +615,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
             </div>
           </ScrollArea>
         </div>
-
-
       </aside>
     </TooltipProvider>
   );

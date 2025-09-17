@@ -122,7 +122,7 @@ function ThemeColorSelector({
     onUpdate({ themeColor: color });
 
     // Also store in localStorage as backup
-    localStorage.setItem('themeColor', color);
+    localStorage.setItem("themeColor", color);
   };
 
   // Apply theme color on component mount if settings exist
@@ -178,7 +178,9 @@ export default function Settings() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("general");
-  const [customSizes, setCustomSizes] = useState<Array<{name: string, width: string, height: string}>>([]);
+  const [customSizes, setCustomSizes] = useState<
+    Array<{ name: string; width: string; height: string }>
+  >([]);
   const [showCustomSize, setShowCustomSize] = useState(false);
   const [customWidth, setCustomWidth] = useState("");
   const [customHeight, setCustomHeight] = useState("");
@@ -192,19 +194,19 @@ export default function Settings() {
 
   // Load custom sizes from localStorage on mount
   React.useEffect(() => {
-    const savedSizes = localStorage.getItem('customLabelSizes');
+    const savedSizes = localStorage.getItem("customLabelSizes");
     if (savedSizes) {
       try {
         setCustomSizes(JSON.parse(savedSizes));
       } catch (e) {
-        console.warn('Failed to parse custom sizes:', e);
+        console.warn("Failed to parse custom sizes:", e);
       }
     }
   }, []);
 
   // Check if current label size is custom to show inputs
   React.useEffect(() => {
-    setShowCustomSize(settings.labelSize === 'custom');
+    setShowCustomSize(settings.labelSize === "custom");
   }, [settings.labelSize]);
 
   const updateSettingsMutation = useMutation({
@@ -217,12 +219,15 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
       toast({
         title: "Success",
-        description: response?.message || "Settings updated successfully"
+        description: response?.message || "Settings updated successfully",
       });
     },
     onError: (error: any) => {
       console.error("❌ Settings update failed:", error);
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to update settings";
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update settings";
       toast({
         title: "Error",
         description: errorMessage,
@@ -255,10 +260,14 @@ export default function Settings() {
     const formData = new FormData(e.target as HTMLFormElement);
 
     const data = {
-      emailNotifications: formData.get("emailNotifications") === "on" ? "true" : "false",
-      lowStockAlerts: formData.get("lowStockAlerts") === "on" ? "true" : "false",
-      orderNotifications: formData.get("orderNotifications") === "on" ? "true" : "false",
-      productionReminders: formData.get("productionReminders") === "on" ? "true" : "false",
+      emailNotifications:
+        formData.get("emailNotifications") === "on" ? "true" : "false",
+      lowStockAlerts:
+        formData.get("lowStockAlerts") === "on" ? "true" : "false",
+      orderNotifications:
+        formData.get("orderNotifications") === "on" ? "true" : "false",
+      productionReminders:
+        formData.get("productionReminders") === "on" ? "true" : "false",
     };
 
     console.log("📝 Saving notification settings:", data);
@@ -287,17 +296,17 @@ export default function Settings() {
         top: settings.labelMarginTop || "2",
         bottom: settings.labelMarginBottom || "2",
         left: settings.labelMarginLeft || "2",
-        right: settings.labelMarginRight || "2"
+        right: settings.labelMarginRight || "2",
       },
       customWidth: customWidth || settings.customLabelWidth,
-      customHeight: customHeight || settings.customLabelHeight
+      customHeight: customHeight || settings.customLabelHeight,
     };
 
     generateTestPrintLabel(printSettings);
   };
 
   const generateTestPrintLabel = (printSettings: any) => {
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     if (!printWindow) {
       toast({
         title: "Error",
@@ -464,17 +473,17 @@ export default function Settings() {
       const newCustomSize = {
         name: customSizeName,
         width: customWidth,
-        height: customHeight
+        height: customHeight,
       };
 
       const existingIndex = customSizes.findIndex(
-        size => size.width === customWidth && size.height === customHeight
+        (size) => size.width === customWidth && size.height === customHeight,
       );
 
       if (existingIndex === -1) {
         const updatedSizes = [...customSizes, newCustomSize];
         setCustomSizes(updatedSizes);
-        localStorage.setItem('customLabelSizes', JSON.stringify(updatedSizes));
+        localStorage.setItem("customLabelSizes", JSON.stringify(updatedSizes));
       }
 
       labelSize = customSizeName;
@@ -483,7 +492,8 @@ export default function Settings() {
     const data = {
       defaultPrinter: formData.get("defaultPrinter")?.toString() || "",
       labelSize: labelSize,
-      labelOrientation: formData.get("labelOrientation")?.toString() || "portrait",
+      labelOrientation:
+        formData.get("labelOrientation")?.toString() || "portrait",
       labelMarginTop: formData.get("labelMarginTop")?.toString() || "2",
       labelMarginBottom: formData.get("labelMarginBottom")?.toString() || "2",
       labelMarginLeft: formData.get("labelMarginLeft")?.toString() || "2",
@@ -499,11 +509,11 @@ export default function Settings() {
   // Cache reset functionality
   const clearCacheMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/cache/clear', {
-        method: 'POST',
-        credentials: 'include',
+      const response = await fetch("/api/cache/clear", {
+        method: "POST",
+        credentials: "include",
       });
-      if (!response.ok) throw new Error('Failed to clear cache');
+      if (!response.ok) throw new Error("Failed to clear cache");
       return response.json();
     },
     onSuccess: () => {
@@ -518,7 +528,8 @@ export default function Settings() {
 
       toast({
         title: "Cache Cleared",
-        description: "Application cache has been cleared successfully. Please refresh the page.",
+        description:
+          "Application cache has been cleared successfully. Please refresh the page.",
         variant: "default",
       });
 
@@ -576,9 +587,7 @@ export default function Settings() {
                     <Input
                       id="companyName"
                       name="companyName"
-                      defaultValue={
-                        settings.companyName || "Bake Sewa"
-                      }
+                      defaultValue={settings.companyName || "Bake Sewa"}
                       required
                     />
                   </div>
@@ -593,11 +602,10 @@ export default function Settings() {
                 </div>
                 <div>
                   <Label htmlFor="companyAddress">Address</Label>
-                  <Textarea
+                  <Input
                     id="companyAddress"
                     name="companyAddress"
                     defaultValue={settings.companyAddress || ""}
-                    rows={3}
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -664,7 +672,7 @@ export default function Settings() {
                     <Label htmlFor="currency">Currency</Label>
                     <Select
                       name="currency"
-                      defaultValue={settings.currency || "USD"}
+                      defaultValue={settings.currency || "NPR"}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -675,11 +683,8 @@ export default function Settings() {
                         <SelectItem value="GBP">GBP (£)</SelectItem>
                         <SelectItem value="NPR">NPR (₨)</SelectItem>
                         <SelectItem value="INR">INR (₹)</SelectItem>
-                        <SelectItem value="CAD">CAD (C$)</SelectItem>
                         <SelectItem value="AUD">AUD (A$)</SelectItem>
-                        <SelectItem value="JPY">JPY (¥)</SelectItem>
                         <SelectItem value="CNY">CNY (¥)</SelectItem>
-                        <SelectItem value="KRW">KRW (₩)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -720,7 +725,10 @@ export default function Settings() {
                   <Switch
                     id="emailNotifications"
                     name="emailNotifications"
-                    defaultChecked={settings.emailNotifications === true || settings.emailNotifications === "true"}
+                    defaultChecked={
+                      settings.emailNotifications === true ||
+                      settings.emailNotifications === "true"
+                    }
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -733,7 +741,10 @@ export default function Settings() {
                   <Switch
                     id="lowStockAlerts"
                     name="lowStockAlerts"
-                    defaultChecked={settings.lowStockAlerts === true || settings.lowStockAlerts === "true"}
+                    defaultChecked={
+                      settings.lowStockAlerts === true ||
+                      settings.lowStockAlerts === "true"
+                    }
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -748,7 +759,10 @@ export default function Settings() {
                   <Switch
                     id="orderNotifications"
                     name="orderNotifications"
-                    defaultChecked={settings.orderNotifications === true || settings.orderNotifications === "true"}
+                    defaultChecked={
+                      settings.orderNotifications === true ||
+                      settings.orderNotifications === "true"
+                    }
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -763,7 +777,10 @@ export default function Settings() {
                   <Switch
                     id="productionReminders"
                     name="productionReminders"
-                    defaultChecked={settings.productionReminders === true || settings.productionReminders === "true"}
+                    defaultChecked={
+                      settings.productionReminders === true ||
+                      settings.productionReminders === "true"
+                    }
                   />
                 </div>
                 <Button
@@ -802,7 +819,10 @@ export default function Settings() {
                   <Switch
                     id="twoFactorAuth"
                     name="twoFactorAuth"
-                    defaultChecked={settings.twoFactorAuth === true || settings.twoFactorAuth === "true"}
+                    defaultChecked={
+                      settings.twoFactorAuth === true ||
+                      settings.twoFactorAuth === "true"
+                    }
                   />
                 </div>
                 <div>
@@ -883,7 +903,9 @@ export default function Settings() {
                     <Select
                       name="labelSize"
                       defaultValue={settings.labelSize || "small"}
-                      onValueChange={(value) => setShowCustomSize(value === "custom")}
+                      onValueChange={(value) =>
+                        setShowCustomSize(value === "custom")
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -967,7 +989,9 @@ export default function Settings() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="labelMarginBottom">Bottom Margin (mm)</Label>
+                    <Label htmlFor="labelMarginBottom">
+                      Bottom Margin (mm)
+                    </Label>
                     <Input
                       id="labelMarginBottom"
                       name="labelMarginBottom"
@@ -1009,17 +1033,17 @@ export default function Settings() {
                     Save Printing Settings
                   </Button>
                   {/* Test Print Button */}
-                    <div className="flex justify-end gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleTestPrint}
-                        disabled={!settings}
-                      >
-                        <Printer className="h-4 w-4 mr-2" />
-                        Test Print
-                      </Button>
-                    </div>
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleTestPrint}
+                      disabled={!settings}
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Test Print
+                    </Button>
+                  </div>
                 </div>
               </form>
             </CardContent>
@@ -1039,10 +1063,13 @@ export default function Settings() {
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <Label className="text-base font-semibold">Cache Management</Label>
+                  <Label className="text-base font-semibold">
+                    Cache Management
+                  </Label>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Clear application cache to resolve performance issues or display problems.
-                    This will clear all cached data and you may need to refresh the page.
+                    Clear application cache to resolve performance issues or
+                    display problems. This will clear all cached data and you
+                    may need to refresh the page.
                   </p>
                   <Button
                     variant="outline"
@@ -1067,25 +1094,39 @@ export default function Settings() {
                 <Separator />
 
                 <div>
-                  <Label className="text-base font-semibold">System Information</Label>
+                  <Label className="text-base font-semibold">
+                    System Information
+                  </Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Application Version:</span>
+                        <span className="text-sm text-muted-foreground">
+                          Application Version:
+                        </span>
                         <span className="text-sm">1.0.0</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Last Cache Clear:</span>
-                        <span className="text-sm">{localStorage.getItem('lastCacheClear') || 'Never'}</span>
+                        <span className="text-sm text-muted-foreground">
+                          Last Cache Clear:
+                        </span>
+                        <span className="text-sm">
+                          {localStorage.getItem("lastCacheClear") || "Never"}
+                        </span>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Browser:</span>
-                        <span className="text-sm">{navigator.userAgent.split(' ')[0]}</span>
+                        <span className="text-sm text-muted-foreground">
+                          Browser:
+                        </span>
+                        <span className="text-sm">
+                          {navigator.userAgent.split(" ")[0]}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Platform:</span>
+                        <span className="text-sm text-muted-foreground">
+                          Platform:
+                        </span>
                         <span className="text-sm">{navigator.platform}</span>
                       </div>
                     </div>

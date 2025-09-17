@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import SearchBar from "@/components/search-bar";
 import { useTableSort } from "@/hooks/useTableSort";
 import { SortableTableHeader } from "@/components/ui/sortable-table-header";
@@ -293,7 +294,9 @@ export default function Expenses() {
                 {editingExpense ? "Edit Expense" : "Add New Expense"}
               </DialogTitle>
               <DialogDescription>
-                {editingExpense ? "Update expense information" : "Record a new business expense with detailed information"}
+                {editingExpense
+                  ? "Update expense information"
+                  : "Record a new business expense with detailed information"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSave} className="space-y-6">
@@ -323,7 +326,8 @@ export default function Expenses() {
                       <SelectContent>
                         {categories.map((category) => (
                           <SelectItem key={category} value={category}>
-                            {category.charAt(0).toUpperCase() + category.slice(1)}
+                            {category.charAt(0).toUpperCase() +
+                              category.slice(1)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -336,7 +340,7 @@ export default function Expenses() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="expense-amount">Amount ($) *</Label>
@@ -358,7 +362,9 @@ export default function Expenses() {
                       type="date"
                       defaultValue={
                         editingExpense?.date
-                          ? new Date(editingExpense.date).toISOString().split("T")[0]
+                          ? new Date(editingExpense.date)
+                              .toISOString()
+                              .split("T")[0]
                           : new Date().toISOString().split("T")[0]
                       }
                       required
@@ -399,8 +405,8 @@ export default function Expenses() {
                   className="w-full sm:w-auto"
                 >
                   {createMutation.isPending || updateMutation.isPending
-                    ? editingExpense 
-                      ? "Updating..." 
+                    ? editingExpense
+                      ? "Updating..."
                       : "Saving..."
                     : editingExpense
                       ? "Update Expense"

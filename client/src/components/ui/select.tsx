@@ -75,7 +75,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "relative  z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className,
@@ -119,16 +119,20 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors duration-100",
 
-      // 🔹 Highlight selected item
-      "data-[state=checked]:bg-orange-100 data-[state=checked]:text-orange-800 data-[state=checked]:font-semibold",
+      // ✅ Hover: mouse over
+      "hover:bg-orange-100 hover:text-orange-900",
 
-      // Optional: Hover effect (not conflicting with selected)
-      "hover:bg-orange-50 hover:text-orange-900",
+      // ✅ Focus/Highlight: keyboard navigation or pointer focus
+      "data-[highlighted]:bg-orange-100 data-[highlighted]:text-orange-900",
 
-      // Focus style (keyboard navigation)
-      "data-[state=highlighted]:bg-orange-50 data-[state=highlighted]:text-orange-900",
+      // ✅ Selected value indicator (visual only — no "checked" state)
+      // Use a checkmark icon to show which item is currently selected
+      "pl-8", // Make space for indicator
+
+      // ❌ Remove: data-[state=checked] — it doesn't exist on Select.Item
+      // "data-[state=checked]:bg-orange-100 data-[state=checked]:text-orange-800"
 
       className,
     )}

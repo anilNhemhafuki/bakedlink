@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import SearchBar from "@/components/search-bar";
 import { useTableSort } from "@/hooks/useTableSort";
 import { SortableTableHeader } from "@/components/ui/sortable-table-header";
@@ -321,7 +322,9 @@ export default function Assets() {
                 {editingAsset ? "Edit Asset" : "Add New Asset"}
               </DialogTitle>
               <DialogDescription>
-                {editingAsset ? "Update asset information" : "Create a new asset record with detailed information"}
+                {editingAsset
+                  ? "Update asset information"
+                  : "Create a new asset record with detailed information"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSave} className="space-y-6">
@@ -335,7 +338,9 @@ export default function Assets() {
                       id="asset-name"
                       placeholder="e.g. Office Laptop, Kitchen Mixer"
                       value={formData.name}
-                      onChange={(e) => handleInputChange("name", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("name", e.target.value)
+                      }
                       required
                     />
                   </div>
@@ -343,7 +348,9 @@ export default function Assets() {
                     <Label htmlFor="asset-category">Category *</Label>
                     <Select
                       value={formData.category}
-                      onValueChange={(value) => handleInputChange("category", value)}
+                      onValueChange={(value) =>
+                        handleInputChange("category", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select Category" />
@@ -351,14 +358,15 @@ export default function Assets() {
                       <SelectContent>
                         {categories.map((category) => (
                           <SelectItem key={category} value={category}>
-                            {category.charAt(0).toUpperCase() + category.slice(1)}
+                            {category.charAt(0).toUpperCase() +
+                              category.slice(1)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="asset-location">Location</Label>
@@ -366,14 +374,18 @@ export default function Assets() {
                       id="asset-location"
                       placeholder="e.g. Main Office, Kitchen"
                       value={formData.location}
-                      onChange={(e) => handleInputChange("location", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("location", e.target.value)
+                      }
                     />
                   </div>
                   <div>
                     <Label htmlFor="asset-condition">Condition</Label>
                     <Select
                       value={formData.condition}
-                      onValueChange={(value) => handleInputChange("condition", value)}
+                      onValueChange={(value) =>
+                        handleInputChange("condition", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select Condition" />
@@ -381,7 +393,8 @@ export default function Assets() {
                       <SelectContent>
                         {conditions.map((condition) => (
                           <SelectItem key={condition} value={condition}>
-                            {condition.charAt(0).toUpperCase() + condition.slice(1)}
+                            {condition.charAt(0).toUpperCase() +
+                              condition.slice(1)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -468,11 +481,11 @@ export default function Assets() {
                   className="w-full sm:w-auto"
                 >
                   {createMutation.isPending || updateMutation.isPending
-                    ? editingAsset 
-                      ? "Updating..." 
+                    ? editingAsset
+                      ? "Updating..."
                       : "Creating..."
-                    : editingAsset 
-                      ? "Update Asset" 
+                    : editingAsset
+                      ? "Update Asset"
                       : "Create Asset"}
                 </Button>
               </div>

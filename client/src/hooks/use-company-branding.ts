@@ -24,7 +24,7 @@ export function useCompanyBranding() {
   const settings = settingsResponse?.settings || {};
 
   const branding: CompanyBranding = {
-    companyName: settings?.companyName || "Mero BakeSoft",
+    companyName: settings?.companyName || "Mero BakerSoft",
     companyLogo: settings?.companyLogo || "",
     themeColor: settings?.themeColor || "#efa14b",
     currency: settings?.currency || "NPR",

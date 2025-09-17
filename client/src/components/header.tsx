@@ -8,7 +8,6 @@ import { useLocation, Link } from "wouter";
 import { useCompanyBranding } from "@/hooks/use-company-branding";
 import { useToast } from "@/hooks/use-toast";
 
-
 // UI Components
 import {
   DropdownMenu,
@@ -23,7 +22,7 @@ import {
   Menu,
   Globe,
   LogOut,
-  User,
+  UserCircle,
   Settings,
   Calendar,
   Bell,
@@ -45,8 +44,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const { t, language, setLanguage } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
-
-  
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,7 +136,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           {/* Date Display */}
           <div className="hidden lg:block">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+              <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg">
                 <Calendar className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-primary">
                   {getCurrentDate()}
@@ -202,7 +199,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                   variant="ghost"
                   className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-full transition-all"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-br from-primary via-primary/90 to-primary/70 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8  rounded-full flex items-center justify-center">
                     {user?.profileImageUrl ? (
                       <img
                         src={user.profileImageUrl}
@@ -210,17 +207,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
                         className="w-6 h-6 rounded-full object-cover"
                       />
                     ) : (
-                      <User className="h-4 w-4 text-primary-foreground" />
+                      <UserCircle className="h-5 w-5 text-primary-foreground" />
                     )}
                   </div>
-                  <span className="font-medium hidden md:inline text-gray-700">
-                    {user?.firstName
-                      ? `${user.firstName} ${user.lastName || ""}`.trim()
-                      : user?.email?.split("@")[0] || "User"}
-                  </span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 bg-white/95 backdrop-blur-md border border-gray-200/50 shadow-2xl">
+              <DropdownMenuContent
+                align="end"
+                className="w-80 bg-white backdrop-blur-md border border-gray-200/50 shadow-2xl"
+              >
                 {/* User Info Header */}
                 <div className="px-4 py-3 border-b border-gray-100">
                   <div className="flex items-center space-x-3">
@@ -232,7 +227,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                           className="w-8 h-8 rounded-lg object-cover"
                         />
                       ) : (
-                        <User className="h-5 w-5 text-primary-foreground" />
+                        <UserCircle className="h-6 w-6 text-primary-foreground" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
