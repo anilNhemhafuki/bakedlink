@@ -36,6 +36,7 @@ import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 
 const router = express.Router();
 
@@ -1654,19 +1655,550 @@ router.post('/cache/clear', requireAuth, async (req, res) => {
   }
 });
 
+// Staff Management API routes
+router.get('/staff', async (req, res) => {
+  try {
+    console.log('👥 Fetching staff members...');
+    const result = await storage.getStaff();
+    console.log(`✅ Found ${result.length} staff members`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching staff:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch staff',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/staff', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating staff member:', req.body.firstName, req.body.lastName);
+    const result = await storage.createStaff(req.body);
+
+    // Log the staff creation to audit logs
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'CREATE',
+        'staff',
+        { 
+          staffName: `${req.body.firstName} ${req.body.lastName}`,
+          staffId: req.body.staffId,
+          position: req.body.position,
+          newStaffId: result.id
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add staff creation notification
+    addNotification({
+      type: "system",
+      title: "Staff Member Added",
+      description: `${req.body.firstName} ${req.body.lastName} has been added to the staff`,
+      priority: "medium",
+      actionUrl: "/staff"
+    });
+
+    console.log('✅ Staff member created successfully');
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Error creating staff member:', error);
+    res.status(400).json({ 
+      error: 'Failed to create staff member',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.put('/staff/:id', requireAuth, async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.id);
+    console.log('💾 Updating staff member:', staffId);
+    const result = await storage.updateStaff(staffId, req.body);
+
+    // Log the staff update to audit logs
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'UPDATE',
+        'staff',
+        { 
+          staffId,
+          updates: req.body
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add staff update notification
+    addNotification({
+      type: "system",
+      title: "Staff Member Updated",
+      description: `Staff member "${result.firstName} ${result.lastName}" has been updated`,
+      priority: "medium",
+      actionUrl: "/staff"
+    });
+
+    console.log('✅ Staff member updated successfully');
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Error updating staff member:', error);
+    res.status(400).json({ 
+      error: 'Failed to update staff member',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.delete('/staff/:id', requireAuth, async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.id);
+    console.log('🗑️ Deleting staff member:', staffId);
+    
+    // Get staff info before deletion for logging
+    const staffMember = await storage.getStaffById(staffId);
+    
+    await storage.deleteStaff(staffId);
+
+    // Log the staff deletion to audit logs
+    if (req.session?.user && staffMember) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'DELETE',
+        'staff',
+        { 
+          deletedStaffId: staffId,
+          staffName: `${staffMember.firstName} ${staffMember.lastName}`
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add staff deletion notification
+    addNotification({
+      type: "system",
+      title: "Staff Member Deleted",
+      description: `Staff member has been removed from the system`,
+      priority: "medium",
+      actionUrl: "/staff"
+    });
+
+    console.log('✅ Staff member deleted successfully');
+    res.json({ success: true, message: 'Staff member deleted successfully' });
+  } catch (error: any) {
+    console.error('❌ Error deleting staff member:', error);
+    res.status(400).json({ 
+      error: 'Failed to delete staff member',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+// Ensure upload directory exists
+const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'staff-documents');
+if (!fsSync.existsSync(uploadsDir)) {
+  fsSync.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const upload = multer({
+  dest: uploadsDir,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    try {
+      // Allow images and PDFs
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+      console.log('📎 File upload attempt:', {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size
+      });
+      
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error(`Invalid file type: ${file.mimetype}. Only images (JPEG, PNG, GIF) and PDFs are allowed.`));
+      }
+    } catch (error) {
+      console.error('❌ File filter error:', error);
+      cb(error);
+    }
+  }
+});
+
+// Staff document upload endpoint
+router.post('/staff/upload-document', requireAuth, upload.single('document'), async (req, res) => {
+  try {
+    console.log('📎 Document upload request received');
+    console.log('Request body:', req.body);
+    console.log('File info:', req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    } : 'No file');
+
+    if (!req.file) {
+      return res.status(400).json({ 
+        error: 'No file uploaded',
+        message: 'Please select a file to upload',
+        success: false 
+      });
+    }
+
+    const { documentType, staffId } = req.body;
+    
+    if (!documentType || !staffId) {
+      // Clean up uploaded file
+      await fs.unlink(req.file.path).catch(console.error);
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        message: 'documentType and staffId are required',
+        success: false 
+      });
+    }
+    
+    // Validate document type
+    const validDocumentTypes = ['profile_photo', 'identity_card', 'agreement_paper'];
+    if (!validDocumentTypes.includes(documentType)) {
+      await fs.unlink(req.file.path).catch(console.error);
+      return res.status(400).json({ 
+        error: 'Invalid document type',
+        message: `Document type must be one of: ${validDocumentTypes.join(', ')}`,
+        success: false 
+      });
+    }
+    
+    // Generate a unique filename
+    const fileExtension = path.extname(req.file.originalname);
+    const uniqueFilename = `${staffId}_${documentType}_${Date.now()}${fileExtension}`;
+    const finalPath = path.join(process.cwd(), 'public', 'uploads', 'staff-documents', uniqueFilename);
+    
+    // Ensure target directory exists
+    const targetDir = path.dirname(finalPath);
+    if (!fsSync.existsSync(targetDir)) {
+      fsSync.mkdirSync(targetDir, { recursive: true });
+    }
+    
+    // Move file to final destination
+    await fs.rename(req.file.path, finalPath);
+    
+    // Return the file URL
+    const fileUrl = `/uploads/staff-documents/${uniqueFilename}`;
+    
+    console.log(`✅ Document uploaded successfully: ${fileUrl}`);
+    
+    res.json({
+      success: true,
+      url: fileUrl,
+      filename: uniqueFilename,
+      originalName: req.file.originalname,
+      documentType,
+      staffId
+    });
+  } catch (error: any) {
+    console.error('❌ Error uploading document:', error);
+    
+    // Clean up uploaded file if there was an error
+    if (req.file?.path) {
+      fs.unlink(req.file.path).catch(console.error);
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to upload document',
+      message: error.message || 'An error occurred during file upload',
+      success: false 
+    });
+  }
+});
+
+// Attendance routes
+router.get('/attendance', async (req, res) => {
+  try {
+    console.log('📋 Fetching attendance records...');
+    const staffId = req.query.staffId ? parseInt(req.query.staffId as string) : undefined;
+    const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+    const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+    
+    const result = await storage.getAttendance(staffId, startDate, endDate);
+    console.log(`✅ Found ${result.length} attendance records`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching attendance:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch attendance',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/attendance', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating attendance record:', req.body);
+    const result = await storage.createAttendance(req.body);
+
+    // Add attendance creation notification
+    addNotification({
+      type: "system",
+      title: "Attendance Recorded",
+      description: `Attendance record created successfully`,
+      priority: "low",
+      actionUrl: "/attendance"
+    });
+
+    console.log('✅ Attendance record created successfully');
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Error creating attendance record:', error);
+    res.status(400).json({ 
+      error: 'Failed to create attendance record',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.put('/attendance/:id', requireAuth, async (req, res) => {
+  try {
+    const attendanceId = parseInt(req.params.id);
+    console.log('💾 Updating attendance record:', attendanceId);
+    const result = await storage.updateAttendance(attendanceId, req.body);
+
+    console.log('✅ Attendance record updated successfully');
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Error updating attendance record:', error);
+    res.status(400).json({ 
+      error: 'Failed to update attendance record',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.delete('/attendance/:id', requireAuth, async (req, res) => {
+  try {
+    const attendanceId = parseInt(req.params.id);
+    console.log('🗑️ Deleting attendance record:', attendanceId);
+    await storage.deleteAttendance(attendanceId);
+
+    console.log('✅ Attendance record deleted successfully');
+    res.json({ success: true, message: 'Attendance record deleted successfully' });
+  } catch (error: any) {
+    console.error('❌ Error deleting attendance record:', error);
+    res.status(400).json({ 
+      error: 'Failed to delete attendance record',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+// Clock in/out endpoints
+router.post('/attendance/clock-in/:staffId', requireAuth, async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.staffId);
+    console.log('⏰ Clocking in staff member:', staffId);
+    const result = await storage.clockIn(staffId);
+
+    // Add clock-in notification
+    addNotification({
+      type: "system",
+      title: "Staff Clocked In",
+      description: `Staff member has clocked in`,
+      priority: "low",
+      actionUrl: "/attendance"
+    });
+
+    console.log('✅ Staff member clocked in successfully');
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Error clocking in:', error);
+    res.status(400).json({ 
+      error: 'Failed to clock in',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/attendance/clock-out/:staffId', requireAuth, async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.staffId);
+    console.log('⏰ Clocking out staff member:', staffId);
+    const result = await storage.clockOut(staffId);
+
+    // Add clock-out notification
+    addNotification({
+      type: "system",
+      title: "Staff Clocked Out",
+      description: `Staff member has clocked out`,
+      priority: "low",
+      actionUrl: "/attendance"
+    });
+
+    console.log('✅ Staff member clocked out successfully');
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Error clocking out:', error);
+    res.status(400).json({ 
+      error: 'Failed to clock out',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+// Salary payments routes
+router.get('/salary-payments', async (req, res) => {
+  try {
+    console.log('💰 Fetching salary payments...');
+    const staffId = req.query.staffId ? parseInt(req.query.staffId as string) : undefined;
+    const result = await storage.getSalaryPayments(staffId);
+    console.log(`✅ Found ${result.length} salary payments`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching salary payments:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch salary payments',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/salary-payments', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating salary payment:', req.body);
+    const result = await storage.createSalaryPayment(req.body);
+
+    // Add salary payment notification
+    addNotification({
+      type: "system",
+      title: "Salary Payment Processed",
+      description: `Salary payment has been processed`,
+      priority: "medium",
+      actionUrl: "/salary"
+    });
+
+    console.log('✅ Salary payment created successfully');
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Error creating salary payment:', error);
+    res.status(400).json({ 
+      error: 'Failed to create salary payment',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+// Leave requests routes
+router.get('/leave-requests', async (req, res) => {
+  try {
+    console.log('📝 Fetching leave requests...');
+    const staffId = req.query.staffId ? parseInt(req.query.staffId as string) : undefined;
+    const result = await storage.getLeaveRequests(staffId);
+    console.log(`✅ Found ${result.length} leave requests`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching leave requests:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch leave requests',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/leave-requests', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating leave request:', req.body);
+    const result = await storage.createLeaveRequest(req.body);
+
+    // Add leave request notification
+    addNotification({
+      type: "system",
+      title: "Leave Request Submitted",
+      description: `New leave request has been submitted`,
+      priority: "medium",
+      actionUrl: "/leave-requests"
+    });
+
+    console.log('✅ Leave request created successfully');
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Error creating leave request:', error);
+    res.status(400).json({ 
+      error: 'Failed to create leave request',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.put('/leave-requests/:id', requireAuth, async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    console.log('💾 Updating leave request:', requestId);
+    const result = await storage.updateLeaveRequest(requestId, req.body);
+
+    console.log('✅ Leave request updated successfully');
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Error updating leave request:', error);
+    res.status(400).json({ 
+      error: 'Failed to update leave request',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+// Global error handler middleware for all routes
+router.use('*', (req, res, next) => {
+  // Ensure all API responses are JSON
+  if (req.originalUrl.startsWith('/api/')) {
+    res.setHeader('Content-Type', 'application/json');
+  }
+  next();
+});
+
+// Handle 404 for API routes
+router.use('/api/*', (req, res) => {
+  console.log(`❌ API route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    error: 'API endpoint not found',
+    message: `Route ${req.method} ${req.originalUrl} does not exist`,
+    success: false
+  });
+});
+
 // API error handling middleware
 router.use((error: any, req: any, res: any, next: any) => {
   console.error('🚨 API Error:', error);
 
   // Ensure we always return JSON for API routes
-  if (req.path.startsWith('/api/')) {
+  if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
     // Log the error to audit logs if possible
     if (req.session?.user) {
       storage.logUserAction(
         req.session.user.id,
         'ERROR',
         'system',
-        { error: error.message, stack: error.stack },
+        { error: error.message, stack: error.stack, path: req.originalUrl },
         req.ip,
         req.get('User-Agent')
       ).catch(console.error);
@@ -1680,9 +2212,26 @@ router.use((error: any, req: any, res: any, next: any) => {
       priority: "critical"
     });
 
+    // Handle different types of errors
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        error: 'Validation error',
+        message: error.message,
+        success: false
+      });
+    }
+
+    if (error.name === 'MulterError') {
+      return res.status(400).json({ 
+        error: 'File upload error',
+        message: error.message,
+        success: false
+      });
+    }
+
     return res.status(500).json({ 
       error: 'Internal server error',
-      message: error.message,
+      message: error.message || 'An unexpected error occurred',
       success: false
     });
   }

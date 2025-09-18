@@ -8,6 +8,7 @@ import router from "./routes";
 import { initializeUnits } from "./init-units"; // Import initializeUnits
 import { securityMonitor } from "./securityMonitor";
 import { alertService } from "./alertService";
+import path from "path"; // Import path module
 
 const app = express();
 
@@ -77,8 +78,30 @@ async function startServer() {
     // Setup authentication
     await setupAuth(app);
 
-    // Register routes
+    // API Routes - ensure all API routes are properly mounted
     app.use('/api', router);
+
+    // Handle static file serving for uploads
+    app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
+
+    // Global error handler for express
+    app.use((error: any, req: any, res: any, next: any) => {
+      console.error('🚨 Express Error:', error);
+
+      // If it's an API route, return JSON
+      if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
+        return res.status(500).json({
+          error: 'Internal server error',
+          message: error.message || 'An unexpected error occurred',
+          success: false
+        });
+      }
+
+      // For non-API routes, you might want to render an error page
+      res.status(500).send('Internal Server Error');
+    });
+
+
     const server = createServer(app);
 
     const port = parseInt(process.env.PORT || "5000");

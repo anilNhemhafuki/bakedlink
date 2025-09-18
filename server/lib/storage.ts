@@ -485,6 +485,18 @@ export class Storage implements IStorage {
     if (!fs.existsSync(staffDocumentsDir)) {
       fs.mkdirSync(staffDocumentsDir, { recursive: true });
     }
+
+    // Ensure other upload directories exist
+    const mediaDir = path.join(this.uploadsDir, "media");
+    const tempDir = path.join(this.uploadsDir, "temp");
+    
+    [mediaDir, tempDir].forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    });
+
+    console.log('📁 Upload directories initialized');
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -3474,23 +3486,75 @@ export class Storage implements IStorage {
   }
 
   async createStaff(staffData: InsertStaff): Promise<Staff> {
-    const [newStaff] = await this.db
-      .insert(staff)
-      .values(staffData)
-      .returning();
-    return newStaff;
+    try {
+      // Ensure required fields are present and properly formatted
+      const cleanData = {
+        ...staffData,
+        // Auto-generate staffId if not provided
+        staffId: staffData.staffId || `EMP${Date.now().toString().slice(-6)}`,
+        // Ensure dates are properly formatted
+        dateOfBirth: staffData.dateOfBirth ? new Date(staffData.dateOfBirth) : null,
+        hireDate: staffData.hireDate ? new Date(staffData.hireDate) : new Date(),
+        // Set default status if not provided
+        status: staffData.status || 'active',
+        // Set default employment type if not provided
+        employmentType: staffData.employmentType || 'full-time',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      console.log('Creating staff with data:', cleanData);
+
+      const [newStaff] = await this.db
+        .insert(staff)
+        .values(cleanData)
+        .returning();
+      
+      console.log('✅ Staff member created successfully:', newStaff.staffId);
+      return newStaff;
+    } catch (error) {
+      console.error('❌ Error creating staff member:', error);
+      throw error;
+    }
   }
 
   async updateStaff(
     id: number,
     staffData: Partial<InsertStaff>,
   ): Promise<Staff> {
-    const [updatedStaff] = await this.db
-      .update(staff)
-      .set({ ...staffData, updatedAt: new Date() })
-      .where(eq(staff.id, id))
-      .returning();
-    return updatedStaff;
+    try {
+      // Clean and format the data
+      const cleanData = { ...staffData };
+      
+      // Handle date fields properly
+      if (cleanData.dateOfBirth) {
+        cleanData.dateOfBirth = new Date(cleanData.dateOfBirth);
+      }
+      if (cleanData.hireDate) {
+        cleanData.hireDate = new Date(cleanData.hireDate);
+      }
+      
+      // Always update the updatedAt field
+      cleanData.updatedAt = new Date();
+
+      console.log('Updating staff with data:', cleanData);
+
+      const [updatedStaff] = await this.db
+        .update(staff)
+        .set(cleanData)
+        .where(eq(staff.id, id))
+        .returning();
+      
+      if (!updatedStaff) {
+        throw new Error('Staff member not found');
+      }
+      
+      console.log('✅ Staff member updated successfully:', updatedStaff.staffId);
+      return updatedStaff;
+    } catch (error) {
+      console.error('❌ Error updating staff member:', error);
+      throw error;
+    }
   }
 
   async deleteStaff(id: number): Promise<void> {
