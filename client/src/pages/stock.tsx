@@ -61,7 +61,7 @@ export default function Stock() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
-  
+
   const { toast } = useToast();
   const { symbol, formatCurrency } = useCurrency();
 
@@ -111,7 +111,7 @@ export default function Stock() {
     setPageSize: setPaginationPageSize,
     goToPage: paginationGoToPage,
     totalItems: paginationTotalItems,
-  } = usePagination(sortedData, itemsPerPage);
+  } = usePagination(sortedData);
 
   // Debounced search
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -176,8 +176,6 @@ export default function Stock() {
       });
     },
   });
-
-  
 
   const getStockBadge = (item: any) => {
     const closingStock = parseFloat(
