@@ -14,63 +14,37 @@ interface Unit {
 
 export const useUnits = () => {
   return useQuery({
-    queryKey: ["units"],
-    queryFn: async (): Promise<Unit[]> => {
+    queryKey: ["/api/units"],
+    queryFn: async () => {
       try {
-        console.log("Fetching units from API...");
+        console.log('Fetching units from API...');
         const response = await apiRequest("GET", "/api/units");
-        console.log("Units API response:", response);
+        console.log('Units API response:', response);
 
         // Handle different response formats
-        if (response?.success && response?.data) {
-          console.log("Using response.data:", response.data);
-          return Array.isArray(response.data) ? response.data : [];
+        if (response && typeof response === 'object') {
+          if (response.success && Array.isArray(response.data)) {
+            console.log('Using response.data:', response.data);
+            return response.data;
+          }
+          if (Array.isArray(response)) {
+            console.log('Using direct response:', response);
+            return response;
+          }
         }
 
-        if (response?.data) {
-          console.log("Using response.data (fallback):", response.data);
-          return Array.isArray(response.data) ? response.data : [];
-        }
-
-        // If response is directly an array
-        if (Array.isArray(response)) {
-          console.log("Response is direct array:", response);
-          return response;
-        }
-
-        console.warn("Unexpected units response format:", response);
+        console.log('Returning empty array as fallback');
         return [];
       } catch (error) {
-        console.error("Error fetching units:", error);
-        if (isUnauthorizedError(error)) {
-          throw error; // Re-throw auth errors for proper handling
-        }
-        
-        // Return fallback units for offline mode
-        console.log("Using fallback units due to error");
-        return [
-          { id: 1, name: "Kilogram", abbreviation: "kg", type: "weight", isActive: true },
-          { id: 2, name: "Gram", abbreviation: "g", type: "weight", isActive: true },
-          { id: 3, name: "Liter", abbreviation: "L", type: "volume", isActive: true },
-          { id: 4, name: "Milliliter", abbreviation: "ml", type: "volume", isActive: true },
-          { id: 5, name: "Piece", abbreviation: "pcs", type: "count", isActive: true },
-          { id: 6, name: "Box", abbreviation: "box", type: "count", isActive: true },
-          { id: 7, name: "Bag", abbreviation: "bag", type: "count", isActive: true },
-          { id: 8, name: "Packet", abbreviation: "pkt", type: "count", isActive: true }
-        ];
+        console.error('Error in useUnits:', error);
+        return [];
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    // Ensure we always have a fallback
-    placeholderData: [],
+    staleTime: 5 * 60 * 1000,
     retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) {
-        return false; // Don't retry auth errors
-      }
+      if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };
 
@@ -91,9 +65,9 @@ export const useActiveUnits = () => {
 // Get unit by ID helper
 export const useUnitById = (unitId: number | string | undefined) => {
   const { data: units = [] } = useUnits();
-  
+
   if (!unitId) return null;
-  
+
   return units.find((unit: Unit) => 
     unit.id.toString() === unitId.toString()
   ) || null;
@@ -102,11 +76,11 @@ export const useUnitById = (unitId: number | string | undefined) => {
 // Get units by type helper
 export const useUnitsByType = (type: string) => {
   const { data: units = [], ...rest } = useUnits();
-  
+
   const filteredUnits = units.filter((unit: Unit) => 
     unit.type === type && unit.isActive !== false
   );
-  
+
   return {
     data: filteredUnits,
     ...rest,

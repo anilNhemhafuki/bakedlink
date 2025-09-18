@@ -24,17 +24,33 @@ export function UnitSelector({
   const { data: allUnits = [], isLoading, error } = useUnits();
   const { data: filteredUnits = [] } = useUnitsByType(filterByType || "");
 
+  // Ensure allUnits is always an array and safely filter
+  const safeAllUnits = Array.isArray(allUnits) ? allUnits : [];
+  const safeFilteredUnits = Array.isArray(filteredUnits) ? filteredUnits : [];
+
   // Use filtered units if filterByType is provided, otherwise use all units
-  const unitsToShow = filterByType ? filteredUnits : allUnits.filter((unit: any) => unit.isActive !== false);
+  const unitsToShow = filterByType 
+    ? safeFilteredUnits 
+    : safeAllUnits.filter((unit: any) => unit && unit.isActive !== false);
 
   console.log("UnitSelector - Units to show:", unitsToShow);
   console.log("UnitSelector - Loading:", isLoading);
   console.log("UnitSelector - Error:", error);
 
+  const handleValueChange = (selectedValue: string) => {
+    try {
+      if (selectedValue && selectedValue !== "loading" && selectedValue !== "error" && selectedValue !== "none") {
+        onValueChange(selectedValue);
+      }
+    } catch (error) {
+      console.error('Error in UnitSelector onValueChange:', error);
+    }
+  };
+
   return (
     <Select
-      value={value}
-      onValueChange={onValueChange}
+      value={value || ""}
+      onValueChange={handleValueChange}
       disabled={disabled || isLoading}
       required={required}
     >
@@ -52,16 +68,22 @@ export function UnitSelector({
           <SelectItem value="error" disabled>
             Error loading units
           </SelectItem>
-        ) : unitsToShow.length === 0 ? (
+        ) : !unitsToShow || unitsToShow.length === 0 ? (
           <SelectItem value="none" disabled>
             {filterByType ? `No ${filterByType} units available` : "No units available"}
           </SelectItem>
         ) : (
-          unitsToShow.map((unit: any) => (
-            <SelectItem key={unit.id} value={unit.id.toString()}>
-              {unit.name} ({unit.abbreviation})
-            </SelectItem>
-          ))
+          unitsToShow.map((unit: any) => {
+            // Ensure unit has required properties
+            if (!unit || !unit.id || !unit.name) {
+              return null;
+            }
+            return (
+              <SelectItem key={`unit-${unit.id}`} value={unit.id.toString()}>
+                {unit.name} ({unit.abbreviation || 'N/A'})
+              </SelectItem>
+            );
+          }).filter(Boolean)
         )}
       </SelectContent>
     </Select>

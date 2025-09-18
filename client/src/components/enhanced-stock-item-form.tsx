@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -146,7 +145,7 @@ export function EnhancedStockItemForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     name: "",
     primaryUnitId: "",
@@ -195,7 +194,7 @@ export function EnhancedStockItemForm({
       } else if (editingItem.group && editingItem.group !== "uncategorized") {
         groupValue = editingItem.group;
       }
-      
+
       setFormData({
         name: editingItem.name || "",
         primaryUnitId: editingItem.unitId?.toString() || "",
@@ -238,7 +237,7 @@ export function EnhancedStockItemForm({
     const purchased = parseFloat(formData.purchasedQuantity) || 0;
     const consumed = parseFloat(formData.consumedQuantity) || 0;
     const closing = opening + purchased - consumed;
-    
+
     setFormData(prev => ({
       ...prev,
       closingStock: closing.toString()
@@ -266,7 +265,7 @@ export function EnhancedStockItemForm({
     },
     onError: (error: any) => {
       let errorMessage = `Failed to ${editingItem ? "update" : "create"} stock item`;
-      
+
       if (error.message?.includes("Item with this name already exists")) {
         setValidationErrors({ name: "Item with this name already exists. Please use a different name." });
         errorMessage = "Item name already exists";
@@ -481,8 +480,17 @@ export function EnhancedStockItemForm({
                       Primary Unit <span className="text-red-500">*</span>
                     </Label>
                     <Select
-                      value={formData.primaryUnitId}
-                      onValueChange={(value) => handleInputChange("primaryUnitId", value)}
+                      value={formData.primaryUnitId || ""}
+                      onValueChange={(value) => {
+                        try {
+                          if (value && value !== "none") {
+                            handleInputChange("primaryUnitId", value);
+                          }
+                        } catch (error) {
+                          console.error('Error updating primary unit:', error);
+                        }
+                      }}
+                      required
                     >
                       <SelectTrigger className={validationErrors.primaryUnitId ? "border-red-500" : ""}>
                         <SelectValue placeholder="Select Primary Unit" />
@@ -562,7 +570,7 @@ export function EnhancedStockItemForm({
                     </Label>
                     <Select
                       value={formData.secondaryUnitId || "none"}
-                      onValueChange={(value) => 
+                      onValueChange={(value) =>
                         handleInputChange("secondaryUnitId", value === "none" ? "" : value)
                       }
                     >
@@ -748,7 +756,7 @@ export function EnhancedStockItemForm({
                 </div>
 
                 {/* Warning for minimum level */}
-                {parseFloat(formData.closingStock || "0") <= parseFloat(formData.minLevel || "0") && 
+                {parseFloat(formData.closingStock || "0") <= parseFloat(formData.minLevel || "0") &&
                  parseFloat(formData.closingStock || "0") > 0 && (
                   <Alert className="mt-4 border-yellow-500 bg-yellow-50">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
