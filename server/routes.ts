@@ -1119,33 +1119,40 @@ router.get('/inventory', async (req, res) => {
     const userRole = user?.role;
     const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin' || user?.role === 'admin';
 
-    // Check if this is a paginated request
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    // Get query parameters
     const search = (req.query.search as string) || '';
     const group = (req.query.group as string) || 'all';
 
-    let result;
-    if (req.query.page || req.query.limit) {
-      // Paginated request
-      result = await storage.getInventoryItemsPaginated({
-        page,
-        limit,
-        search,
-        group
-      });
-    } else {
-      // Regular request
-      const items = await storage.getInventoryItems(userBranchId, canAccessAllBranches, userRole);
-      result = items;
+    // Always fetch all items first, then apply client-side filtering
+    const allItems = await storage.getInventoryItems(userBranchId, canAccessAllBranches, userRole);
+    
+    // Apply search and group filtering
+    let filteredItems = allItems;
+    
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredItems = filteredItems.filter((item: any) =>
+        item.name?.toLowerCase().includes(searchLower) ||
+        item.supplier?.toLowerCase().includes(searchLower) ||
+        item.invCode?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    if (group && group !== 'all') {
+      if (group === 'ingredients') {
+        filteredItems = filteredItems.filter((item: any) => item.isIngredient === true);
+      } else if (group === 'uncategorized') {
+        filteredItems = filteredItems.filter((item: any) => !item.categoryId);
+      } else if (!isNaN(parseInt(group))) {
+        filteredItems = filteredItems.filter((item: any) => item.categoryId === parseInt(group));
+      }
     }
 
-    console.log(`✅ Found inventory items for user with ${userRole === 'super_admin' ? 'Super Admin (ALL)' : canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`} access`);
+    console.log(`✅ Found ${filteredItems.length} inventory items for user with ${userRole === 'super_admin' ? 'Super Admin (ALL)' : canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`} access`);
 
     // Check for low stock items and create notifications
-    const items = Array.isArray(result) ? result : result.items || [];
-    items.forEach((item: any) => {
-      const currentStock = parseFloat(item.currentStock || '0');
+    filteredItems.forEach((item: any) => {
+      const currentStock = parseFloat(item.currentStock || item.closingStock || '0');
       const minLevel = parseFloat(item.minLevel || '0');
 
       if (currentStock <= minLevel && currentStock > 0) {
@@ -1162,7 +1169,7 @@ router.get('/inventory', async (req, res) => {
             title: "Low Stock Alert",
             description: `${item.name} is running low. Current: ${currentStock}${item.unit}, Minimum: ${minLevel}${item.unit}`,
             priority: "high",
-            actionUrl: "/inventory",
+            actionUrl: "/stock",
             data: {
               itemName: item.name,
               currentStock,
@@ -1174,12 +1181,12 @@ router.get('/inventory', async (req, res) => {
       }
     });
 
-    res.json(result);
+    // Return the filtered items as an array (client will handle pagination)
+    res.json(filteredItems);
   } catch (error) {
     console.error('❌ Error fetching inventory items:', error);
     res.status(500).json({ 
       error: 'Failed to fetch inventory items',
-      items: [],
       success: false 
     });
   }

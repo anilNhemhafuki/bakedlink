@@ -1368,10 +1368,27 @@ export class Storage implements IStorage {
 
       const result = await query.orderBy(inventoryItems.name);
 
+      // Ensure all items have proper data structure
+      const enrichedItems = result.map((item) => ({
+        ...item,
+        // Ensure proper defaults
+        invCode: item.invCode || `INV-${item.id}`,
+        currentStock: item.currentStock || item.closingStock || '0',
+        openingStock: item.openingStock || item.currentStock || '0',
+        purchasedQuantity: item.purchasedQuantity || '0',
+        consumedQuantity: item.consumedQuantity || '0',
+        closingStock: item.closingStock || item.currentStock || '0',
+        minLevel: item.minLevel || '0',
+        costPerUnit: item.costPerUnit || '0',
+        unit: item.unit || 'pcs',
+        supplier: item.supplier || 'Unknown',
+        group: item.isIngredient ? 'ingredients' : (item.categoryName?.toLowerCase() || 'uncategorized')
+      }));
+
       console.log(
-        `✅ Found ${result.length} inventory items for ${userRole === 'super_admin' ? 'Super Admin (ALL)' : 'branch access'}`,
+        `✅ Found ${enrichedItems.length} inventory items for ${userRole === 'super_admin' ? 'Super Admin (ALL)' : 'branch access'}`,
       );
-      return result as InventoryItem[];
+      return enrichedItems as InventoryItem[];
     } catch (error) {
       console.error("❌ Error fetching inventory items:", error);
       return [];

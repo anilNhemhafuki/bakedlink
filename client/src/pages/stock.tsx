@@ -83,9 +83,10 @@ export default function Stock() {
     },
   });
 
-  const items = inventoryData?.items || [];
-  const totalCount = inventoryData?.totalCount || 0;
-  const totalPages = inventoryData?.totalPages || 0;
+  // Handle both array and object response formats
+  const items = Array.isArray(inventoryData) ? inventoryData : (inventoryData?.items || []);
+  const totalCount = Array.isArray(inventoryData) ? inventoryData.length : (inventoryData?.totalCount || 0);
+  const totalPages = Array.isArray(inventoryData) ? Math.ceil(inventoryData.length / 10) : (inventoryData?.totalPages || 0);
 
   // Fetch ingredients specifically
   const { data: ingredients = [] } = useQuery({
@@ -102,7 +103,7 @@ export default function Stock() {
   // Add sorting functionality
   const { sortedData, sortConfig, requestSort } = useTableSort(items, "name");
 
-  // Enhanced pagination
+  // Enhanced pagination - use items instead of sortedData initially
   const {
     currentItems: paginatedItems,
     currentPage: paginationCurrentPage,
@@ -111,7 +112,7 @@ export default function Stock() {
     setPageSize: setPaginationPageSize,
     goToPage: paginationGoToPage,
     totalItems: paginationTotalItems,
-  } = usePagination(sortedData);
+  } = usePagination(sortedData || items, 10);
 
   // Debounced search
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -332,7 +333,7 @@ export default function Stock() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Stock Items ({totalCount} total)
+              Stock Items ({items.length} total)
             </CardTitle>
             <CardDescription>
               Opening + Purchased - Consumed = Closing Stock
@@ -556,7 +557,7 @@ export default function Stock() {
                   })}
                 </TableBody>
               </Table>
-              {items.length === 0 && !isLoading && (
+              {paginatedItems.length === 0 && !isLoading && (
                 <div className="text-center py-8">
                   <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-muted-foreground mb-2">
