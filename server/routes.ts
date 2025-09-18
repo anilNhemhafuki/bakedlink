@@ -344,6 +344,187 @@ router.get('/auth/user', (req, res) => {
   }
 });
 
+// Admin user management routes
+router.get('/admin/users', requireAuth, async (req, res) => {
+  try {
+    console.log('👥 Fetching all users for admin...');
+    const currentUser = req.session?.user;
+    
+    // Check if user has admin privileges
+    if (!currentUser || (currentUser.role !== 'super_admin' && currentUser.role !== 'admin')) {
+      console.log('❌ Access denied for user management');
+      return res.status(403).json({ 
+        error: 'Access denied',
+        message: 'You do not have permission to access user management',
+        success: false 
+      });
+    }
+
+    const excludeSuperAdmin = currentUser.role !== 'super_admin';
+    const users = await storage.getAllUsers(excludeSuperAdmin);
+    
+    console.log(`✅ Found ${users.length} users`);
+    res.json(users);
+  } catch (error) {
+    console.error('❌ Error fetching users:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch users',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/admin/users', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating new user:', req.body.email);
+    const currentUser = req.session?.user;
+    
+    // Check if user has admin privileges
+    if (!currentUser || (currentUser.role !== 'super_admin' && currentUser.role !== 'admin')) {
+      return res.status(403).json({ 
+        error: 'Access denied',
+        message: 'You do not have permission to create users',
+        success: false 
+      });
+    }
+
+    const result = await storage.upsertUser(req.body);
+
+    // Log the user creation
+    await storage.logUserAction(
+      currentUser.id,
+      'CREATE',
+      'users',
+      { 
+        newUserEmail: req.body.email,
+        newUserRole: req.body.role,
+        newUserId: result.id
+      },
+      req.ip,
+      req.get('User-Agent')
+    );
+
+    // Add user creation notification
+    addNotification({
+      type: "system",
+      title: "User Created",
+      description: `New user "${req.body.email}" has been created with role "${req.body.role}"`,
+      priority: "medium",
+      actionUrl: "/admin/users"
+    });
+
+    console.log('✅ User created successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error creating user:', error);
+    res.status(400).json({ 
+      error: 'Failed to create user',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.put('/admin/users/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    console.log('💾 Updating user:', userId);
+    const currentUser = req.session?.user;
+    
+    // Check if user has admin privileges
+    if (!currentUser || (currentUser.role !== 'super_admin' && currentUser.role !== 'admin')) {
+      return res.status(403).json({ 
+        error: 'Access denied',
+        message: 'You do not have permission to update users',
+        success: false 
+      });
+    }
+
+    const result = await storage.updateUser(userId, req.body);
+
+    // Log the user update
+    await storage.logUserAction(
+      currentUser.id,
+      'UPDATE',
+      'users',
+      { 
+        updatedUserId: userId,
+        updates: req.body
+      },
+      req.ip,
+      req.get('User-Agent')
+    );
+
+    // Add user update notification
+    addNotification({
+      type: "system",
+      title: "User Updated",
+      description: `User "${result.email}" has been updated`,
+      priority: "medium",
+      actionUrl: "/admin/users"
+    });
+
+    console.log('✅ User updated successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error updating user:', error);
+    res.status(400).json({ 
+      error: 'Failed to update user',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.delete('/admin/users/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    console.log('🗑️ Deleting user:', userId);
+    const currentUser = req.session?.user;
+    
+    // Check if user has admin privileges
+    if (!currentUser || (currentUser.role !== 'super_admin' && currentUser.role !== 'admin')) {
+      return res.status(403).json({ 
+        error: 'Access denied',
+        message: 'You do not have permission to delete users',
+        success: false 
+      });
+    }
+
+    await storage.deleteUser(userId);
+
+    // Log the user deletion
+    await storage.logUserAction(
+      currentUser.id,
+      'DELETE',
+      'users',
+      { deletedUserId: userId },
+      req.ip,
+      req.get('User-Agent')
+    );
+
+    // Add user deletion notification
+    addNotification({
+      type: "system",
+      title: "User Deleted",
+      description: `User has been deleted from the system`,
+      priority: "medium",
+      actionUrl: "/admin/users"
+    });
+
+    console.log('✅ User deleted successfully');
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error: any) {
+    console.error('❌ Error deleting user:', error);
+    res.status(400).json({ 
+      error: 'Failed to delete user',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
 // Dashboard API endpoints
 router.get('/dashboard/stats', async (req, res) => {
   try {
@@ -929,7 +1110,7 @@ router.post('/production-schedule', requireAuth, async (req, res) => {
 });
 
 // Inventory routes (updated to support branch filtering and Super Admin access)
-router.get('/inventory-items', async (req, res) => {
+router.get('/inventory', async (req, res) => {
   try {
     console.log('📦 Fetching inventory items...');
     const user = req.session?.user;
@@ -937,11 +1118,32 @@ router.get('/inventory-items', async (req, res) => {
     const userRole = user?.role;
     const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin' || user?.role === 'admin';
 
-    const result = await storage.getInventoryItems(userBranchId, canAccessAllBranches, userRole);
-    console.log(`✅ Found ${result.length} inventory items for user with ${userRole === 'super_admin' ? 'Super Admin (ALL)' : canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`} access`);
+    // Check if this is a paginated request
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = (req.query.search as string) || '';
+    const group = (req.query.group as string) || 'all';
+
+    let result;
+    if (req.query.page || req.query.limit) {
+      // Paginated request
+      result = await storage.getInventoryItemsPaginated({
+        page,
+        limit,
+        search,
+        group
+      });
+    } else {
+      // Regular request
+      const items = await storage.getInventoryItems(userBranchId, canAccessAllBranches, userRole);
+      result = items;
+    }
+
+    console.log(`✅ Found inventory items for user with ${userRole === 'super_admin' ? 'Super Admin (ALL)' : canAccessAllBranches ? 'all branches' : `branch ${userBranchId}`} access`);
 
     // Check for low stock items and create notifications
-    result.forEach(item => {
+    const items = Array.isArray(result) ? result : result.items || [];
+    items.forEach((item: any) => {
       const currentStock = parseFloat(item.currentStock || '0');
       const minLevel = parseFloat(item.minLevel || '0');
 
@@ -974,13 +1176,83 @@ router.get('/inventory-items', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('❌ Error fetching inventory items:', error);
-    res.json([]);
+    res.status(500).json({ 
+      error: 'Failed to fetch inventory items',
+      items: [],
+      success: false 
+    });
   }
 });
 
-router.post('/inventory-items', requireAuth, async (req, res) => {
+// Legacy endpoint for compatibility
+router.get('/inventory-items', async (req, res) => {
+  try {
+    console.log('📦 Fetching inventory items (legacy endpoint)...');
+    const user = req.session?.user;
+    const userBranchId = user?.branchId;
+    const userRole = user?.role;
+    const canAccessAllBranches = user?.canAccessAllBranches || user?.role === 'super_admin' || user?.role === 'admin';
+
+    const result = await storage.getInventoryItems(userBranchId, canAccessAllBranches, userRole);
+    console.log(`✅ Found ${result.length} inventory items`);
+
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching inventory items:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch inventory items',
+      success: false 
+    });
+  }
+});
+
+router.post('/inventory', requireAuth, async (req, res) => {
   try {
     console.log('💾 Creating inventory item:', req.body.name);
+    const result = await storage.createInventoryItem(req.body);
+
+    // Log the creation to audit logs
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'CREATE',
+        'inventory',
+        { 
+          itemName: req.body.name,
+          currentStock: req.body.currentStock,
+          unitId: req.body.unitId,
+          itemId: result.id
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add inventory item creation notification
+    addNotification({
+      type: "inventory",
+      title: "Inventory Item Added",
+      description: `New inventory item "${req.body.name}" has been added`,
+      priority: "medium",
+      actionUrl: "/inventory"
+    });
+
+    console.log('✅ Inventory item created successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error creating inventory item:', error);
+    res.status(400).json({ 
+      error: 'Failed to create inventory item',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+// Legacy endpoint for compatibility
+router.post('/inventory-items', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating inventory item (legacy endpoint):', req.body.name);
     const result = await storage.createInventoryItem(req.body);
 
     // Add inventory item creation notification
@@ -994,9 +1266,94 @@ router.post('/inventory-items', requireAuth, async (req, res) => {
 
     console.log('✅ Inventory item created successfully');
     res.json(result);
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error creating inventory item:', error);
-    res.status(500).json({ error: 'Failed to create inventory item' });
+    res.status(400).json({ 
+      error: 'Failed to create inventory item',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.put('/inventory/:id', requireAuth, async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.id);
+    console.log('💾 Updating inventory item:', itemId);
+    const result = await storage.updateInventoryItem(itemId, req.body);
+
+    // Log the update to audit logs
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'UPDATE',
+        'inventory',
+        { 
+          itemId,
+          updates: req.body
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add inventory item update notification
+    addNotification({
+      type: "inventory",
+      title: "Inventory Item Updated",
+      description: `Inventory item "${result.name}" has been updated`,
+      priority: "medium",
+      actionUrl: "/inventory"
+    });
+
+    console.log('✅ Inventory item updated successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error updating inventory item:', error);
+    res.status(400).json({ 
+      error: 'Failed to update inventory item',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.delete('/inventory/:id', requireAuth, async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.id);
+    console.log('🗑️ Deleting inventory item:', itemId);
+    await storage.deleteInventoryItem(itemId);
+
+    // Log the deletion to audit logs
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'DELETE',
+        'inventory',
+        { itemId },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add inventory item deletion notification
+    addNotification({
+      type: "inventory",
+      title: "Inventory Item Deleted",
+      description: `Inventory item has been deleted`,
+      priority: "medium",
+      actionUrl: "/inventory"
+    });
+
+    console.log('✅ Inventory item deleted successfully');
+    res.json({ success: true, message: 'Inventory item deleted successfully' });
+  } catch (error: any) {
+    console.error('❌ Error deleting inventory item:', error);
+    res.status(400).json({ 
+      error: 'Failed to delete inventory item',
+      message: error.message,
+      success: false 
+    });
   }
 });
 
@@ -1023,6 +1380,22 @@ router.get('/units', async (req, res) => {
     ];
 
     res.json({ success: true, data: defaultUnits });
+  }
+});
+
+// Ingredients endpoint
+router.get('/ingredients', async (req, res) => {
+  try {
+    console.log('🥘 Fetching ingredients...');
+    const result = await storage.getIngredients();
+    console.log(`✅ Found ${result.length} ingredients`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching ingredients:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch ingredients',
+      success: false 
+    });
   }
 });
 
@@ -1281,34 +1654,40 @@ router.post('/cache/clear', requireAuth, async (req, res) => {
   }
 });
 
-// Error handling middleware
+// API error handling middleware
 router.use((error: any, req: any, res: any, next: any) => {
   console.error('🚨 API Error:', error);
 
-  // Log the error to audit logs if possible
-  if (req.session?.user) {
-    storage.logUserAction(
-      req.session.user.id,
-      'ERROR',
-      'system',
-      { error: error.message, stack: error.stack },
-      req.ip,
-      req.get('User-Agent')
-    ).catch(console.error);
+  // Ensure we always return JSON for API routes
+  if (req.path.startsWith('/api/')) {
+    // Log the error to audit logs if possible
+    if (req.session?.user) {
+      storage.logUserAction(
+        req.session.user.id,
+        'ERROR',
+        'system',
+        { error: error.message, stack: error.stack },
+        req.ip,
+        req.get('User-Agent')
+      ).catch(console.error);
+    }
+
+    // Add system error notification
+    addNotification({
+      type: "system",
+      title: "System Error",
+      description: `An error occurred: ${error.message || 'Unknown error'}`,
+      priority: "critical"
+    });
+
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message,
+      success: false
+    });
   }
-
-  // Add system error notification
-  addNotification({
-    type: "system",
-    title: "System Error",
-    description: `An error occurred: ${error.message || 'Unknown error'}`,
-    priority: "critical"
-  });
-
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: error.message 
-  });
+  
+  next(error);
 });
 
 export default router;

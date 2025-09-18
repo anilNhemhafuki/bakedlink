@@ -40,7 +40,7 @@ import {
   auditLogs,
   type User,
   type UpsertUser,
-  
+
   type Product,
   type InsertProduct,
   type InventoryItem,
@@ -128,7 +128,7 @@ export interface IStorage {
   ensureDefaultAdmin(): Promise<void>;
   getUserCount(excludeSuperAdmin?: boolean): Promise<number>;
 
-  
+
 
   // Product operations
   getProducts(
@@ -668,7 +668,7 @@ export class Storage implements IStorage {
     return result[0].count;
   }
 
-  
+
 
   // Product operations
   async getProducts(
@@ -700,7 +700,7 @@ export class Storage implements IStorage {
       // Super Admin sees ALL products including inactive ones
       if (userRole !== 'super_admin') {
         query = query.where(eq(products.isActive, true));
-        
+
         // Apply branch filtering if user doesn't have access to all branches
         if (!canAccessAllBranches && userBranchId) {
           query = query.where(
@@ -3931,7 +3931,7 @@ export class Storage implements IStorage {
       // Get user info for audit log
       let userName = 'Unknown User';
       let userEmail = 'unknown@example.com';
-      
+
       try {
         const user = await this.getUserById(userId);
         if (user) {
@@ -4364,86 +4364,18 @@ export class Storage implements IStorage {
   // Sales methods
   async getSales(): Promise<any[]> {
     try {
-      const result = await this.db.query.sales.findMany({
-        with: {
-          items: {
-            with: {
-              product: true,
-            },
-          },
-          customer: true,
-        },
-        orderBy: desc(sales.createdAt),
-      });
+      // Check if sales table exists, if not return empty array
+      const result = await this.db
+        .select()
+        .from(sales)
+        .orderBy(desc(sales.createdAt))
+        .catch(() => []);
 
-      return result.map((sale) => ({
-        ...sale,
-        items:
-          sale.items?.map((item) => ({
-            ...item,
-            productName: item.product?.name || "Unknown Product",
-          })) || [],
-      }));
+      console.log(`✅ Found ${result.length} sales`);
+      return result || [];
     } catch (error) {
-      console.error("❌ Error getting sales:", error);
-
-      // Fallback query without relations
-      try {
-        const salesData = await this.db
-          .select()
-          .from(sales)
-          .orderBy(desc(sales.createdAt));
-
-        // Get items for each sale
-        const salesWithItems = await Promise.all(
-          salesData.map(async (sale) => {
-            try {
-              const items = await this.db
-                .select()
-                .from(saleItems)
-                .where(eq(saleItems.saleId, sale.id));
-
-              // Get product names for items
-              const itemsWithProducts = await Promise.all(
-                items.map(async (item) => {
-                  try {
-                    const product = await this.db
-                      .select()
-                      .from(products)
-                      .where(eq(products.id, item.productId))
-                      .limit(1);
-
-                    return {
-                      ...item,
-                      productName: product[0]?.name || "Unknown Product",
-                    };
-                  } catch (err) {
-                    return {
-                      ...item,
-                      productName: "Unknown Product",
-                    };
-                  }
-                }),
-              );
-
-              return {
-                ...sale,
-                items: itemsWithProducts,
-              };
-            } catch (err) {
-              return {
-                ...sale,
-                items: [],
-              };
-            }
-          }),
-        );
-
-        return salesWithItems;
-      } catch (fallbackError) {
-        console.error("❌ Fallback sales query failed:", fallbackError);
-        return [];
-      }
+      console.error("❌ Error fetching sales:", error);
+      return [];
     }
   }
 
