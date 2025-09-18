@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -111,7 +110,11 @@ export default function NotificationDropdown() {
   const queryClient = useQueryClient();
 
   // Fetch notifications with auto-refresh
-  const { data: notifications = [], isLoading, error } = useQuery({
+  const {
+    data: notifications = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["/api/notifications"],
     refetchInterval: 10000, // Refresh every 10 seconds
     refetchIntervalInBackground: true,
@@ -284,9 +287,9 @@ export default function NotificationDropdown() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="relative p-2">
           {criticalCount > 0 ? (
-            <BellRing className="h-6 w-6 text-red-600 animate-pulse" />
+            <BellRing className="h-5 w-5 text-red-600 animate-pulse" />
           ) : (
-            <Bell className="h-6 w-6" />
+            <Bell className="h-5 w-5" />
           )}
           {unreadCount > 0 && (
             <Badge
@@ -372,7 +375,9 @@ export default function NotificationDropdown() {
                 {Object.entries(groupedNotifications).map(
                   ([type, typeNotifications]: [string, any]) => {
                     const config =
-                      notificationConfig[type as keyof typeof notificationConfig];
+                      notificationConfig[
+                        type as keyof typeof notificationConfig
+                      ];
                     const unreadInGroup = typeNotifications.filter(
                       (n: Notification) => !n.read,
                     ).length;

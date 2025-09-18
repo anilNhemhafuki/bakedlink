@@ -149,7 +149,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="p-2">
-                <Globe className="h-5 w-5 text-gray-700" />
+                <Globe className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -169,7 +169,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="p-2">
-                <HelpCircle className="h-5 w-5 text-gray-700" />
+                <HelpCircle className="h-5 w-5 " />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -197,7 +197,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-full transition-all"
+                  className="flex items-center p-2 hover:bg-gray-100 rounded-full transition-all"
                 >
                   <div className="w-8 h-8  rounded-full flex items-center justify-center">
                     {user?.profileImageUrl ? (
