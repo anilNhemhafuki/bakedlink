@@ -556,7 +556,7 @@ export default function Stock() {
                   })}
                 </TableBody>
               </Table>
-              {sortedData.length === 0 && (
+              {items.length === 0 && !isLoading && (
                 <div className="text-center py-8">
                   <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-muted-foreground mb-2">

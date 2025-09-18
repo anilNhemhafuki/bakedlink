@@ -499,6 +499,32 @@ export class Storage implements IStorage {
     console.log('📁 Upload directories initialized');
   }
 
+  private async generateInventoryCode(): Promise<string> {
+    try {
+      // Get the highest existing inventory code number
+      const result = await this.db
+        .select({ invCode: inventoryItems.invCode })
+        .from(inventoryItems)
+        .where(sql`${inventoryItems.invCode} LIKE 'INV-%'`)
+        .orderBy(sql`CAST(SUBSTRING(${inventoryItems.invCode}, 5) AS INTEGER) DESC`)
+        .limit(1);
+
+      let nextNumber = 1;
+      if (result.length > 0 && result[0].invCode) {
+        const currentNumber = parseInt(result[0].invCode.replace('INV-', ''));
+        nextNumber = currentNumber + 1;
+      }
+
+      // Format as 4-digit number
+      return `INV-${nextNumber.toString().padStart(4, '0')}`;
+    } catch (error) {
+      console.error('Error generating inventory code:', error);
+      // Fallback to timestamp-based code
+      const timestamp = Date.now().toString().slice(-4);
+      return `INV-${timestamp}`;
+    }
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const result = await this.db
       .select()
@@ -730,8 +756,20 @@ export class Storage implements IStorage {
 
       const result = await query.orderBy(products.name);
 
-      console.log(`✅ Found ${result.length} products for ${userRole === 'super_admin' ? 'Super Admin (ALL)' : 'branch access'}`);
-      return result as Product[];
+      // Ensure all fields have proper values
+      const cleanedResult = result.map(product => ({
+        ...product,
+        description: product.description || '',
+        price: product.price || '0',
+        cost: product.cost || '0',
+        margin: product.margin || '0',
+        sku: product.sku || '',
+        unit: product.unit || 'unit',
+        isActive: product.isActive !== false
+      }));
+
+      console.log(`✅ Found ${cleanedResult.length} products for ${userRole === 'super_admin' ? 'Super Admin (ALL)' : 'branch access'}`);
+      return cleanedResult as Product[];
     } catch (error) {
       console.error("❌ Error fetching products:", error);
       return [];
@@ -779,9 +817,25 @@ export class Storage implements IStorage {
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
+    // Calculate margin if cost and price are provided
+    let margin = product.margin;
+    if (!margin && product.cost && product.price) {
+      const cost = parseFloat(product.cost.toString());
+      const price = parseFloat(product.price.toString());
+      if (price > 0) {
+        margin = ((price - cost) / price * 100).toFixed(2);
+      }
+    }
+
+    const productData = {
+      ...product,
+      margin: margin || '0',
+      isActive: product.isActive !== false
+    };
+
     const [newProduct] = await this.db
       .insert(products)
-      .values(product)
+      .values(productData)
       .returning();
     return newProduct;
   }
@@ -1379,8 +1433,8 @@ export class Storage implements IStorage {
         unitName = data.unit;
       }
 
-      // Generate invCode if not provided
-      const invCode = data.invCode || `INV-${Date.now()}`;
+      // Generate invCode with 4-digit format if not provided
+      const invCode = data.invCode || await this.generateInventoryCode();
 
       // Ensure proper data types and handle optional fields
       const cleanData = {
