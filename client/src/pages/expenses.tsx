@@ -61,6 +61,11 @@ export default function Expenses() {
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
+  const resetForm = () => {
+    setEditingExpense(null);
+    setSelectedCategory("");
+  };
+
   // ✅ Fixed: Add queryFn and correct queryKey
   const {
     data: expenses = [],
@@ -152,6 +157,7 @@ export default function Expenses() {
     const title = (formData.get("title") as string)?.trim();
     const category = selectedCategory?.trim();
     const dateValue = formData.get("date") as string;
+    const description = (formData.get("description") as string)?.trim();
 
     if (!title || !category || isNaN(amount) || amount <= 0) {
       toast({
@@ -166,8 +172,9 @@ export default function Expenses() {
       title,
       category,
       amount: amount.toString(),
-      date: dateValue ? new Date(dateValue) : new Date(),
-      description: (formData.get("description") as string)?.trim() || null,
+      date: dateValue ? new Date(dateValue).toISOString() : new Date().toISOString(),
+      description: description || null,
+      paymentMethod: 'cash', // Default payment method
     };
 
     if (editingExpense) {

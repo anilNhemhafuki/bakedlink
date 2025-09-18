@@ -1363,9 +1363,30 @@ export class Storage implements IStorage {
         );
       }
 
+      // Get unit name from unitId if provided
+      let unitName = "pcs"; // Default unit
+      if (data.unitId) {
+        const unit = await this.db
+          .select({ abbreviation: units.abbreviation })
+          .from(units)
+          .where(eq(units.id, data.unitId))
+          .limit(1);
+        
+        if (unit.length > 0) {
+          unitName = unit[0].abbreviation;
+        }
+      } else if (data.unit) {
+        unitName = data.unit;
+      }
+
+      // Generate invCode if not provided
+      const invCode = data.invCode || `INV-${Date.now()}`;
+
       // Ensure proper data types and handle optional fields
       const cleanData = {
+        invCode,
         name: trimmedName,
+        unit: unitName, // Make sure unit is always set
         currentStock: data.currentStock ? String(data.currentStock) : "0",
         openingStock: data.openingStock
           ? String(data.openingStock)

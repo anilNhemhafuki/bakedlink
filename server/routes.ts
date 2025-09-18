@@ -350,7 +350,7 @@ router.get('/admin/users', requireAuth, async (req, res) => {
   try {
     console.log('👥 Fetching all users for admin...');
     const currentUser = req.session?.user;
-    
+
     // Check if user has admin privileges
     if (!currentUser || (currentUser.role !== 'super_admin' && currentUser.role !== 'admin')) {
       console.log('❌ Access denied for user management');
@@ -363,7 +363,7 @@ router.get('/admin/users', requireAuth, async (req, res) => {
 
     const excludeSuperAdmin = currentUser.role !== 'super_admin';
     const users = await storage.getAllUsers(excludeSuperAdmin);
-    
+
     console.log(`✅ Found ${users.length} users`);
     res.json(users);
   } catch (error) {
@@ -380,7 +380,7 @@ router.post('/admin/users', requireAuth, async (req, res) => {
   try {
     console.log('💾 Creating new user:', req.body.email);
     const currentUser = req.session?.user;
-    
+
     // Check if user has admin privileges
     if (!currentUser || (currentUser.role !== 'super_admin' && currentUser.role !== 'admin')) {
       return res.status(403).json({ 
@@ -432,7 +432,7 @@ router.put('/admin/users/:id', requireAuth, async (req, res) => {
     const userId = req.params.id;
     console.log('💾 Updating user:', userId);
     const currentUser = req.session?.user;
-    
+
     // Check if user has admin privileges
     if (!currentUser || (currentUser.role !== 'super_admin' && currentUser.role !== 'admin')) {
       return res.status(403).json({ 
@@ -483,7 +483,7 @@ router.delete('/admin/users/:id', requireAuth, async (req, res) => {
     const userId = req.params.id;
     console.log('🗑️ Deleting user:', userId);
     const currentUser = req.session?.user;
-    
+
     // Check if user has admin privileges
     if (!currentUser || (currentUser.role !== 'super_admin' && currentUser.role !== 'admin')) {
       return res.status(403).json({ 
@@ -1404,7 +1404,7 @@ router.post('/units', requireAuth, async (req, res) => {
   try {
     console.log('💾 Creating unit:', req.body.name);
     const result = await storage.createUnit(req.body);
-    
+
     // Add unit creation notification
     addNotification({
       type: "system",
@@ -1464,7 +1464,7 @@ router.delete('/units/:id', requireAuth, async (req, res) => {
     res.json({ success: true, message: 'Unit deleted successfully' });
   } catch (error: any) {
     console.error('❌ Error deleting unit:', error);
-    
+
     if (error.message && error.message.includes('being used')) {
       res.status(400).json({ 
         error: 'Cannot delete unit',
@@ -1546,13 +1546,13 @@ router.get('/audit-logs', requireAuth, async (req, res) => {
     console.log('📋 Fetching audit logs...');
 
     const filters: any = {};
-    
+
     if (req.query.userId) filters.userId = req.query.userId as string;
     if (req.query.action) filters.action = req.query.action as string;
     if (req.query.resource) filters.resource = req.query.resource as string;
     if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
     if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
-    
+
     filters.limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
     filters.offset = req.query.page ? (parseInt(req.query.page as string) - 1) * 50 : 0;
 
@@ -1761,10 +1761,10 @@ router.delete('/staff/:id', requireAuth, async (req, res) => {
   try {
     const staffId = parseInt(req.params.id);
     console.log('🗑️ Deleting staff member:', staffId);
-    
+
     // Get staff info before deletion for logging
     const staffMember = await storage.getStaffById(staffId);
-    
+
     await storage.deleteStaff(staffId);
 
     // Log the staff deletion to audit logs
@@ -1824,7 +1824,7 @@ const upload = multer({
         mimetype: file.mimetype,
         size: file.size
       });
-      
+
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
@@ -1858,7 +1858,7 @@ router.post('/staff/upload-document', requireAuth, upload.single('document'), as
     }
 
     const { documentType, staffId } = req.body;
-    
+
     if (!documentType || !staffId) {
       // Clean up uploaded file
       await fs.unlink(req.file.path).catch(console.error);
@@ -1868,7 +1868,7 @@ router.post('/staff/upload-document', requireAuth, upload.single('document'), as
         success: false 
       });
     }
-    
+
     // Validate document type
     const validDocumentTypes = ['profile_photo', 'identity_card', 'agreement_paper'];
     if (!validDocumentTypes.includes(documentType)) {
@@ -1879,26 +1879,26 @@ router.post('/staff/upload-document', requireAuth, upload.single('document'), as
         success: false 
       });
     }
-    
+
     // Generate a unique filename
     const fileExtension = path.extname(req.file.originalname);
     const uniqueFilename = `${staffId}_${documentType}_${Date.now()}${fileExtension}`;
     const finalPath = path.join(process.cwd(), 'public', 'uploads', 'staff-documents', uniqueFilename);
-    
+
     // Ensure target directory exists
     const targetDir = path.dirname(finalPath);
     if (!fsSync.existsSync(targetDir)) {
       fsSync.mkdirSync(targetDir, { recursive: true });
     }
-    
+
     // Move file to final destination
     await fs.rename(req.file.path, finalPath);
-    
+
     // Return the file URL
     const fileUrl = `/uploads/staff-documents/${uniqueFilename}`;
-    
+
     console.log(`✅ Document uploaded successfully: ${fileUrl}`);
-    
+
     res.json({
       success: true,
       url: fileUrl,
@@ -1909,12 +1909,12 @@ router.post('/staff/upload-document', requireAuth, upload.single('document'), as
     });
   } catch (error: any) {
     console.error('❌ Error uploading document:', error);
-    
+
     // Clean up uploaded file if there was an error
     if (req.file?.path) {
       fs.unlink(req.file.path).catch(console.error);
     }
-    
+
     res.status(500).json({ 
       error: 'Failed to upload document',
       message: error.message || 'An error occurred during file upload',
@@ -1930,7 +1930,7 @@ router.get('/attendance', async (req, res) => {
     const staffId = req.query.staffId ? parseInt(req.query.staffId as string) : undefined;
     const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
     const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
-    
+
     const result = await storage.getAttendance(staffId, startDate, endDate);
     console.log(`✅ Found ${result.length} attendance records`);
     res.json(result);
@@ -2235,7 +2235,7 @@ router.use((error: any, req: any, res: any, next: any) => {
       success: false
     });
   }
-  
+
   next(error);
 });
 

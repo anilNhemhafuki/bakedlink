@@ -201,13 +201,13 @@ export default function Assets() {
       location: formData.location.trim() || null,
       condition: formData.condition || "good",
       purchaseDate: formData.purchaseDate
-        ? new Date(formData.purchaseDate)
+        ? new Date(formData.purchaseDate).toISOString()
         : null,
       purchasePrice: formData.purchasePrice
-        ? parseFloat(formData.purchasePrice)
+        ? parseFloat(formData.purchasePrice).toString()
         : null,
       currentValue: formData.currentValue
-        ? parseFloat(formData.currentValue)
+        ? parseFloat(formData.currentValue).toString()
         : null,
     };
 
