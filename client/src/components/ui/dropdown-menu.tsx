@@ -58,9 +58,7 @@ const DropdownMenuSubContent = React.forwardRef<
       "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
       "origin-[--radix-dropdown-menu-sub-content-transform-origin]",
-      "backdrop-blur-md dark:border-gray-700",
-      "dark:bg-gray-800/95 dark:text-gray-100",
-      "ring-1 ring-black/5 dark:ring-white/5",
+
       className,
     )}
     {...props}
@@ -88,9 +86,6 @@ const DropdownMenuContent = React.forwardRef<
         "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         "origin-[--radix-dropdown-menu-content-transform-origin]",
         // Visual polish
-        "backdrop-blur-md dark:border-gray-700",
-        "dark:bg-gray-800/95 dark:text-gray-100",
-        "ring-1 ring-black/5 dark:ring-white/5",
         "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-rounded-md scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600",
         // Hover glow (optional)
         "hover:shadow-2xl transition-shadow duration-200",
@@ -115,7 +110,7 @@ const DropdownMenuItem = React.forwardRef<
       "relative flex cursor-pointer select-none items-center gap-2 rounded-md px-2 py-2 text-sm font-medium outline-none transition-all duration-150",
       "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      "dark:hover:bg-gray-700 dark:focus:bg-gray-700",
+      "dark:hover:bg-orange-100 dark:focus:bg-orange-100",
       "pl-2",
       inset && "pl-8",
       className,
@@ -134,7 +129,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex cursor-default select-none items-center rounded-md py-2 pl-8 pr-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      "dark:hover:bg-gray-700 dark:focus:bg-gray-700",
+      "dark:hover:bg-orange-100 dark:focus:bg-orange-100",
       className,
     )}
     checked={checked}
@@ -160,7 +155,7 @@ const DropdownMenuRadioItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex cursor-default select-none items-center rounded-md py-2 pl-8 pr-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      "dark:hover:bg-gray-700 dark:focus:bg-gray-700",
+      "dark:hover:bg-orange-100 dark:focus:bg-orange-100",
       className,
     )}
     {...props}
@@ -202,7 +197,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn("my-1 h-px bg-border dark:bg-gray-700", className)}
+    className={cn("my-1 h-px bg-border ", className)}
     {...props}
   />
 ));

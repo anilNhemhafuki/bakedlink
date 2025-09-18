@@ -122,10 +122,10 @@ const SelectItem = React.forwardRef<
       "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors duration-100",
 
       // ✅ Hover: mouse over
-      "hover:bg-orange-100 hover:text-orange-900",
+      "hover:bg-orange-100",
 
       // ✅ Focus/Highlight: keyboard navigation or pointer focus
-      "data-[highlighted]:bg-orange-100 data-[highlighted]:text-orange-900",
+      "data-[highlighted]:bg-orange-100 ",
 
       // ✅ Selected value indicator (visual only — no "checked" state)
       // Use a checkmark icon to show which item is currently selected
