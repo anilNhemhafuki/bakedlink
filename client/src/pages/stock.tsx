@@ -49,14 +49,19 @@ import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-di
 import { useTableSort } from "@/hooks/useTableSort";
 import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import { EnhancedStockItemForm } from "@/components/enhanced-stock-item-form";
+import {
+  Pagination,
+  PaginationInfo,
+  PageSizeSelector,
+  usePagination,
+} from "@/components/ui/pagination";
 
 export default function Stock() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
   const { toast } = useToast();
   const { symbol, formatCurrency } = useCurrency();
 
@@ -66,17 +71,11 @@ export default function Stock() {
     error,
     refetch,
   } = useQuery({
-    queryKey: [
-      "/api/inventory",
-      currentPage,
-      itemsPerPage,
-      searchQuery,
-      selectedGroup,
-    ],
+    queryKey: ["/api/inventory", searchQuery, selectedGroup],
     queryFn: () =>
       apiRequest(
         "GET",
-        `/api/inventory?page=${currentPage}&limit=${itemsPerPage}&search=${encodeURIComponent(searchQuery)}&group=${selectedGroup}`,
+        `/api/inventory?search=${encodeURIComponent(searchQuery)}&group=${selectedGroup}`,
       ),
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
@@ -103,13 +102,23 @@ export default function Stock() {
   // Add sorting functionality
   const { sortedData, sortConfig, requestSort } = useTableSort(items, "name");
 
+  // Enhanced pagination
+  const {
+    currentItems: paginatedItems,
+    currentPage: paginationCurrentPage,
+    totalPages: paginationTotalPages,
+    pageSize: paginationPageSize,
+    setPageSize: setPaginationPageSize,
+    goToPage: paginationGoToPage,
+    totalItems: paginationTotalItems,
+  } = usePagination(sortedData, itemsPerPage);
+
   // Debounced search
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      setCurrentPage(1);
     }, 300);
 
     return () => clearTimeout(timer);
@@ -168,14 +177,7 @@ export default function Stock() {
     },
   });
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(parseInt(value));
-    setCurrentPage(1);
-  };
+  
 
   const getStockBadge = (item: any) => {
     const closingStock = parseFloat(
@@ -425,7 +427,7 @@ export default function Stock() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedData.map((item: any) => {
+                  {paginatedItems.map((item: any) => {
                     const stockInfo = getStockBadge(item);
                     const openingStock = parseFloat(
                       item.openingStock || item.currentStock || 0,
@@ -572,85 +574,25 @@ export default function Stock() {
             </div>
           )}
 
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-2 py-4">
-              <div className="flex items-center space-x-2">
-                <p className="text-sm text-muted-foreground">
-                  Showing{" "}
-                  {Math.min((currentPage - 1) * itemsPerPage + 1, totalCount)}{" "}
-                  to {Math.min(currentPage * itemsPerPage, totalCount)} of{" "}
-                  {totalCount} entries
-                </p>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => handleItemsPerPageChange(e.target.value)}
-                  className="ml-2 h-8 w-16 rounded border border-input bg-background px-2 py-1 text-sm"
-                >
-                  <option value="10">10</option>
-                  <option value="25">25</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                </select>
-                <span className="text-sm text-muted-foreground">per page</span>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage <= 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-
-                <div className="flex items-center space-x-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNumber = i + 1;
-                    return (
-                      <Button
-                        key={pageNumber}
-                        variant={
-                          currentPage === pageNumber ? "default" : "outline"
-                        }
-                        size="sm"
-                        onClick={() => handlePageChange(pageNumber)}
-                        className="w-8 h-8 p-0"
-                      >
-                        {pageNumber}
-                      </Button>
-                    );
-                  })}
-                  {totalPages > 5 && (
-                    <>
-                      {currentPage < totalPages - 2 && (
-                        <span className="px-2">...</span>
-                      )}
-                      <Button
-                        variant={
-                          currentPage === totalPages ? "default" : "outline"
-                        }
-                        size="sm"
-                        onClick={() => handlePageChange(totalPages)}
-                        className="w-8 h-8 p-0"
-                      >
-                        {totalPages}
-                      </Button>
-                    </>
-                  )}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage >= totalPages}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+          {/* Enhanced Pagination Controls */}
+          {paginationTotalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 px-2 py-4">
+              <PaginationInfo
+                currentPage={paginationCurrentPage}
+                totalPages={paginationTotalPages}
+                totalItems={paginationTotalItems}
+              />
+              <div className="flex items-center gap-4">
+                <PageSizeSelector
+                  pageSize={paginationPageSize}
+                  onPageSizeChange={setPaginationPageSize}
+                  options={[10, 25, 50, 100]}
+                />
+                <Pagination
+                  currentPage={paginationCurrentPage}
+                  totalPages={paginationTotalPages}
+                  onPageChange={paginationGoToPage}
+                />
               </div>
             </div>
           )}

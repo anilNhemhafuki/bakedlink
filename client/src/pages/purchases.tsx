@@ -73,6 +73,7 @@ interface PurchaseItem {
   quantity: string;
   unitPrice: string;
   totalPrice: string;
+  unitId?: string;
 }
 
 interface Party {
@@ -119,7 +120,7 @@ export default function Purchases() {
     purchaseDate: new Date().toISOString().split("T")[0],
     status: "completed",
     notes: "",
-    items: [{ inventoryItemId: "", quantity: 1, unitPrice: "0" }],
+    items: [{ inventoryItemId: "", quantity: 1, unitPrice: "0", unitId: "" }],
   });
 
   // Create Purchase Mutation
@@ -216,6 +217,7 @@ export default function Purchases() {
         inventoryItemId: parseInt(item.inventoryItemId),
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        unitId: item.unitId,
         totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
       })),
     };
@@ -239,10 +241,11 @@ export default function Purchases() {
         purchase.items && purchase.items.length > 0
           ? purchase.items.map((item) => ({
               inventoryItemId: item.inventoryItemId.toString(),
-              quantity: parseInt(item.quantity),
+              quantity: item.quantity,
               unitPrice: item.unitPrice,
+              unitId: item.unitId || "",
             }))
-          : [{ inventoryItemId: "", quantity: 1, unitPrice: "0" }],
+          : [{ inventoryItemId: "", quantity: 1, unitPrice: "0", unitId: "" }],
     });
     setIsEditDialogOpen(true);
   };
@@ -298,7 +301,7 @@ export default function Purchases() {
       purchaseDate: new Date().toISOString().split("T")[0],
       status: "completed",
       notes: "",
-      items: [{ inventoryItemId: "", quantity: 1, unitPrice: "0" }],
+      items: [{ inventoryItemId: "", quantity: 1, unitPrice: "0", unitId: "" }],
     });
   };
 
@@ -307,7 +310,7 @@ export default function Purchases() {
       ...purchaseForm,
       items: [
         ...purchaseForm.items,
-        { inventoryItemId: "", quantity: 1, unitPrice: "0" },
+        { inventoryItemId: "", quantity: 1, unitPrice: "0", unitId: "" },
       ],
     });
   };
@@ -608,7 +611,7 @@ export default function Purchases() {
                 </div>
                 {purchaseForm.items.map((item, index) => (
                   <div key={index} className="grid grid-cols-12 gap-2 mb-2">
-                    <div className="col-span-5">
+                    <div className="col-span-4">
                       <Select
                         value={item.inventoryItemId || undefined}
                         onValueChange={(value) =>
@@ -651,7 +654,7 @@ export default function Purchases() {
                         placeholder="Qty"
                       />
                     </div>
-                    <div className="col-span-3">
+                    <div className="col-span-2">
                       <Input
                         type="number"
                         step="0.01"
@@ -661,6 +664,25 @@ export default function Purchases() {
                         }
                         placeholder="Price"
                       />
+                    </div>
+                    <div className="col-span-2">
+                      <Select
+                        value={item.unitId || undefined}
+                        onValueChange={(value) =>
+                          updateItem(index, "unitId", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pcs">Pcs</SelectItem>
+                          <SelectItem value="kg">Kg</SelectItem>
+                          <SelectItem value="ltr">Ltr</SelectItem>
+                          <SelectItem value="mtr">Mtr</SelectItem>
+                          <SelectItem value="box">Box</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="col-span-2">
                       <Button
@@ -1094,6 +1116,7 @@ export default function Purchases() {
                         <TableRow>
                           <TableHead>Item</TableHead>
                           <TableHead>Quantity</TableHead>
+                          <TableHead>Unit</TableHead>
                           <TableHead>Unit Price</TableHead>
                           <TableHead>Total</TableHead>
                         </TableRow>
@@ -1103,6 +1126,7 @@ export default function Purchases() {
                           <TableRow key={item.id}>
                             <TableCell>{item.inventoryItemName}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
+                            <TableCell>{item.unitId || "N/A"}</TableCell>
                             <TableCell>
                               {formatCurrency(parseFloat(item.unitPrice))}
                             </TableCell>
