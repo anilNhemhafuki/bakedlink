@@ -801,6 +801,76 @@ router.put('/settings', requireAuth, async (req, res) => {
   }
 });
 
+// Pricing management routes
+router.get('/pricing', async (req, res) => {
+  try {
+    console.log('💰 Fetching pricing settings...');
+    const pricingSettings = await storage.getPricingSettings();
+    console.log('✅ Pricing settings fetched:', pricingSettings);
+    res.json(pricingSettings);
+  } catch (error) {
+    console.error('❌ Error fetching pricing settings:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch pricing settings',
+      fallback: {
+        systemPrice: 299.99,
+        currency: 'USD',
+        description: 'Complete Bakery Management System',
+        displayEnabled: true
+      }
+    });
+  }
+});
+
+router.put('/pricing', requireAuth, async (req, res) => {
+  try {
+    console.log('💰 Updating pricing settings:', req.body);
+
+    // Validate required fields
+    if (req.body.systemPrice !== undefined) {
+      const price = parseFloat(req.body.systemPrice);
+      if (isNaN(price) || price <= 0) {
+        return res.status(400).json({ 
+          error: 'Invalid price',
+          message: 'System price must be a positive number'
+        });
+      }
+    }
+
+    await storage.updatePricingSettings(req.body);
+
+    // Add pricing update notification
+    addNotification({
+      type: "system",
+      title: "Pricing Updated",
+      description: `System pricing has been updated to ${req.body.currency || 'USD'} ${req.body.systemPrice || 'N/A'}`,
+      priority: "medium"
+    });
+
+    console.log('✅ Pricing settings updated successfully');
+    res.json({ 
+      success: true,
+      message: 'Pricing settings updated successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error updating pricing settings:', error);
+    res.status(400).json({ 
+      error: 'Failed to update pricing settings',
+      message: error.message
+    });
+  }
+});
+
+router.get('/system-price', async (req, res) => {
+  try {
+    const systemPrice = await storage.getSystemPrice();
+    res.json({ price: systemPrice });
+  } catch (error) {
+    console.error('❌ Error fetching system price:', error);
+    res.json({ price: 299.99 }); // Fallback
+  }
+});
+
 // Branch Management Routes
 router.get('/branches', requireAuth, async (req, res) => {
   try {

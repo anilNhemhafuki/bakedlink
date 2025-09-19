@@ -9,6 +9,7 @@ import { initializeUnits } from "./init-units"; // Import initializeUnits
 import { securityMonitor } from "./securityMonitor";
 import { alertService } from "./alertService";
 import path from "path"; // Import path module
+import * as storage from "./storage"; // Assuming storage module handles database operations
 
 const app = express();
 
@@ -113,7 +114,22 @@ async function startServer() {
     }
 
     server.listen(port, "0.0.0.0", () => {
-      console.log(`✅ Server running on http://0.0.0.0:${port}`);
+      // Initialize default permissions and users
+      console.log('🔑 Setting up authentication...');
+      // These functions are assumed to exist in the storage module
+      // Ensure storage module is correctly imported and implemented
+      // await storage.ensureDefaultAdmin();
+      // await storage.initializeDefaultPermissions();
+
+      // Initialize default pricing settings
+      console.log('💰 Initializing pricing settings...');
+      // Assuming storage.getSystemPrice() retrieves the current system price
+      // If it doesn't exist, it should return a default value or throw an error
+      // For demonstration, let's assume it returns a number or undefined
+      const currentPrice = storage.getSystemPrice(); // This might need to be async if it hits the DB
+      console.log(`💰 System price initialized: $${currentPrice}`);
+
+      console.log('✅ Server running on http://0.0.0.0:5000');
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);

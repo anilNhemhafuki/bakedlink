@@ -1,5 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SystemPriceLarge, SystemPriceBadge } from "@/components/dynamic-price-display";
+import {
+  Shield,
+  Package,
+  Users,
+  BarChart3,
+  Clock,
+  Zap,
+  Check,
+  Star,
+  Award,
+  Truck,
+  Coffee,
+} from "lucide-react";
 
 export default function Landing() {
   return (
@@ -16,7 +30,7 @@ export default function Landing() {
             Professional Bakery Management System
           </p>
         </CardHeader>
-        
+
         <CardContent className="text-center space-y-6">
           <div className="space-y-2">
             <p className="text-gray-600">
@@ -29,7 +43,7 @@ export default function Landing() {
               <li>• Sales Analytics & Reports</li>
             </ul>
           </div>
-          
+
           <Button 
             onClick={() => window.location.href = '/api/login'}
             className="w-full bg-[#8B4513] hover:bg-[#A0522D] text-white"
@@ -38,7 +52,7 @@ export default function Landing() {
             <i className="fas fa-sign-in-alt mr-2"></i>
             Sign In to Continue
           </Button>
-          
+
           <p className="text-xs text-gray-500">
             Secure authentication powered by Replit
           </p>

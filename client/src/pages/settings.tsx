@@ -38,6 +38,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Separator } from "@/components/ui/separator";
+import { PricingSettings } from "@/components/pricing-settings";
 
 // Function to convert hex to HSL
 function hexToHsl(hex: string) {
@@ -561,8 +562,9 @@ export default function Settings() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="pricing">Pricing</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="printing">Printing</TabsTrigger>
@@ -698,6 +700,10 @@ export default function Settings() {
               </form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="pricing">
+          <PricingSettings />
         </TabsContent>
 
         <TabsContent value="notifications">

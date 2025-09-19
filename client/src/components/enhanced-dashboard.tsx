@@ -47,6 +47,7 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { Separator } from "@/components/ui/separator";
+import { SystemPriceCard } from "@/components/dynamic-price-display";
 
 interface ProductionItem {
   id: number;
@@ -778,6 +779,11 @@ export default function EnhancedDashboard() {
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* System Pricing Card */}
+            <div className="lg:col-span-3 mb-4">
+              <SystemPriceCard className="max-w-md mx-auto" />
+            </div>
+            
             {/* Recent Orders */}
             <Card className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">

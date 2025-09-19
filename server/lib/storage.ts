@@ -515,6 +515,12 @@ export interface IStorage {
   deleteBranch(id: number): Promise<void>;
   assignUserToBranch(userId: string, branchId: number): Promise<void>;
   getUsersWithBranches(): Promise<any[]>;
+
+  // Pricing Management methods
+  getSystemPrice(): Promise<number>;
+  updateSystemPrice(price: number): Promise<void>;
+  getPricingSettings(): Promise<any>;
+  updatePricingSettings(pricingData: any): Promise<void>;
 }
 
 export class Storage implements IStorage {
@@ -2500,50 +2506,34 @@ export class Storage implements IStorage {
     return this.updateSettings(settingsData);
   }
 
-  async updateOrCreateSetting(key: string, value: string): Promise<void> {
+  async updateOrCreateSetting(key: string, value: string): Promise<any> {
     try {
-      console.log(`🔧 Processing setting: ${key} = ${value}`);
+      console.log(`💾 Updating setting: ${key} = ${value}`);
 
-      // Check if setting exists
-      const existingSettings = await db
-        .select()
-        .from(settings)
+      // First try to update
+      const updated = await this.db
+        .update(settings)
+        .set({ value, updatedAt: new Date() })
         .where(eq(settings.key, key))
-        .limit(1);
+        .returning();
 
-      if (existingSettings.length > 0) {
-        // Update existing setting
-        const result = await db
-          .update(settings)
-          .set({
-            value: value,
-            updatedAt: new Date(),
-          })
-          .where(eq(settings.key, key))
-          .returning();
-        console.log(
-          `✅ Updated setting ${key}:`,
-          result.length > 0 ? "success" : "failed",
-        );
-      } else {
-        // Create new setting
-        const result = await db
+      if (updated.length === 0) {
+        // If no rows were updated, create new setting
+        console.log(`Creating new setting: ${key}`);
+        const newSetting = await this.db
           .insert(settings)
           .values({
-            key: key,
-            value: value,
-            type: "string",
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            key,
+            value,
+            type: 'string'
           })
           .returning();
-        console.log(
-          `✅ Created setting ${key}:`,
-          result.length > 0 ? "success" : "failed",
-        );
+        return newSetting[0];
       }
+
+      return updated[0];
     } catch (error) {
-      console.error(`❌ Error processing setting ${key}:`, error);
+      console.error(`Error updating setting ${key}:`, error);
       throw error;
     }
   }
@@ -4264,8 +4254,7 @@ export class Storage implements IStorage {
       // Apply pagination and ordering
       const items = await query
         .orderBy(desc(salaryPayments.payPeriodEnd))
-        .limit(itemsPerPage)
-        .offset(offset || 0);
+        .limit(itemsPerPage).offset(offset || 0);
 
       console.log(`✅ Found ${items.length} salary payment records (page ${currentPage} of ${totalPages})`);
 
@@ -5230,6 +5219,127 @@ export class Storage implements IStorage {
       return result;
     } catch (error) {
       console.error("❌ Error fetching users with branches:", error);
+      throw error;
+    }
+  }
+
+  // Pricing Management methods
+  async getSystemPrice(): Promise<number> {
+    try {
+      const priceSetting = await this.db
+        .select()
+        .from(settings)
+        .where(eq(settings.key, 'system_price'))
+        .limit(1);
+
+      if (priceSetting.length > 0) {
+        const price = parseFloat(priceSetting[0].value);
+        return !isNaN(price) ? price : 299.99; // Default fallback
+      }
+
+      // Create default price if doesn't exist
+      await this.updateOrCreateSetting('system_price', '299.99');
+      return 299.99;
+    } catch (error) {
+      console.error('Error fetching system price:', error);
+      return 299.99; // Fallback price
+    }
+  }
+
+  async updateSystemPrice(price: number): Promise<void> {
+    try {
+      if (isNaN(price) || price <= 0) {
+        throw new Error('Invalid price value');
+      }
+
+      await this.updateOrCreateSetting('system_price', price.toString());
+      console.log(`✅ System price updated to: ${price}`);
+    } catch (error) {
+      console.error('Error updating system price:', error);
+      throw error;
+    }
+  }
+
+  async getPricingSettings(): Promise<any> {
+    try {
+      const pricingKeys = [
+        'system_price',
+        'system_price_currency',
+        'system_price_description',
+        'pricing_display_enabled'
+      ];
+
+      const pricingSettings = await this.db
+        .select()
+        .from(settings)
+        .where(sql`${settings.key} IN ${pricingKeys}`);
+
+      const result = {
+        systemPrice: 299.99,
+        currency: 'USD',
+        description: 'Complete Bakery Management System',
+        displayEnabled: true
+      };
+
+      pricingSettings.forEach(setting => {
+        switch (setting.key) {
+          case 'system_price':
+            const price = parseFloat(setting.value);
+            result.systemPrice = !isNaN(price) ? price : 299.99;
+            break;
+          case 'system_price_currency':
+            result.currency = setting.value || 'USD';
+            break;
+          case 'system_price_description':
+            result.description = setting.value || 'Complete Bakery Management System';
+            break;
+          case 'pricing_display_enabled':
+            result.displayEnabled = setting.value === 'true';
+            break;
+        }
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Error fetching pricing settings:', error);
+      // Return defaults on error
+      return {
+        systemPrice: 299.99,
+        currency: 'USD',
+        description: 'Complete Bakery Management System',
+        displayEnabled: true
+      };
+    }
+  }
+
+  async updatePricingSettings(pricingData: any): Promise<void> {
+    try {
+      const updates = [];
+
+      if (pricingData.systemPrice !== undefined) {
+        const price = parseFloat(pricingData.systemPrice);
+        if (isNaN(price) || price <= 0) {
+          throw new Error('Invalid system price value');
+        }
+        updates.push(this.updateOrCreateSetting('system_price', price.toString()));
+      }
+
+      if (pricingData.currency !== undefined) {
+        updates.push(this.updateOrCreateSetting('system_price_currency', pricingData.currency));
+      }
+
+      if (pricingData.description !== undefined) {
+        updates.push(this.updateOrCreateSetting('system_price_description', pricingData.description));
+      }
+
+      if (pricingData.displayEnabled !== undefined) {
+        updates.push(this.updateOrCreateSetting('pricing_display_enabled', pricingData.displayEnabled.toString()));
+      }
+
+      await Promise.all(updates);
+      console.log('✅ Pricing settings updated successfully');
+    } catch (error) {
+      console.error('Error updating pricing settings:', error);
       throw error;
     }
   }
