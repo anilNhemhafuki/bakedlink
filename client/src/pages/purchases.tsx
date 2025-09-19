@@ -599,7 +599,7 @@ export default function Purchases() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Items</Label>
+                  <Label>Purchase Items</Label>
                   <Button
                     type="button"
                     variant="outline"
@@ -612,6 +612,8 @@ export default function Purchases() {
                 {purchaseForm.items.map((item, index) => (
                   <div key={index} className="grid grid-cols-12 gap-2 mb-2">
                     <div className="col-span-4">
+                      <Label>Particular *</Label>
+
                       <Select
                         value={item.inventoryItemId || undefined}
                         onValueChange={(value) =>
@@ -640,6 +642,8 @@ export default function Purchases() {
                       </Select>
                     </div>
                     <div className="col-span-2">
+                      <Label>Quantity *</Label>
+
                       <Input
                         type="number"
                         value={item.quantity}
@@ -655,17 +659,8 @@ export default function Purchases() {
                       />
                     </div>
                     <div className="col-span-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.unitPrice}
-                        onChange={(e) =>
-                          updateItem(index, "unitPrice", e.target.value)
-                        }
-                        placeholder="Price"
-                      />
-                    </div>
-                    <div className="col-span-2">
+                      <Label>Unit *</Label>
+
                       <Select
                         value={item.unitId || undefined}
                         onValueChange={(value) =>
@@ -684,6 +679,20 @@ export default function Purchases() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div className="col-span-2">
+                      <Label>Rate *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={item.unitPrice}
+                        onChange={(e) =>
+                          updateItem(index, "unitPrice", e.target.value)
+                        }
+                        placeholder="Price"
+                      />
+                    </div>
+
                     <div className="col-span-2">
                       <Button
                         type="button"
