@@ -93,6 +93,7 @@ export default function Customers() {
     data: customers = [],
     isLoading,
     error,
+    refetch
   } = useQuery({
     queryKey: ["/api/customers"],
     retry: (failureCount, error) => {
@@ -113,11 +114,13 @@ export default function Customers() {
   const createCustomerMutation = useMutation({
     mutationFn: async (customerData: any) => {
       console.log("Submitting customer data:", customerData);
-      return await apiRequest("POST", "/api/customers", customerData);
+      const response = await apiRequest("POST", "/api/customers", customerData);
+      return response;
     },
     onSuccess: (data) => {
       console.log("Customer created successfully:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      refetch();
       setIsDialogOpen(false);
       setEditingCustomer(null);
       setFormErrors({});
@@ -166,11 +169,13 @@ export default function Customers() {
       apiRequest("PUT", `/api/customers/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      refetch();
       setIsDialogOpen(false);
       setEditingCustomer(null);
+      setFormErrors({});
       toast({ title: "Success", description: "Customer updated successfully" });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -182,11 +187,22 @@ export default function Customers() {
         }, 500);
         return;
       }
-      toast({
-        title: "Error",
-        description: "Failed to update customer",
-        variant: "destructive",
-      });
+
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors);
+        toast({
+          title: "Validation Error",
+          description: "Please check the form for errors",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.response?.data?.message || "Failed to update customer",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -194,6 +210,7 @@ export default function Customers() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/customers/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      refetch();
       toast({ title: "Success", description: "Customer deleted successfully" });
     },
     onError: (error) => {
@@ -241,15 +258,46 @@ export default function Customers() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormErrors({});
+    
     const formData = new FormData(e.target as HTMLFormElement);
+    
+    // Client-side validation
+    const errors: any = {};
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const openingBalance = formData.get("openingBalance") as string;
+
+    if (!name?.trim()) {
+      errors.name = "Customer name is required";
+    } else if (name.trim().length < 2) {
+      errors.name = "Customer name must be at least 2 characters long";
+    }
+
+    if (email && email.trim() && !/\S+@\S+\.\S+/.test(email.trim())) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    if (openingBalance && openingBalance.trim() && isNaN(parseFloat(openingBalance))) {
+      errors.openingBalance = "Opening balance must be a valid number";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors in the form",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const data = {
-      name: formData.get("name") as string,
-      email: (formData.get("email") as string) || null,
-      phone: (formData.get("phone") as string) || null,
-      address: (formData.get("address") as string) || null,
-      openingBalance: formData.get("openingBalance")
-        ? parseFloat(formData.get("openingBalance") as string) || 0
-        : 0,
+      name: name.trim(),
+      email: email?.trim() || null,
+      phone: (formData.get("phone") as string)?.trim() || null,
+      address: (formData.get("address") as string)?.trim() || null,
+      openingBalance: openingBalance?.trim() ? parseFloat(openingBalance) : 0,
     };
 
     if (editingCustomer) {
@@ -327,13 +375,13 @@ export default function Customers() {
   // Add pagination
   const pagination = usePagination(sortedData, 10);
   const {
+    currentItems: paginatedCustomers,
     currentPage,
     pageSize,
     totalPages,
     totalItems,
-    paginatedData: paginatedCustomers,
-    handlePageChange,
-    handlePageSizeChange,
+    goToPage: handlePageChange,
+    setPageSize: handlePageSizeChange,
   } = pagination;
 
   const getBalanceBadge = (balance: any) => {

@@ -103,17 +103,7 @@ export default function Parties() {
     useState<TransactionFormErrors>({});
   const { formatCurrency } = useCurrency();
 
-  const {
-    data: parties = [],
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["/api/parties"],
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
-  });
+  
 
   // Check URL parameters for auto-opening ledger
   useEffect(() => {
@@ -457,6 +447,18 @@ export default function Parties() {
     "name",
   );
 
+  // Add pagination
+  const pagination = usePagination(sortedData, 10);
+  const {
+    currentItems: paginatedParties,
+    currentPage,
+    pageSize,
+    totalPages,
+    totalItems,
+    goToPage: handlePageChange,
+    setPageSize: handlePageSizeChange,
+  } = pagination;
+
   const getTypeBadge = (type: string) => {
     const variants: Record<
       string,
@@ -514,6 +516,19 @@ export default function Parties() {
     console.error("Error loading parties:", error);
   }
 
+  const {
+    data: parties = [],
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ["/api/parties"],
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
+      return failureCount < 3;
+    },
+  });
+
   const createPartyMutation = useMutation({
     mutationFn: async (partyData: any) => {
       console.log("Submitting party data:", partyData);
@@ -523,6 +538,7 @@ export default function Parties() {
     onSuccess: (data) => {
       console.log("Party created successfully:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/parties"] });
+      refetch();
       setIsDialogOpen(false);
       setEditingParty(null);
       setSelectedType("");
@@ -585,6 +601,7 @@ export default function Parties() {
     onSuccess: (data) => {
       console.log("Party updated successfully:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/parties"] });
+      refetch();
       setIsDialogOpen(false);
       setEditingParty(null);
       setSelectedType("");
@@ -627,16 +644,21 @@ export default function Parties() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setFormErrors({});
+    
     const formData = new FormData(e.currentTarget);
 
     // Client-side validation
     const errors: FormErrors = {};
     const name = formData.get("name") as string;
-    const type = formData.get("type") as string;
+    const type = selectedType || formData.get("type") as string;
 
     if (!name?.trim()) {
       errors.name = "Party name is required";
+    } else if (name.trim().length < 2) {
+      errors.name = "Party name must be at least 2 characters long";
     }
+    
     if (!type?.trim()) {
       errors.type = "Party type is required";
     }
@@ -649,11 +671,7 @@ export default function Parties() {
 
     // Validate opening balance if provided
     const openingBalance = formData.get("openingBalance") as string;
-    if (
-      openingBalance &&
-      openingBalance.trim() &&
-      isNaN(parseFloat(openingBalance))
-    ) {
+    if (openingBalance && openingBalance.trim() && isNaN(parseFloat(openingBalance))) {
       errors.openingBalance = "Please enter a valid number";
     }
 
@@ -666,9 +684,6 @@ export default function Parties() {
       });
       return;
     }
-
-    // Clear previous errors
-    setFormErrors({});
 
     const partyData = {
       name: name.trim(),
@@ -986,7 +1001,8 @@ export default function Parties() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedData.map((party: any) => {
+                  {paginatedParties && paginatedParties.length > 0 ? (
+                  paginatedParties.map((party: any) => {
                     const balanceInfo = getBalanceBadge(party.currentBalance);
                     return (
                       <TableRow key={party.id}>
@@ -1096,21 +1112,41 @@ export default function Parties() {
                   })}
                 </TableBody>
               </Table>
-              {sortedData.length === 0 && (
-                <div className="text-center py-8">
-                  <Building className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                    No parties found
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchQuery || typeFilter !== "all"
-                      ? "Try adjusting your search criteria"
-                      : "Start by adding your first party"}
-                  </p>
-                  <Button onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Party
-                  </Button>
+              ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-12">
+                      <div className="flex flex-col items-center justify-center">
+                        <Building className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold mb-2">No parties found</h3>
+                        <p className="text-muted-foreground mb-4">
+                          {searchQuery || typeFilter !== "all"
+                            ? 'No parties match your search criteria.'
+                            : 'Start by adding your first party.'}
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+
+              {/* Pagination Controls */}
+              {filteredParties.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+                  <PaginationInfo
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    totalItems={totalItems}
+                  />
+                  <div className="flex items-center gap-4">
+                    <PageSizeSelector
+                      pageSize={pageSize}
+                      onPageSizeChange={handlePageSizeChange}
+                    />
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={handlePageChange}
+                    />
+                  </div>
                 </div>
               )}
             </div>

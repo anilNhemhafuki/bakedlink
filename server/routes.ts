@@ -2193,6 +2193,474 @@ router.use('/api/*', (req, res) => {
   });
 });
 
+// Customer Management Routes
+router.get('/customers', async (req, res) => {
+  try {
+    console.log('👥 Fetching customers...');
+    const result = await storage.getCustomers();
+    console.log(`✅ Found ${result.length} customers`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching customers:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch customers',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/customers', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating customer:', req.body.name);
+    
+    // Validate required fields
+    if (!req.body.name || req.body.name.trim().length < 2) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Customer name must be at least 2 characters long',
+        errors: { name: 'Customer name must be at least 2 characters long' },
+        success: false
+      });
+    }
+
+    // Validate email format if provided
+    if (req.body.email && req.body.email.trim() && !/\S+@\S+\.\S+/.test(req.body.email.trim())) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Please enter a valid email address',
+        errors: { email: 'Please enter a valid email address' },
+        success: false
+      });
+    }
+
+    // Validate opening balance if provided
+    if (req.body.openingBalance && isNaN(parseFloat(req.body.openingBalance))) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Opening balance must be a valid number',
+        errors: { openingBalance: 'Opening balance must be a valid number' },
+        success: false
+      });
+    }
+
+    const customerData = {
+      name: req.body.name.trim(),
+      email: req.body.email?.trim() || null,
+      phone: req.body.phone?.trim() || null,
+      address: req.body.address?.trim() || null,
+      openingBalance: req.body.openingBalance || 0,
+      isActive: true
+    };
+
+    const result = await storage.createCustomer(customerData);
+
+    // Log the customer creation
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'CREATE',
+        'customers',
+        { 
+          customerName: result.name,
+          customerId: result.id
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add customer creation notification
+    addNotification({
+      type: "system",
+      title: "Customer Created",
+      description: `New customer "${result.name}" has been added`,
+      priority: "medium",
+      actionUrl: "/customers"
+    });
+
+    console.log('✅ Customer created successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error creating customer:', error);
+    res.status(400).json({ 
+      error: 'Failed to create customer',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.put('/customers/:id', requireAuth, async (req, res) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    console.log('💾 Updating customer:', customerId);
+
+    // Validate required fields
+    if (!req.body.name || req.body.name.trim().length < 2) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Customer name must be at least 2 characters long',
+        errors: { name: 'Customer name must be at least 2 characters long' },
+        success: false
+      });
+    }
+
+    const result = await storage.updateCustomer(customerId, req.body);
+
+    // Log the customer update
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'UPDATE',
+        'customers',
+        { 
+          customerId,
+          updates: req.body
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add customer update notification
+    addNotification({
+      type: "system",
+      title: "Customer Updated",
+      description: `Customer "${result.name}" has been updated`,
+      priority: "medium",
+      actionUrl: "/customers"
+    });
+
+    console.log('✅ Customer updated successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error updating customer:', error);
+    res.status(400).json({ 
+      error: 'Failed to update customer',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.delete('/customers/:id', requireAuth, async (req, res) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    console.log('🗑️ Deleting customer:', customerId);
+
+    // Get customer info before deletion for logging
+    const customer = await storage.getCustomerById(customerId);
+
+    await storage.deleteCustomer(customerId);
+
+    // Log the customer deletion
+    if (req.session?.user && customer) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'DELETE',
+        'customers',
+        { 
+          deletedCustomerId: customerId,
+          customerName: customer.name
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add customer deletion notification
+    addNotification({
+      type: "system",
+      title: "Customer Deleted",
+      description: `Customer has been removed from the system`,
+      priority: "medium",
+      actionUrl: "/customers"
+    });
+
+    console.log('✅ Customer deleted successfully');
+    res.json({ success: true, message: 'Customer deleted successfully' });
+  } catch (error: any) {
+    console.error('❌ Error deleting customer:', error);
+    res.status(400).json({ 
+      error: 'Failed to delete customer',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+// Party Management Routes
+router.get('/parties', async (req, res) => {
+  try {
+    console.log('🏢 Fetching parties...');
+    const result = await storage.getParties();
+    console.log(`✅ Found ${result.length} parties`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching parties:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch parties',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/parties', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating party:', req.body.name);
+    
+    // Validate required fields
+    if (!req.body.name || req.body.name.trim().length < 2) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Party name must be at least 2 characters long',
+        errors: { name: 'Party name must be at least 2 characters long' },
+        success: false
+      });
+    }
+
+    if (!req.body.type || req.body.type.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Party type is required',
+        errors: { type: 'Party type is required' },
+        success: false
+      });
+    }
+
+    // Validate email format if provided
+    if (req.body.email && req.body.email.trim() && !/\S+@\S+\.\S+/.test(req.body.email.trim())) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Please enter a valid email address',
+        errors: { email: 'Please enter a valid email address' },
+        success: false
+      });
+    }
+
+    const partyData = {
+      name: req.body.name.trim(),
+      type: req.body.type.trim(),
+      contactPerson: req.body.contactPerson?.trim() || null,
+      email: req.body.email?.trim() || null,
+      phone: req.body.phone?.trim() || null,
+      address: req.body.address?.trim() || null,
+      taxId: req.body.taxId?.trim() || null,
+      notes: req.body.notes?.trim() || null,
+      openingBalance: req.body.openingBalance || '0',
+      isActive: true
+    };
+
+    const result = await storage.createParty(partyData);
+
+    // Log the party creation
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'CREATE',
+        'parties',
+        { 
+          partyName: result.name,
+          partyType: result.type,
+          partyId: result.id
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add party creation notification
+    addNotification({
+      type: "system",
+      title: "Party Created",
+      description: `New party "${result.name}" has been added`,
+      priority: "medium",
+      actionUrl: "/parties"
+    });
+
+    console.log('✅ Party created successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error creating party:', error);
+    res.status(400).json({ 
+      error: 'Failed to create party',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.put('/parties/:id', requireAuth, async (req, res) => {
+  try {
+    const partyId = parseInt(req.params.id);
+    console.log('💾 Updating party:', partyId);
+
+    // Validate required fields
+    if (!req.body.name || req.body.name.trim().length < 2) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Party name must be at least 2 characters long',
+        errors: { name: 'Party name must be at least 2 characters long' },
+        success: false
+      });
+    }
+
+    if (!req.body.type || req.body.type.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Party type is required',
+        errors: { type: 'Party type is required' },
+        success: false
+      });
+    }
+
+    const result = await storage.updateParty(partyId, req.body);
+
+    // Log the party update
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'UPDATE',
+        'parties',
+        { 
+          partyId,
+          updates: req.body
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add party update notification
+    addNotification({
+      type: "system",
+      title: "Party Updated",
+      description: `Party "${result.name}" has been updated`,
+      priority: "medium",
+      actionUrl: "/parties"
+    });
+
+    console.log('✅ Party updated successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error updating party:', error);
+    res.status(400).json({ 
+      error: 'Failed to update party',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.delete('/parties/:id', requireAuth, async (req, res) => {
+  try {
+    const partyId = parseInt(req.params.id);
+    console.log('🗑️ Deleting party:', partyId);
+
+    // Get party info before deletion for logging
+    const party = await storage.getPartyById(partyId);
+
+    await storage.deleteParty(partyId);
+
+    // Log the party deletion
+    if (req.session?.user && party) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'DELETE',
+        'parties',
+        { 
+          deletedPartyId: partyId,
+          partyName: party.name
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add party deletion notification
+    addNotification({
+      type: "system",
+      title: "Party Deleted",
+      description: `Party has been removed from the system`,
+      priority: "medium",
+      actionUrl: "/parties"
+    });
+
+    console.log('✅ Party deleted successfully');
+    res.json({ success: true, message: 'Party deleted successfully' });
+  } catch (error: any) {
+    console.error('❌ Error deleting party:', error);
+    res.status(400).json({ 
+      error: 'Failed to delete party',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+// Ledger Transaction Routes
+router.post('/ledger', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating ledger transaction:', req.body);
+    const result = await storage.createLedgerTransaction(req.body);
+
+    // Add ledger transaction notification
+    addNotification({
+      type: "system",
+      title: "Transaction Added",
+      description: `New transaction recorded in ledger`,
+      priority: "medium",
+      actionUrl: req.body.entityType === 'customer' ? "/customers" : "/parties"
+    });
+
+    console.log('✅ Ledger transaction created successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error creating ledger transaction:', error);
+    res.status(400).json({ 
+      error: 'Failed to create transaction',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.get('/ledger/customer/:id', async (req, res) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    console.log('📊 Fetching customer ledger:', customerId);
+    const result = await storage.getLedgerTransactions(customerId, 'customer');
+    console.log(`✅ Found ${result.length} transactions for customer`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching customer ledger:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch customer ledger',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.get('/ledger/party/:id', async (req, res) => {
+  try {
+    const partyId = parseInt(req.params.id);
+    console.log('📊 Fetching party ledger:', partyId);
+    const result = await storage.getLedgerTransactions(partyId, 'party');
+    console.log(`✅ Found ${result.length} transactions for party`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error fetching party ledger:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch party ledger',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
 // API error handling middleware
 router.use((error: any, req: any, res: any, next: any) => {
   console.error('🚨 API Error:', error);

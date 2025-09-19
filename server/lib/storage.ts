@@ -303,7 +303,17 @@ export interface IStorage {
   deleteStaffSchedule(id: number): Promise<void>;
 
   // Customer operations
-  getCustomers(): Promise<Customer[]>;
+  getCustomers(
+    limit?: number,
+    offset?: number,
+    search?: string,
+  ): Promise<{
+    items: Customer[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+  }>;
   getCustomerById(id: number): Promise<Customer | undefined>;
   createCustomer(customer: InsertCustomer): Promise<Customer>;
   updateCustomer(
@@ -313,7 +323,17 @@ export interface IStorage {
   deleteCustomer(id: number): Promise<void>;
 
   // Party operations
-  getParties(): Promise<Party[]>;
+  getParties(
+    limit?: number,
+    offset?: number,
+    search?: string,
+  ): Promise<{
+    items: Party[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+  }>;
   getPartyById(id: number): Promise<Party | undefined>;
   createParty(party: InsertParty): Promise<Party>;
   updateParty(id: number, party: Partial<InsertParty>): Promise<Party>;
@@ -489,7 +509,7 @@ export class Storage implements IStorage {
     // Ensure other upload directories exist
     const mediaDir = path.join(this.uploadsDir, "media");
     const tempDir = path.join(this.uploadsDir, "temp");
-    
+
     [mediaDir, tempDir].forEach(dir => {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
@@ -963,36 +983,6 @@ export class Storage implements IStorage {
 
   async deleteUnit(id: number): Promise<void> {
     try {
-      const result = await this.db
-        .delete(units)
-        .where(eq(units.id, id))
-        .returning();
-
-      if (result.length === 0) {
-        throw new Error("Unit not found");
-      }
-    } catch (error) {
-      console.error("Error deleting unit:", error);
-      throw error;
-    }
-  }
-
-  async getActiveUnits() {
-    try {
-      const result = await this.db
-        .select()
-        .from(units)
-        .where(eq(units.isActive, true))
-        .orderBy(units.name);
-      return result;
-    } catch (error) {
-      console.error("Error in getActiveUnits:", error);
-      throw error;
-    }
-  }
-
-  async deleteUnit(id: number): Promise<void> {
-    try {
       // Check if unit is being used in other tables before deletion
       const usageChecks = await Promise.all([
         // Check products table
@@ -1043,6 +1033,20 @@ export class Storage implements IStorage {
       console.log(`Unit ${id} deleted successfully`);
     } catch (error) {
       console.error("Error deleting unit:", error);
+      throw error;
+    }
+  }
+
+  async getActiveUnits() {
+    try {
+      const result = await this.db
+        .select()
+        .from(units)
+        .where(eq(units.isActive, true))
+        .orderBy(units.name);
+      return result;
+    } catch (error) {
+      console.error("Error in getActiveUnits:", error);
       throw error;
     }
   }
@@ -1442,7 +1446,7 @@ export class Storage implements IStorage {
           .from(units)
           .where(eq(units.id, data.unitId))
           .limit(1);
-        
+
         if (unit.length > 0) {
           unitName = unit[0].abbreviation;
         }
@@ -2627,8 +2631,81 @@ export class Storage implements IStorage {
   }
 
   // Customer operations
-  async getCustomers(): Promise<Customer[]> {
-    return await this.db.select().from(customers).orderBy(customers.name);
+  async getCustomers(
+    limit?: number,
+    offset?: number,
+    search?: string,
+  ): Promise<{
+    items: Customer[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+  }> {
+    try {
+      const page = offset ? Math.floor(offset / (limit || 10)) + 1 : 1;
+      const itemsPerPage = limit || 10;
+      const searchTerm = search?.toLowerCase() || "";
+
+      let baseQuery = this.db
+        .select({
+          id: customers.id,
+          name: customers.name,
+          email: customers.email,
+          phone: customers.phone,
+          address: customers.address,
+          currentBalance: customers.currentBalance,
+          totalOrders: customers.totalOrders,
+          totalSpent: customers.totalSpent,
+          createdAt: customers.createdAt,
+          updatedAt: customers.updatedAt,
+        })
+        .from(customers);
+
+      let countQuery = this.db.select({ count: count() }).from(customers);
+
+      const conditions = [];
+
+      if (searchTerm) {
+        conditions.push(
+          or(
+            ilike(customers.name, `%${searchTerm}%`),
+            ilike(customers.email, `%${searchTerm}%`),
+            ilike(customers.phone, `%${searchTerm}%`),
+          ),
+        );
+      }
+
+      if (conditions.length > 0) {
+        baseQuery = baseQuery.where(and(...conditions));
+        countQuery = countQuery.where(and(...conditions));
+      }
+
+      const [items, totalResult] = await Promise.all([
+        baseQuery.orderBy(customers.name).limit(itemsPerPage).offset(offset || 0),
+        countQuery,
+      ]);
+
+      const totalCount = totalResult[0]?.count || 0;
+      const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+      return {
+        items,
+        totalCount,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: itemsPerPage,
+      };
+    } catch (error) {
+      console.error("❌ Error fetching customers:", error);
+      return {
+        items: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+        itemsPerPage: 10,
+      };
+    }
   }
 
   async getCustomerById(id: number): Promise<Customer | undefined> {
@@ -2643,7 +2720,7 @@ export class Storage implements IStorage {
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
     const [newCustomer] = await this.db
       .insert(customers)
-      .values(customer)
+      .values({ ...customer, currentBalance: '0', totalOrders: 0, totalSpent: '0', createdAt: new Date(), updatedAt: new Date() })
       .returning();
     return newCustomer;
   }
@@ -2665,12 +2742,97 @@ export class Storage implements IStorage {
   }
 
   // Party operations
-  async getParties(): Promise<Party[]> {
-    return await this.db.select().from(parties).orderBy(parties.name);
+  async getParties(
+    limit?: number,
+    offset?: number,
+    search?: string,
+  ): Promise<{
+    items: Party[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+  }> {
+    try {
+      const page = offset ? Math.floor(offset / (limit || 10)) + 1 : 1;
+      const itemsPerPage = limit || 10;
+      const searchTerm = search?.toLowerCase() || "";
+
+      let baseQuery = this.db
+        .select({
+          id: parties.id,
+          name: parties.name,
+          type: parties.type,
+          email: parties.email,
+          phone: parties.phone,
+          address: parties.address,
+          currentBalance: parties.currentBalance,
+          createdAt: parties.createdAt,
+          updatedAt: parties.updatedAt,
+        })
+        .from(parties);
+
+      let countQuery = this.db.select({ count: count() }).from(parties);
+
+      const conditions = [];
+
+      if (searchTerm) {
+        conditions.push(
+          or(
+            ilike(parties.name, `%${searchTerm}%`),
+            ilike(parties.email, `%${searchTerm}%`),
+            ilike(parties.phone, `%${searchTerm}%`),
+            ilike(parties.type, `%${searchTerm}%`),
+          ),
+        );
+      }
+
+      if (conditions.length > 0) {
+        baseQuery = baseQuery.where(and(...conditions));
+        countQuery = countQuery.where(and(...conditions));
+      }
+
+      const [items, totalResult] = await Promise.all([
+        baseQuery.orderBy(parties.name).limit(itemsPerPage).offset(offset || 0),
+        countQuery,
+      ]);
+
+      const totalCount = totalResult[0]?.count || 0;
+      const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+      return {
+        items,
+        totalCount,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: itemsPerPage,
+      };
+    } catch (error) {
+      console.error("❌ Error fetching parties:", error);
+      return {
+        items: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+        itemsPerPage: 10,
+      };
+    }
+  }
+
+  async getPartyById(id: number): Promise<Party | undefined> {
+    const result = await this.db
+      .select()
+      .from(parties)
+      .where(eq(parties.id, id))
+      .limit(1);
+    return result[0];
   }
 
   async createParty(party: InsertParty): Promise<Party> {
-    const [newParty] = await this.db.insert(parties).values(party).returning();
+    const [newParty] = await this.db
+      .insert(parties)
+      .values({ ...party, currentBalance: '0', createdAt: new Date(), updatedAt: new Date() })
+      .returning();
     return newParty;
   }
 
@@ -2685,6 +2847,154 @@ export class Storage implements IStorage {
 
   async deleteParty(id: number): Promise<void> {
     await this.db.delete(parties).where(eq(parties.id, id));
+  }
+
+  // Ledger Transaction Methods
+  async createLedgerTransaction(data: any): Promise<any> {
+    try {
+      console.log('Creating ledger transaction:', data);
+
+      const transactionData = {
+        customerOrPartyId: data.customerOrPartyId,
+        entityType: data.entityType,
+        transactionDate: new Date(data.transactionDate),
+        description: data.description,
+        referenceNumber: data.referenceNumber || null,
+        debitAmount: data.debitAmount?.toString() || '0',
+        creditAmount: data.creditAmount?.toString() || '0',
+        transactionType: data.transactionType,
+        paymentMethod: data.paymentMethod || null,
+        notes: data.notes || null,
+        createdBy: data.createdBy || 'system',
+        runningBalance: '0' // Will be calculated
+      };
+
+      const [newTransaction] = await this.db
+        .insert(ledgerTransactions)
+        .values(transactionData)
+        .returning();
+
+      // Recalculate running balance for the entity
+      await this.recalculateRunningBalance(data.customerOrPartyId, data.entityType);
+
+      console.log('✅ Ledger transaction created successfully');
+      return newTransaction;
+    } catch (error) {
+      console.error('❌ Error creating ledger transaction:', error);
+      throw error;
+    }
+  }
+
+  async getLedgerTransactions(
+    entityId: number,
+    entityType: "customer" | "party",
+    limit?: number,
+  ): Promise<any[]> {
+    try {
+      let query = this.db
+        .select()
+        .from(ledgerTransactions)
+        .where(
+          and(
+            eq(ledgerTransactions.customerOrPartyId, entityId),
+            eq(ledgerTransactions.entityType, entityType)
+          )
+        )
+        .orderBy(desc(ledgerTransactions.transactionDate), desc(ledgerTransactions.id));
+
+      if (limit) {
+        query = query.limit(limit);
+      }
+
+      const transactions = await query;
+      console.log(`✅ Found ${transactions.length} ledger transactions`);
+      return transactions;
+    } catch (error) {
+      console.error('❌ Error fetching ledger transactions:', error);
+      return [];
+    }
+  }
+
+  async updateLedgerTransaction(id: number, data: any): Promise<any> {
+    try {
+      const [updatedTransaction] = await this.db
+        .update(ledgerTransactions)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(ledgerTransactions.id, id))
+        .returning();
+
+      console.log('✅ Ledger transaction updated successfully');
+      return updatedTransaction;
+    } catch (error) {
+      console.error('❌ Error updating ledger transaction:', error);
+      throw error;
+    }
+  }
+
+  async deleteLedgerTransaction(id: number): Promise<void> {
+    try {
+      await this.db
+        .delete(ledgerTransactions)
+        .where(eq(ledgerTransactions.id, id));
+
+      console.log('✅ Ledger transaction deleted successfully');
+    } catch (error) {
+      console.error('❌ Error deleting ledger transaction:', error);
+      throw error;
+    }
+  }
+
+  async recalculateRunningBalance(
+    entityId: number,
+    entityType: "customer" | "party",
+  ): Promise<number> {
+    try {
+      // Get all transactions for this entity ordered by date and id
+      const transactions = await this.db
+        .select()
+        .from(ledgerTransactions)
+        .where(
+          and(
+            eq(ledgerTransactions.customerOrPartyId, entityId),
+            eq(ledgerTransactions.entityType, entityType)
+          )
+        )
+        .orderBy(ledgerTransactions.transactionDate, ledgerTransactions.id);
+
+      let runningBalance = 0;
+
+      // Update each transaction with correct running balance
+      for (const transaction of transactions) {
+        const debitAmount = parseFloat(transaction.debitAmount || '0');
+        const creditAmount = parseFloat(transaction.creditAmount || '0');
+
+        runningBalance += debitAmount - creditAmount;
+
+        await this.db
+          .update(ledgerTransactions)
+          .set({ runningBalance: runningBalance.toString() })
+          .where(eq(ledgerTransactions.id, transaction.id));
+      }
+
+      // Update the customer/party current balance
+      if (entityType === 'customer') {
+        await this.db
+          .update(customers)
+          .set({ currentBalance: runningBalance.toString() })
+          .where(eq(customers.id, entityId));
+      } else if (entityType === 'party') {
+        await this.db
+          .update(parties)
+          .set({ currentBalance: runningBalance.toString() })
+          .where(eq(parties.id, entityId));
+      }
+
+      console.log(`✅ Recalculated running balance for ${entityType} ${entityId}: ${runningBalance}`);
+      return runningBalance;
+    } catch (error) {
+      console.error('❌ Error recalculating running balance:', error);
+      throw error;
+    }
   }
 
   // Asset operations
@@ -3298,7 +3608,7 @@ export class Storage implements IStorage {
     await this.deleteOrder(id);
   }
 
-  // Enhanced notification system
+  // Notifications
   async getNotifications(userId?: string): Promise<any[]>;
   async getNotifications(
     userId?: string,
@@ -3601,7 +3911,7 @@ export class Storage implements IStorage {
         .insert(staff)
         .values(cleanData)
         .returning();
-      
+
       console.log('✅ Staff member created successfully:', newStaff.staffId);
       return newStaff;
     } catch (error) {
@@ -3617,7 +3927,7 @@ export class Storage implements IStorage {
     try {
       // Clean and format the data
       const cleanData = { ...staffData };
-      
+
       // Handle date fields properly
       if (cleanData.dateOfBirth) {
         cleanData.dateOfBirth = new Date(cleanData.dateOfBirth);
@@ -3625,7 +3935,7 @@ export class Storage implements IStorage {
       if (cleanData.hireDate) {
         cleanData.hireDate = new Date(cleanData.hireDate);
       }
-      
+
       // Always update the updatedAt field
       cleanData.updatedAt = new Date();
 
@@ -3636,11 +3946,11 @@ export class Storage implements IStorage {
         .set(cleanData)
         .where(eq(staff.id, id))
         .returning();
-      
+
       if (!updatedStaff) {
         throw new Error('Staff member not found');
       }
-      
+
       console.log('✅ Staff member updated successfully:', updatedStaff.staffId);
       return updatedStaff;
     } catch (error) {
