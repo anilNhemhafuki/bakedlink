@@ -253,10 +253,20 @@ export interface IStorage {
   getLoginAnalytics(startDate?: string, endDate?: string);
 
   // Staff management operations
-  getStaff(): Promise<Staff[]>;
+  getStaff(
+    limit?: number,
+    offset?: number,
+    search?: string,
+  ): Promise<{
+    items: Staff[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+  }>;
   getStaffById(id: number): Promise<Staff | undefined>;
-  createStaff(staff: InsertStaff): Promise<Staff>;
-  updateStaff(id: number, staff: Partial<InsertStaff>): Promise<Staff>;
+  createStaff(staffData: InsertStaff): Promise<Staff>;
+  updateStaff(id: number, staffData: Partial<InsertStaff>): Promise<Staff>;
   deleteStaff(id: number): Promise<void>;
   getStaffByStaffId(staffId: string): Promise<Staff | null>;
 
@@ -265,7 +275,15 @@ export interface IStorage {
     staffId?: number,
     startDate?: Date,
     endDate?: Date,
-  ): Promise<any[]>;
+    limit?: number,
+    offset?: number,
+  ): Promise<{
+    items: any[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+  }>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   updateAttendance(
     id: number,
@@ -276,7 +294,18 @@ export interface IStorage {
   clockOut(staffId: number): Promise<Attendance>;
 
   // Salary operations
-  getSalaryPayments(staffId?: number): Promise<any[]>;
+  getSalaryPayments(
+    staffId?: number,
+    limit?: number,
+    offset?: number,
+    search?: string,
+  ): Promise<{
+    items: any[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+  }>;
   createSalaryPayment(payment: InsertSalaryPayment): Promise<SalaryPayment>;
   updateSalaryPayment(
     id: number,
@@ -3434,8 +3463,7 @@ export class Storage implements IStorage {
 
   async getProductionScheduleByDate(date: string): Promise<any[]> {
     const targetDate = new Date(date);
-    const nextDay = new Date(targetDate);
-    nextDay.setDate(nextDay.getDate() + 1);
+    const nextDay = new Date(targetDate);nextDay.setDate(nextDay.getDate() + 1);
 
     return await this.db
       .select({
@@ -3872,10 +3900,18 @@ export class Storage implements IStorage {
 
   // Staff management operations
   async getStaff(): Promise<Staff[]> {
-    return await this.db
-      .select()
-      .from(staff)
-      .orderBy(staff.firstName, staff.lastName);
+    try {
+      const result = await this.db
+        .select()
+        .from(staff)
+        .orderBy(staff.firstName, staff.lastName);
+
+      console.log(`✅ Found ${result.length} staff members`);
+      return result;
+    } catch (error) {
+      console.error("❌ Error fetching staff:", error);
+      return [];
+    }
   }
 
   async getStaffById(id: number): Promise<Staff | undefined> {
@@ -3889,33 +3925,30 @@ export class Storage implements IStorage {
 
   async createStaff(staffData: InsertStaff): Promise<Staff> {
     try {
-      // Ensure required fields are present and properly formatted
-      const cleanData = {
+      console.log("Creating staff with data:", staffData);
+
+      // Clean the data to handle empty strings for numeric fields
+      const cleanedData = {
         ...staffData,
-        // Auto-generate staffId if not provided
-        staffId: staffData.staffId || `EMP${Date.now().toString().slice(-6)}`,
+        // Convert empty strings to null for numeric fields
+        salary: staffData.salary && staffData.salary !== '' ? staffData.salary : null,
+        hourlyRate: staffData.hourlyRate && staffData.hourlyRate !== '' ? staffData.hourlyRate : null,
         // Ensure dates are properly formatted
         dateOfBirth: staffData.dateOfBirth ? new Date(staffData.dateOfBirth) : null,
         hireDate: staffData.hireDate ? new Date(staffData.hireDate) : new Date(),
+        terminationDate: staffData.terminationDate ? new Date(staffData.terminationDate) : null,
         // Set default status if not provided
         status: staffData.status || 'active',
-        // Set default employment type if not provided
-        employmentType: staffData.employmentType || 'full-time',
+        // Set timestamps
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
-      console.log('Creating staff with data:', cleanData);
-
-      const [newStaff] = await this.db
-        .insert(staff)
-        .values(cleanData)
-        .returning();
-
-      console.log('✅ Staff member created successfully:', newStaff.staffId);
+      const [newStaff] = await this.db.insert(staff).values(cleanedData).returning();
+      console.log("Staff created successfully:", newStaff);
       return newStaff;
     } catch (error) {
-      console.error('❌ Error creating staff member:', error);
+      console.error("Error creating staff:", error);
       throw error;
     }
   }
@@ -3925,36 +3958,32 @@ export class Storage implements IStorage {
     staffData: Partial<InsertStaff>,
   ): Promise<Staff> {
     try {
-      // Clean and format the data
-      const cleanData = { ...staffData };
+      console.log("Updating staff with data:", staffData);
 
-      // Handle date fields properly
-      if (cleanData.dateOfBirth) {
-        cleanData.dateOfBirth = new Date(cleanData.dateOfBirth);
-      }
-      if (cleanData.hireDate) {
-        cleanData.hireDate = new Date(cleanData.hireDate);
-      }
-
-      // Always update the updatedAt field
-      cleanData.updatedAt = new Date();
-
-      console.log('Updating staff with data:', cleanData);
+      // Clean the data to handle empty strings for numeric fields
+      const cleanedData = {
+        ...staffData,
+        // Convert empty strings to null for numeric fields
+        salary: staffData.salary && staffData.salary !== '' ? staffData.salary : null,
+        hourlyRate: staffData.hourlyRate && staffData.hourlyRate !== '' ? staffData.hourlyRate : null,
+        // Ensure dates are properly formatted
+        dateOfBirth: staffData.dateOfBirth ? new Date(staffData.dateOfBirth) : null,
+        hireDate: staffData.hireDate ? new Date(staffData.hireDate) : null,
+        terminationDate: staffData.terminationDate ? new Date(staffData.terminationDate) : null,
+        // Set update timestamp
+        updatedAt: new Date(),
+      };
 
       const [updatedStaff] = await this.db
         .update(staff)
-        .set(cleanData)
+        .set(cleanedData)
         .where(eq(staff.id, id))
         .returning();
 
-      if (!updatedStaff) {
-        throw new Error('Staff member not found');
-      }
-
-      console.log('✅ Staff member updated successfully:', updatedStaff.staffId);
+      console.log("Staff updated successfully:", updatedStaff);
       return updatedStaff;
     } catch (error) {
-      console.error('❌ Error updating staff member:', error);
+      console.error("Error updating staff:", error);
       throw error;
     }
   }
@@ -3977,45 +4006,95 @@ export class Storage implements IStorage {
     staffId?: number,
     startDate?: Date,
     endDate?: Date,
-  ): Promise<any[]> {
-    let query = this.db
-      .select({
-        id: attendance.id,
-        staffId: attendance.staffId,
-        date: attendance.date,
-        clockIn: attendance.clockIn,
-        clockOut: attendance.clockOut,
-        breakStart: attendance.breakStart,
-        breakEnd: attendance.breakEnd,
-        totalHours: attendance.totalHours,
-        overtimeHours: attendance.overtimeHours,
-        status: attendance.status,
-        notes: attendance.notes,
-        approvedBy: attendance.approvedBy,
-        createdAt: attendance.createdAt,
-        staffName: sql<string>`CONCAT(${staff.firstName}, ' ', ${staff.lastName})`,
-        staffPosition: staff.position,
-      })
-      .from(attendance)
-      .leftJoin(staff, eq(attendance.staffId, staff.id))
-      .orderBy(desc(attendance.date));
+    limit?: number,
+    offset?: number,
+  ): Promise<{
+    items: any[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+  }> {
+    try {
+      const itemsPerPage = limit || 10;
+      const currentPage = offset ? Math.floor(offset / itemsPerPage) + 1 : 1;
 
-    const conditions = [];
-    if (staffId) {
-      conditions.push(eq(attendance.staffId, staffId));
-    }
-    if (startDate) {
-      conditions.push(gte(attendance.date, startDate));
-    }
-    if (endDate) {
-      conditions.push(lte(attendance.date, endDate));
-    }
+      let query = this.db
+        .select({
+          id: attendance.id,
+          staffId: attendance.staffId,
+          date: attendance.date,
+          clockIn: attendance.clockIn,
+          clockOut: attendance.clockOut,
+          breakStart: attendance.breakStart,
+          breakEnd: attendance.breakEnd,
+          totalHours: attendance.totalHours,
+          overtimeHours: attendance.overtimeHours,
+          status: attendance.status,
+          notes: attendance.notes,
+          approvedBy: attendance.approvedBy,
+          createdAt: attendance.createdAt,
+          updatedAt: attendance.updatedAt,
+          staffName: sql<string>`CONCAT(${staff.firstName}, ' ', ${staff.lastName})`,
+          staffPosition: staff.position,
+        })
+        .from(attendance)
+        .leftJoin(staff, eq(attendance.staffId, staff.id));
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
+      let countQuery = this.db
+        .select({ count: count() })
+        .from(attendance)
+        .leftJoin(staff, eq(attendance.staffId, staff.id));
 
-    return await query;
+      const conditions = [];
+
+      if (staffId) {
+        conditions.push(eq(attendance.staffId, staffId));
+      }
+
+      if (startDate) {
+        conditions.push(gte(attendance.date, startDate));
+      }
+
+      if (endDate) {
+        conditions.push(lte(attendance.date, endDate));
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+        countQuery = countQuery.where(and(...conditions));
+      }
+
+      // Get total count
+      const totalResult = await countQuery;
+      const totalCount = totalResult[0]?.count || 0;
+      const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+      // Apply pagination and ordering
+      const items = await query
+        .orderBy(desc(attendance.date), desc(attendance.clockIn))
+        .limit(itemsPerPage)
+        .offset(offset || 0);
+
+      console.log(`✅ Found ${items.length} attendance records (page ${currentPage} of ${totalPages})`);
+
+      return {
+        items,
+        totalCount,
+        totalPages,
+        currentPage,
+        itemsPerPage,
+      };
+    } catch (error) {
+      console.error("❌ Error fetching attendance:", error);
+      return {
+        items: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+        itemsPerPage: 10,
+      };
+    }
   }
 
   async createAttendance(
@@ -4109,38 +4188,104 @@ export class Storage implements IStorage {
   }
 
   // Salary operations
-  async getSalaryPayments(staffId?: number): Promise<any[]> {
-    let query = this.db
-      .select({
-        id: salaryPayments.id,
-        staffId: salaryPayments.staffId,
-        payPeriodStart: salaryPayments.payPeriodStart,
-        payPeriodEnd: salaryPayments.payPeriodEnd,
-        basicSalary: salaryPayments.basicSalary,
-        overtimePay: salaryPayments.overtimePay,
-        bonus: salaryPayments.bonus,
-        allowances: salaryPayments.allowances,
-        deductions: salaryPayments.deductions,
-        tax: salaryPayments.tax,
-        netPay: salaryPayments.netPay,
-        paymentDate: salaryPayments.paymentDate,
-        paymentMethod: salaryPayments.paymentMethod,
-        status: salaryPayments.status,
-        notes: salaryPayments.notes,
-        processedBy: salaryPayments.processedBy,
-        createdAt: salaryPayments.createdAt,
-        staffName: sql<string>`CONCAT(${staff.firstName}, ' ', ${staff.lastName})`,
-        staffPosition: staff.position,
-      })
-      .from(salaryPayments)
-      .leftJoin(staff, eq(salaryPayments.staffId, staff.id))
-      .orderBy(desc(salaryPayments.payPeriodEnd));
+  async getSalaryPayments(
+    staffId?: number,
+    limit?: number,
+    offset?: number,
+    search?: string,
+  ): Promise<{
+    items: any[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+  }> {
+    try {
+      const itemsPerPage = limit || 10;
+      const currentPage = offset ? Math.floor(offset / itemsPerPage) + 1 : 1;
 
-    if (staffId) {
-      query = query.where(eq(salaryPayments.staffId, staffId));
+      let query = this.db
+        .select({
+          id: salaryPayments.id,
+          staffId: salaryPayments.staffId,
+          payPeriodStart: salaryPayments.payPeriodStart,
+          payPeriodEnd: salaryPayments.payPeriodEnd,
+          basicSalary: salaryPayments.basicSalary,
+          overtimePay: salaryPayments.overtimePay,
+          bonus: salaryPayments.bonus,
+          allowances: salaryPayments.allowances,
+          deductions: salaryPayments.deductions,
+          tax: salaryPayments.tax,
+          netPay: salaryPayments.netPay,
+          paymentDate: salaryPayments.paymentDate,
+          paymentMethod: salaryPayments.paymentMethod,
+          status: salaryPayments.status,
+          notes: salaryPayments.notes,
+          processedBy: salaryPayments.processedBy,
+          createdAt: salaryPayments.createdAt,
+          updatedAt: salaryPayments.updatedAt,
+          staffName: sql<string>`CONCAT(${staff.firstName}, ' ', ${staff.lastName})`,
+          staffPosition: staff.position,
+        })
+        .from(salaryPayments)
+        .leftJoin(staff, eq(salaryPayments.staffId, staff.id));
+
+      let countQuery = this.db
+        .select({ count: count() })
+        .from(salaryPayments)
+        .leftJoin(staff, eq(salaryPayments.staffId, staff.id));
+
+      const conditions = [];
+
+      if (staffId) {
+        conditions.push(eq(salaryPayments.staffId, staffId));
+      }
+
+      if (search) {
+        conditions.push(
+          or(
+            ilike(staff.firstName, `%${search}%`),
+            ilike(staff.lastName, `%${search}%`),
+            ilike(staff.position, `%${search}%`),
+          ),
+        );
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+        countQuery = countQuery.where(and(...conditions));
+      }
+
+      // Get total count
+      const totalResult = await countQuery;
+      const totalCount = totalResult[0]?.count || 0;
+      const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+      // Apply pagination and ordering
+      const items = await query
+        .orderBy(desc(salaryPayments.payPeriodEnd))
+        .limit(itemsPerPage)
+        .offset(offset || 0);
+
+      console.log(`✅ Found ${items.length} salary payment records (page ${currentPage} of ${totalPages})`);
+
+      return {
+        items,
+        totalCount,
+        totalPages,
+        currentPage,
+        itemsPerPage,
+      };
+    } catch (error) {
+      console.error("❌ Error fetching salary payments:", error);
+      return {
+        items: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+        itemsPerPage: 10,
+      };
     }
-
-    return await query;
   }
 
   async createSalaryPayment(

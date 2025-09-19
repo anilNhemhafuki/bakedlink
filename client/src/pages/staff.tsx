@@ -35,11 +35,14 @@ import { useTableSort } from "@/hooks/useTableSort";
 import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
+import { Pagination, PaginationInfo, PageSizeSelector } from "@/components/ui/pagination";
 
 export default function StaffDirectory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [formData, setFormData] = useState({
     staffId: "",
     firstName: "",
@@ -68,13 +71,17 @@ export default function StaffDirectory() {
   const { toast } = useToast();
 
   const {
-    data: staff = [],
+    data: staffData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["/api/staff"],
-    queryFn: () => apiRequest("GET", "/api/staff"),
+    queryKey: ["/api/staff", currentPage, pageSize, searchQuery],
+    queryFn: () => apiRequest("GET", `/api/staff?page=${currentPage}&limit=${pageSize}&search=${encodeURIComponent(searchQuery)}`),
   });
+
+  const staff = staffData?.items || [];
+  const totalItems = staffData?.totalCount || 0;
+  const totalPages = staffData?.totalPages || 0;
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -89,6 +96,7 @@ export default function StaffDirectory() {
       queryClient.invalidateQueries({ queryKey: ["/api/staff"] });
       setIsDialogOpen(false);
       resetForm();
+      setCurrentPage(1); // Reset to first page
     },
     onError: (error: any) => {
       toast({
@@ -131,6 +139,10 @@ export default function StaffDirectory() {
         description: "Staff member deleted successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/staff"] });
+      // If we're on the last page and it becomes empty, go to previous page
+      if (staff.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
     },
     onError: (error: any) => {
       toast({
@@ -314,19 +326,23 @@ export default function StaffDirectory() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  // Ensure staff is an array before filtering
-  const staffArray = Array.isArray(staff) ? staff : [];
-  const filteredStaff = staffArray.filter((member: any) =>
-    `${member.firstName} ${member.lastName} ${member.position} ${member.department}`
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase()),
-  );
-
   // Add sorting functionality
   const { sortedData, sortConfig, requestSort } = useTableSort(
-    filteredStaff,
+    staff,
     "firstName",
   );
+
+  // Handle search with debouncing
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  // Handle page size change
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -710,7 +726,7 @@ export default function StaffDirectory() {
           <SearchBar
             placeholder="Search staff members..."
             value={searchQuery}
-            onChange={setSearchQuery}
+            onChange={handleSearchChange}
             className="w-full"
           />
         </div>
@@ -719,7 +735,21 @@ export default function StaffDirectory() {
       {/* Staff Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Staff Members ({sortedData.length})</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Staff Members</CardTitle>
+            <div className="flex items-center space-x-4">
+              <PageSizeSelector 
+                pageSize={pageSize} 
+                onPageSizeChange={handlePageSizeChange}
+                options={[5, 10, 20, 50]}
+              />
+              <PaginationInfo
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -882,6 +912,16 @@ export default function StaffDirectory() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          
+          {!isLoading && totalPages > 1 && (
+            <div className="mt-4 flex justify-center">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </div>
           )}
         </CardContent>

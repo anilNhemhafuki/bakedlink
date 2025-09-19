@@ -20,7 +20,7 @@ localPort = 34733
 externalPort = 3000
 
 [workflows]
-runButton = "Project"
+runButton = "Fixed Application Server"
 
 [[workflows.workflow]]
 name = "Project"
@@ -134,6 +134,19 @@ args = "sleep 3"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "echo \"🚀 Starting fresh development server...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Fixed Application Server"
+author = 47702866
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🔧 Starting fixed application server...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

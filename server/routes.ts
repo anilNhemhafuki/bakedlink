@@ -1666,8 +1666,14 @@ router.post('/cache/clear', requireAuth, async (req, res) => {
 router.get('/staff', async (req, res) => {
   try {
     console.log('👥 Fetching staff members...');
-    const result = await storage.getStaff();
-    console.log(`✅ Found ${result.length} staff members`);
+    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = req.query.search as string || '';
+    const offset = (page - 1) * limit;
+
+    const result = await storage.getStaff(limit, offset, search);
+    console.log(`✅ Found ${result.items.length} staff members (page ${result.currentPage} of ${result.totalPages})`);
     res.json(result);
   } catch (error) {
     console.error('❌ Error fetching staff:', error);
@@ -1937,9 +1943,12 @@ router.get('/attendance', async (req, res) => {
     const staffId = req.query.staffId ? parseInt(req.query.staffId as string) : undefined;
     const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
     const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
 
-    const result = await storage.getAttendance(staffId, startDate, endDate);
-    console.log(`✅ Found ${result.length} attendance records`);
+    const result = await storage.getAttendance(staffId, startDate, endDate, limit, offset);
+    console.log(`✅ Found ${result.items.length} attendance records (page ${result.currentPage} of ${result.totalPages})`);
     res.json(result);
   } catch (error) {
     console.error('❌ Error fetching attendance:', error);
@@ -2073,8 +2082,13 @@ router.get('/salary-payments', async (req, res) => {
   try {
     console.log('💰 Fetching salary payments...');
     const staffId = req.query.staffId ? parseInt(req.query.staffId as string) : undefined;
-    const result = await storage.getSalaryPayments(staffId);
-    console.log(`✅ Found ${result.length} salary payments`);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = req.query.search as string || '';
+    const offset = (page - 1) * limit;
+
+    const result = await storage.getSalaryPayments(staffId, limit, offset, search);
+    console.log(`✅ Found ${result.items.length} salary payments (page ${result.currentPage} of ${result.totalPages})`);
     res.json(result);
   } catch (error) {
     console.error('❌ Error fetching salary payments:', error);
