@@ -186,6 +186,51 @@ export default function ExpireProducts() {
       !isUnauthorizedError(error) && failureCount < 3,
   });
 
+  // Define helper functions first
+  const handleSuccess = (msg: string) => {
+    setIsDialogOpen(false);
+    resetForm();
+    queryClient.invalidateQueries({ queryKey: ["expire-products"] });
+    queryClient.invalidateQueries({ queryKey: ["expire-products-summary"] });
+    toast({ title: "Success", description: msg });
+  };
+
+  const handleError = (
+    error: unknown,
+    variables: any,
+    context: unknown,
+  ) => {
+    console.error("Mutation error:", error);
+
+    let message = "Failed to process request.";
+
+    // Safely extract message
+    if (error && typeof error === "object") {
+      const err = error as Record<string, any>;
+      if (err.response?.data?.message) {
+        message = err.response.data.message;
+      } else if (err.message) {
+        message = err.message;
+      }
+    }
+
+    if (isUnauthorizedError(error)) {
+      toast({
+        title: "Session Expired",
+        description: "Redirecting to login...",
+        variant: "destructive",
+      });
+      setTimeout(() => (window.location.href = "/login"), 1000);
+      return;
+    }
+
+    toast({
+      title: "Error",
+      description: message,
+      variant: "destructive",
+    });
+  };
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/expire-products", data),
@@ -319,50 +364,6 @@ export default function ExpireProducts() {
 
   const handleDelete = (id: number) => {
     deleteMutation.mutate(id);
-  };
-
-  const handleSuccess = (msg: string) => {
-    setIsDialogOpen(false);
-    resetForm();
-    queryClient.invalidateQueries({ queryKey: ["expire-products"] });
-    queryClient.invalidateQueries({ queryKey: ["expire-products-summary"] });
-    toast({ title: "Success", description: msg });
-  };
-
-  const handleError = (
-    error: unknown, // Correct type for error
-    variables: any,
-    context: unknown,
-  ) => {
-    console.error("Mutation error:", error);
-
-    let message = "Failed to process request.";
-
-    // Safely extract message
-    if (error && typeof error === "object") {
-      const err = error as Record<string, any>;
-      if (err.response?.data?.message) {
-        message = err.response.data.message;
-      } else if (err.message) {
-        message = err.message;
-      }
-    }
-
-    if (isUnauthorizedError(error)) {
-      toast({
-        title: "Session Expired",
-        description: "Redirecting to login...",
-        variant: "destructive",
-      });
-      setTimeout(() => (window.location.href = "/login"), 1000);
-      return;
-    }
-
-    toast({
-      title: "Error",
-      description: message,
-      variant: "destructive",
-    });
   };
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
