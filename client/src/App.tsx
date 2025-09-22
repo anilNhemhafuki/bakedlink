@@ -1,4 +1,3 @@
-
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -42,6 +41,8 @@ import Ingredients from "@/pages/ingredients";
 import Units from "@/pages/units";
 import LabelPrinting from "@/pages/label-printing";
 import Recipes from "@/pages/recipes";
+import ExpireProducts from "@/pages/expire-products";
+
 
 import Staff from "@/pages/staff";
 import Attendance from "@/pages/attendance";
@@ -142,7 +143,7 @@ function AuthenticatedApp({
 
   // Super Admin gets unrestricted access - no ProtectedRoute wrapper needed
   const isSuperAdmin = user?.role === "super_admin";
-  
+
   // Component wrapper that conditionally adds protection
   const RouteWrapper = ({ children, resource, action }: { children: React.ReactNode, resource: string, action: "read" | "write" | "read_write" }) => {
     if (isSuperAdmin) {
@@ -196,6 +197,22 @@ function AuthenticatedApp({
               component={() => (
                 <RouteWrapper resource="production" action="read">
                   <LabelPrinting />
+                </RouteWrapper>
+              )}
+            />
+            <Route
+              path="/expire-products"
+              component={() => (
+                <RouteWrapper resource="products" action="read">
+                  <ExpireProducts />
+                </RouteWrapper>
+              )}
+            />
+            <Route
+              path="/units"
+              component={() => (
+                <RouteWrapper resource="units" action="read">
+                  <Units />
                 </RouteWrapper>
               )}
             />

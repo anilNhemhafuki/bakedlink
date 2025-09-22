@@ -45,6 +45,7 @@ import {
   TrendingUp,
   Gauge,
   Home,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Collapsible,
@@ -159,7 +160,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       'fas fa-chart-line text-base': TrendingUp,
       'fas fa-tachometer-alt text-base': Gauge,
     };
-    
+
     return iconMap[iconString] || Home;
   };
 

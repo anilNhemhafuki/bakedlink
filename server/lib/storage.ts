@@ -111,6 +111,8 @@ import {
   branches,
   type Branch,
   type InsertBranch,
+  expiredProducts, // Import the new schema
+  dailyExpirySummary, // Import the new schema
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
 import fs from "fs";
@@ -244,7 +246,7 @@ export interface IStorage {
   updateSettings(settingsData: any): Promise<any>;
   saveSettings(settingsData: any): Promise<any>;
   updateOrCreateSetting(key: string, value: string): Promise<any>;
-  saveCompanySettings(settings: any): Promise<void>;
+  saveCompanySettings(settingsData: any): Promise<void>;
   getSetting(key: string): Promise<string | null>;
 
   // Analytics operations
@@ -521,6 +523,15 @@ export interface IStorage {
   updateSystemPrice(price: number): Promise<void>;
   getPricingSettings(): Promise<any>;
   updatePricingSettings(pricingData: any): Promise<void>;
+
+  // Expired Products Management
+  getExpiredProducts(date?: string): Promise<any[]>;
+  createExpiredProduct(data: any): Promise<any>;
+  updateExpiredProduct(id: number, data: any): Promise<any>;
+  deleteExpiredProduct(id: number): Promise<void>;
+  getDailyExpirySummary(date: string): Promise<any>;
+  closeDayExpiry(date: string, closedBy: string): Promise<any>;
+  reopenDayExpiry(date: string): Promise<any>;
 }
 
 export class Storage implements IStorage {
@@ -2117,7 +2128,7 @@ export class Storage implements IStorage {
             granted: sql<boolean>`true`,
           })
           .from(permissions)
-          .where(sql`${permissions.resource} != 'super_admin'`)
+          .where(sql`${permissions.resource} != 'users'`)
           .orderBy(permissions.resource, permissions.action);
       }
 
@@ -2908,6 +2919,11 @@ export class Storage implements IStorage {
     entityId: number,
     entityType: "customer" | "party",
     limit?: number,
+  ): Promise<any[]>;
+  async getLedgerTransactions(
+    entityId: number,
+    entityType: "customer" | "party",
+    limit?: number,
   ): Promise<any[]> {
     try {
       let query = this.db
@@ -3598,6 +3614,7 @@ export class Storage implements IStorage {
   }
 
   // Media operations
+  async getMediaItems(): Promise<any[]>;
   async getMediaItems(): Promise<any[]> {
     return [];
   }
@@ -3614,10 +3631,12 @@ export class Storage implements IStorage {
     // Media deletion functionality
   }
 
+  async getBills(): Promise<any[]>;
   async getBills(): Promise<any[]> {
     return await this.getOrders();
   }
 
+  async createBill(billData: any): Promise<any>;
   async createBill(billData: any): Promise<any> {
     return await this.createOrder(billData);
   }
@@ -5107,6 +5126,7 @@ export class Storage implements IStorage {
   }
 
   // Branch Management methods
+  async getBranches(): Promise<Branch[]>;
   async getBranches(): Promise<Branch[]> {
     try {
       const result = await this.db
@@ -5197,6 +5217,7 @@ export class Storage implements IStorage {
     }
   }
 
+  async getUsersWithBranches(): Promise<any[]>;
   async getUsersWithBranches(): Promise<any[]> {
     try {
       const result = await this.db
@@ -5340,6 +5361,253 @@ export class Storage implements IStorage {
       console.log('✅ Pricing settings updated successfully');
     } catch (error) {
       console.error('Error updating pricing settings:', error);
+      throw error;
+    }
+  }
+
+  // Expired Products Management
+  async getExpiredProducts(date?: string): Promise<any[]> {
+    try {
+      console.log('📦 Fetching expired products...');
+
+      let query = this.db.select().from(expiredProducts);
+
+      if (date) {
+        query = query.where(eq(expiredProducts.expiryDate, date));
+      }
+
+      const result = await query.orderBy(desc(expiredProducts.createdAt));
+      console.log(`✅ Found ${result.length} expired products`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error fetching expired products:', error);
+      return [];
+    }
+  }
+
+  async createExpiredProduct(data: any): Promise<any> {
+    try {
+      console.log('💾 Creating expired product entry...');
+
+      // Get next serial number for the day
+      const today = data.expiryDate || new Date().toISOString().split('T')[0];
+      const existingToday = await this.db.select({ count: sql<number>`count(*)` })
+        .from(expiredProducts)
+        .where(eq(expiredProducts.expiryDate, today));
+
+      const serialNumber = (existingToday[0]?.count || 0) + 1;
+
+      // Calculate amount
+      const amount = parseFloat(data.quantity) * parseFloat(data.ratePerUnit);
+
+      const expiredProductData = {
+        serialNumber,
+        productId: parseInt(data.productId),
+        productName: data.productName,
+        quantity: data.quantity,
+        unitId: parseInt(data.unitId),
+        unitName: data.unitName,
+        ratePerUnit: data.ratePerUnit,
+        amount: amount.toString(),
+        expiryDate: today,
+        notes: data.notes || null,
+        createdBy: data.createdBy || 'system',
+        isDayClosed: false, // Default to not closed
+      };
+
+      const result = await this.db.insert(expiredProducts).values(expiredProductData).returning();
+
+      console.log('✅ Expired product created successfully');
+      return result[0];
+    } catch (error) {
+      console.error('❌ Error creating expired product:', error);
+      throw error;
+    }
+  }
+
+  async updateExpiredProduct(id: number, data: any): Promise<any> {
+    try {
+      console.log('💾 Updating expired product:', id);
+
+      // Recalculate amount if quantity or rate changed
+      const updateData = { ...data };
+      if (data.quantity && data.ratePerUnit) {
+        updateData.amount = (parseFloat(data.quantity) * parseFloat(data.ratePerUnit)).toString();
+      }
+
+      const result = await this.db.update(expiredProducts)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(expiredProducts.id, id))
+        .returning();
+
+      if (result.length === 0) {
+        throw new Error('Expired product not found');
+      }
+
+      console.log('✅ Expired product updated successfully');
+      return result[0];
+    } catch (error) {
+      console.error('❌ Error updating expired product:', error);
+      throw error;
+    }
+  }
+
+  async deleteExpiredProduct(id: number): Promise<void> {
+    try {
+      console.log('🗑️ Deleting expired product:', id);
+
+      await this.db.delete(expiredProducts).where(eq(expiredProducts.id, id));
+
+      console.log('✅ Expired product deleted successfully');
+    } catch (error) {
+      console.error('❌ Error deleting expired product:', error);
+      throw error;
+    }
+  }
+
+  async getDailyExpirySummary(date: string): Promise<any> {
+    try {
+      console.log(`📊 Fetching daily expiry summary for ${date}...`);
+
+      // First, check if the day is closed
+      const closedSummary = await this.db.select()
+        .from(dailyExpirySummary)
+        .where(and(eq(dailyExpirySummary.summaryDate, date), eq(dailyExpirySummary.isDayClosed, true)))
+        .limit(1);
+
+      if (closedSummary.length > 0) {
+        return closedSummary[0];
+      }
+
+      // If not closed, calculate summary from expired products
+      const expiredToday = await this.db.select({
+        totalItems: sql<number>`count(*)`,
+        totalQuantity: sql<number>`sum(cast(${expiredProducts.quantity} as decimal))`,
+        totalLoss: sql<number>`sum(cast(${expiredProducts.amount} as decimal))`,
+      })
+      .from(expiredProducts)
+      .where(eq(expiredProducts.expiryDate, date));
+
+      const calculatedSummary = expiredToday[0] || {
+        totalItems: 0,
+        totalQuantity: 0,
+        totalLoss: 0,
+      };
+
+      // Return the calculated summary, marking it as not closed
+      return {
+        summaryDate: date,
+        totalItems: calculatedSummary.totalItems,
+        totalQuantity: calculatedSummary.totalQuantity?.toString() || '0',
+        totalLoss: calculatedSummary.totalLoss?.toString() || '0',
+        isDayClosed: false,
+      };
+    } catch (error) {
+      console.error('❌ Error fetching daily expiry summary:', error);
+      return {
+        summaryDate: date,
+        totalItems: 0,
+        totalQuantity: '0',
+        totalLoss: '0',
+        isDayClosed: false,
+      };
+    }
+  }
+
+  async closeDayExpiry(date: string, closedBy: string): Promise<any> {
+    try {
+      console.log(`🔒 Closing expiry day for ${date}...`);
+
+      // Calculate final summary
+      const expiredToday = await this.db.select({
+        totalItems: sql<number>`count(*)`,
+        totalQuantity: sql<number>`sum(cast(${expiredProducts.quantity} as decimal))`,
+        totalLoss: sql<number>`sum(cast(${expiredProducts.amount} as decimal))`,
+      })
+      .from(expiredProducts)
+      .where(eq(expiredProducts.expiryDate, date));
+
+      const summary = expiredToday[0] || {
+        totalItems: 0,
+        totalQuantity: 0,
+        totalLoss: 0,
+      };
+
+      // Check if summary already exists and is not closed
+      const existingSummary = await this.db.select()
+        .from(dailyExpirySummary)
+        .where(eq(dailyExpirySummary.summaryDate, date))
+        .limit(1);
+
+      let result;
+      if (existingSummary.length > 0 && existingSummary[0].isDayClosed) {
+        // If day is already closed, return an error or specific message
+        throw new Error(`Day for ${date} has already been closed.`);
+      } else if (existingSummary.length > 0) {
+        // Update existing summary
+        result = await this.db.update(dailyExpirySummary)
+          .set({
+            totalItems: summary.totalItems,
+            totalQuantity: summary.totalQuantity?.toString() || '0',
+            totalLoss: summary.totalLoss?.toString() || '0',
+            isDayClosed: true,
+            closedBy,
+            closedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(dailyExpirySummary.summaryDate, date))
+          .returning();
+      } else {
+        // Create new summary
+        result = await this.db.insert(dailyExpirySummary)
+          .values({
+            summaryDate: date,
+            totalItems: summary.totalItems,
+            totalQuantity: summary.totalQuantity?.toString() || '0',
+            totalLoss: summary.totalLoss?.toString() || '0',
+            isDayClosed: true,
+            closedBy,
+            closedAt: new Date(),
+          })
+          .returning();
+      }
+
+      // Mark all expired products for this day as closed
+      await this.db.update(expiredProducts)
+        .set({ isDayClosed: true })
+        .where(eq(expiredProducts.expiryDate, date));
+
+      console.log('✅ Day closed successfully for expired products');
+      return result[0];
+    } catch (error) {
+      console.error('❌ Error closing expiry day:', error);
+      throw error;
+    }
+  }
+
+  async reopenDayExpiry(date: string): Promise<any> {
+    try {
+      console.log(`🔓 Reopening expiry day for ${date}...`);
+
+      // Update summary to mark as not closed
+      await this.db.update(dailyExpirySummary)
+        .set({
+          isDayClosed: false,
+          closedBy: null,
+          closedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(dailyExpirySummary.summaryDate, date));
+
+      // Mark all expired products for this day as not closed
+      await this.db.update(expiredProducts)
+        .set({ isDayClosed: false })
+        .where(eq(expiredProducts.expiryDate, date));
+
+      console.log('✅ Day reopened successfully for expired products');
+      return { success: true, message: 'Day reopened successfully' };
+    } catch (error) {
+      console.error('❌ Error reopening expiry day:', error);
       throw error;
     }
   }

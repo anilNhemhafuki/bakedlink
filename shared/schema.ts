@@ -452,6 +452,42 @@ export const auditLogs = pgTable("audit_logs", {
   errorMessage: text("error_message"),
 });
 
+// Expired Products table
+export const expiredProducts = pgTable("expired_products", {
+  id: serial("id").primaryKey(),
+  serialNumber: integer("serial_number").notNull(), // Daily auto-incremented S.N
+  productId: integer("product_id").notNull(),
+  productName: varchar("product_name", { length: 200 }).notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
+  unitId: integer("unit_id").notNull(),
+  unitName: varchar("unit_name", { length: 50 }).notNull(),
+  ratePerUnit: numeric("rate_per_unit", { precision: 10, scale: 2 }).notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(), // quantity × rate
+  expiryDate: date("expiry_date").notNull(), // Date when expiry was recorded
+  isDayClosed: boolean("is_day_closed").default(false),
+  branchId: integer("branch_id"),
+  notes: text("notes"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Daily Expiry Summary table
+export const dailyExpirySummary = pgTable("daily_expiry_summary", {
+  id: serial("id").primaryKey(),
+  summaryDate: date("summary_date").notNull(),
+  totalItems: integer("total_items").notNull(),
+  totalQuantity: numeric("total_quantity", { precision: 10, scale: 2 }).notNull(),
+  totalLoss: numeric("total_loss", { precision: 12, scale: 2 }).notNull(),
+  isDayClosed: boolean("is_day_closed").default(false),
+  closedBy: varchar("closed_by"),
+  closedAt: timestamp("closed_at"),
+  branchId: integer("branch_id"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Staff management tables
 export const staff = pgTable("staff", {
   id: serial("id").primaryKey(),
@@ -683,6 +719,10 @@ export type StaffSchedule = typeof staffSchedules.$inferSelect;
 export type InsertStaffSchedule = typeof staffSchedules.$insert;
 export type ProductionScheduleLabel = typeof productionScheduleLabels.$inferSelect;
 export type InsertProductionScheduleLabel = typeof productionScheduleLabels.$inferInsert;
+export type ExpiredProduct = typeof expiredProducts.$inferSelect;
+export type InsertExpiredProduct = typeof expiredProducts.$inferInsert;
+export type DailyExpirySummary = typeof dailyExpirySummary.$inferSelect;
+export type InsertDailyExpirySummary = typeof dailyExpirySummary.$inferInsert;
 
 // Insert schemas for validation
 export const insertBranchSchema = createInsertSchema(branches).omit({
@@ -831,4 +871,16 @@ export const insertSaleSchema = createInsertSchema(sales).omit({
 export const insertSaleItemSchema = createInsertSchema(saleItems).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertExpiredProductSchema = createInsertSchema(expiredProducts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDailyExpirySummarySchema = createInsertSchema(dailyExpirySummary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });

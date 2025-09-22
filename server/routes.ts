@@ -2684,6 +2684,253 @@ router.delete('/parties/:id', requireAuth, async (req, res) => {
   }
 });
 
+// Expired Products Management Routes
+router.get('/expire-products', async (req, res) => {
+  try {
+    console.log('📦 Fetching expired products...');
+    const date = req.query.date as string;
+    const result = await storage.getExpiredProducts(date);
+    console.log(`✅ Found ${result.length} expired products`);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('❌ Error fetching expired products:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch expired products',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/expire-products', requireAuth, async (req, res) => {
+  try {
+    console.log('💾 Creating expired product entry:', req.body);
+    
+    // Validate required fields
+    if (!req.body.productId || !req.body.quantity || !req.body.ratePerUnit) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Product, quantity, and rate per unit are required',
+        success: false
+      });
+    }
+
+    const result = await storage.createExpiredProduct({
+      ...req.body,
+      createdBy: req.session?.user?.id || 'system'
+    });
+
+    // Log the expired product creation
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'CREATE',
+        'expired_products',
+        { 
+          productName: req.body.productName,
+          quantity: req.body.quantity,
+          amount: result.amount,
+          expiryDate: result.expiryDate
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add expired product notification
+    addNotification({
+      type: "inventory",
+      title: "Product Expired",
+      description: `${req.body.productName} - ${req.body.quantity} ${req.body.unitName} expired (Loss: ${result.amount})`,
+      priority: "high",
+      actionUrl: "/expire-products"
+    });
+
+    console.log('✅ Expired product entry created successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error creating expired product entry:', error);
+    res.status(400).json({ 
+      error: 'Failed to create expired product entry',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.put('/expire-products/:id', requireAuth, async (req, res) => {
+  try {
+    const expiredProductId = parseInt(req.params.id);
+    console.log('💾 Updating expired product:', expiredProductId);
+    
+    const result = await storage.updateExpiredProduct(expiredProductId, req.body);
+
+    // Log the expired product update
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'UPDATE',
+        'expired_products',
+        { 
+          expiredProductId,
+          updates: req.body
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    console.log('✅ Expired product updated successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error updating expired product:', error);
+    res.status(400).json({ 
+      error: 'Failed to update expired product',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.delete('/expire-products/:id', requireAuth, async (req, res) => {
+  try {
+    const expiredProductId = parseInt(req.params.id);
+    console.log('🗑️ Deleting expired product:', expiredProductId);
+    
+    await storage.deleteExpiredProduct(expiredProductId);
+
+    // Log the expired product deletion
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'DELETE',
+        'expired_products',
+        { expiredProductId },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    console.log('✅ Expired product deleted successfully');
+    res.json({ success: true, message: 'Expired product deleted successfully' });
+  } catch (error: any) {
+    console.error('❌ Error deleting expired product:', error);
+    res.status(400).json({ 
+      error: 'Failed to delete expired product',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.get('/expire-products/summary/:date', async (req, res) => {
+  try {
+    const date = req.params.date;
+    console.log(`📊 Fetching daily expiry summary for ${date}...`);
+    
+    const result = await storage.getDailyExpirySummary(date);
+    console.log('✅ Daily expiry summary fetched successfully');
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('❌ Error fetching daily expiry summary:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch daily expiry summary',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/expire-products/close-day', requireAuth, async (req, res) => {
+  try {
+    const { date } = req.body;
+    const closedBy = req.session?.user?.id || 'system';
+    
+    console.log(`🔒 Closing expiry day for ${date}...`);
+    
+    const result = await storage.closeDayExpiry(date, closedBy);
+
+    // Log the day closure
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'UPDATE',
+        'expired_products',
+        { 
+          action: 'close_day',
+          date,
+          totalLoss: result.totalLoss
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add day closure notification
+    addNotification({
+      type: "system",
+      title: "Expiry Day Closed",
+      description: `Day closed for ${date}. Total loss: ${result.totalLoss}`,
+      priority: "medium",
+      actionUrl: "/expire-products"
+    });
+
+    console.log('✅ Expiry day closed successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error closing expiry day:', error);
+    res.status(400).json({ 
+      error: 'Failed to close expiry day',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
+router.post('/expire-products/reopen-day', requireAuth, async (req, res) => {
+  try {
+    const { date } = req.body;
+    
+    console.log(`🔓 Reopening expiry day for ${date}...`);
+    
+    const result = await storage.reopenDayExpiry(date);
+
+    // Log the day reopening (admin only)
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        'UPDATE',
+        'expired_products',
+        { 
+          action: 'reopen_day',
+          date
+        },
+        req.ip,
+        req.get('User-Agent')
+      );
+    }
+
+    // Add day reopening notification
+    addNotification({
+      type: "system",
+      title: "Expiry Day Reopened",
+      description: `Day reopened for ${date}. New entries can be added.`,
+      priority: "medium",
+      actionUrl: "/expire-products"
+    });
+
+    console.log('✅ Expiry day reopened successfully');
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('❌ Error reopening expiry day:', error);
+    res.status(400).json({ 
+      error: 'Failed to reopen expiry day',
+      message: error.message,
+      success: false 
+    });
+  }
+});
+
 // Ledger Transaction Routes
 router.post('/ledger', requireAuth, async (req, res) => {
   try {
