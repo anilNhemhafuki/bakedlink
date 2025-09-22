@@ -9,7 +9,7 @@ import { initializeUnits } from "./init-units"; // Import initializeUnits
 import { securityMonitor } from "./securityMonitor";
 import { alertService } from "./alertService";
 import path from "path"; // Import path module
-import * as storage from "./storage"; // Assuming storage module handles database operations
+import * as storage from "./lib/storage"; // Assuming storage module handles database operations
 
 const app = express();
 
@@ -59,7 +59,10 @@ async function startServer() {
         await initializeUnits();
         console.log("✅ Units initialized successfully");
       } catch (error) {
-        console.warn("⚠️ Unit initialization failed:", (error as Error).message);
+        console.warn(
+          "⚠️ Unit initialization failed:",
+          (error as Error).message,
+        );
       }
     }
 
@@ -72,7 +75,10 @@ async function startServer() {
         });
         console.log("🛡️ Security monitoring initialized");
       } catch (error) {
-        console.warn("⚠️ Security monitoring initialization failed:", (error as Error).message);
+        console.warn(
+          "⚠️ Security monitoring initialization failed:",
+          (error as Error).message,
+        );
       }
     }
 
@@ -80,28 +86,30 @@ async function startServer() {
     await setupAuth(app);
 
     // API Routes - ensure all API routes are properly mounted
-    app.use('/api', router);
+    app.use("/api", router);
 
     // Handle static file serving for uploads
-    app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
+    app.use(
+      "/uploads",
+      express.static(path.join(process.cwd(), "public", "uploads")),
+    );
 
     // Global error handler for express
     app.use((error: any, req: any, res: any, next: any) => {
-      console.error('🚨 Express Error:', error);
+      console.error("🚨 Express Error:", error);
 
       // If it's an API route, return JSON
-      if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
+      if (req.originalUrl && req.originalUrl.startsWith("/api/")) {
         return res.status(500).json({
-          error: 'Internal server error',
-          message: error.message || 'An unexpected error occurred',
-          success: false
+          error: "Internal server error",
+          message: error.message || "An unexpected error occurred",
+          success: false,
         });
       }
 
       // For non-API routes, you might want to render an error page
-      res.status(500).send('Internal Server Error');
+      res.status(500).send("Internal Server Error");
     });
-
 
     const server = createServer(app);
 
@@ -115,21 +123,21 @@ async function startServer() {
 
     server.listen(port, "0.0.0.0", () => {
       // Initialize default permissions and users
-      console.log('🔑 Setting up authentication...');
+      console.log("🔑 Setting up authentication...");
       // These functions are assumed to exist in the storage module
       // Ensure storage module is correctly imported and implemented
       // await storage.ensureDefaultAdmin();
       // await storage.initializeDefaultPermissions();
 
       // Initialize default pricing settings
-      console.log('💰 Initializing pricing settings...');
+      console.log("💰 Initializing pricing settings...");
       // Assuming storage.getSystemPrice() retrieves the current system price
       // If it doesn't exist, it should return a default value or throw an error
       // For demonstration, let's assume it returns a number or undefined
       const currentPrice = storage.getSystemPrice(); // This might need to be async if it hits the DB
       console.log(`💰 System price initialized: $${currentPrice}`);
 
-      console.log('✅ Server running on http://0.0.0.0:5000');
+      console.log("✅ Server running on http://0.0.0.0:5000");
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);
