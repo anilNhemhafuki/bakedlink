@@ -9,7 +9,7 @@ import { initializeUnits } from "./init-units"; // Import initializeUnits
 import { securityMonitor } from "./securityMonitor";
 import { alertService } from "./alertService";
 import path from "path"; // Import path module
-import * as storage from "./lib/storage"; // Assuming storage module handles database operations
+import { storage } from "./lib/storage"; // Import storage instance
 
 const app = express();
 
@@ -121,22 +121,21 @@ async function startServer() {
       serveStatic(app);
     }
 
+    // Initialize default pricing settings
+    if (dbConnected) {
+      try {
+        console.log("💰 Initializing pricing settings...");
+        const currentPrice = await storage.getSystemPrice();
+        console.log(`💰 System price initialized: $${currentPrice}`);
+      } catch (error) {
+        console.warn(
+          "⚠️ Pricing settings initialization failed:",
+          (error as Error).message,
+        );
+      }
+    }
+
     server.listen(port, "0.0.0.0", () => {
-      // Initialize default permissions and users
-      console.log("🔑 Setting up authentication...");
-      // These functions are assumed to exist in the storage module
-      // Ensure storage module is correctly imported and implemented
-      // await storage.ensureDefaultAdmin();
-      // await storage.initializeDefaultPermissions();
-
-      // Initialize default pricing settings
-      console.log("💰 Initializing pricing settings...");
-      // Assuming storage.getSystemPrice() retrieves the current system price
-      // If it doesn't exist, it should return a default value or throw an error
-      // For demonstration, let's assume it returns a number or undefined
-      const currentPrice = storage.getSystemPrice(); // This might need to be async if it hits the DB
-      console.log(`💰 System price initialized: $${currentPrice}`);
-
       console.log("✅ Server running on http://0.0.0.0:5000");
     });
   } catch (error) {
