@@ -1002,7 +1002,7 @@ export default function Parties() {
                 </TableHeader>
                 <TableBody>
                   {paginatedParties && paginatedParties.length > 0 ? (
-                  paginatedParties.map((party: any) => {
+                    paginatedParties.map((party: any) => {
                     const balanceInfo = getBalanceBadge(party.currentBalance);
                     return (
                       <TableRow key={party.id}>
@@ -1109,24 +1109,24 @@ export default function Parties() {
                         </TableCell>
                       </TableRow>
                     );
-                  })}
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-12">
+                        <div className="flex flex-col items-center justify-center">
+                          <Building className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                          <h3 className="text-lg font-semibold mb-2">No parties found</h3>
+                          <p className="text-muted-foreground mb-4">
+                            {searchQuery || typeFilter !== "all"
+                              ? 'No parties match your search criteria.'
+                              : 'Start by adding your first party.'}
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
-              ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12">
-                      <div className="flex flex-col items-center justify-center">
-                        <Building className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold mb-2">No parties found</h3>
-                        <p className="text-muted-foreground mb-4">
-                          {searchQuery || typeFilter !== "all"
-                            ? 'No parties match your search criteria.'
-                            : 'Start by adding your first party.'}
-                        </p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
 
               {/* Pagination Controls */}
               {filteredParties.length > 0 && (
