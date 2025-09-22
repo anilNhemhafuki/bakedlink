@@ -7,7 +7,7 @@ async function createUser() {
   try {
     console.log("👤 Creating new user...");
     
-    const userEmail = "test@bakesewa.com";
+    const userEmail = "test@bakersoft.com";
     const userPassword = "test123";
     const hashedPassword = await bcrypt.hash(userPassword, 10);
     

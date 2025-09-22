@@ -211,28 +211,28 @@ export async function initializeCompleteSystem() {
     if (existingUsers.length === 0) {
       const defaultUsers = [
         {
-          email: "superadmin@merobakesoft.com",
+          email: "superadmin@bakersoft.com",
           firstName: "Super",
           lastName: "Admin",
           role: "super_admin",
           password: await bcrypt.hash("admin123", 10),
         },
         {
-          email: "admin@merobakesoft.com",
+          email: "admin@bakersoft.com",
           firstName: "System",
           lastName: "Admin",
           role: "admin",
           password: await bcrypt.hash("admin123", 10),
         },
         {
-          email: "manager@merobakesoft.com",
+          email: "manager@bakersoft.com",
           firstName: "Bakery",
           lastName: "Manager",
           role: "manager",
           password: await bcrypt.hash("manager123", 10),
         },
         {
-          email: "staff@merobakesoft.com",
+          email: "staff@bakersoft.com",
           firstName: "Staff",
           lastName: "Member",
           role: "staff",
@@ -250,10 +250,10 @@ export async function initializeCompleteSystem() {
     console.log("🎉 COMPLETE SYSTEM INITIALIZATION SUCCESSFUL");
     console.log("=".repeat(60));
     console.log("🔑 LOGIN CREDENTIALS:");
-    console.log("📧 Super Admin: superadmin@merobakesoft.com / admin123");
-    console.log("📧 Admin: admin@merobakesoft.com / admin123");
-    console.log("📧 Manager: manager@merobakesoft.com / manager123");
-    console.log("📧 Staff: staff@merobakesoft.com / staff123");
+    console.log("📧 Super Admin: superadmin@bakersoft.com / admin123");
+    console.log("📧 Admin: admin@bakersoft.com / admin123");
+    console.log("📧 Manager: manager@bakersoft.com / manager123");
+    console.log("📧 Staff: staff@bakersoft.com / staff123");
     console.log("=".repeat(60));
 
   } catch (error) {

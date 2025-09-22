@@ -29,16 +29,16 @@ export async function initializeDatabase() {
     console.log("\n" + "=".repeat(60));
     console.log("🔑 SYSTEM LOGIN CREDENTIALS");
     console.log("=".repeat(60));
-    console.log("📧 Super Admin: superadmin@merobakersoft.com");
+    console.log("📧 Super Admin: superadmin@bakersoft.com");
     console.log("🔐 Password: superadmin123");
     console.log("---");
-    console.log("📧 Admin: admin@merobakersoft.com");
+    console.log("📧 Admin: admin@bakersoft.com");
     console.log("🔐 Password: admin123");
     console.log("---");
-    console.log("📧 Manager: manager@merobakersoft.com");
+    console.log("📧 Manager: manager@bakersoft.com");
     console.log("🔐 Password: manager123");
     console.log("---");
-    console.log("📧 Staff: staff@merobakersoft.com");
+    console.log("📧 Staff: staff@bakersoft.com");
     console.log("🔐 Password: staff123");
     console.log("=".repeat(60));
   } catch (error) {

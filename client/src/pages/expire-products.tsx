@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +17,6 @@ import {
 import {
   Dialog,
   DialogContent,
-
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -41,26 +42,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
-import {
-  Plus,
-  Calendar,
-  TrendingDown,
-  AlertTriangle,
-  Edit,
-  Trash2,
-  Lock,
-  Unlock,
-  Package,
-  DollarSign,
-  Calculator,
-  Clock,
-} from "lucide-react";
 
 interface ExpiredProduct {
   id: number;
@@ -131,7 +117,6 @@ export default function ExpireProducts() {
       try {
         const res = await apiRequest("GET", "/api/units");
         const allUnits = res?.data || res || [];
-        // Filter to only show packet and kg units
         return allUnits.filter(
           (unit: any) =>
             unit.name?.toLowerCase().includes("packet") ||
@@ -149,30 +134,27 @@ export default function ExpireProducts() {
   });
 
   // Fetch expired products for selected date
-  const {
-    data: expiredProducts = [],
-    isLoading: expiredProductsLoading,
-    refetch: refetchExpiredProducts,
-  } = useQuery({
-    queryKey: ["expire-products", selectedDate],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest(
-          "GET",
-          `/api/expire-products?date=${selectedDate}`,
-        );
-        return res?.data || [];
-      } catch (error) {
-        console.error("Failed to fetch expired products:", error);
-        return [];
-      }
-    },
-    retry: (failureCount, error) =>
-      !isUnauthorizedError(error) && failureCount < 3,
-  });
+  const { data: expiredProducts = [], isLoading: expiredProductsLoading } =
+    useQuery({
+      queryKey: ["expire-products", selectedDate],
+      queryFn: async () => {
+        try {
+          const res = await apiRequest(
+            "GET",
+            `/api/expire-products?date=${selectedDate}`,
+          );
+          return res?.data || [];
+        } catch (error) {
+          console.error("Failed to fetch expired products:", error);
+          return [];
+        }
+      },
+      retry: (failureCount, error) =>
+        !isUnauthorizedError(error) && failureCount < 3,
+    });
 
   // Fetch daily summary
-  const { data: dailySummary, refetch: refetchSummary } = useQuery({
+  const { data: dailySummary } = useQuery({
     queryKey: ["expire-products-summary", selectedDate],
     queryFn: async () => {
       try {
@@ -190,147 +172,65 @@ export default function ExpireProducts() {
       !isUnauthorizedError(error) && failureCount < 3,
   });
 
-  // Create expired product mutation
+  // Create mutation
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest("POST", "/api/expire-products", data);
-    },
+    mutationFn: (data: any) => apiRequest("POST", "/api/expire-products", data),
     onSuccess: () => {
-      setIsDialogOpen(false);
-      setEditingProduct(null);
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ["expire-products"] });
-      queryClient.invalidateQueries({ queryKey: ["expire-products-summary"] });
-      toast({
-        title: "Success",
-        description: "Expired product entry created successfully",
-      });
+      handleSuccess("Expired product entry created successfully");
     },
-    onError: (error: any) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "Session expired. Redirecting to login...",
-          variant: "destructive",
-        });
-        setTimeout(() => (window.location.href = "/api/login"), 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description:
-          error?.response?.data?.message ||
-          "Failed to create expired product entry",
-        variant: "destructive",
-      });
-    },
+    onError: handleError,
   });
 
-  // Update expired product mutation
+  // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return await apiRequest("PUT", `/api/expire-products/${id}`, data);
-    },
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      apiRequest("PUT", `/api/expire-products/${id}`, data),
     onSuccess: () => {
-      setIsDialogOpen(false);
-      setEditingProduct(null);
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ["expire-products"] });
-      queryClient.invalidateQueries({ queryKey: ["expire-products-summary"] });
-      toast({
-        title: "Success",
-        description: "Expired product entry updated successfully",
-      });
+      handleSuccess("Expired product entry updated successfully");
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description:
-          error?.response?.data?.message ||
-          "Failed to update expired product entry",
-        variant: "destructive",
-      });
-    },
+    onError: handleError,
   });
 
-  // Delete expired product mutation
+  // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest("DELETE", `/api/expire-products/${id}`);
-    },
+    mutationFn: (id: number) =>
+      apiRequest("DELETE", `/api/expire-products/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expire-products"] });
-      queryClient.invalidateQueries({ queryKey: ["expire-products-summary"] });
-      toast({
-        title: "Success",
-        description: "Expired product entry deleted successfully",
-      });
+      handleSuccess("Expired product entry deleted successfully");
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: "Failed to delete expired product entry",
-        variant: "destructive",
-      });
-    },
+    onError: handleError,
   });
 
   // Close day mutation
   const closeDayMutation = useMutation({
-    mutationFn: async (date: string) => {
-      return await apiRequest("POST", "/api/expire-products/close-day", {
-        date,
-      });
-    },
+    mutationFn: (date: string) =>
+      apiRequest("POST", "/api/expire-products/close-day", { date }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expire-products"] });
-      queryClient.invalidateQueries({ queryKey: ["expire-products-summary"] });
-      toast({
-        title: "Success",
-        description: "Day closed successfully. No more entries can be added.",
-      });
+      handleSuccess("Day closed successfully.");
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: "Failed to close day",
-        variant: "destructive",
-      });
-    },
+    onError: handleError,
   });
 
   // Reopen day mutation
   const reopenDayMutation = useMutation({
-    mutationFn: async (date: string) => {
-      return await apiRequest("POST", "/api/expire-products/reopen-day", {
-        date,
-      });
-    },
+    mutationFn: (date: string) =>
+      apiRequest("POST", "/api/expire-products/reopen-day", { date }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expire-products"] });
-      queryClient.invalidateQueries({ queryKey: ["expire-products-summary"] });
-      toast({
-        title: "Success",
-        description: "Day reopened successfully. New entries can be added.",
-      });
+      handleSuccess("Day reopened successfully.");
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: "Failed to reopen day",
-        variant: "destructive",
-      });
-    },
+    onError: handleError,
   });
 
-  // Calculate amount when quantity or rate changes
+  const isDayClosed = dailySummary?.isDayClosed || false;
+  const canModify = !isDayClosed;
+
+  // Calculate amount
   const calculatedAmount = useMemo(() => {
-    const quantity = parseFloat(formData.quantity) || 0;
+    const qty = parseFloat(formData.quantity) || 0;
     const rate = parseFloat(formData.ratePerUnit) || 0;
-    return quantity * rate;
+    return qty * rate;
   }, [formData.quantity, formData.ratePerUnit]);
 
-  // Reset form
   const resetForm = () => {
     setFormData({
       productId: "",
@@ -339,9 +239,9 @@ export default function ExpireProducts() {
       ratePerUnit: "",
       notes: "",
     });
+    setEditingProduct(null);
   };
 
-  // Handle edit
   const handleEdit = (product: ExpiredProduct) => {
     setEditingProduct(product);
     setFormData({
@@ -354,7 +254,6 @@ export default function ExpireProducts() {
     setIsDialogOpen(true);
   };
 
-  // Handle submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -366,7 +265,7 @@ export default function ExpireProducts() {
     ) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields",
+        description: "Please fill all required fields.",
         variant: "destructive",
       });
       return;
@@ -379,45 +278,87 @@ export default function ExpireProducts() {
 
     if (!selectedProduct || !selectedUnit) {
       toast({
-        title: "Validation Error",
-        description: "Please select valid product and unit",
+        title: "Invalid Selection",
+        description: "Please select valid product and unit.",
         variant: "destructive",
       });
       return;
     }
 
-    const data = {
-      productId: formData.productId,
+    const payload = {
+      productId: parseInt(formData.productId),
       productName: selectedProduct.name,
-      quantity: formData.quantity,
-      unitId: formData.unitId,
+      quantity: parseFloat(formData.quantity),
+      unitId: parseInt(formData.unitId),
       unitName: selectedUnit.name,
-      ratePerUnit: formData.ratePerUnit,
+      ratePerUnit: parseFloat(formData.ratePerUnit),
       expiryDate: selectedDate,
       notes: formData.notes,
     };
 
     if (editingProduct) {
-      updateMutation.mutate({ id: editingProduct.id, data });
+      updateMutation.mutate({ id: editingProduct.id, data: payload });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(payload);
     }
   };
 
-  const isDayClosed = dailySummary?.isDayClosed || false;
-  const canModify = !isDayClosed;
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id);
+  };
 
+  const handleSuccess = (msg: string) => {
+    setIsDialogOpen(false);
+    resetForm();
+    queryClient.invalidateQueries({ queryKey: ["expire-products"] });
+    queryClient.invalidateQueries({ queryKey: ["expire-products-summary"] });
+    toast({ title: "Success", description: msg });
+  };
+
+  const handleError = (
+    error: unknown, // Correct type for error
+    variables: any,
+    context: unknown,
+  ) => {
+    console.error("Mutation error:", error);
+
+    let message = "Failed to process request.";
+
+    // Safely extract message
+    if (error && typeof error === "object") {
+      const err = error as Record<string, any>;
+      if (err.response?.data?.message) {
+        message = err.response.data.message;
+      } else if (err.message) {
+        message = err.message;
+      }
+    }
+
+    if (isUnauthorizedError(error)) {
+      toast({
+        title: "Session Expired",
+        description: "Redirecting to login...",
+        variant: "destructive",
+      });
+      setTimeout(() => (window.location.href = "/login"), 1000);
+      return;
+    }
+
+    toast({
+      title: "Error",
+      description: message,
+      variant: "destructive",
+    });
+  };
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Package className="h-6 w-6 text-red-500" />
-            Expire Products
+          <h1 className="text-2xl font-bold flex items-center gap-2 text-gray-800">
+            📦 Expire Products
           </h1>
-          <p className="text-gray-600 flex items-center gap-2 mt-1">
-            <Calendar className="h-4 w-4" />
+          <p className="text-gray-600 mt-1">
             {format(new Date(selectedDate), "EEEE, MMMM do, yyyy")}
           </p>
         </div>
@@ -426,21 +367,151 @@ export default function ExpireProducts() {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-auto"
+            className="w-auto border-gray-300"
           />
           {canModify && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button
                   onClick={() => {
-                    setEditingProduct(null);
                     resetForm();
                   }}
+                  className="bg-red-600 hover:bg-red-700 text-white"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Expired Product
+                  + Add Expired Product
                 </Button>
               </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingProduct ? "Edit" : "Add"} Expired Product
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Product *</Label>
+                      <Select
+                        value={formData.productId}
+                        onValueChange={(val) =>
+                          setFormData((prev) => ({ ...prev, productId: val }))
+                        }
+                        disabled={productsLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((p) => (
+                            <SelectItem key={p.id} value={p.id.toString()}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label>Unit *</Label>
+                      <Select
+                        value={formData.unitId}
+                        onValueChange={(val) =>
+                          setFormData((prev) => ({ ...prev, unitId: val }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {units.map((u) => (
+                            <SelectItem key={u.id} value={u.id.toString()}>
+                              {u.name} ({u.abbreviation})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label>Quantity *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.quantity}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            quantity: e.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Rate per Unit *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.ratePerUnit}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            ratePerUnit: e.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Calculated Amount</Label>
+                    <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                      <span className="text-lg font-semibold text-red-700">
+                        {formatCurrency(calculatedAmount)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={formData.notes}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          notes: e.target.value,
+                        }))
+                      }
+                      rows={3}
+                      placeholder="Optional details..."
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={
+                        createMutation.isPending || updateMutation.isPending
+                      }
+                    >
+                      {createMutation.isPending || updateMutation.isPending
+                        ? "Saving..."
+                        : "Save"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
             </Dialog>
           )}
         </div>
@@ -452,12 +523,24 @@ export default function ExpireProducts() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Items</p>
-                <p className="text-2xl font-bold">
+                <p className="text-sm text-gray-600">Total Items</p>
+                <p className="text-xl font-bold">
                   {dailySummary?.totalItems || 0}
                 </p>
               </div>
-              <Package className="h-8 w-8 text-blue-500" />
+              <svg
+                className="w-8 h-8 text-blue-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M20 7l-8-4-8 4m16 0v10l-8 4-8-4V7"
+                />
+              </svg>
             </div>
           </CardContent>
         </Card>
@@ -466,14 +549,24 @@ export default function ExpireProducts() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total Quantity
-                </p>
-                <p className="text-2xl font-bold">
+                <p className="text-sm text-gray-600">Total Quantity</p>
+                <p className="text-xl font-bold">
                   {dailySummary?.totalQuantity || 0}
                 </p>
               </div>
-              <Calculator className="h-8 w-8 text-orange-500" />
+              <svg
+                className="w-8 h-8 text-orange-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
             </div>
           </CardContent>
         </Card>
@@ -482,12 +575,24 @@ export default function ExpireProducts() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Loss</p>
-                <p className="text-2xl font-bold text-red-600">
+                <p className="text-sm text-gray-600">Total Loss</p>
+                <p className="text-xl font-bold text-red-600">
                   {formatCurrency(dailySummary?.totalLoss || 0)}
                 </p>
               </div>
-              <TrendingDown className="h-8 w-8 text-red-500" />
+              <svg
+                className="w-8 h-8 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                />
+              </svg>
             </div>
           </CardContent>
         </Card>
@@ -496,44 +601,55 @@ export default function ExpireProducts() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Day Status</p>
-                <Badge
-                  variant={isDayClosed ? "destructive" : "default"}
-                  className="mt-1"
-                >
-                  {isDayClosed ? (
-                    <>
-                      <Lock className="h-3 w-3 mr-1" />
-                      Closed
-                    </>
-                  ) : (
-                    <>
-                      <Clock className="h-3 w-3 mr-1" />
-                      Open
-                    </>
-                  )}
+                <p className="text-sm text-gray-600">Status</p>
+                <Badge variant={isDayClosed ? "destructive" : "default"}>
+                  {isDayClosed ? "Closed" : "Open"}
                 </Badge>
               </div>
               {isDayClosed ? (
-                <Lock className="h-8 w-8 text-red-500" />
+                <svg
+                  className="w-8 h-8 text-red-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
               ) : (
-                <Clock className="h-8 w-8 text-green-500" />
+                <svg
+                  className="w-8 h-8 text-green-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
               )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Day Actions */}
+      {/* Day Management */}
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold">Day Management</h3>
+              <h3 className="font-semibold">Day Status</h3>
               <p className="text-sm text-gray-600">
                 {isDayClosed
-                  ? "Day is closed. No new entries can be added unless reopened by admin."
-                  : "Day is open. Click 'Close Day' when finished entering expired products."}
+                  ? "This day is closed. No new entries allowed."
+                  : "You can add or edit expired products."}
               </p>
             </div>
             <div className="flex gap-2">
@@ -544,19 +660,15 @@ export default function ExpireProducts() {
                       variant="destructive"
                       disabled={expiredProducts.length === 0}
                     >
-                      <Lock className="h-4 w-4 mr-2" />
-                      Close Day
+                      🔒 Close Day
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Close Expiry Day</AlertDialogTitle>
+                      <AlertDialogTitle>Close Day?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to close the day for{" "}
-                        {format(new Date(selectedDate), "MMMM do, yyyy")}? This
-                        will calculate the final loss summary and prevent
-                        further entries unless reopened by an admin.
-                        <br />
+                        Are you sure you want to close this day? You won't be
+                        able to add more entries unless reopened.
                         <br />
                         <strong>
                           Total Loss:{" "}
@@ -568,11 +680,10 @@ export default function ExpireProducts() {
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => closeDayMutation.mutate(selectedDate)}
-                        disabled={closeDayMutation.isPending}
                       >
                         {closeDayMutation.isPending
                           ? "Closing..."
-                          : "Close Day"}
+                          : "Yes, Close"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -580,30 +691,24 @@ export default function ExpireProducts() {
               ) : (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline">
-                      <Unlock className="h-4 w-4 mr-2" />
-                      Reopen Day
-                    </Button>
+                    <Button variant="outline">🔓 Reopen Day</Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Reopen Expiry Day</AlertDialogTitle>
+                      <AlertDialogTitle>Reopen Day?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to reopen the day for{" "}
-                        {format(new Date(selectedDate), "MMMM do, yyyy")}? This
-                        will allow new entries to be added and modify the loss
-                        calculations.
+                        This will allow adding or editing expired product
+                        entries again.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => reopenDayMutation.mutate(selectedDate)}
-                        disabled={reopenDayMutation.isPending}
                       >
                         {reopenDayMutation.isPending
                           ? "Reopening..."
-                          : "Reopen Day"}
+                          : "Yes, Reopen"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -617,243 +722,80 @@ export default function ExpireProducts() {
       {/* Expired Products Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>
-              Expired Products -{" "}
-              {format(new Date(selectedDate), "MMM dd, yyyy")}
-            </span>
-            <Badge variant="secondary">
-              {expiredProducts.length}{" "}
-              {expiredProducts.length === 1 ? "item" : "items"}
-            </Badge>
+          <CardTitle>
+            Expired Products{" "}
+            <Badge variant="secondary">{expiredProducts.length} items</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {expiredProductsLoading ? (
-            <LoadingSpinner message="Loading expired products..." />
+            <LoadingSpinner message="Loading..." />
           ) : expiredProducts.length === 0 ? (
-            <div className="text-center py-8">
-              <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                No expired products recorded
-              </h3>
-              <p className="text-gray-500 mb-4">
-                {canModify
-                  ? "Start by adding your first expired product for today"
-                  : "No products were expired on this day"}
-              </p>
+            <div className="text-center py-8 text-gray-500">
+              No expired products recorded.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-16">S.N</TableHead>
-                    <TableHead>Product Name</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead className="text-right">Rate per Unit</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Notes</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>S.N</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead className="text-right">Rate</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Notes</TableHead>
+                  {canModify && <TableHead>Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {expiredProducts.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.serialNumber}</TableCell>
+                    <TableCell className="font-medium">
+                      {item.productName}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.quantity}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{item.unitName}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(item.ratePerUnit)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-red-600">
+                      {formatCurrency(item.amount)}
+                    </TableCell>
+                    <TableCell>{item.notes || "—"}</TableCell>
                     {canModify && (
-                      <TableHead className="w-24">Actions</TableHead>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEdit(item)}
+                          >
+                            ✏️
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(item.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            🗑️
+                          </Button>
+                        </div>
+                      </TableCell>
                     )}
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {expiredProducts.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell className="font-medium">
-                        {product.serialNumber}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {product.productName}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {product.quantity}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{product.unitName}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(product.ratePerUnit)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-red-600">
-                        {formatCurrency(product.amount)}
-                      </TableCell>
-                      <TableCell>{product.notes || "—"}</TableCell>
-                      {canModify && (
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(product)}
-                              title="Edit"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <DeleteConfirmationDialog
-                              trigger={
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              }
-                              title="Delete Expired Product Entry"
-                              itemName={product.productName}
-                              onConfirm={() =>
-                                deleteMutation.mutate(product.id)
-                              }
-                              isLoading={deleteMutation.isPending}
-                            />
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
-
-      {/* Add/Edit Dialog */}
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            {editingProduct ? "Edit Expired Product" : "Add Expired Product"}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="productId">Product Name *</Label>
-              <Select
-                value={formData.productId}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, productId: value }))
-                }
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id.toString()}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="unitId">Unit *</Label>
-              <Select
-                value={formData.unitId}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, unitId: value }))
-                }
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {units.map((unit) => (
-                    <SelectItem key={unit.id} value={unit.id.toString()}>
-                      {unit.name} ({unit.abbreviation})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="quantity">Quantity *</Label>
-              <Input
-                id="quantity"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.quantity}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, quantity: e.target.value }))
-                }
-                placeholder="Enter quantity"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="ratePerUnit">Rate per Unit *</Label>
-              <Input
-                id="ratePerUnit"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.ratePerUnit}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    ratePerUnit: e.target.value,
-                  }))
-                }
-                placeholder="Enter rate per unit"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label>Amount (Auto-calculated)</Label>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <span className="text-lg font-semibold text-red-600">
-                {formatCurrency(calculatedAmount)}
-              </span>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, notes: e.target.value }))
-              }
-              placeholder="Optional notes about the expired product"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
-              {createMutation.isPending || updateMutation.isPending
-                ? "Saving..."
-                : editingProduct
-                  ? "Update"
-                  : "Add Product"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
     </div>
   );
 }
