@@ -96,6 +96,10 @@ export default function Customers() {
     refetch
   } = useQuery({
     queryKey: ["/api/customers"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/customers");
+      return Array.isArray(response) ? response : [];
+    },
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
@@ -362,12 +366,12 @@ export default function Customers() {
     });
   };
 
-  const filteredCustomers = (customers as any[]).filter(
+  const filteredCustomers = Array.isArray(customers) ? customers.filter(
     (customer: any) =>
       customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.phone?.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  ) : [];
 
   // Add sorting functionality
   const { sortedData, sortConfig, requestSort } = useTableSort(filteredCustomers, 'name');

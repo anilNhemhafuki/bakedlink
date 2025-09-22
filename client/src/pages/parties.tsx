@@ -105,12 +105,25 @@ export default function Parties() {
 
   
 
+  const {
+    data: parties = [],
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ["/api/parties"],
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
+      return failureCount < 3;
+    },
+  });
+
   // Check URL parameters for auto-opening ledger
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const viewLedgerParam = urlParams.get("viewLedger");
 
-    if (viewLedgerParam && parties.length > 0) {
+    if (viewLedgerParam && Array.isArray(parties) && parties.length > 0) {
       const partyId = parseInt(viewLedgerParam);
       const party = parties.find((p: any) => p.id === partyId);
 
@@ -432,14 +445,14 @@ export default function Parties() {
     "service_provider",
   ];
 
-  const filteredParties = (parties as any[]).filter((party: any) => {
+  const filteredParties = Array.isArray(parties) ? parties.filter((party: any) => {
     const matchesSearch =
       party.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       party.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       party.contactPerson?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === "all" || party.type === typeFilter;
     return matchesSearch && matchesType;
-  });
+  }) : [];
 
   // Add sorting functionality
   const { sortedData, sortConfig, requestSort } = useTableSort(
@@ -515,19 +528,6 @@ export default function Parties() {
     }
     console.error("Error loading parties:", error);
   }
-
-  const {
-    data: parties = [],
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: ["/api/parties"],
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
-  });
 
   const createPartyMutation = useMutation({
     mutationFn: async (partyData: any) => {

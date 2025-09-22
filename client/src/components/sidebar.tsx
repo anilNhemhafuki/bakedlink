@@ -271,6 +271,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
             icon: "fas fa-seedling",
             resource: "inventory",
           },
+          {
+            name: "Expire Products",
+            href: "/expire-products",
+            icon: "fas fa-calendar-times",
+            resource: "inventory",
+          },
         ],
       },
       {

@@ -482,7 +482,7 @@ export default function Purchases() {
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
                     <SelectContent>
-                      {parties.map((party: any) => (
+                      {Array.isArray(parties) && parties.map((party: any) => (
                         <SelectItem key={party.id} value={party.id.toString()}>
                           {party.name}
                         </SelectItem>
@@ -1016,7 +1016,6 @@ export default function Purchases() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
-                      {/* Use a proper icon like Package or ShoppingBag */}
                       <div className="flex flex-col items-center text-muted-foreground">
                         <ShoppingBag className="h-12 w-12 mb-4 opacity-50" />
                         <h3 className="text-lg font-semibold mb-2">
@@ -1207,7 +1206,7 @@ export default function Purchases() {
                     <SelectValue placeholder="Select supplier" />
                   </SelectTrigger>
                   <SelectContent>
-                    {parties.map((party: any) => (
+                    {Array.isArray(parties) && parties.map((party: any) => (
                       <SelectItem key={party.id} value={party.id.toString()}>
                         {party.name}
                       </SelectItem>

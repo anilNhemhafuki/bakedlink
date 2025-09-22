@@ -49,6 +49,8 @@ interface Sale {
   status: string;
   createdAt: string;
   items: SaleItem[];
+  phoneNumber?: string; // Added for detail view
+  companyName?: string; // Added for detail view
 }
 
 interface SaleItem {
@@ -147,7 +149,7 @@ export default function Sales() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate form
     if (!saleForm.customerName.trim()) {
       toast({
@@ -199,7 +201,7 @@ export default function Sales() {
       status: "completed",
       items: validItems,
     };
-    
+
     createSaleMutation.mutate(saleData);
   };
 
@@ -545,18 +547,15 @@ export default function Sales() {
                       <SelectValue placeholder="Select customer" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(customers || []).map(
-                        (
-                          customer: any, // Ensure customers is an array
-                        ) => (
-                          <SelectItem
-                            key={customer.id}
-                            value={customer.id.toString()}
-                          >
-                            {customer.name}
-                          </SelectItem>
-                        ),
-                      )}
+                      {Array.isArray(customers) && customers.map((customer: any) => (
+                            <SelectItem
+                              key={customer.id}
+                              value={customer.id.toString()}
+                            >
+                              {customer.name}
+                            </SelectItem>
+                          )
+                        )}
                     </SelectContent>
                   </Select>
                 </div>
