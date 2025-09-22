@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +15,7 @@ import {
 import {
   Dialog,
   DialogContent,
+
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -89,9 +89,13 @@ interface DailyExpirySummary {
 }
 
 export default function ExpireProducts() {
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [selectedDate, setSelectedDate] = useState(
+    format(new Date(), "yyyy-MM-dd"),
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<ExpiredProduct | null>(null);
+  const [editingProduct, setEditingProduct] = useState<ExpiredProduct | null>(
+    null,
+  );
   const [formData, setFormData] = useState({
     productId: "",
     quantity: "",
@@ -99,7 +103,7 @@ export default function ExpireProducts() {
     ratePerUnit: "",
     notes: "",
   });
-  
+
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
   const queryClient = useQueryClient();
@@ -128,11 +132,12 @@ export default function ExpireProducts() {
         const res = await apiRequest("GET", "/api/units");
         const allUnits = res?.data || res || [];
         // Filter to only show packet and kg units
-        return allUnits.filter((unit: any) => 
-          unit.name?.toLowerCase().includes("packet") || 
-          unit.name?.toLowerCase().includes("kilogram") ||
-          unit.abbreviation?.toLowerCase() === "kg" ||
-          unit.abbreviation?.toLowerCase() === "pkt"
+        return allUnits.filter(
+          (unit: any) =>
+            unit.name?.toLowerCase().includes("packet") ||
+            unit.name?.toLowerCase().includes("kilogram") ||
+            unit.abbreviation?.toLowerCase() === "kg" ||
+            unit.abbreviation?.toLowerCase() === "pkt",
         );
       } catch (error) {
         console.error("Failed to fetch units:", error);
@@ -152,7 +157,10 @@ export default function ExpireProducts() {
     queryKey: ["expire-products", selectedDate],
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", `/api/expire-products?date=${selectedDate}`);
+        const res = await apiRequest(
+          "GET",
+          `/api/expire-products?date=${selectedDate}`,
+        );
         return res?.data || [];
       } catch (error) {
         console.error("Failed to fetch expired products:", error);
@@ -168,7 +176,10 @@ export default function ExpireProducts() {
     queryKey: ["expire-products-summary", selectedDate],
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", `/api/expire-products/summary/${selectedDate}`);
+        const res = await apiRequest(
+          "GET",
+          `/api/expire-products/summary/${selectedDate}`,
+        );
         return res?.data || null;
       } catch (error) {
         console.error("Failed to fetch daily summary:", error);
@@ -207,7 +218,9 @@ export default function ExpireProducts() {
       }
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to create expired product entry",
+        description:
+          error?.response?.data?.message ||
+          "Failed to create expired product entry",
         variant: "destructive",
       });
     },
@@ -232,7 +245,9 @@ export default function ExpireProducts() {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to update expired product entry",
+        description:
+          error?.response?.data?.message ||
+          "Failed to update expired product entry",
         variant: "destructive",
       });
     },
@@ -263,7 +278,9 @@ export default function ExpireProducts() {
   // Close day mutation
   const closeDayMutation = useMutation({
     mutationFn: async (date: string) => {
-      return await apiRequest("POST", "/api/expire-products/close-day", { date });
+      return await apiRequest("POST", "/api/expire-products/close-day", {
+        date,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expire-products"] });
@@ -285,7 +302,9 @@ export default function ExpireProducts() {
   // Reopen day mutation
   const reopenDayMutation = useMutation({
     mutationFn: async (date: string) => {
-      return await apiRequest("POST", "/api/expire-products/reopen-day", { date });
+      return await apiRequest("POST", "/api/expire-products/reopen-day", {
+        date,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expire-products"] });
@@ -339,7 +358,12 @@ export default function ExpireProducts() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.productId || !formData.quantity || !formData.unitId || !formData.ratePerUnit) {
+    if (
+      !formData.productId ||
+      !formData.quantity ||
+      !formData.unitId ||
+      !formData.ratePerUnit
+    ) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -348,8 +372,10 @@ export default function ExpireProducts() {
       return;
     }
 
-    const selectedProduct = products.find(p => p.id.toString() === formData.productId);
-    const selectedUnit = units.find(u => u.id.toString() === formData.unitId);
+    const selectedProduct = products.find(
+      (p) => p.id.toString() === formData.productId,
+    );
+    const selectedUnit = units.find((u) => u.id.toString() === formData.unitId);
 
     if (!selectedProduct || !selectedUnit) {
       toast({
@@ -405,7 +431,12 @@ export default function ExpireProducts() {
           {canModify && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => { setEditingProduct(null); resetForm(); }}>
+                <Button
+                  onClick={() => {
+                    setEditingProduct(null);
+                    resetForm();
+                  }}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Expired Product
                 </Button>
@@ -422,7 +453,9 @@ export default function ExpireProducts() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Items</p>
-                <p className="text-2xl font-bold">{dailySummary?.totalItems || 0}</p>
+                <p className="text-2xl font-bold">
+                  {dailySummary?.totalItems || 0}
+                </p>
               </div>
               <Package className="h-8 w-8 text-blue-500" />
             </div>
@@ -433,8 +466,12 @@ export default function ExpireProducts() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Quantity</p>
-                <p className="text-2xl font-bold">{dailySummary?.totalQuantity || 0}</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Quantity
+                </p>
+                <p className="text-2xl font-bold">
+                  {dailySummary?.totalQuantity || 0}
+                </p>
               </div>
               <Calculator className="h-8 w-8 text-orange-500" />
             </div>
@@ -460,7 +497,10 @@ export default function ExpireProducts() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Day Status</p>
-                <Badge variant={isDayClosed ? "destructive" : "default"} className="mt-1">
+                <Badge
+                  variant={isDayClosed ? "destructive" : "default"}
+                  className="mt-1"
+                >
                   {isDayClosed ? (
                     <>
                       <Lock className="h-3 w-3 mr-1" />
@@ -491,17 +531,19 @@ export default function ExpireProducts() {
             <div>
               <h3 className="font-semibold">Day Management</h3>
               <p className="text-sm text-gray-600">
-                {isDayClosed 
+                {isDayClosed
                   ? "Day is closed. No new entries can be added unless reopened by admin."
-                  : "Day is open. Click 'Close Day' when finished entering expired products."
-                }
+                  : "Day is open. Click 'Close Day' when finished entering expired products."}
               </p>
             </div>
             <div className="flex gap-2">
               {!isDayClosed ? (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive" disabled={expiredProducts.length === 0}>
+                    <Button
+                      variant="destructive"
+                      disabled={expiredProducts.length === 0}
+                    >
                       <Lock className="h-4 w-4 mr-2" />
                       Close Day
                     </Button>
@@ -510,19 +552,27 @@ export default function ExpireProducts() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Close Expiry Day</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to close the day for {format(new Date(selectedDate), "MMMM do, yyyy")}? 
-                        This will calculate the final loss summary and prevent further entries unless reopened by an admin.
-                        <br /><br />
-                        <strong>Total Loss: {formatCurrency(dailySummary?.totalLoss || 0)}</strong>
+                        Are you sure you want to close the day for{" "}
+                        {format(new Date(selectedDate), "MMMM do, yyyy")}? This
+                        will calculate the final loss summary and prevent
+                        further entries unless reopened by an admin.
+                        <br />
+                        <br />
+                        <strong>
+                          Total Loss:{" "}
+                          {formatCurrency(dailySummary?.totalLoss || 0)}
+                        </strong>
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
+                      <AlertDialogAction
                         onClick={() => closeDayMutation.mutate(selectedDate)}
                         disabled={closeDayMutation.isPending}
                       >
-                        {closeDayMutation.isPending ? "Closing..." : "Close Day"}
+                        {closeDayMutation.isPending
+                          ? "Closing..."
+                          : "Close Day"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -539,17 +589,21 @@ export default function ExpireProducts() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Reopen Expiry Day</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to reopen the day for {format(new Date(selectedDate), "MMMM do, yyyy")}? 
-                        This will allow new entries to be added and modify the loss calculations.
+                        Are you sure you want to reopen the day for{" "}
+                        {format(new Date(selectedDate), "MMMM do, yyyy")}? This
+                        will allow new entries to be added and modify the loss
+                        calculations.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
+                      <AlertDialogAction
                         onClick={() => reopenDayMutation.mutate(selectedDate)}
                         disabled={reopenDayMutation.isPending}
                       >
-                        {reopenDayMutation.isPending ? "Reopening..." : "Reopen Day"}
+                        {reopenDayMutation.isPending
+                          ? "Reopening..."
+                          : "Reopen Day"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -564,9 +618,13 @@ export default function ExpireProducts() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Expired Products - {format(new Date(selectedDate), "MMM dd, yyyy")}</span>
+            <span>
+              Expired Products -{" "}
+              {format(new Date(selectedDate), "MMM dd, yyyy")}
+            </span>
             <Badge variant="secondary">
-              {expiredProducts.length} {expiredProducts.length === 1 ? 'item' : 'items'}
+              {expiredProducts.length}{" "}
+              {expiredProducts.length === 1 ? "item" : "items"}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -580,10 +638,9 @@ export default function ExpireProducts() {
                 No expired products recorded
               </h3>
               <p className="text-gray-500 mb-4">
-                {canModify 
-                  ? "Start by adding your first expired product for today" 
-                  : "No products were expired on this day"
-                }
+                {canModify
+                  ? "Start by adding your first expired product for today"
+                  : "No products were expired on this day"}
               </p>
             </div>
           ) : (
@@ -598,7 +655,9 @@ export default function ExpireProducts() {
                     <TableHead className="text-right">Rate per Unit</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Notes</TableHead>
-                    {canModify && <TableHead className="w-24">Actions</TableHead>}
+                    {canModify && (
+                      <TableHead className="w-24">Actions</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -622,9 +681,7 @@ export default function ExpireProducts() {
                       <TableCell className="text-right font-medium text-red-600">
                         {formatCurrency(product.amount)}
                       </TableCell>
-                      <TableCell>
-                        {product.notes || "—"}
-                      </TableCell>
+                      <TableCell>{product.notes || "—"}</TableCell>
                       {canModify && (
                         <TableCell>
                           <div className="flex space-x-2">
@@ -648,7 +705,9 @@ export default function ExpireProducts() {
                               }
                               title="Delete Expired Product Entry"
                               itemName={product.productName}
-                              onConfirm={() => deleteMutation.mutate(product.id)}
+                              onConfirm={() =>
+                                deleteMutation.mutate(product.id)
+                              }
                               isLoading={deleteMutation.isPending}
                             />
                           </div>
@@ -676,7 +735,9 @@ export default function ExpireProducts() {
               <Label htmlFor="productId">Product Name *</Label>
               <Select
                 value={formData.productId}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, productId: value }))}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, productId: value }))
+                }
                 required
               >
                 <SelectTrigger>
@@ -696,7 +757,9 @@ export default function ExpireProducts() {
               <Label htmlFor="unitId">Unit *</Label>
               <Select
                 value={formData.unitId}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, unitId: value }))}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, unitId: value }))
+                }
                 required
               >
                 <SelectTrigger>
@@ -720,7 +783,9 @@ export default function ExpireProducts() {
                 step="0.01"
                 min="0"
                 value={formData.quantity}
-                onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, quantity: e.target.value }))
+                }
                 placeholder="Enter quantity"
                 required
               />
@@ -734,7 +799,12 @@ export default function ExpireProducts() {
                 step="0.01"
                 min="0"
                 value={formData.ratePerUnit}
-                onChange={(e) => setFormData(prev => ({ ...prev, ratePerUnit: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    ratePerUnit: e.target.value,
+                  }))
+                }
                 placeholder="Enter rate per unit"
                 required
               />
@@ -755,30 +825,31 @@ export default function ExpireProducts() {
             <Textarea
               id="notes"
               value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, notes: e.target.value }))
+              }
               placeholder="Optional notes about the expired product"
               rows={3}
             />
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => setIsDialogOpen(false)}
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
             >
               {createMutation.isPending || updateMutation.isPending
                 ? "Saving..."
                 : editingProduct
-                ? "Update"
-                : "Add Product"
-              }
+                  ? "Update"
+                  : "Add Product"}
             </Button>
           </div>
         </form>
