@@ -3,11 +3,13 @@ import { cn } from "@/lib/utils";
 interface LoadingSpinnerProps {
   className?: string;
   size?: "sm" | "md" | "lg";
+  message?: string;
 }
 
 export function LoadingSpinner({
   className,
   size = "md",
+  message = "Loading...",
 }: LoadingSpinnerProps) {
   const sizeClasses = {
     sm: "h-4 w-4",
@@ -24,7 +26,7 @@ export function LoadingSpinner({
           className,
         )}
       />
-      <p className="text-gray-500 mt-2 text-sm">Loading...</p>
+      <p className="text-gray-500 mt-2 text-sm">{message}</p>
     </div>
   );
 }

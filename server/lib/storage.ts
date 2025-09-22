@@ -214,7 +214,6 @@ export interface IStorage {
     transaction: InsertInventoryTransaction,
   ): Promise<InventoryTransaction>;
   getInventoryTransactions(itemId?: number): Promise<any[]>;
-  getLowStockItems();
   getIngredients(): Promise<InventoryItem[]>;
   syncStockFromPurchases();
   updateInventoryStockAndCost(
@@ -1234,7 +1233,7 @@ export class Storage implements IStorage {
           unit: inventoryItems.unit,
           unitId: inventoryItems.unitId,
           secondaryUnitId: inventoryItems.secondaryUnitId,
-          conversionRate: inventoryItems.conversionRate,
+          conversionRate: inventoryItems.conversionFactor,
           costPerUnit: inventoryItems.costPerUnit,
           supplier: inventoryItems.supplier,
           categoryId: inventoryItems.categoryId,
@@ -2915,11 +2914,6 @@ export class Storage implements IStorage {
     }
   }
 
-  async getLedgerTransactions(
-    entityId: number,
-    entityType: "customer" | "party",
-    limit?: number,
-  ): Promise<any[]>;
   async getLedgerTransactions(
     entityId: number,
     entityType: "customer" | "party",
@@ -5572,7 +5566,7 @@ export class Storage implements IStorage {
           .returning();
       }
 
-      // Mark all expired products for this day as closed
+      // Mark all products for this day as closed
       await this.db.update(expiredProducts)
         .set({ isDayClosed: true })
         .where(eq(expiredProducts.expiryDate, date));
@@ -5599,7 +5593,7 @@ export class Storage implements IStorage {
         })
         .where(eq(dailyExpirySummary.summaryDate, date));
 
-      // Mark all expired products for this day as not closed
+      // Mark all products for this day as not closed
       await this.db.update(expiredProducts)
         .set({ isDayClosed: false })
         .where(eq(expiredProducts.expiryDate, date));

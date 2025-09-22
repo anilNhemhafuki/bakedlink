@@ -273,7 +273,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           },
           {
             name: "Expire Products",
-            href: "/expire-products",
+            href: "/expire-products", 
             icon: "fas fa-calendar-times",
             resource: "inventory",
           },
