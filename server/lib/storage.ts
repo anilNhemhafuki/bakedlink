@@ -111,8 +111,12 @@ import {
   branches,
   type Branch,
   type InsertBranch,
-  expiredProducts, // Import the new schema
-  dailyExpirySummary, // Import the new schema
+  expiredProducts,
+  dailyExpirySummary,
+  type ExpiredProduct,
+  type InsertExpiredProduct,
+  type DailyExpirySummary,
+  type InsertDailyExpirySummary
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
 import fs from "fs";
@@ -1233,7 +1237,7 @@ export class Storage implements IStorage {
           unit: inventoryItems.unit,
           unitId: inventoryItems.unitId,
           secondaryUnitId: inventoryItems.secondaryUnitId,
-          conversionRate: inventoryItems.conversionFactor,
+          conversionRate: inventoryItems.conversionRate,
           costPerUnit: inventoryItems.costPerUnit,
           supplier: inventoryItems.supplier,
           categoryId: inventoryItems.categoryId,
@@ -3454,10 +3458,10 @@ export class Storage implements IStorage {
     item: Partial<InsertProductionScheduleItem>,
   ): Promise<ProductionScheduleItem> {
     const [updatedItem] = await this.db
-      .update(productionSchedule)
-      .set({ ...item, updatedAt: new Date() })
-      .where(eq(productionSchedule.id, id))
-      .returning();
+        .update(productionSchedule)
+        .set({ ...item, updatedAt: new Date() })
+        .where(eq(productionSchedule.id, id))
+        .returning();
     return updatedItem;
   }
 
@@ -3500,7 +3504,7 @@ export class Storage implements IStorage {
         .select({
           id: productionSchedule.id,
           productId: productionSchedule.productId,
-          productName: products.name,
+          productName: productionSchedule.productName,
           productCode: productionSchedule.productCode,
           batchNo: productionSchedule.batchNo,
           totalQuantity: productionSchedule.totalQuantity,
@@ -5411,6 +5415,9 @@ export class Storage implements IStorage {
 
       const result = await this.db.insert(expiredProducts).values(expiredProductData).returning();
 
+      // Update daily summary
+      await this.updateDailyExpirySummary(data.expiryDate);
+
       console.log('✅ Expired product created successfully');
       return result[0];
     } catch (error) {
@@ -5426,7 +5433,18 @@ export class Storage implements IStorage {
       // Recalculate amount if quantity or rate changed
       const updateData = { ...data };
       if (data.quantity && data.ratePerUnit) {
-        updateData.amount = (parseFloat(data.quantity) * parseFloat(data.ratePerUnit)).toString();
+        const current = await this.db
+          .select()
+          .from(expiredProducts)
+          .where(eq(expiredProducts.id, id))
+          .limit(1);
+
+        if (current.length > 0) {
+          const item = current[0];
+          const quantity = data.quantity ? parseFloat(data.quantity) : parseFloat(item.quantity);
+          const rate = data.ratePerUnit ? parseFloat(data.ratePerUnit) : parseFloat(item.ratePerUnit);
+          updateData.amount = (quantity * rate).toString();
+        }
       }
 
       const result = await this.db.update(expiredProducts)
@@ -5434,8 +5452,9 @@ export class Storage implements IStorage {
         .where(eq(expiredProducts.id, id))
         .returning();
 
-      if (result.length === 0) {
-        throw new Error('Expired product not found');
+      // Update daily summary if date-related data changed
+      if (result.length > 0) {
+        await this.updateDailyExpirySummary(result[0].expiryDate);
       }
 
       console.log('✅ Expired product updated successfully');
@@ -5450,7 +5469,19 @@ export class Storage implements IStorage {
     try {
       console.log('🗑️ Deleting expired product:', id);
 
+      // Get the product to know which date to update summary for
+      const product = await this.db
+        .select({ expiryDate: expiredProducts.expiryDate })
+        .from(expiredProducts)
+        .where(eq(expiredProducts.id, id))
+        .limit(1);
+
       await this.db.delete(expiredProducts).where(eq(expiredProducts.id, id));
+
+      // Update daily summary
+      if (product.length > 0) {
+        await this.updateDailyExpirySummary(product[0].expiryDate);
+      }
 
       console.log('✅ Expired product deleted successfully');
     } catch (error) {
@@ -5559,9 +5590,6 @@ export class Storage implements IStorage {
             totalItems: summary.totalItems,
             totalQuantity: summary.totalQuantity?.toString() || '0',
             totalLoss: summary.totalLoss?.toString() || '0',
-            isDayClosed: true,
-            closedBy,
-            closedAt: new Date(),
           })
           .returning();
       }
@@ -5598,7 +5626,7 @@ export class Storage implements IStorage {
         .set({ isDayClosed: false })
         .where(eq(expiredProducts.expiryDate, date));
 
-      console.log('✅ Day reopened successfully for expired products');
+      console.log('✅ Day reopened successfully for expiry tracking');
       return { success: true, message: 'Day reopened successfully' };
     } catch (error) {
       console.error('❌ Error reopening expiry day:', error);

@@ -115,15 +115,29 @@ export default function ExpireProducts() {
     queryKey: ["units"],
     queryFn: async () => {
       try {
+        console.log("Fetching units from API...");
         const res = await apiRequest("GET", "/api/units");
+        console.log("Units API response:", res);
+        
         const allUnits = res?.data || res || [];
-        return allUnits.filter(
+        console.log("Using response.data:", allUnits);
+        
+        // Filter for weight units (kg, grams) and packet units
+        const filteredUnits = allUnits.filter(
           (unit: any) =>
             unit.name?.toLowerCase().includes("packet") ||
             unit.name?.toLowerCase().includes("kilogram") ||
+            unit.name?.toLowerCase().includes("gram") ||
             unit.abbreviation?.toLowerCase() === "kg" ||
-            unit.abbreviation?.toLowerCase() === "pkt",
+            unit.abbreviation?.toLowerCase() === "g" ||
+            unit.abbreviation?.toLowerCase() === "pkt" ||
+            unit.abbreviation?.toLowerCase() === "packet" ||
+            unit.type === "weight" ||
+            unit.type === "count"
         );
+        
+        console.log("Filtered units:", filteredUnits);
+        return filteredUnits;
       } catch (error) {
         console.error("Failed to fetch units:", error);
         return [];
