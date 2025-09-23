@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, Suspense, startTransition } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useUnits } from "@/hooks/useUnits";
@@ -135,7 +136,7 @@ function CategoryDialog({
   );
 }
 
-export function EnhancedStockItemForm({
+function StockFormContent({
   isOpen,
   onClose,
   editingItem,
@@ -165,68 +166,70 @@ export function EnhancedStockItemForm({
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
+  // Fetch units with error handling
   const { data: units = [], isLoading: unitsLoading, error: unitsError } = useUnits();
 
-  const { data: categories = [] } = useQuery({
+  // Fetch categories with error handling
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
     queryKey: ["/api/inventory-categories"],
     queryFn: () => apiRequest("GET", "/api/inventory-categories"),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 3,
   });
 
-  // Fetch ingredients from recipes and inventory
-  const { data: ingredients = [] } = useQuery({
-    queryKey: ["/api/ingredients/all"],
-    queryFn: () => apiRequest("GET", "/api/ingredients"),
-  });
-
-  // Filter active units
+  // Filter active units safely
   const activeUnits = Array.isArray(units)
     ? units.filter((unit: any) => unit && unit.isActive)
     : [];
 
   useEffect(() => {
-    if (editingItem) {
-      // Determine group value from editingItem
-      let groupValue = "";
-      if (editingItem.categoryId) {
-        groupValue = editingItem.categoryId.toString();
-      } else if (editingItem.isIngredient) {
-        groupValue = "ingredients";
-      } else if (editingItem.group && editingItem.group !== "uncategorized") {
-        groupValue = editingItem.group;
-      }
+    if (isOpen) {
+      startTransition(() => {
+        if (editingItem) {
+          // Determine group value from editingItem
+          let groupValue = "";
+          if (editingItem.categoryId) {
+            groupValue = editingItem.categoryId.toString();
+          } else if (editingItem.isIngredient) {
+            groupValue = "ingredients";
+          } else if (editingItem.group && editingItem.group !== "uncategorized") {
+            groupValue = editingItem.group;
+          }
 
-      setFormData({
-        name: editingItem.name || "",
-        primaryUnitId: editingItem.unitId?.toString() || "",
-        secondaryUnitId: editingItem.secondaryUnitId?.toString() || "",
-        conversionRate: editingItem.conversionRate || "",
-        costPerUnit: editingItem.costPerUnit || "",
-        group: groupValue,
-        minLevel: editingItem.minLevel || "",
-        openingStock: editingItem.openingStock || editingItem.currentStock || "",
-        purchasedQuantity: editingItem.purchasedQuantity || "0",
-        consumedQuantity: editingItem.consumedQuantity || "0",
-        closingStock: editingItem.closingStock || editingItem.currentStock || "",
-        supplier: editingItem.supplier || "",
-        notes: editingItem.notes || "",
-        invCode: editingItem.invCode || editingItem.id?.toString() || "",
-      });
-    } else {
-      setFormData({
-        name: "",
-        primaryUnitId: "",
-        secondaryUnitId: "",
-        conversionRate: "",
-        costPerUnit: "",
-        group: "",
-        minLevel: "",
-        openingStock: "",
-        purchasedQuantity: "0",
-        consumedQuantity: "0",
-        closingStock: "",
-        supplier: "",
-        notes: "",
-        invCode: "",
+          setFormData({
+            name: editingItem.name || "",
+            primaryUnitId: editingItem.unitId?.toString() || "",
+            secondaryUnitId: editingItem.secondaryUnitId?.toString() || "",
+            conversionRate: editingItem.conversionRate || "",
+            costPerUnit: editingItem.costPerUnit || "",
+            group: groupValue,
+            minLevel: editingItem.minLevel || "",
+            openingStock: editingItem.openingStock || editingItem.currentStock || "",
+            purchasedQuantity: editingItem.purchasedQuantity || "0",
+            consumedQuantity: editingItem.consumedQuantity || "0",
+            closingStock: editingItem.closingStock || editingItem.currentStock || "",
+            supplier: editingItem.supplier || "",
+            notes: editingItem.notes || "",
+            invCode: editingItem.invCode || editingItem.id?.toString() || "",
+          });
+        } else {
+          setFormData({
+            name: "",
+            primaryUnitId: "",
+            secondaryUnitId: "",
+            conversionRate: "",
+            costPerUnit: "",
+            group: "",
+            minLevel: "",
+            openingStock: "",
+            purchasedQuantity: "0",
+            consumedQuantity: "0",
+            closingStock: "",
+            supplier: "",
+            notes: "",
+            invCode: "",
+          });
+        }
       });
     }
   }, [editingItem, isOpen]);
@@ -285,18 +288,20 @@ export function EnhancedStockItemForm({
   });
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    startTransition(() => {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
 
-    if (validationErrors[field]) {
-      setValidationErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
+      if (validationErrors[field]) {
+        setValidationErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    });
   };
 
   const getConversionInfoText = () => {
@@ -414,424 +419,421 @@ export function EnhancedStockItemForm({
     handleInputChange("invCode", code);
   };
 
+  if (unitsLoading || categoriesLoading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <span className="ml-2">Loading form data...</span>
+      </div>
+    );
+  }
+
+  if (unitsError) {
+    return (
+      <Alert className="m-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Failed to load units. Please refresh the page and try again.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-center flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              {editingItem ? "Edit Stock Item" : "Create Stock Item"}
-            </DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Basic Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Inventory Code and Item Name */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="invCode" className="text-sm font-medium">
-                      Inventory Code <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="invCode"
-                        value={formData.invCode}
-                        onChange={(e) => handleInputChange("invCode", e.target.value)}
-                        placeholder="INV-001"
-                        className={validationErrors.invCode ? "border-red-500" : ""}
-                      />
-                      <Button type="button" variant="outline" onClick={generateInvCode}>
-                        Generate
-                      </Button>
-                    </div>
-                    {validationErrors.invCode && (
-                      <p className="text-red-500 text-xs mt-1">{validationErrors.invCode}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="itemName" className="text-sm font-medium">
-                      Item Name <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="itemName"
-                      value={formData.name}
-                      onChange={(e) => handleInputChange("name", e.target.value)}
-                      placeholder="Enter unique name (e.g., Flour)"
-                      className={validationErrors.name ? "border-red-500" : ""}
-                      required
-                    />
-                    {validationErrors.name && (
-                      <p className="text-red-500 text-xs mt-1">{validationErrors.name}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Primary Unit and Group */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="primaryUnit" className="text-sm font-medium">
-                      Primary Unit <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={formData.primaryUnitId || ""}
-                      onValueChange={(value) => {
-                        try {
-                          if (value && value !== "none") {
-                            handleInputChange("primaryUnitId", value);
-                          }
-                        } catch (error) {
-                          console.error('Error updating primary unit:', error);
-                        }
-                      }}
-                      required
-                    >
-                      <SelectTrigger className={validationErrors.primaryUnitId ? "border-red-500" : ""}>
-                        <SelectValue placeholder="Select Primary Unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {unitsLoading ? (
-                          <SelectItem value="loading" disabled>
-                            Loading units...
-                          </SelectItem>
-                        ) : unitsError ? (
-                          <SelectItem value="error" disabled>
-                            Error loading units
-                          </SelectItem>
-                        ) : activeUnits.length > 0 ? (
-                          activeUnits.map((unit: any) => (
-                            <SelectItem key={unit.id} value={unit.id.toString()}>
-                              {unit.name} ({unit.abbreviation})
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" disabled>
-                            No units available
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {validationErrors.primaryUnitId && (
-                      <p className="text-red-500 text-xs mt-1">{validationErrors.primaryUnitId}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="group" className="text-sm font-medium">
-                      Group/Category <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="flex gap-2">
-                      <Select
-                        value={formData.group}
-                        onValueChange={(value) => handleInputChange("group", value)}
-                      >
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Select Group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ingredients">Ingredients</SelectItem>
-                          <SelectItem value="raw-materials">Raw Materials</SelectItem>
-                          <SelectItem value="packaging">Packaging</SelectItem>
-                          <SelectItem value="spices">Spices</SelectItem>
-                          <SelectItem value="dairy">Dairy</SelectItem>
-                          <SelectItem value="flour">Flour</SelectItem>
-                          <SelectItem value="sweeteners">Sweeteners</SelectItem>
-                          <SelectItem value="supplies">Supplies</SelectItem>
-                          {categories.map((category: any) => (
-                            <SelectItem key={category.id} value={category.id.toString()}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setShowCategoryDialog(true)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Secondary Unit and Conversion */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="secondaryUnit" className="text-sm font-medium">
-                      Secondary Unit
-                    </Label>
-                    <Select
-                      value={formData.secondaryUnitId || "none"}
-                      onValueChange={(value) =>
-                        handleInputChange("secondaryUnitId", value === "none" ? "" : value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="No Secondary Unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Secondary Unit</SelectItem>
-                        {activeUnits
-                          .filter((unit: any) => unit.id.toString() !== formData.primaryUnitId)
-                          .map((unit: any) => (
-                            <SelectItem key={unit.id} value={unit.id.toString()}>
-                              {unit.name} ({unit.abbreviation})
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {formData.secondaryUnitId && (
-                    <div>
-                      <Label htmlFor="conversionRate" className="text-sm font-medium">
-                        Conversion Rate <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="conversionRate"
-                        type="number"
-                        step="0.000001"
-                        min="0.000001"
-                        value={formData.conversionRate}
-                        onChange={(e) => handleInputChange("conversionRate", e.target.value)}
-                        placeholder="e.g., 50"
-                        className={validationErrors.conversionRate ? "border-red-500" : ""}
-                        required
-                      />
-                      {validationErrors.conversionRate && (
-                        <p className="text-red-500 text-xs mt-1">{validationErrors.conversionRate}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {formData.secondaryUnitId && (
-                    <div>
-                      <Label className="text-sm font-medium">Conversion Info</Label>
-                      <div className="mt-1 p-2 bg-blue-50 rounded text-sm text-blue-700 min-h-[40px] flex items-center">
-                        {getConversionInfoText()}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Cost Per Unit and Minimum Level */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="costPerUnit" className="text-sm font-medium">
-                      Cost Per Unit <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="flex mt-1">
-                      <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                        {symbol}
-                      </span>
-                      <Input
-                        id="costPerUnit"
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        value={formData.costPerUnit}
-                        onChange={(e) => handleInputChange("costPerUnit", e.target.value)}
-                        placeholder="0.00"
-                        className={`rounded-l-none ${validationErrors.costPerUnit ? "border-red-500" : ""}`}
-                        required
-                      />
-                    </div>
-                    {validationErrors.costPerUnit && (
-                      <p className="text-red-500 text-xs mt-1">{validationErrors.costPerUnit}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="minLevel" className="text-sm font-medium">
-                      Minimum Level <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="minLevel"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.minLevel}
-                      onChange={(e) => handleInputChange("minLevel", e.target.value)}
-                      placeholder="0.00"
-                      className={validationErrors.minLevel ? "border-red-500" : ""}
-                      required
-                    />
-                    {validationErrors.minLevel && (
-                      <p className="text-red-500 text-xs mt-1">{validationErrors.minLevel}</p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Stock Management Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Stock Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <Label htmlFor="openingStock" className="text-sm font-medium">
-                      Opening Stock <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="openingStock"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.openingStock}
-                      onChange={(e) => handleInputChange("openingStock", e.target.value)}
-                      placeholder="0.00"
-                      className={validationErrors.openingStock ? "border-red-500" : ""}
-                      required
-                    />
-                    {validationErrors.openingStock && (
-                      <p className="text-red-500 text-xs mt-1">{validationErrors.openingStock}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="purchasedQuantity" className="text-sm font-medium">
-                      Purchased
-                    </Label>
-                    <Input
-                      id="purchasedQuantity"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.purchasedQuantity}
-                      onChange={(e) => handleInputChange("purchasedQuantity", e.target.value)}
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="consumedQuantity" className="text-sm font-medium">
-                      Consumed/Used
-                    </Label>
-                    <Input
-                      id="consumedQuantity"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.consumedQuantity}
-                      onChange={(e) => handleInputChange("consumedQuantity", e.target.value)}
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="closingStock" className="text-sm font-medium">
-                      Closing Stock
-                    </Label>
-                    <Input
-                      id="closingStock"
-                      value={parseFloat(formData.closingStock || "0").toFixed(2)}
-                      placeholder="0.00"
-                      className="bg-gray-50"
-                      readOnly
-                    />
-                  </div>
-                </div>
-
-                {/* Stock Calculation Display */}
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">Stock Calculation</h4>
-                  <div className="text-sm text-blue-800">
-                    <p>Opening Stock: {parseFloat(formData.openingStock || "0").toFixed(2)}</p>
-                    <p>+ Purchased: {parseFloat(formData.purchasedQuantity || "0").toFixed(2)}</p>
-                    <p>- Consumed: {parseFloat(formData.consumedQuantity || "0").toFixed(2)}</p>
-                    <hr className="my-2 border-blue-200" />
-                    <p className="font-medium">= Closing Stock: {parseFloat(formData.closingStock || "0").toFixed(2)}</p>
-                  </div>
-                </div>
-
-                {/* Warning for minimum level */}
-                {parseFloat(formData.closingStock || "0") <= parseFloat(formData.minLevel || "0") &&
-                 parseFloat(formData.closingStock || "0") > 0 && (
-                  <Alert className="mt-4 border-yellow-500 bg-yellow-50">
-                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                    <AlertDescription className="text-yellow-800">
-                      Warning: Closing stock is at or below minimum level
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Additional Details */}
-            <Collapsible
-              open={showAdditionalDetails}
-              onOpenChange={setShowAdditionalDetails}
-            >
-              <CollapsibleTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full justify-between p-0 h-auto font-normal text-blue-600 hover:text-blue-700"
-                >
-                  Additional Details
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${showAdditionalDetails ? "rotate-180" : ""}`}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Inventory Code and Item Name */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="invCode" className="text-sm font-medium">
+                  Inventory Code <span className="text-red-500">*</span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="invCode"
+                    value={formData.invCode}
+                    onChange={(e) => handleInputChange("invCode", e.target.value)}
+                    placeholder="INV-001"
+                    className={validationErrors.invCode ? "border-red-500" : ""}
                   />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-4 mt-4">
-                <Card>
-                  <CardContent className="pt-6 space-y-4">
-                    <div>
-                      <Label htmlFor="supplier" className="text-sm font-medium">
-                        Supplier
-                      </Label>
-                      <Input
-                        id="supplier"
-                        value={formData.supplier}
-                        onChange={(e) => handleInputChange("supplier", e.target.value)}
-                        placeholder="Enter supplier name"
-                      />
-                    </div>
+                  <Button type="button" variant="outline" onClick={generateInvCode}>
+                    Generate
+                  </Button>
+                </div>
+                {validationErrors.invCode && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.invCode}</p>
+                )}
+              </div>
 
-                    <div>
-                      <Label htmlFor="notes" className="text-sm font-medium">
-                        Notes
-                      </Label>
-                      <Input
-                        id="notes"
-                        value={formData.notes}
-                        onChange={(e) => handleInputChange("notes", e.target.value)}
-                        placeholder="Additional notes"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </CollapsibleContent>
-            </Collapsible>
-
-            {/* Action Buttons */}
-            <div className="flex justify-between pt-4">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-green-500 hover:bg-green-600 text-white min-w-[120px]"
-              >
-                {isSubmitting ? "Saving..." : "Save Item"}
-              </Button>
+              <div>
+                <Label htmlFor="itemName" className="text-sm font-medium">
+                  Item Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="itemName"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  placeholder="Enter unique name (e.g., Flour)"
+                  className={validationErrors.name ? "border-red-500" : ""}
+                  required
+                />
+                {validationErrors.name && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.name}</p>
+                )}
+              </div>
             </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+
+            {/* Primary Unit and Group */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="primaryUnit" className="text-sm font-medium">
+                  Primary Unit <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.primaryUnitId || ""}
+                  onValueChange={(value) => {
+                    if (value && value !== "none") {
+                      handleInputChange("primaryUnitId", value);
+                    }
+                  }}
+                  required
+                >
+                  <SelectTrigger className={validationErrors.primaryUnitId ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select Primary Unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeUnits.length > 0 ? (
+                      activeUnits.map((unit: any) => (
+                        <SelectItem key={unit.id} value={unit.id.toString()}>
+                          {unit.name} ({unit.abbreviation})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No units available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {validationErrors.primaryUnitId && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.primaryUnitId}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="group" className="text-sm font-medium">
+                  Group/Category <span className="text-red-500">*</span>
+                </Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={formData.group}
+                    onValueChange={(value) => handleInputChange("group", value)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select Group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ingredients">Ingredients</SelectItem>
+                      <SelectItem value="raw-materials">Raw Materials</SelectItem>
+                      <SelectItem value="packaging">Packaging</SelectItem>
+                      <SelectItem value="spices">Spices</SelectItem>
+                      <SelectItem value="dairy">Dairy</SelectItem>
+                      <SelectItem value="flour">Flour</SelectItem>
+                      <SelectItem value="sweeteners">Sweeteners</SelectItem>
+                      <SelectItem value="supplies">Supplies</SelectItem>
+                      {Array.isArray(categories) && categories.map((category: any) => (
+                        <SelectItem key={category.id} value={category.id.toString()}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowCategoryDialog(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Secondary Unit and Conversion */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="secondaryUnit" className="text-sm font-medium">
+                  Secondary Unit
+                </Label>
+                <Select
+                  value={formData.secondaryUnitId || "none"}
+                  onValueChange={(value) =>
+                    handleInputChange("secondaryUnitId", value === "none" ? "" : value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="No Secondary Unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Secondary Unit</SelectItem>
+                    {activeUnits
+                      .filter((unit: any) => unit.id.toString() !== formData.primaryUnitId)
+                      .map((unit: any) => (
+                        <SelectItem key={unit.id} value={unit.id.toString()}>
+                          {unit.name} ({unit.abbreviation})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formData.secondaryUnitId && (
+                <div>
+                  <Label htmlFor="conversionRate" className="text-sm font-medium">
+                    Conversion Rate <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="conversionRate"
+                    type="number"
+                    step="0.000001"
+                    min="0.000001"
+                    value={formData.conversionRate}
+                    onChange={(e) => handleInputChange("conversionRate", e.target.value)}
+                    placeholder="e.g., 50"
+                    className={validationErrors.conversionRate ? "border-red-500" : ""}
+                    required
+                  />
+                  {validationErrors.conversionRate && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.conversionRate}</p>
+                  )}
+                </div>
+              )}
+
+              {formData.secondaryUnitId && (
+                <div>
+                  <Label className="text-sm font-medium">Conversion Info</Label>
+                  <div className="mt-1 p-2 bg-blue-50 rounded text-sm text-blue-700 min-h-[40px] flex items-center">
+                    {getConversionInfoText()}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Cost Per Unit and Minimum Level */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="costPerUnit" className="text-sm font-medium">
+                  Cost Per Unit <span className="text-red-500">*</span>
+                </Label>
+                <div className="flex mt-1">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                    {symbol}
+                  </span>
+                  <Input
+                    id="costPerUnit"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={formData.costPerUnit}
+                    onChange={(e) => handleInputChange("costPerUnit", e.target.value)}
+                    placeholder="0.00"
+                    className={`rounded-l-none ${validationErrors.costPerUnit ? "border-red-500" : ""}`}
+                    required
+                  />
+                </div>
+                {validationErrors.costPerUnit && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.costPerUnit}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="minLevel" className="text-sm font-medium">
+                  Minimum Level <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="minLevel"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.minLevel}
+                  onChange={(e) => handleInputChange("minLevel", e.target.value)}
+                  placeholder="0.00"
+                  className={validationErrors.minLevel ? "border-red-500" : ""}
+                  required
+                />
+                {validationErrors.minLevel && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.minLevel}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stock Management Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Stock Management</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <Label htmlFor="openingStock" className="text-sm font-medium">
+                  Opening Stock <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="openingStock"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.openingStock}
+                  onChange={(e) => handleInputChange("openingStock", e.target.value)}
+                  placeholder="0.00"
+                  className={validationErrors.openingStock ? "border-red-500" : ""}
+                  required
+                />
+                {validationErrors.openingStock && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.openingStock}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="purchasedQuantity" className="text-sm font-medium">
+                  Purchased
+                </Label>
+                <Input
+                  id="purchasedQuantity"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.purchasedQuantity}
+                  onChange={(e) => handleInputChange("purchasedQuantity", e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="consumedQuantity" className="text-sm font-medium">
+                  Consumed/Used
+                </Label>
+                <Input
+                  id="consumedQuantity"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.consumedQuantity}
+                  onChange={(e) => handleInputChange("consumedQuantity", e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="closingStock" className="text-sm font-medium">
+                  Closing Stock
+                </Label>
+                <Input
+                  id="closingStock"
+                  value={parseFloat(formData.closingStock || "0").toFixed(2)}
+                  placeholder="0.00"
+                  className="bg-gray-50"
+                  readOnly
+                />
+              </div>
+            </div>
+
+            {/* Stock Calculation Display */}
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Stock Calculation</h4>
+              <div className="text-sm text-blue-800">
+                <p>Opening Stock: {parseFloat(formData.openingStock || "0").toFixed(2)}</p>
+                <p>+ Purchased: {parseFloat(formData.purchasedQuantity || "0").toFixed(2)}</p>
+                <p>- Consumed: {parseFloat(formData.consumedQuantity || "0").toFixed(2)}</p>
+                <hr className="my-2 border-blue-200" />
+                <p className="font-medium">= Closing Stock: {parseFloat(formData.closingStock || "0").toFixed(2)}</p>
+              </div>
+            </div>
+
+            {/* Warning for minimum level */}
+            {parseFloat(formData.closingStock || "0") <= parseFloat(formData.minLevel || "0") &&
+             parseFloat(formData.closingStock || "0") > 0 && (
+              <Alert className="mt-4 border-yellow-500 bg-yellow-50">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800">
+                  Warning: Closing stock is at or below minimum level
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Additional Details */}
+        <Collapsible
+          open={showAdditionalDetails}
+          onOpenChange={setShowAdditionalDetails}
+        >
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-between p-0 h-auto font-normal text-blue-600 hover:text-blue-700"
+            >
+              Additional Details
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${showAdditionalDetails ? "rotate-180" : ""}`}
+              />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-4 mt-4">
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <div>
+                  <Label htmlFor="supplier" className="text-sm font-medium">
+                    Supplier
+                  </Label>
+                  <Input
+                    id="supplier"
+                    value={formData.supplier}
+                    onChange={(e) => handleInputChange("supplier", e.target.value)}
+                    placeholder="Enter supplier name"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="notes" className="text-sm font-medium">
+                    Notes
+                  </Label>
+                  <Input
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange("notes", e.target.value)}
+                    placeholder="Additional notes"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Action Buttons */}
+        <div className="flex justify-between pt-4">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-green-500 hover:bg-green-600 text-white min-w-[120px]"
+          >
+            {isSubmitting ? "Saving..." : "Save Item"}
+          </Button>
+        </div>
+      </form>
 
       <CategoryDialog
         isOpen={showCategoryDialog}
@@ -839,5 +841,28 @@ export function EnhancedStockItemForm({
         onCategoryCreated={handleCategoryCreated}
       />
     </>
+  );
+}
+
+export function EnhancedStockItemForm(props: StockItemFormProps) {
+  return (
+    <Dialog open={props.isOpen} onOpenChange={props.onClose}>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold text-center flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            {props.editingItem ? "Edit Stock Item" : "Create Stock Item"}
+          </DialogTitle>
+        </DialogHeader>
+        <Suspense fallback={
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-2">Loading...</span>
+          </div>
+        }>
+          <StockFormContent {...props} />
+        </Suspense>
+      </DialogContent>
+    </Dialog>
   );
 }
