@@ -452,8 +452,8 @@ export const auditLogs = pgTable("audit_logs", {
   errorMessage: text("error_message"),
 });
 
-// Expired Products table
-export const expiredProducts = pgTable("expired_products", {
+// Sales Returns table
+export const salesReturns = pgTable("sales_returns", {
   id: serial("id").primaryKey(),
   serialNumber: integer("serial_number").notNull(), // Daily auto-incremented S.N
   productId: integer("product_id").notNull(),
@@ -463,7 +463,10 @@ export const expiredProducts = pgTable("expired_products", {
   unitName: varchar("unit_name", { length: 50 }).notNull(),
   ratePerUnit: numeric("rate_per_unit", { precision: 10, scale: 2 }).notNull(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(), // quantity × rate
-  expiryDate: date("expiry_date").notNull(), // Date when expiry was recorded
+  returnDate: date("return_date").notNull(), // Date when return was recorded
+  saleId: integer("sale_id"), // Reference to original sale (optional)
+  customerId: integer("customer_id"), // Reference to customer who returned
+  returnReason: varchar("return_reason", { length: 100 }).default("damaged"), // damaged, expired, wrong_product, customer_request
   isDayClosed: boolean("is_day_closed").default(false),
   branchId: integer("branch_id"),
   notes: text("notes"),
@@ -472,8 +475,47 @@ export const expiredProducts = pgTable("expired_products", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Daily Expiry Summary table
-export const dailyExpirySummary = pgTable("daily_expiry_summary", {
+// Daily Sales Return Summary table
+export const dailySalesReturnSummary = pgTable("daily_sales_return_summary", {
+  id: serial("id").primaryKey(),
+  summaryDate: date("summary_date").notNull(),
+  totalItems: integer("total_items").notNull(),
+  totalQuantity: numeric("total_quantity", { precision: 10, scale: 2 }).notNull(),
+  totalLoss: numeric("total_loss", { precision: 12, scale: 2 }).notNull(),
+  isDayClosed: boolean("is_day_closed").default(false),
+  closedBy: varchar("closed_by"),
+  closedAt: timestamp("closed_at"),
+  branchId: integer("branch_id"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Purchase Returns table
+export const purchaseReturns = pgTable("purchase_returns", {
+  id: serial("id").primaryKey(),
+  serialNumber: integer("serial_number").notNull(), // Daily auto-incremented S.N
+  inventoryItemId: integer("inventory_item_id").notNull(),
+  inventoryItemName: varchar("inventory_item_name", { length: 200 }).notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
+  unitId: integer("unit_id").notNull(),
+  unitName: varchar("unit_name", { length: 50 }).notNull(),
+  ratePerUnit: numeric("rate_per_unit", { precision: 10, scale: 2 }).notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(), // quantity × rate
+  returnDate: date("return_date").notNull(), // Date when return was recorded
+  purchaseId: integer("purchase_id"), // Reference to original purchase (optional)
+  partyId: integer("party_id"), // Reference to supplier/party
+  returnReason: varchar("return_reason", { length: 100 }).default("damaged"), // damaged, expired, wrong_item, quality_issue
+  isDayClosed: boolean("is_day_closed").default(false),
+  branchId: integer("branch_id"),
+  notes: text("notes"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Daily Purchase Return Summary table
+export const dailyPurchaseReturnSummary = pgTable("daily_purchase_return_summary", {
   id: serial("id").primaryKey(),
   summaryDate: date("summary_date").notNull(),
   totalItems: integer("total_items").notNull(),
@@ -719,10 +761,14 @@ export type StaffSchedule = typeof staffSchedules.$inferSelect;
 export type InsertStaffSchedule = typeof staffSchedules.$insert;
 export type ProductionScheduleLabel = typeof productionScheduleLabels.$inferSelect;
 export type InsertProductionScheduleLabel = typeof productionScheduleLabels.$insert;
-export type ExpiredProduct = typeof expiredProducts.$inferSelect;
-export type InsertExpiredProduct = typeof expiredProducts.$insert;
-export type DailyExpirySummary = typeof dailyExpirySummary.$inferSelect;
-export type InsertDailyExpirySummary = typeof dailyExpirySummary.$insert;
+export type SalesReturn = typeof salesReturns.$inferSelect;
+export type InsertSalesReturn = typeof salesReturns.$insert;
+export type DailySalesReturnSummary = typeof dailySalesReturnSummary.$inferSelect;
+export type InsertDailySalesReturnSummary = typeof dailySalesReturnSummary.$insert;
+export type PurchaseReturn = typeof purchaseReturns.$inferSelect;
+export type InsertPurchaseReturn = typeof purchaseReturns.$insert;
+export type DailyPurchaseReturnSummary = typeof dailyPurchaseReturnSummary.$inferSelect;
+export type InsertDailyPurchaseReturnSummary = typeof dailyPurchaseReturnSummary.$insert;
 
 // Insert schemas for validation
 export const insertBranchSchema = createInsertSchema(branches).omit({
@@ -873,13 +919,27 @@ export const insertSaleItemSchema = createInsertSchema(saleItems).omit({
   createdAt: true,
 });
 
-export const insertExpiredProductSchema = createInsertSchema(expiredProducts).omit({
+export const insertSalesReturnSchema = createInsertSchema(salesReturns).omit({
+  id: true,
+  serialNumber: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDailySalesReturnSummarySchema = createInsertSchema(dailySalesReturnSummary).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertDailyExpirySummarySchema = createInsertSchema(dailyExpirySummary).omit({
+export const insertPurchaseReturnSchema = createInsertSchema(purchaseReturns).omit({
+  id: true,
+  serialNumber: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDailyPurchaseReturnSummarySchema = createInsertSchema(dailyPurchaseReturnSummary).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

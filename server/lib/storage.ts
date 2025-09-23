@@ -111,12 +111,18 @@ import {
   branches,
   type Branch,
   type InsertBranch,
-  expiredProducts,
-  dailyExpirySummary,
-  type ExpiredProduct,
-  type InsertExpiredProduct,
-  type DailyExpirySummary,
-  type InsertDailyExpirySummary
+  salesReturns,
+  dailySalesReturnSummary,
+  purchaseReturns,
+  dailyPurchaseReturnSummary,
+  type SalesReturn,
+  type InsertSalesReturn,
+  type DailySalesReturnSummary,
+  type InsertDailySalesReturnSummary,
+  type PurchaseReturn,
+  type InsertPurchaseReturn,
+  type DailyPurchaseReturnSummary,
+  type InsertDailyPurchaseReturnSummary
 } from "../../shared/schema";
 import bcrypt from "bcrypt";
 import fs from "fs";
@@ -5506,42 +5512,42 @@ export class Storage implements IStorage {
     }
   }
 
-  // Expired Products Management
-  async getExpiredProducts(date?: string): Promise<any[]> {
+  // Sales Returns Management
+  async getSalesReturns(date?: string): Promise<any[]> {
     try {
-      console.log('📦 Fetching expired products...');
+      console.log('📦 Fetching sales returns...');
 
-      let query = this.db.select().from(expiredProducts);
+      let query = this.db.select().from(salesReturns);
 
       if (date) {
-        query = query.where(eq(expiredProducts.expiryDate, date));
+        query = query.where(eq(salesReturns.returnDate, date));
       }
 
-      const result = await query.orderBy(desc(expiredProducts.createdAt));
-      console.log(`✅ Found ${result.length} expired products`);
+      const result = await query.orderBy(desc(salesReturns.createdAt));
+      console.log(`✅ Found ${result.length} sales returns`);
       return result;
     } catch (error) {
-      console.error('❌ Error fetching expired products:', error);
+      console.error('❌ Error fetching sales returns:', error);
       return [];
     }
   }
 
-  async createExpiredProduct(data: any): Promise<any> {
+  async createSalesReturn(data: any): Promise<any> {
     try {
-      console.log('💾 Creating expired product entry...');
+      console.log('💾 Creating sales return entry...');
 
       // Get next serial number for the day
-      const today = data.expiryDate || new Date().toISOString().split('T')[0];
+      const today = data.returnDate || new Date().toISOString().split('T')[0];
       const existingToday = await this.db.select({ count: sql<number>`count(*)` })
-        .from(expiredProducts)
-        .where(eq(expiredProducts.expiryDate, today));
+        .from(salesReturns)
+        .where(eq(salesReturns.returnDate, today));
 
       const serialNumber = (existingToday[0]?.count || 0) + 1;
 
       // Calculate amount
       const amount = parseFloat(data.quantity) * parseFloat(data.ratePerUnit);
 
-      const expiredProductData = {
+      const salesReturnData = {
         serialNumber,
         productId: parseInt(data.productId),
         productName: data.productName,
@@ -5550,36 +5556,39 @@ export class Storage implements IStorage {
         unitName: data.unitName,
         ratePerUnit: data.ratePerUnit,
         amount: amount.toString(),
-        expiryDate: today,
+        returnDate: today,
+        saleId: data.saleId || null, // Reference to original sale
+        customerId: data.customerId || null, // Reference to customer
+        returnReason: data.returnReason || 'damaged',
         notes: data.notes || null,
         createdBy: data.createdBy || 'system',
         isDayClosed: false, // Default to not closed
       };
 
-      const result = await this.db.insert(expiredProducts).values(expiredProductData).returning();
+      const result = await this.db.insert(salesReturns).values(salesReturnData).returning();
 
       // Update daily summary
-      await this.updateDailyExpirySummary(data.expiryDate);
+      await this.updateDailySalesReturnSummary(data.returnDate);
 
-      console.log('✅ Expired product created successfully');
+      console.log('✅ Sales return created successfully');
       return result[0];
     } catch (error) {
-      console.error('❌ Error creating expired product:', error);
+      console.error('❌ Error creating sales return:', error);
       throw error;
     }
   }
 
-  async updateExpiredProduct(id: number, data: any): Promise<any> {
+  async updateSalesReturn(id: number, data: any): Promise<any> {
     try {
-      console.log('💾 Updating expired product:', id);
+      console.log('💾 Updating sales return:', id);
 
       // Recalculate amount if quantity or rate changed
       const updateData = { ...data };
       if (data.quantity && data.ratePerUnit) {
         const current = await this.db
           .select()
-          .from(expiredProducts)
-          .where(eq(expiredProducts.id, id))
+          .from(salesReturns)
+          .where(eq(salesReturns.id, id))
           .limit(1);
 
         if (current.length > 0) {
