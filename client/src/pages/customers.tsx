@@ -97,20 +97,28 @@ export default function Customers() {
   } = useQuery({
     queryKey: ["/api/customers"],
     queryFn: async () => {
-      console.log("Fetching customers...");
-      const response = await apiRequest("GET", "/api/customers");
-      console.log("Customers response:", response);
-      
-      // Handle both direct array response and wrapped response
-      if (Array.isArray(response)) {
-        return response;
-      } else if (response && Array.isArray(response.data)) {
-        return response.data;
-      } else if (response && response.success && Array.isArray(response.data)) {
-        return response.data;
+      try {
+        console.log("Fetching customers...");
+        const response = await apiRequest("GET", "/api/customers");
+        console.log("Customers response:", response);
+        
+        // Handle different response formats
+        if (Array.isArray(response)) {
+          return response;
+        } else if (response && Array.isArray(response.items)) {
+          return response.items; // Handle paginated response
+        } else if (response && Array.isArray(response.data)) {
+          return response.data;
+        } else if (response && response.success && Array.isArray(response.data)) {
+          return response.data;
+        }
+        
+        console.warn("Unexpected customer response format:", response);
+        return [];
+      } catch (error) {
+        console.error("Error fetching customers:", error);
+        throw error;
       }
-      
-      return [];
     },
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;

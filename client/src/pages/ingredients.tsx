@@ -79,7 +79,7 @@ export default function Ingredients() {
   });
 
   // Use the useUnits hook to fetch units
-  const { units = [] } = useUnits();
+  const { units = [], isLoading: unitsLoading, error: unitsError } = useUnits();
 
   const { data: categories = [] } = useQuery({
     queryKey: ["/api/inventory-categories"],
@@ -428,28 +428,47 @@ export default function Ingredients() {
                     Measuring Unit <span className="text-red-500">*</span>
                   </Label>
                   <Select
-                    name="unitId"
-                    defaultValue={editingItem?.unitId?.toString() || ""}
-                    required
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select unit of measurement" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeUnits.length > 0 ? (
-                        activeUnits.map((unit: any) => (
-                          <SelectItem key={unit.id} value={unit.id.toString()}>
-                            {unit.name} (
-                            {unit.abbreviation || unit.unit || "unit"})
+                      name="unitId"
+                      defaultValue={editingItem?.unitId?.toString() || ""}
+                      required
+                      disabled={unitsLoading}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue 
+                          placeholder={
+                            unitsLoading 
+                              ? "Loading units..." 
+                              : unitsError 
+                                ? "Error loading units"
+                                : "Select unit of measurement"
+                          } 
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {unitsLoading ? (
+                          <SelectItem value="loading" disabled>
+                            Loading units...
                           </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="none" disabled>
-                          No units available. Please add one in settings.
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                        ) : unitsError ? (
+                          <SelectItem value="error" disabled>
+                            Error loading units. Please refresh.
+                          </SelectItem>
+                        ) : activeUnits.length > 0 ? (
+                          activeUnits.map((unit: any) => {
+                            if (!unit || !unit.id) return null;
+                            return (
+                              <SelectItem key={unit.id} value={unit.id.toString()}>
+                                {unit.name} ({unit.abbreviation || unit.unit || "unit"})
+                              </SelectItem>
+                            );
+                          }).filter(Boolean)
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            No units available. Please add one in settings.
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
                 </div>
               </div>
 
