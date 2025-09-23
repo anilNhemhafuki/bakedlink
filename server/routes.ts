@@ -57,7 +57,7 @@ import {
   insertSalesReturnSchema,
   insertPurchaseReturnSchema,
 } from "@shared/schema";
-import { requireAuth } from "./localAuth";
+import { isAuthenticated } from "./localAuth";
 import { storage } from "./lib/storage";
 import { trackUserActivity } from "./lib/activityTracker";
 import {
@@ -118,7 +118,7 @@ function buildPaginatedQuery(baseQuery: any, options: {
 }
 
 // Notification endpoints
-router.get("/api/notifications", requireAuth, async (req, res) => {
+router.get("/api/notifications", isAuthenticated, async (req, res) => {
   try {
     const notifications = getNotifications();
     res.json(notifications);
@@ -128,7 +128,7 @@ router.get("/api/notifications", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/api/notifications/:id/read", requireAuth, async (req, res) => {
+router.put("/api/notifications/:id/read", isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     const success = markNotificationAsRead(id);
@@ -144,7 +144,7 @@ router.put("/api/notifications/:id/read", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
+router.put("/api/notifications/mark-all-read", isAuthenticated, async (req, res) => {
   try {
     markAllNotificationsAsRead();
     res.json({ success: true });
@@ -154,7 +154,7 @@ router.put("/api/notifications/mark-all-read", requireAuth, async (req, res) => 
   }
 });
 
-router.delete("/api/notifications/:id", requireAuth, async (req, res) => {
+router.delete("/api/notifications/:id", isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     const success = clearNotification(id);
@@ -170,7 +170,7 @@ router.delete("/api/notifications/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/api/notifications/test", requireAuth, async (req, res) => {
+router.post("/api/notifications/test", isAuthenticated, async (req, res) => {
   try {
     sendTestNotification();
     res.json({ success: true, message: "Test notification sent" });
@@ -180,7 +180,7 @@ router.post("/api/notifications/test", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/api/notifications/check-alerts", requireAuth, async (req, res) => {
+router.post("/api/notifications/check-alerts", isAuthenticated, async (req, res) => {
   try {
     await checkLowStockAlerts();
     await checkProductionScheduleAlerts();
@@ -194,7 +194,7 @@ router.post("/api/notifications/check-alerts", requireAuth, async (req, res) => 
 // Enhanced table endpoints with pagination and sorting
 
 // Products with pagination and sorting
-router.get("/api/products/paginated", requireAuth, async (req, res) => {
+router.get("/api/products/paginated", isAuthenticated, async (req, res) => {
   try {
     const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
 
@@ -247,7 +247,7 @@ router.get("/api/products/paginated", requireAuth, async (req, res) => {
 });
 
 // Customers with pagination and sorting
-router.get("/api/customers/paginated", requireAuth, async (req, res) => {
+router.get("/api/customers/paginated", isAuthenticated, async (req, res) => {
   try {
     const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
 
@@ -292,7 +292,7 @@ router.get("/api/customers/paginated", requireAuth, async (req, res) => {
 });
 
 // Sales with pagination and sorting
-router.get("/api/sales/paginated", requireAuth, async (req, res) => {
+router.get("/api/sales/paginated", isAuthenticated, async (req, res) => {
   try {
     const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
 
@@ -337,7 +337,7 @@ router.get("/api/sales/paginated", requireAuth, async (req, res) => {
 });
 
 // Inventory with pagination and sorting
-router.get("/api/inventory/paginated", requireAuth, async (req, res) => {
+router.get("/api/inventory/paginated", isAuthenticated, async (req, res) => {
   try {
     const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
 
@@ -386,7 +386,7 @@ router.get("/api/inventory/paginated", requireAuth, async (req, res) => {
 
 // Include existing routes from your current routes.ts file
 // Products
-router.get("/api/products", requireAuth, async (req, res) => {
+router.get("/api/products", isAuthenticated, async (req, res) => {
   try {
     const allProducts = await db.select().from(products).orderBy(desc(products.id));
     res.json(allProducts);
@@ -396,7 +396,7 @@ router.get("/api/products", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/api/products", requireAuth, async (req, res) => {
+router.post("/api/products", isAuthenticated, async (req, res) => {
   try {
     const validatedData = insertProductSchema.parse(req.body);
     const [newProduct] = await db.insert(products).values(validatedData).returning();
@@ -707,7 +707,7 @@ router.get("/auth/user", (req, res) => {
 });
 
 // Admin user management routes
-router.get("/admin/users", requireAuth, async (req, res) => {
+router.get("/admin/users", isAuthenticated, async (req, res) => {
   try {
     console.log("👥 Fetching all users for admin...");
     const currentUser = req.session?.user;
@@ -740,7 +740,7 @@ router.get("/admin/users", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/admin/users", requireAuth, async (req, res) => {
+router.post("/admin/users", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating new user:", req.body.email);
     const currentUser = req.session?.user;
@@ -794,7 +794,7 @@ router.post("/admin/users", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/admin/users/:id", requireAuth, async (req, res) => {
+router.put("/admin/users/:id", isAuthenticated, async (req, res) => {
   try {
     const userId = req.params.id;
     console.log("💾 Updating user:", userId);
@@ -848,7 +848,7 @@ router.put("/admin/users/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/admin/users/:id", requireAuth, async (req, res) => {
+router.delete("/admin/users/:id", isAuthenticated, async (req, res) => {
   try {
     const userId = req.params.id;
     console.log("🗑️ Deleting user:", userId);
@@ -1255,7 +1255,7 @@ router.get("/settings", async (req, res) => {
   }
 });
 
-router.put("/settings", requireAuth, async (req, res) => {
+router.put("/settings", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Saving settings:", req.body);
 
@@ -1313,7 +1313,7 @@ router.get("/pricing", async (req, res) => {
   }
 });
 
-router.put("/pricing", requireAuth, async (req, res) => {
+router.put("/pricing", isAuthenticated, async (req, res) => {
   try {
     console.log("💰 Updating pricing settings:", req.body);
 
@@ -1363,7 +1363,7 @@ router.get("/system-price", async (req, res) => {
 });
 
 // Branch Management Routes
-router.get("/branches", requireAuth, async (req, res) => {
+router.get("/branches", isAuthenticated, async (req, res) => {
   try {
     console.log("🏢 Fetching branches...");
     const result = await storage.getBranches();
@@ -1375,7 +1375,7 @@ router.get("/branches", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/branches", requireAuth, async (req, res) => {
+router.post("/branches", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating branch:", req.body.name);
     const result = await storage.createBranch(req.body);
@@ -1397,7 +1397,7 @@ router.post("/branches", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/branches/:id", requireAuth, async (req, res) => {
+router.put("/branches/:id", isAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.id);
     console.log("💾 Updating branch:", branchId);
@@ -1420,7 +1420,7 @@ router.put("/branches/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/branches/:id", requireAuth, async (req, res) => {
+router.delete("/branches/:id", isAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.id);
     console.log("🗑️ Deleting branch:", branchId);
@@ -1443,7 +1443,7 @@ router.delete("/branches/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/users/:userId/assign-branch", requireAuth, async (req, res) => {
+router.post("/users/:userId/assign-branch", isAuthenticated, async (req, res) => {
   try {
     const { userId } = req.params;
     const { branchId } = req.body;
@@ -1468,7 +1468,7 @@ router.post("/users/:userId/assign-branch", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/users/with-branches", requireAuth, async (req, res) => {
+router.get("/users/with-branches", isAuthenticated, async (req, res) => {
   try {
     console.log("👥 Fetching users with branch info...");
     const result = await storage.getUsersWithBranches();
@@ -1508,7 +1508,7 @@ router.get("/products", async (req, res) => {
   }
 });
 
-router.post("/products", requireAuth, async (req, res) => {
+router.post("/products", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating product:", req.body.name);
     const result = await storage.createProduct(req.body);
@@ -1543,7 +1543,7 @@ router.get("/sales", async (req, res) => {
   }
 });
 
-router.post("/sales", requireAuth, async (req, res) => {
+router.post("/sales", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating sale with customer transaction:", req.body);
     const result = await storage.createSaleWithTransaction(req.body);
@@ -1658,7 +1658,7 @@ router.get("/production-schedule", async (req, res) => {
   }
 });
 
-router.post("/production-schedule", requireAuth, async (req, res) => {
+router.post("/production-schedule", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating production schedule item:", req.body);
     const result = await storage.createProductionScheduleItem(req.body);
@@ -1808,7 +1808,7 @@ router.get("/inventory-items", async (req, res) => {
   }
 });
 
-router.post("/inventory", requireAuth, async (req, res) => {
+router.post("/inventory", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating inventory item:", req.body.name);
     const result = await storage.createInventoryItem(req.body);
@@ -1852,7 +1852,7 @@ router.post("/inventory", requireAuth, async (req, res) => {
 });
 
 // Legacy endpoint for compatibility
-router.post("/inventory-items", requireAuth, async (req, res) => {
+router.post("/inventory-items", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating inventory item (legacy endpoint):", req.body.name);
     const result = await storage.createInventoryItem(req.body);
@@ -1878,7 +1878,7 @@ router.post("/inventory-items", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/inventory/:id", requireAuth, async (req, res) => {
+router.put("/inventory/:id", isAuthenticated, async (req, res) => {
   try {
     const itemId = parseInt(req.params.id);
     console.log("💾 Updating inventory item:", itemId);
@@ -1920,7 +1920,7 @@ router.put("/inventory/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/inventory/:id", requireAuth, async (req, res) => {
+router.delete("/inventory/:id", isAuthenticated, async (req, res) => {
   try {
     const itemId = parseInt(req.params.id);
     console.log("🗑️ Deleting inventory item:", itemId);
@@ -2049,7 +2049,7 @@ router.get("/ingredients", async (req, res) => {
   }
 });
 
-router.post("/units", requireAuth, async (req, res) => {
+router.post("/units", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating unit:", req.body.name);
     const result = await storage.createUnit(req.body);
@@ -2071,7 +2071,7 @@ router.post("/units", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/units/:id", requireAuth, async (req, res) => {
+router.put("/units/:id", isAuthenticated, async (req, res) => {
   try {
     const unitId = parseInt(req.params.id);
     console.log("💾 Updating unit:", unitId);
@@ -2094,7 +2094,7 @@ router.put("/units/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/units/:id", requireAuth, async (req, res) => {
+router.delete("/units/:id", isAuthenticated, async (req, res) => {
   try {
     const unitId = parseInt(req.params.id);
     console.log("🗑️ Deleting unit:", unitId);
@@ -2192,7 +2192,7 @@ router.get("/supplier-ledgers/:supplierId", async (req, res) => {
 });
 
 // Audit Logs API routes
-router.get("/audit-logs", requireAuth, async (req, res) => {
+router.get("/audit-logs", isAuthenticated, async (req, res) => {
   try {
     console.log("📋 Fetching audit logs...");
 
@@ -2225,7 +2225,7 @@ router.get("/audit-logs", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/audit-logs/analytics", requireAuth, async (req, res) => {
+router.get("/audit-logs/analytics", isAuthenticated, async (req, res) => {
   try {
     console.log("📊 Fetching audit analytics...");
 
@@ -2263,7 +2263,7 @@ router.get("/audit-logs/analytics", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/login-logs/analytics", requireAuth, async (req, res) => {
+router.get("/login-logs/analytics", isAuthenticated, async (req, res) => {
   try {
     console.log("📊 Fetching login analytics...");
 
@@ -2286,7 +2286,7 @@ router.get("/login-logs/analytics", requireAuth, async (req, res) => {
 });
 
 // Cache management routes
-router.post("/cache/clear", requireAuth, async (req, res) => {
+router.post("/cache/clear", isAuthenticated, async (req, res) => {
   try {
     console.log("🧹 Clearing application cache...");
 
@@ -2338,7 +2338,7 @@ router.get("/staff", async (req, res) => {
   }
 });
 
-router.post("/staff", requireAuth, async (req, res) => {
+router.post("/staff", isAuthenticated, async (req, res) => {
   try {
     console.log(
       "💾 Creating staff member:",
@@ -2385,7 +2385,7 @@ router.post("/staff", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/staff/:id", requireAuth, async (req, res) => {
+router.put("/staff/:id", isAuthenticated, async (req, res) => {
   try {
     const staffId = parseInt(req.params.id);
     console.log("💾 Updating staff member:", staffId);
@@ -2427,7 +2427,7 @@ router.put("/staff/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/staff/:id", requireAuth, async (req, res) => {
+router.delete("/staff/:id", isAuthenticated, async (req, res) => {
   try {
     const staffId = parseInt(req.params.id);
     console.log("🗑️ Deleting staff member:", staffId);
@@ -2480,8 +2480,8 @@ const uploadsDir = path.join(
   "uploads",
   "staff-documents",
 );
-if (!fsSync.existsSync(uploadsDir)) {
-  fsSync.mkdirSync(uploadsDir, { recursive: true });
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
 // Configure multer for file uploads
@@ -2525,7 +2525,7 @@ const upload = multer({
 // Staff document upload endpoint
 router.post(
   "/staff/upload-document",
-  requireAuth,
+  isAuthenticated,
   upload.single("document"),
   async (req, res) => {
     try {
@@ -2666,7 +2666,7 @@ router.get("/attendance", async (req, res) => {
   }
 });
 
-router.post("/attendance", requireAuth, async (req, res) => {
+router.post("/attendance", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating attendance record:", req.body);
     const result = await storage.createAttendance(req.body);
@@ -2692,7 +2692,7 @@ router.post("/attendance", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/attendance/:id", requireAuth, async (req, res) => {
+router.put("/attendance/:id", isAuthenticated, async (req, res) => {
   try {
     const attendanceId = parseInt(req.params.id);
     console.log("💾 Updating attendance record:", attendanceId);
@@ -2710,7 +2710,7 @@ router.put("/attendance/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/attendance/:id", requireAuth, async (req, res) => {
+router.delete("/attendance/:id", isAuthenticated, async (req, res) => {
   try {
     const attendanceId = parseInt(req.params.id);
     console.log("🗑️ Deleting attendance record:", attendanceId);
@@ -2732,7 +2732,7 @@ router.delete("/attendance/:id", requireAuth, async (req, res) => {
 });
 
 // Clock in/out endpoints
-router.post("/attendance/clock-in/:staffId", requireAuth, async (req, res) => {
+router.post("/attendance/clock-in/:staffId", isAuthenticated, async (req, res) => {
   try {
     const staffId = parseInt(req.params.staffId);
     console.log("⏰ Clocking in staff member:", staffId);
@@ -2759,7 +2759,7 @@ router.post("/attendance/clock-in/:staffId", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/attendance/clock-out/:staffId", requireAuth, async (req, res) => {
+router.post("/attendance/clock-out/:staffId", isAuthenticated, async (req, res) => {
   try {
     const staffId = parseInt(req.params.staffId);
     console.log("⏰ Clocking out staff member:", staffId);
@@ -2818,7 +2818,7 @@ router.get("/salary-payments", async (req, res) => {
   }
 });
 
-router.post("/salary-payments", requireAuth, async (req, res) => {
+router.post("/salary-payments", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating salary payment:", req.body);
     const result = await storage.createSalaryPayment(req.body);
@@ -2864,7 +2864,7 @@ router.get("/leave-requests", async (req, res) => {
   }
 });
 
-router.post("/leave-requests", requireAuth, async (req, res) => {
+router.post("/leave-requests", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating leave request:", req.body);
     const result = await storage.createLeaveRequest(req.body);
@@ -2890,7 +2890,7 @@ router.post("/leave-requests", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/leave-requests/:id", requireAuth, async (req, res) => {
+router.put("/leave-requests/:id", isAuthenticated, async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
     console.log("💾 Updating leave request:", requestId);
@@ -2944,7 +2944,7 @@ router.get("/customers", async (req, res) => {
   }
 });
 
-router.post("/customers", requireAuth, async (req, res) => {
+router.post("/customers", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating customer:", req.body.name);
 
@@ -3029,7 +3029,7 @@ router.post("/customers", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/customers/:id", requireAuth, async (req, res) => {
+router.put("/customers/:id", isAuthenticated, async (req, res) => {
   try {
     const customerId = parseInt(req.params.id);
     console.log("💾 Updating customer:", customerId);
@@ -3082,7 +3082,7 @@ router.put("/customers/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/customers/:id", requireAuth, async (req, res) => {
+router.delete("/customers/:id", isAuthenticated, async (req, res) => {
   try {
     const customerId = parseInt(req.params.id);
     console.log("🗑️ Deleting customer:", customerId);
@@ -3145,7 +3145,7 @@ router.get("/parties", async (req, res) => {
   }
 });
 
-router.post("/parties", requireAuth, async (req, res) => {
+router.post("/parties", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating party:", req.body.name);
 
@@ -3234,7 +3234,7 @@ router.post("/parties", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/parties/:id", requireAuth, async (req, res) => {
+router.put("/parties/:id", isAuthenticated, async (req, res) => {
   try {
     const partyId = parseInt(req.params.id);
     console.log("💾 Updating party:", partyId);
@@ -3296,7 +3296,7 @@ router.put("/parties/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/parties/:id", requireAuth, async (req, res) => {
+router.delete("/parties/:id", isAuthenticated, async (req, res) => {
   try {
     const partyId = parseInt(req.params.id);
     console.log("🗑️ Deleting party:", partyId);
@@ -3360,7 +3360,7 @@ router.get("/sales-returns", async (req, res) => {
   }
 });
 
-router.post("/sales-returns", requireAuth, async (req, res) => {
+router.post("/sales-returns", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating sales return entry:", req.body);
 
@@ -3416,7 +3416,7 @@ router.post("/sales-returns", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/sales-returns/:id", requireAuth, async (req, res) => {
+router.put("/sales-returns/:id", isAuthenticated, async (req, res) => {
   try {
     const salesReturnId = parseInt(req.params.id);
     console.log("💾 Updating sales return:", salesReturnId);
@@ -3453,7 +3453,7 @@ router.put("/sales-returns/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/sales-returns/:id", requireAuth, async (req, res) => {
+router.delete("/sales-returns/:id", isAuthenticated, async (req, res) => {
   try {
     const salesReturnId = parseInt(req.params.id);
     console.log("🗑️ Deleting sales return:", salesReturnId);
@@ -3505,7 +3505,7 @@ router.get("/sales-returns/summary/:date", async (req, res) => {
   }
 });
 
-router.post("/sales-returns/close-day", requireAuth, async (req, res) => {
+router.post("/sales-returns/close-day", isAuthenticated, async (req, res) => {
   try {
     const { date } = req.body;
     const closedBy = req.session?.user?.id || "system";
@@ -3551,7 +3551,7 @@ router.post("/sales-returns/close-day", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/sales-returns/reopen-day", requireAuth, async (req, res) => {
+router.post("/sales-returns/reopen-day", isAuthenticated, async (req, res) => {
   try {
     const { date } = req.body;
 
@@ -3613,7 +3613,7 @@ router.get("/purchase-returns", async (req, res) => {
   }
 });
 
-router.post("/purchase-returns", requireAuth, async (req, res) => {
+router.post("/purchase-returns", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating purchase return entry:", req.body);
 
@@ -3669,7 +3669,7 @@ router.post("/purchase-returns", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/purchase-returns/:id", requireAuth, async (req, res) => {
+router.put("/purchase-returns/:id", isAuthenticated, async (req, res) => {
   try {
     const purchaseReturnId = parseInt(req.params.id);
     console.log("💾 Updating purchase return:", purchaseReturnId);
@@ -3706,7 +3706,7 @@ router.put("/purchase-returns/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/purchase-returns/:id", requireAuth, async (req, res) => {
+router.delete("/purchase-returns/:id", isAuthenticated, async (req, res) => {
   try {
     const purchaseReturnId = parseInt(req.params.id);
     console.log("🗑️ Deleting purchase return:", purchaseReturnId);
@@ -3758,7 +3758,7 @@ router.get("/purchase-returns/summary/:date", async (req, res) => {
   }
 });
 
-router.post("/purchase-returns/close-day", requireAuth, async (req, res) => {
+router.post("/purchase-returns/close-day", isAuthenticated, async (req, res) => {
   try {
     const { date } = req.body;
     const closedBy = req.session?.user?.id || "system";
@@ -3804,7 +3804,7 @@ router.post("/purchase-returns/close-day", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/purchase-returns/reopen-day", requireAuth, async (req, res) => {
+router.post("/purchase-returns/reopen-day", isAuthenticated, async (req, res) => {
   try {
     const { date } = req.body;
 
@@ -3849,7 +3849,7 @@ router.post("/purchase-returns/reopen-day", requireAuth, async (req, res) => {
 });
 
 // Ledger Transaction Routes
-router.post("/ledger", requireAuth, async (req, res) => {
+router.post("/ledger", isAuthenticated, async (req, res) => {
   try {
     console.log("💾 Creating ledger transaction:", req.body);
     const result = await storage.createLedgerTransaction(req.body);
