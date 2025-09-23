@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, startTransition } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -247,8 +247,21 @@ export default function Transactions() {
     queryKey: ["/api/expenses"],
   });
 
+  // Fetch parties (suppliers)
   const { data: suppliers = [] } = useQuery({
-    queryKey: ["/api/parties"],
+    queryKey: ["parties"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", "/api/parties");
+        const partiesData = Array.isArray(res) ? res : res.parties || res.data || [];
+        return Array.isArray(partiesData) ? partiesData : [];
+      } catch (error) {
+        console.error("Failed to fetch parties:", error);
+        return [];
+      }
+    },
+    retry: (failureCount, error) =>
+      !isUnauthorizedError(error) && failureCount < 3,
   });
 
   const { data: supplierLedgers = [] } = useQuery({
@@ -452,7 +465,7 @@ export default function Transactions() {
     // Process purchases
     purchases.forEach((purchase: any) => {
       if (!purchase.partyId) return;
-      
+
       const ledger = ledgerMap.get(purchase.partyId);
       if (!ledger) return;
 
@@ -486,10 +499,10 @@ export default function Transactions() {
     // Calculate running balances and current balance for each supplier
     ledgerMap.forEach((ledger) => {
       let runningBalance = 0;
-      
+
       // Sort transactions by date
       ledger.transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      
+
       // Calculate running balance
       ledger.transactions.forEach((transaction) => {
         if (transaction.transactionType === "Purchase") {
@@ -497,7 +510,7 @@ export default function Transactions() {
         }
         transaction.runningBalance = runningBalance;
       });
-      
+
       ledger.currentBalance = runningBalance;
     });
 
@@ -507,6 +520,12 @@ export default function Transactions() {
   // Filter supplier ledgers
   const filteredSupplierLedgers = useMemo(() => {
     let filtered = processedSupplierLedgers;
+
+    if (searchTerm) {
+      filtered = filtered.filter(ledger =>
+        ledger.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
     if (supplierFilter !== "all") {
       filtered = filtered.filter(ledger => ledger.supplierId.toString() === supplierFilter);
@@ -522,7 +541,7 @@ export default function Transactions() {
       const days = parseInt(supplierDateRange);
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
-      
+
       filtered = filtered.map(ledger => ({
         ...ledger,
         transactions: ledger.transactions.filter(t => new Date(t.date) >= cutoffDate)
@@ -530,7 +549,7 @@ export default function Transactions() {
     }
 
     return filtered;
-  }, [processedSupplierLedgers, supplierFilter, supplierPaymentStatus, supplierDateRange]);
+  }, [processedSupplierLedgers, searchTerm, supplierFilter, supplierPaymentStatus, supplierDateRange]);
 
   const handleSupplierLedgerView = (ledger: SupplierLedger) => {
     setSelectedSupplier(ledger);
@@ -549,7 +568,7 @@ export default function Transactions() {
 
   const exportSupplierLedger = (ledger?: SupplierLedger) => {
     const dataToExport = ledger ? [ledger] : filteredSupplierLedgers;
-    
+
     const csvContent = [
       ["Supplier", "Date", "Invoice", "Items", "Total Amount", "Amount Paid", "Outstanding", "Running Balance", "Payment Status"].join(","),
       ...dataToExport.flatMap(ledger => 
@@ -557,7 +576,7 @@ export default function Transactions() {
           ledger.supplierName,
           format(new Date(txn.date), "yyyy-MM-dd"),
           txn.invoiceNumber || "N/A",
-          txn.items,
+          `"${txn.items.replace(/"/g, '""')}"`, // Properly escape quotes in items
           txn.totalAmount,
           txn.amountPaid,
           txn.outstanding,
@@ -602,9 +621,9 @@ export default function Transactions() {
           txn.entryDate,
           txn.txnDate,
           txn.txnNo,
-          txn.particular,
+          `"${txn.particular.replace(/"/g, '""')}"`, // Properly escape quotes
           txn.txnType,
-          txn.parties,
+          `"${txn.parties.replace(/"/g, '""')}"`, // Properly escape quotes
           txn.pmtMode,
           txn.amount,
           txn.status,

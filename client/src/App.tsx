@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { UnitsProvider } from "@/contexts/UnitsContext";
-import { useState, useEffect, lazy } from "react"; // Import lazy
+import { useState, useEffect } from "react";
 
 // Page Components
 import Landing from "@/pages/landing";
@@ -35,6 +35,8 @@ import NotificationSettings from "@/components/notification-settings";
 
 import Sales from "@/pages/sales";
 import Purchases from "@/pages/purchases";
+import SalesReturns from "@/pages/sales-returns";
+import PurchaseReturns from "@/pages/purchase-returns";
 import PublicOrderForm from "@/components/public-order-form";
 import Stock from "@/pages/stock";
 import Ingredients from "@/pages/ingredients";
@@ -203,11 +205,19 @@ function AuthenticatedApp({
             {/* Replaced expire-products route with sales-returns and purchase-returns */}
             <Route
               path="/sales-returns"
-              component={lazy(() => import("./pages/sales-returns"))}
+              component={() => (
+                <RouteWrapper resource="sales" action="read">
+                  <SalesReturns />
+                </RouteWrapper>
+              )}
             />
             <Route
               path="/purchase-returns"
-              component={lazy(() => import("./pages/purchase-returns"))}
+              component={() => (
+                <RouteWrapper resource="purchases" action="read">
+                  <PurchaseReturns />
+                </RouteWrapper>
+              )}
             />
             <Route
               path="/units"
