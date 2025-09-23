@@ -705,10 +705,10 @@ export class Storage implements IStorage {
   }
 
   async ensureDefaultAdmin(): Promise<void> {
-    const superAdminEmail = "superadmin@merobakersoft.com";
-    const adminEmail = "admin@merobakersoft.com";
-    const managerEmail = "manager@merobakersoft.com";
-    const staffEmail = "staff@merobakersoft.com";
+    const superAdminEmail = "superadmin@bakersoft.com";
+    const adminEmail = "admin@bakersoft.com";
+    const managerEmail = "manager@bakersoft.com";
+    const staffEmail = "staff@bakersoft.com";
 
     // Create superadmin user
     const existingSuperAdmin = await this.getUserByEmail(superAdminEmail);
@@ -2352,7 +2352,7 @@ export class Storage implements IStorage {
       if (allSettings.length === 0) {
         console.log("No settings found, creating default settings...");
         const defaultSettings = {
-          companyName: "Mero BakeSoft",
+          companyName: " BakeSoft",
           companyPhone: "+977-1-234567",
         };
         return defaultSettings;
@@ -2888,7 +2888,7 @@ export class Storage implements IStorage {
       console.log('Creating ledger transaction:', data);
 
       const transactionData = {
-        customerOrPartyId: data.customerOrPartyId,
+        custorPartyId: data.custorPartyId,
         entityType: data.entityType,
         transactionDate: new Date(data.transactionDate),
         description: data.description,
@@ -2908,7 +2908,7 @@ export class Storage implements IStorage {
         .returning();
 
       // Recalculate running balance for the entity
-      await this.recalculateRunningBalance(data.customerOrPartyId, data.entityType);
+      await this.recalculateRunningBalance(data.custorPartyId, data.entityType);
 
       console.log('✅ Ledger transaction created successfully');
       return newTransaction;
@@ -2929,7 +2929,7 @@ export class Storage implements IStorage {
         .from(ledgerTransactions)
         .where(
           and(
-            eq(ledgerTransactions.customerOrPartyId, entityId),
+            eq(ledgerTransactions.custorPartyId, entityId),
             eq(ledgerTransactions.entityType, entityType)
           )
         )
@@ -2988,7 +2988,7 @@ export class Storage implements IStorage {
         .from(ledgerTransactions)
         .where(
           and(
-            eq(ledgerTransactions.customerOrPartyId, entityId),
+            eq(ledgerTransactions.custorPartyId, entityId),
             eq(ledgerTransactions.entityType, entityType)
           )
         )
@@ -3179,7 +3179,7 @@ export class Storage implements IStorage {
       // Create ledger transaction if party is involved
       if (purchaseData.partyId) {
         await this.createLedgerTransaction({
-          customerOrPartyId: purchaseData.partyId,
+          custorPartyId: purchaseData.partyId,
           entityType: "party",
           transactionDate: new Date(),
           description: `Purchase from ${purchaseData.supplierName}${purchaseData.invoiceNumber ? ` - Invoice: ${purchaseData.invoiceNumber}` : ""}`,
@@ -5084,7 +5084,7 @@ export class Storage implements IStorage {
 
           // Create ledger transaction
           await tx.insert(ledgerTransactions).values({
-            customerOrPartyId: customerId,
+            custorPartyId: customerId,
             entityType: "customer",
             transactionDate: new Date(),
             description: `Sale - INV-${sale.id}`,
