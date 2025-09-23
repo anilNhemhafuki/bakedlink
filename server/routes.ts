@@ -174,8 +174,6 @@ if (notifications.length === 0) {
 // Notification Routes
 router.get("/notifications", async (req, res) => {
   try {
-    console.log("📋 Fetching notifications...");
-
     // Return notifications sorted by timestamp (newest first)
     const sortedNotifications = [...notifications].sort(
       (a, b) =>

@@ -25,22 +25,17 @@ async function initializeUnits() {
   try {
     // Check if units already exist
     const existingUnits = await db.select().from(units);
-    console.log(`Found ${existingUnits.length} existing units`);
 
     if (existingUnits.length > 0) {
-      console.log("✅ Units already initialized");
       return;
     }
 
     // Insert default units
-    console.log("🔧 Inserting default units...");
     const insertedUnits = await db
       .insert(units)
       .values(defaultUnits)
       .returning();
-    console.log(`✅ Inserted ${insertedUnits.length} default units`);
   } catch (error) {
-    console.error("❌ Error initializing units:", error);
     throw error;
   }
 }

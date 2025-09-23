@@ -43,7 +43,10 @@ export async function notifyNewPublicOrder(orderData: {
   submissionTime?: string;
 }): Promise<void> {
   try {
-    console.log("📧 Sending enhanced notifications for new public order:", orderData.orderNumber);
+    console.log(
+      "📧 Sending enhanced notifications for new public order:",
+      orderData.orderNumber,
+    );
 
     // Enhanced notification details
     const notificationData = {
@@ -56,10 +59,11 @@ export async function notifyNewPublicOrder(orderData: {
       deliveryDate: orderData.deliveryDate,
       itemCount: orderData.itemCount,
       attachmentCount: orderData.attachmentCount || 0,
-      source: orderData.source || 'Website',
+      source: orderData.source || "Website",
       submissionTime: orderData.submissionTime || new Date().toISOString(),
-      priority: orderData.totalAmount > 500 ? 'high' : 'medium',
-      requiresReview: orderData.attachmentCount > 0 || orderData.totalAmount > 1000
+      priority: orderData.totalAmount > 500 ? "high" : "medium",
+      requiresReview:
+        orderData.attachmentCount > 0 || orderData.totalAmount > 1000,
     };
 
     console.log("🚨 NEW PUBLIC ORDER ALERT 🚨");
@@ -88,97 +92,107 @@ export async function notifyNewPublicOrder(orderData: {
     // - WhatsApp Business API
 
     // Simulate notification sending with different priorities
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     return Promise.resolve({
       success: true,
       notificationsSent: [
-        'email_to_admin',
-        'sms_to_manager',
-        'slack_to_sales_team',
-        'dashboard_notification'
+        "email_to_admin",
+        "sms_to_manager",
+        "slack_to_sales_team",
+        "dashboard_notification",
       ],
-      orderData: notificationData
+      orderData: notificationData,
     });
-
   } catch (error) {
-    console.error('Error sending order notifications:', error);
+    console.error("Error sending order notifications:", error);
   }
 }
 
-export async function notifyLowStock(stockData: LowStockNotification): Promise<void> {
+export async function notifyLowStock(
+  stockData: LowStockNotification,
+): Promise<void> {
   try {
-    console.log('⚠️ LOW STOCK ALERT');
-    console.log('==================');
+    console.log("⚠️ LOW STOCK ALERT");
+    console.log("==================");
     console.log(`Item: ${stockData.itemName}`);
     console.log(`Current Stock: ${stockData.currentStock} ${stockData.unit}`);
     console.log(`Minimum Level: ${stockData.minLevel} ${stockData.unit}`);
-    console.log(`Supplier: ${stockData.supplier || 'Not specified'}`);
-    console.log('==================');
+    console.log(`Supplier: ${stockData.supplier || "Not specified"}`);
+    console.log("==================");
 
-    await sendBrowserNotification('low_stock', {
+    await sendBrowserNotification("low_stock", {
       title: `Low Stock Alert: ${stockData.itemName}`,
       message: `Only ${stockData.currentStock} ${stockData.unit} remaining (Min: ${stockData.minLevel})`,
-      icon: '⚠️',
-      data: stockData
+      icon: "⚠️",
+      data: stockData,
     });
-
   } catch (error) {
-    console.error('Error sending low stock notifications:', error);
+    console.error("Error sending low stock notifications:", error);
   }
 }
 
-export async function notifyProductionSchedule(productionData: ProductionNotification): Promise<void> {
+export async function notifyProductionSchedule(
+  productionData: ProductionNotification,
+): Promise<void> {
   try {
-    console.log('📅 PRODUCTION SCHEDULE NOTIFICATION');
-    console.log('===================================');
+    console.log("📅 PRODUCTION SCHEDULE NOTIFICATION");
+    console.log("===================================");
     console.log(`Product: ${productionData.productName}`);
     console.log(`Scheduled: ${productionData.scheduledDate}`);
-    console.log(`Target: ${productionData.targetAmount} ${productionData.unit}`);
+    console.log(
+      `Target: ${productionData.targetAmount} ${productionData.unit}`,
+    );
     console.log(`Priority: ${productionData.priority}`);
-    console.log(`Assigned To: ${productionData.assignedTo || 'Unassigned'}`);
-    console.log('===================================');
+    console.log(`Assigned To: ${productionData.assignedTo || "Unassigned"}`);
+    console.log("===================================");
 
-    await sendBrowserNotification('production_reminder', {
+    await sendBrowserNotification("production_reminder", {
       title: `Production Scheduled: ${productionData.productName}`,
       message: `${productionData.targetAmount} ${productionData.unit} scheduled for ${new Date(productionData.scheduledDate).toLocaleDateString()}`,
-      icon: '🏭',
-      data: productionData
+      icon: "🏭",
+      data: productionData,
     });
-
   } catch (error) {
-    console.error('Error sending production notifications:', error);
+    console.error("Error sending production notifications:", error);
   }
 }
 
-async function sendBrowserNotification(type: string, notification: any): Promise<void> {
+async function sendBrowserNotification(
+  type: string,
+  notification: any,
+): Promise<void> {
   try {
     // Get all subscribed users with permission for this notification type
     const recipients = await getNotificationRecipients();
 
     for (const recipient of recipients) {
       const subscription = notificationSubscriptions.get(recipient.id);
-      const settings = notificationSettings.get(recipient.id) || getDefaultSettings();
+      const settings =
+        notificationSettings.get(recipient.id) || getDefaultSettings();
 
       // Check if user has this notification type enabled
       const typeEnabled = getNotificationTypeEnabled(settings, type);
 
       if (subscription && typeEnabled) {
         // In a real implementation, you would use web-push library here
-        console.log(`📱 Sending ${type} notification to user ${recipient.id}:`, notification.title);
+        console.log(
+          `📱 Sending ${type} notification to user ${recipient.id}:`,
+          notification.title,
+        );
 
         // Simulate browser notification
-        if (typeof window !== 'undefined' && 'Notification' in window) {
+        if (typeof window !== "undefined" && "Notification" in window) {
           new Notification(notification.title, {
             body: notification.message,
             icon: notification.icon,
-            data: notification.data
+            data: notification.data,
           });
         }
       }
     }
   } catch (error) {
-    console.error('Error sending browser notifications:', error);
+    console.error("Error sending browser notifications:", error);
   }
 }
 
@@ -186,7 +200,7 @@ function getDefaultSettings() {
   return {
     low_stock: { enabled: true, dailyLimit: true },
     new_order: { enabled: true, dailyLimit: false },
-    production_reminder: { enabled: true, dailyLimit: true }
+    production_reminder: { enabled: true, dailyLimit: true },
   };
 }
 
@@ -200,17 +214,20 @@ export async function getNotificationRecipients(): Promise<any[]> {
     // This would typically query the database for admin/manager users
     // For now, return a mock list
     return [
-      { id: 'admin_default', role: 'admin' },
-      { id: 'manager_default', role: 'manager' }
+      { id: "admin_default", role: "admin" },
+      { id: "manager_default", role: "manager" },
     ];
   } catch (error) {
-    console.error('Error getting notification recipients:', error);
+    console.error("Error getting notification recipients:", error);
     return [];
   }
 }
 
 // Storage functions for notification preferences
-export function saveNotificationSubscription(userId: string, subscription: any): void {
+export function saveNotificationSubscription(
+  userId: string,
+  subscription: any,
+): void {
   notificationSubscriptions.set(userId, subscription);
 }
 
@@ -237,10 +254,10 @@ export async function checkLowStockItems(storage: any): Promise<void> {
         currentStock: parseFloat(item.currentStock || 0),
         minLevel: parseFloat(item.minLevel || 0),
         unit: item.unit,
-        supplier: item.supplier
+        supplier: item.supplier,
       });
     }
   } catch (error) {
-    console.error('Error checking low stock items:', error);
+    console.error("Error checking low stock items:", error);
   }
 }
