@@ -515,7 +515,7 @@ export default function Sales() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <div className="flex gap-2">
-                  <Button onClick={() => printInvoice(sale)}>
+                  <Button>
                     <Plus className="h-4 w-4 mr-2" />
                     Record Sale
                   </Button>

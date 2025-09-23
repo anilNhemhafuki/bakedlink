@@ -72,13 +72,14 @@ export default function AttendanceManagement() {
 
   const { data: attendance = [], isLoading } = useQuery({
     queryKey: ["/api/attendance", selectedStaff, startDate, endDate],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedStaff && selectedStaff !== "all") params.append('staffId', selectedStaff);
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
-      return apiRequest("GET", `/api/attendance?${params.toString()}`);
+      const result = await apiRequest("GET", `/api/attendance?${params.toString()}`);
+      return Array.isArray(result) ? result : [];
     },
   });
 
@@ -250,11 +251,11 @@ export default function AttendanceManagement() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const filteredAttendance = attendance.filter((record: any) =>
+  const filteredAttendance = (Array.isArray(attendance) ? attendance : []).filter((record: any) =>
     record.staffName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const todaysAttendance = attendance.filter((record: any) => {
+  const todaysAttendance = (Array.isArray(attendance) ? attendance : []).filter((record: any) => {
     const recordDate = new Date(record.date);
     const today = new Date();
     return recordDate.toDateString() === today.toDateString();

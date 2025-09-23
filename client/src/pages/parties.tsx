@@ -58,6 +58,12 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { format } from "date-fns";
+import {
+  Pagination,
+  PaginationInfo,
+  PageSizeSelector,
+  usePagination,
+} from "@/components/ui/pagination";
 
 interface LedgerTransaction {
   id: number;
@@ -103,7 +109,7 @@ export default function Parties() {
     useState<TransactionFormErrors>({});
   const { formatCurrency } = useCurrency();
 
-  
+
 
   const {
     data: parties = [],
@@ -644,7 +650,7 @@ export default function Parties() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormErrors({});
-    
+
     const formData = new FormData(e.currentTarget);
 
     // Client-side validation
@@ -657,7 +663,7 @@ export default function Parties() {
     } else if (name.trim().length < 2) {
       errors.name = "Party name must be at least 2 characters long";
     }
-    
+
     if (!type?.trim()) {
       errors.type = "Party type is required";
     }
