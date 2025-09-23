@@ -295,11 +295,13 @@ export default function Ingredients() {
       defaultPrice: parseFloat(
         (formData.get("defaultPrice") as string) || costPerUnit || "0",
       ),
+      categoryId: null, // Add categoryId for proper database insertion
       group: (formData.get("group") as string) || "ingredients",
       supplier: (formData.get("supplier") as string)?.trim() || null,
       company: (formData.get("company") as string)?.trim() || null,
       location: (formData.get("location") as string)?.trim() || null,
       notes: (formData.get("notes") as string)?.trim() || null,
+      isIngredient: true, // Mark as ingredient for proper categorization
     };
 
     if (editingItem) {

@@ -2750,6 +2750,149 @@ export class Storage implements IStorage {
     return result[0];
   }
 
+  // Asset Management Methods
+  async getAssets(): Promise<any[]> {
+    try {
+      const result = await this.db
+        .select()
+        .from(assets)
+        .where(eq(assets.isActive, true))
+        .orderBy(desc(assets.createdAt));
+      return result;
+    } catch (error) {
+      console.error("Error fetching assets:", error);
+      return [];
+    }
+  }
+
+  async createAsset(assetData: any): Promise<any> {
+    try {
+      const result = await this.db
+        .insert(assets)
+        .values(assetData)
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error creating asset:", error);
+      throw error;
+    }
+  }
+
+  async updateAsset(id: number, assetData: any): Promise<any> {
+    try {
+      const result = await this.db
+        .update(assets)
+        .set({ ...assetData, updatedAt: new Date() })
+        .where(eq(assets.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error updating asset:", error);
+      throw error;
+    }
+  }
+
+  async deleteAsset(id: number): Promise<void> {
+    try {
+      await this.db
+        .update(assets)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(assets.id, id));
+    } catch (error) {
+      console.error("Error deleting asset:", error);
+      throw error;
+    }
+  }
+
+  async getAssetById(id: number): Promise<any> {
+    try {
+      const result = await this.db
+        .select()
+        .from(assets)
+        .where(eq(assets.id, id))
+        .limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error fetching asset by ID:", error);
+      return null;
+    }
+  }
+
+  // Expense Management Methods
+  async getExpenses(): Promise<any[]> {
+    try {
+      const result = await this.db
+        .select()
+        .from(expenses)
+        .orderBy(desc(expenses.date));
+      return result.map(expense => ({
+        ...expense,
+        title: expense.description, // Map description to title for frontend compatibility
+      }));
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+      return [];
+    }
+  }
+
+  async createExpense(expenseData: any): Promise<any> {
+    try {
+      const result = await this.db
+        .insert(expenses)
+        .values(expenseData)
+        .returning();
+      return {
+        ...result[0],
+        title: result[0].description, // Map description to title for frontend compatibility
+      };
+    } catch (error) {
+      console.error("Error creating expense:", error);
+      throw error;
+    }
+  }
+
+  async updateExpense(id: number, expenseData: any): Promise<any> {
+    try {
+      const result = await this.db
+        .update(expenses)
+        .set({ ...expenseData, updatedAt: new Date() })
+        .where(eq(expenses.id, id))
+        .returning();
+      return {
+        ...result[0],
+        title: result[0].description, // Map description to title for frontend compatibility
+      };
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      throw error;
+    }
+  }
+
+  async deleteExpense(id: number): Promise<void> {
+    try {
+      await this.db
+        .delete(expenses)
+        .where(eq(expenses.id, id));
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      throw error;
+    }
+  }
+
+  async getExpenseById(id: number): Promise<any> {
+    try {
+      const result = await this.db
+        .select()
+        .from(expenses)
+        .where(eq(expenses.id, id))
+        .limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error fetching expense by ID:", error);
+      return null;
+    }
+  }
+
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
     const [newCustomer] = await this.db
       .insert(customers)

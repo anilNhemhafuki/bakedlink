@@ -97,13 +97,27 @@ export default function Customers() {
   } = useQuery({
     queryKey: ["/api/customers"],
     queryFn: async () => {
+      console.log("Fetching customers...");
       const response = await apiRequest("GET", "/api/customers");
-      return Array.isArray(response) ? response : [];
+      console.log("Customers response:", response);
+      
+      // Handle both direct array response and wrapped response
+      if (Array.isArray(response)) {
+        return response;
+      } else if (response && Array.isArray(response.data)) {
+        return response.data;
+      } else if (response && response.success && Array.isArray(response.data)) {
+        return response.data;
+      }
+      
+      return [];
     },
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
     },
+    refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 
   const { data: ledgerTransactions = [] } = useQuery({
