@@ -96,16 +96,15 @@ export default function Inventory() {
   );
 
   // Add pagination
-  const pagination = usePagination(filteredItems, 10);
   const {
+    currentItems: paginatedItems,
     currentPage,
     pageSize,
     totalPages,
     totalItems,
-    paginatedData: paginatedItems,
-    handlePageChange,
-    handlePageSizeChange,
-  } = pagination;
+    goToPage: handlePageChange,
+    setPageSize: handlePageSizeChange,
+  } = usePagination(filteredItems, 10);
 
   const getStockBadge = (item: any) => {
     const currentStock = parseFloat(item.currentStock || 0);
