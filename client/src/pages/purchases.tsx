@@ -448,12 +448,20 @@ export default function Purchases() {
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleCloseDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Record Purchase
+          <div className="flex gap-2">
+            <DialogTrigger asChild>
+              <Button onClick={handleCloseDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                Record Purchase
+              </Button>
+            </DialogTrigger>
+            <Button
+              variant="outline"
+              onClick={() => window.location.href = '/purchase-returns'}
+            >
+              📦 Purchase Returns
             </Button>
-          </DialogTrigger>
+          </div>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Record New Purchase</DialogTitle>

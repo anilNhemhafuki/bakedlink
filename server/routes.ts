@@ -3106,27 +3106,27 @@ router.delete("/parties/:id", requireAuth, async (req, res) => {
   }
 });
 
-// Expired Products Management Routes
-router.get("/expire-products", async (req, res) => {
+// Sales Returns Management Routes
+router.get("/sales-returns", async (req, res) => {
   try {
-    console.log("📦 Fetching expired products...");
+    console.log("🔄 Fetching sales returns...");
     const date = req.query.date as string;
-    const result = await storage.getExpiredProducts(date);
-    console.log(`✅ Found ${result.length} expired products`);
+    const result = await storage.getSalesReturns(date);
+    console.log(`✅ Found ${result.length} sales returns`);
     res.json({ success: true, data: result });
   } catch (error) {
-    console.error("❌ Error fetching expired products:", error);
+    console.error("❌ Error fetching sales returns:", error);
     res.status(500).json({
-      error: "Failed to fetch expired products",
+      error: "Failed to fetch sales returns",
       message: error.message,
       success: false,
     });
   }
 });
 
-router.post("/expire-products", requireAuth, async (req, res) => {
+router.post("/sales-returns", requireAuth, async (req, res) => {
   try {
-    console.log("💾 Creating expired product entry:", req.body);
+    console.log("💾 Creating sales return entry:", req.body);
 
     // Validate required fields
     if (!req.body.productId || !req.body.quantity || !req.body.ratePerUnit) {
@@ -3137,67 +3137,67 @@ router.post("/expire-products", requireAuth, async (req, res) => {
       });
     }
 
-    const result = await storage.createExpiredProduct({
+    const result = await storage.createSalesReturn({
       ...req.body,
       createdBy: req.session?.user?.id || "system",
     });
 
-    // Log the expired product creation
+    // Log the sales return creation
     if (req.session?.user) {
       await storage.logUserAction(
         req.session.user.id,
         "CREATE",
-        "expired_products",
+        "sales_returns",
         {
           productName: req.body.productName,
           quantity: req.body.quantity,
           amount: result.amount,
-          expiryDate: result.expiryDate,
+          returnDate: result.returnDate,
         },
         req.ip,
         req.get("User-Agent"),
       );
     }
 
-    // Add expired product notification
+    // Add sales return notification
     addNotification({
-      type: "inventory",
-      title: "Product Expired",
-      description: `${req.body.productName} - ${req.body.quantity} ${req.body.unitName} expired (Loss: ${result.amount})`,
+      type: "order",
+      title: "Sales Return",
+      description: `${req.body.productName} - ${req.body.quantity} ${req.body.unitName} returned (Loss: ${result.amount})`,
       priority: "high",
-      actionUrl: "/expire-products",
+      actionUrl: "/sales-returns",
     });
 
-    console.log("✅ Expired product entry created successfully");
+    console.log("✅ Sales return entry created successfully");
     res.json({ success: true, data: result });
   } catch (error: any) {
-    console.error("❌ Error creating expired product entry:", error);
+    console.error("❌ Error creating sales return entry:", error);
     res.status(400).json({
-      error: "Failed to create expired product entry",
+      error: "Failed to create sales return entry",
       message: error.message,
       success: false,
     });
   }
 });
 
-router.put("/expire-products/:id", requireAuth, async (req, res) => {
+router.put("/sales-returns/:id", requireAuth, async (req, res) => {
   try {
-    const expiredProductId = parseInt(req.params.id);
-    console.log("💾 Updating expired product:", expiredProductId);
+    const salesReturnId = parseInt(req.params.id);
+    console.log("💾 Updating sales return:", salesReturnId);
 
-    const result = await storage.updateExpiredProduct(
-      expiredProductId,
+    const result = await storage.updateSalesReturn(
+      salesReturnId,
       req.body,
     );
 
-    // Log the expired product update
+    // Log the sales return update
     if (req.session?.user) {
       await storage.logUserAction(
         req.session.user.id,
         "UPDATE",
-        "expired_products",
+        "sales_returns",
         {
-          expiredProductId,
+          salesReturnId,
           updates: req.body,
         },
         req.ip,
@@ -3205,85 +3205,85 @@ router.put("/expire-products/:id", requireAuth, async (req, res) => {
       );
     }
 
-    console.log("✅ Expired product updated successfully");
+    console.log("✅ Sales return updated successfully");
     res.json({ success: true, data: result });
   } catch (error: any) {
-    console.error("❌ Error updating expired product:", error);
+    console.error("❌ Error updating sales return:", error);
     res.status(400).json({
-      error: "Failed to update expired product",
+      error: "Failed to update sales return",
       message: error.message,
       success: false,
     });
   }
 });
 
-router.delete("/expire-products/:id", requireAuth, async (req, res) => {
+router.delete("/sales-returns/:id", requireAuth, async (req, res) => {
   try {
-    const expiredProductId = parseInt(req.params.id);
-    console.log("🗑️ Deleting expired product:", expiredProductId);
+    const salesReturnId = parseInt(req.params.id);
+    console.log("🗑️ Deleting sales return:", salesReturnId);
 
-    await storage.deleteExpiredProduct(expiredProductId);
+    await storage.deleteSalesReturn(salesReturnId);
 
-    // Log the expired product deletion
+    // Log the sales return deletion
     if (req.session?.user) {
       await storage.logUserAction(
         req.session.user.id,
         "DELETE",
-        "expired_products",
-        { expiredProductId },
+        "sales_returns",
+        { salesReturnId },
         req.ip,
         req.get("User-Agent"),
       );
     }
 
-    console.log("✅ Expired product deleted successfully");
+    console.log("✅ Sales return deleted successfully");
     res.json({
       success: true,
-      message: "Expired product deleted successfully",
+      message: "Sales return deleted successfully",
     });
   } catch (error: any) {
-    console.error("❌ Error deleting expired product:", error);
+    console.error("❌ Error deleting sales return:", error);
     res.status(400).json({
-      error: "Failed to delete expired product",
+      error: "Failed to delete sales return",
       message: error.message,
       success: false,
     });
   }
 });
 
-router.get("/expire-products/summary/:date", async (req, res) => {
+router.get("/sales-returns/summary/:date", async (req, res) => {
   try {
     const date = req.params.date;
-    console.log(`📊 Fetching daily expiry summary for ${date}...`);
+    console.log(`📊 Fetching daily sales return summary for ${date}...`);
 
-    const result = await storage.getDailyExpirySummary(date);
-    console.log("✅ Daily expiry summary fetched successfully");
+    const result = await storage.getDailySalesReturnSummary(date);
+    console.log("✅ Daily sales return summary fetched successfully");
     res.json({ success: true, data: result });
   } catch (error) {
-    console.error("❌ Error fetching daily expiry summary:", error);
+    console.error("❌ Error fetching daily sales return summary:", error);
     res.status(500).json({
-      error: "Failed to fetch daily expiry summary",
+      error: "Failed to fetch daily sales return summary",
       message: error.message,
       success: false,
     });
   }
 });
 
-router.post("/expire-products/close-day", requireAuth, async (req, res) => {
+router.post("/sales-returns/close-day", requireAuth, async (req, res) => {
   try {
     const { date } = req.body;
     const closedBy = req.session?.user?.id || "system";
 
-    console.log(`🔒 Closing expiry day for ${date}...`);
+    console.log(`🔒 Closing sales return day for ${date}...`);
 
-    const result = await storage.closeDayExpiry(date, closedBy);
+    const result = await storage.closeDaySalesReturn(date, closedBy);
 
     // Log the day closure
     if (req.session?.user) {
       await storage.logUserAction(
         req.session.user.id,
         "UPDATE",
-        "expired_products",
+        "sales_returns",
         {
           action: "close_day",
           date,
@@ -3297,38 +3297,38 @@ router.post("/expire-products/close-day", requireAuth, async (req, res) => {
     // Add day closure notification
     addNotification({
       type: "system",
-      title: "Expiry Day Closed",
+      title: "Sales Return Day Closed",
       description: `Day closed for ${date}. Total loss: ${result.totalLoss}`,
       priority: "medium",
-      actionUrl: "/expire-products",
+      actionUrl: "/sales-returns",
     });
 
-    console.log("✅ Expiry day closed successfully");
+    console.log("✅ Sales return day closed successfully");
     res.json({ success: true, data: result });
   } catch (error: any) {
-    console.error("❌ Error closing expiry day:", error);
+    console.error("❌ Error closing sales return day:", error);
     res.status(400).json({
-      error: "Failed to close expiry day",
+      error: "Failed to close sales return day",
       message: error.message,
       success: false,
     });
   }
 });
 
-router.post("/expire-products/reopen-day", requireAuth, async (req, res) => {
+router.post("/sales-returns/reopen-day", requireAuth, async (req, res) => {
   try {
     const { date } = req.body;
 
-    console.log(`🔓 Reopening expiry day for ${date}...`);
+    console.log(`🔓 Reopening sales return day for ${date}...`);
 
-    const result = await storage.reopenDayExpiry(date);
+    const result = await storage.reopenDaySalesReturn(date);
 
-    // Log the day reopening (admin only)
+    // Log the day reopening
     if (req.session?.user) {
       await storage.logUserAction(
         req.session.user.id,
         "UPDATE",
-        "expired_products",
+        "sales_returns",
         {
           action: "reopen_day",
           date,
@@ -3341,18 +3341,271 @@ router.post("/expire-products/reopen-day", requireAuth, async (req, res) => {
     // Add day reopening notification
     addNotification({
       type: "system",
-      title: "Expiry Day Reopened",
+      title: "Sales Return Day Reopened",
       description: `Day reopened for ${date}. New entries can be added.`,
       priority: "medium",
-      actionUrl: "/expire-products",
+      actionUrl: "/sales-returns",
     });
 
-    console.log("✅ Expiry day reopened successfully");
+    console.log("✅ Sales return day reopened successfully");
     res.json({ success: true, data: result });
   } catch (error: any) {
-    console.error("❌ Error reopening expiry day:", error);
+    console.error("❌ Error reopening sales return day:", error);
     res.status(400).json({
-      error: "Failed to reopen expiry day",
+      error: "Failed to reopen sales return day",
+      message: error.message,
+      success: false,
+    });
+  }
+});
+
+// Purchase Returns Management Routes
+router.get("/purchase-returns", async (req, res) => {
+  try {
+    console.log("📦 Fetching purchase returns...");
+    const date = req.query.date as string;
+    const result = await storage.getPurchaseReturns(date);
+    console.log(`✅ Found ${result.length} purchase returns`);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error("❌ Error fetching purchase returns:", error);
+    res.status(500).json({
+      error: "Failed to fetch purchase returns",
+      message: error.message,
+      success: false,
+    });
+  }
+});
+
+router.post("/purchase-returns", requireAuth, async (req, res) => {
+  try {
+    console.log("💾 Creating purchase return entry:", req.body);
+
+    // Validate required fields
+    if (!req.body.inventoryItemId || !req.body.quantity || !req.body.ratePerUnit) {
+      return res.status(400).json({
+        error: "Validation failed",
+        message: "Inventory item, quantity, and rate per unit are required",
+        success: false,
+      });
+    }
+
+    const result = await storage.createPurchaseReturn({
+      ...req.body,
+      createdBy: req.session?.user?.id || "system",
+    });
+
+    // Log the purchase return creation
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        "CREATE",
+        "purchase_returns",
+        {
+          inventoryItemName: req.body.inventoryItemName,
+          quantity: req.body.quantity,
+          amount: result.amount,
+          returnDate: result.returnDate,
+        },
+        req.ip,
+        req.get("User-Agent"),
+      );
+    }
+
+    // Add purchase return notification
+    addNotification({
+      type: "inventory",
+      title: "Purchase Return",
+      description: `${req.body.inventoryItemName} - ${req.body.quantity} ${req.body.unitName} returned (Loss: ${result.amount})`,
+      priority: "high",
+      actionUrl: "/purchase-returns",
+    });
+
+    console.log("✅ Purchase return entry created successfully");
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("❌ Error creating purchase return entry:", error);
+    res.status(400).json({
+      error: "Failed to create purchase return entry",
+      message: error.message,
+      success: false,
+    });
+  }
+});
+
+router.put("/purchase-returns/:id", requireAuth, async (req, res) => {
+  try {
+    const purchaseReturnId = parseInt(req.params.id);
+    console.log("💾 Updating purchase return:", purchaseReturnId);
+
+    const result = await storage.updatePurchaseReturn(
+      purchaseReturnId,
+      req.body,
+    );
+
+    // Log the purchase return update
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        "UPDATE",
+        "purchase_returns",
+        {
+          purchaseReturnId,
+          updates: req.body,
+        },
+        req.ip,
+        req.get("User-Agent"),
+      );
+    }
+
+    console.log("✅ Purchase return updated successfully");
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("❌ Error updating purchase return:", error);
+    res.status(400).json({
+      error: "Failed to update purchase return",
+      message: error.message,
+      success: false,
+    });
+  }
+});
+
+router.delete("/purchase-returns/:id", requireAuth, async (req, res) => {
+  try {
+    const purchaseReturnId = parseInt(req.params.id);
+    console.log("🗑️ Deleting purchase return:", purchaseReturnId);
+
+    await storage.deletePurchaseReturn(purchaseReturnId);
+
+    // Log the purchase return deletion
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        "DELETE",
+        "purchase_returns",
+        { purchaseReturnId },
+        req.ip,
+        req.get("User-Agent"),
+      );
+    }
+
+    console.log("✅ Purchase return deleted successfully");
+    res.json({
+      success: true,
+      message: "Purchase return deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("❌ Error deleting purchase return:", error);
+    res.status(400).json({
+      error: "Failed to delete purchase return",
+      message: error.message,
+      success: false,
+    });
+  }
+});
+
+router.get("/purchase-returns/summary/:date", async (req, res) => {
+  try {
+    const date = req.params.date;
+    console.log(`📊 Fetching daily purchase return summary for ${date}...`);
+
+    const result = await storage.getDailyPurchaseReturnSummary(date);
+    console.log("✅ Daily purchase return summary fetched successfully");
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error("❌ Error fetching daily purchase return summary:", error);
+    res.status(500).json({
+      error: "Failed to fetch daily purchase return summary",
+      message: error.message,
+      success: false,
+    });
+  }
+});
+
+router.post("/purchase-returns/close-day", requireAuth, async (req, res) => {
+  try {
+    const { date } = req.body;
+    const closedBy = req.session?.user?.id || "system";
+
+    console.log(`🔒 Closing purchase return day for ${date}...`);
+
+    const result = await storage.closeDayPurchaseReturn(date, closedBy);
+
+    // Log the day closure
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        "UPDATE",
+        "purchase_returns",
+        {
+          action: "close_day",
+          date,
+          totalLoss: result.totalLoss,
+        },
+        req.ip,
+        req.get("User-Agent"),
+      );
+    }
+
+    // Add day closure notification
+    addNotification({
+      type: "system",
+      title: "Purchase Return Day Closed",
+      description: `Day closed for ${date}. Total loss: ${result.totalLoss}`,
+      priority: "medium",
+      actionUrl: "/purchase-returns",
+    });
+
+    console.log("✅ Purchase return day closed successfully");
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("❌ Error closing purchase return day:", error);
+    res.status(400).json({
+      error: "Failed to close purchase return day",
+      message: error.message,
+      success: false,
+    });
+  }
+});
+
+router.post("/purchase-returns/reopen-day", requireAuth, async (req, res) => {
+  try {
+    const { date } = req.body;
+
+    console.log(`🔓 Reopening purchase return day for ${date}...`);
+
+    const result = await storage.reopenDayPurchaseReturn(date);
+
+    // Log the day reopening
+    if (req.session?.user) {
+      await storage.logUserAction(
+        req.session.user.id,
+        "UPDATE",
+        "purchase_returns",
+        {
+          action: "reopen_day",
+          date,
+        },
+        req.ip,
+        req.get("User-Agent"),
+      );
+    }
+
+    // Add day reopening notification
+    addNotification({
+      type: "system",
+      title: "Purchase Return Day Reopened",
+      description: `Day reopened for ${date}. New entries can be added.`,
+      priority: "medium",
+      actionUrl: "/purchase-returns",
+    });
+
+    console.log("✅ Purchase return day reopened successfully");
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("❌ Error reopening purchase return day:", error);
+    res.status(400).json({
+      error: "Failed to reopen purchase return day",
       message: error.message,
       success: false,
     });

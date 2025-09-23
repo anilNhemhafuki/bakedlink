@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { UnitsProvider } from "@/contexts/UnitsContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy } from "react"; // Import lazy
 
 // Page Components
 import Landing from "@/pages/landing";
@@ -41,7 +41,7 @@ import Ingredients from "@/pages/ingredients";
 import Units from "@/pages/units";
 import LabelPrinting from "@/pages/label-printing";
 import Recipes from "@/pages/recipes";
-import ExpireProducts from "@/pages/expire-products";
+// import ExpireProducts from "@/pages/expire-products"; // Removed as it's being replaced
 
 
 import Staff from "@/pages/staff";
@@ -200,13 +200,14 @@ function AuthenticatedApp({
                 </RouteWrapper>
               )}
             />
+            {/* Replaced expire-products route with sales-returns and purchase-returns */}
             <Route
-              path="/expire-products"
-              component={() => (
-                <RouteWrapper resource="products" action="read">
-                  <ExpireProducts />
-                </RouteWrapper>
-              )}
+              path="/sales-returns"
+              component={lazy(() => import("./pages/sales-returns"))}
+            />
+            <Route
+              path="/purchase-returns"
+              component={lazy(() => import("./pages/purchase-returns"))}
             />
             <Route
               path="/units"

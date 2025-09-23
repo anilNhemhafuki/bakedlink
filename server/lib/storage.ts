@@ -146,6 +146,7 @@ export interface IStorage {
   getProducts(
     userBranchId?: number,
     canAccessAllBranches?: boolean,
+    userRole?: string,
   ): Promise<Product[]>;
   getProductById(id: number): Promise<Product | undefined>;
   getProductsWithIngredients(): Promise<any[]>;
@@ -190,6 +191,7 @@ export interface IStorage {
   getInventoryItems(
     userBranchId?: number,
     canAccessAllBranches?: boolean,
+    userRole?: string,
   ): Promise<InventoryItem[]>;
   getAllInventoryItems(): Promise<InventoryItem[]>;
   getInventoryItemById(id: number): Promise<InventoryItem | undefined>;
@@ -533,14 +535,25 @@ export interface IStorage {
   getPricingSettings(): Promise<any>;
   updatePricingSettings(pricingData: any): Promise<void>;
 
-  // Expired Products Management
-  getExpiredProducts(date?: string): Promise<any[]>;
-  createExpiredProduct(data: any): Promise<any>;
-  updateExpiredProduct(id: number, data: any): Promise<any>;
-  deleteExpiredProduct(id: number): Promise<void>;
-  getDailyExpirySummary(date: string): Promise<any>;
-  closeDayExpiry(date: string, closedBy: string): Promise<any>;
-  reopenDayExpiry(date: string): Promise<any>;
+  // Sales Returns Management
+  getSalesReturns(date?: string): Promise<any[]>;
+  createSalesReturn(data: any): Promise<any>;
+  updateSalesReturn(id: number, data: any): Promise<any>;
+  deleteSalesReturn(id: number): Promise<any>;
+  getDailySalesReturnSummary(date: string): Promise<any>;
+  updateDailySalesReturnSummary(date: string): Promise<void>;
+  closeDaySalesReturn(date: string, closedBy: string): Promise<any>;
+  reopenDaySalesReturn(date: string): Promise<any>;
+
+  // Purchase Returns Management
+  getPurchaseReturns(date?: string): Promise<any[]>;
+  createPurchaseReturn(data: any): Promise<any>;
+  updatePurchaseReturn(id: number, data: any): Promise<any>;
+  deletePurchaseReturn(id: number): Promise<any>;
+  getDailyPurchaseReturnSummary(date: string): Promise<any>;
+  updateDailyPurchaseReturnSummary(date: string): Promise<void>;
+  closeDayPurchaseReturn(date: string, closedBy: string): Promise<any>;
+  reopenDayPurchaseReturn(date: string): Promise<any>;
 }
 
 export class Storage implements IStorage {
@@ -5523,12 +5536,12 @@ export class Storage implements IStorage {
         query = query.where(eq(salesReturns.returnDate, date));
       }
 
-      const result = await query.orderBy(desc(salesReturns.createdAt));
-      console.log(`✅ Found ${result.length} sales returns`);
-      return result;
-    } catch (error) {
+      const returns = await query.orderBy(salesReturns.serialNumber);
+      console.log(`✅ Found ${returns.length} sales returns`);
+      return returns;
+    } catch (error: any) {
       console.error('❌ Error fetching sales returns:', error);
-      return [];
+      throw new Error(`Failed to fetch sales returns: ${error.message}`);
     }
   }
 
@@ -5537,18 +5550,16 @@ export class Storage implements IStorage {
       console.log('💾 Creating sales return entry...');
 
       // Get next serial number for the day
-      const today = data.returnDate || new Date().toISOString().split('T')[0];
       const existingToday = await this.db.select({ count: sql<number>`count(*)` })
         .from(salesReturns)
-        .where(eq(salesReturns.returnDate, today));
+        .where(eq(salesReturns.returnDate, data.returnDate));
 
-      const serialNumber = (existingToday[0]?.count || 0) + 1;
+      const nextSerialNumber = (existingToday[0]?.count || 0) + 1;
 
-      // Calculate amount
       const amount = parseFloat(data.quantity) * parseFloat(data.ratePerUnit);
 
       const salesReturnData = {
-        serialNumber,
+        serialNumber: nextSerialNumber,
         productId: parseInt(data.productId),
         productName: data.productName,
         quantity: data.quantity,
@@ -5556,7 +5567,7 @@ export class Storage implements IStorage {
         unitName: data.unitName,
         ratePerUnit: data.ratePerUnit,
         amount: amount.toString(),
-        returnDate: today,
+        returnDate: data.returnDate,
         saleId: data.saleId || null, // Reference to original sale
         customerId: data.customerId || null, // Reference to customer
         returnReason: data.returnReason || 'damaged',
@@ -5572,7 +5583,7 @@ export class Storage implements IStorage {
 
       console.log('✅ Sales return created successfully');
       return result[0];
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error creating sales return:', error);
       throw error;
     }
@@ -5599,190 +5610,387 @@ export class Storage implements IStorage {
         }
       }
 
-      const result = await this.db.update(expiredProducts)
+      const result = await this.db.update(salesReturns)
         .set({ ...updateData, updatedAt: new Date() })
-        .where(eq(expiredProducts.id, id))
+        .where(eq(salesReturns.id, id))
         .returning();
 
       // Update daily summary if date-related data changed
       if (result.length > 0) {
-        await this.updateDailyExpirySummary(result[0].expiryDate);
+        await this.updateDailySalesReturnSummary(result[0].returnDate);
       }
 
-      console.log('✅ Expired product updated successfully');
+      console.log('✅ Sales return updated successfully');
       return result[0];
-    } catch (error) {
-      console.error('❌ Error updating expired product:', error);
+    } catch (error: any) {
+      console.error('❌ Error updating sales return:', error);
       throw error;
     }
   }
 
-  async deleteExpiredProduct(id: number): Promise<void> {
+  async deleteSalesReturn(id: number): Promise<any> {
     try {
-      console.log('🗑️ Deleting expired product:', id);
+      console.log('🗑️ Deleting sales return:', id);
 
-      // Get the product to know which date to update summary for
-      const product = await this.db
-        .select({ expiryDate: expiredProducts.expiryDate })
-        .from(expiredProducts)
-        .where(eq(expiredProducts.id, id))
+      // Get the return to know which date to update summary for
+      const salesReturn = await this.db
+        .select({ returnDate: salesReturns.returnDate })
+        .from(salesReturns)
+        .where(eq(salesReturns.id, id))
         .limit(1);
 
-      await this.db.delete(expiredProducts).where(eq(expiredProducts.id, id));
+      const [deletedReturn] = await this.db
+        .delete(salesReturns)
+        .where(eq(salesReturns.id, id))
+        .returning();
 
       // Update daily summary
-      if (product.length > 0) {
-        await this.updateDailyExpirySummary(product[0].expiryDate);
+      if (deletedReturn) {
+        await this.updateDailySalesReturnSummary(deletedReturn.returnDate);
       }
 
-      console.log('✅ Expired product deleted successfully');
-    } catch (error) {
-      console.error('❌ Error deleting expired product:', error);
+      console.log('✅ Sales return deleted successfully');
+      return deletedReturn;
+    } catch (error: any) {
+      console.error('❌ Error deleting sales return:', error);
       throw error;
     }
   }
 
-  async getDailyExpirySummary(date: string): Promise<any> {
+  async getDailySalesReturnSummary(date: string): Promise<any> {
     try {
-      console.log(`📊 Fetching daily expiry summary for ${date}...`);
+      console.log(`📊 Fetching daily sales return summary for ${date}...`);
 
-      // First, check if the day is closed
-      const closedSummary = await this.db.select()
-        .from(dailyExpirySummary)
-        .where(and(eq(dailyExpirySummary.summaryDate, date), eq(dailyExpirySummary.isDayClosed, true)))
+      const [summary] = await this.db
+        .select()
+        .from(dailySalesReturnSummary)
+        .where(eq(dailySalesReturnSummary.summaryDate, date))
         .limit(1);
 
-      if (closedSummary.length > 0) {
-        return closedSummary[0];
-      }
-
-      // If not closed, calculate summary from expired products
-      const expiredToday = await this.db.select({
-        totalItems: sql<number>`count(*)`,
-        totalQuantity: sql<number>`sum(cast(${expiredProducts.quantity} as decimal))`,
-        totalLoss: sql<number>`sum(cast(${expiredProducts.amount} as decimal))`,
-      })
-      .from(expiredProducts)
-      .where(eq(expiredProducts.expiryDate, date));
-
-      const calculatedSummary = expiredToday[0] || {
-        totalItems: 0,
-        totalQuantity: 0,
-        totalLoss: 0,
-      };
-
-      // Return the calculated summary, marking it as not closed
-      return {
-        summaryDate: date,
-        totalItems: calculatedSummary.totalItems,
-        totalQuantity: calculatedSummary.totalQuantity?.toString() || '0',
-        totalLoss: calculatedSummary.totalLoss?.toString() || '0',
-        isDayClosed: false,
-      };
-    } catch (error) {
-      console.error('❌ Error fetching daily expiry summary:', error);
-      return {
-        summaryDate: date,
-        totalItems: 0,
-        totalQuantity: '0',
-        totalLoss: '0',
-        isDayClosed: false,
-      };
+      return summary || null;
+    } catch (error: any) {
+      console.error("❌ Error fetching daily sales return summary:", error);
+      throw new Error(`Failed to fetch daily sales return summary: ${error.message}`);
     }
   }
 
-  async closeDayExpiry(date: string, closedBy: string): Promise<any> {
+  async updateDailySalesReturnSummary(date: string): Promise<void> {
     try {
-      console.log(`🔒 Closing expiry day for ${date}...`);
+      const returns = await this.db
+        .select()
+        .from(salesReturns)
+        .where(eq(salesReturns.returnDate, date));
 
-      // Calculate final summary
-      const expiredToday = await this.db.select({
-        totalItems: sql<number>`count(*)`,
-        totalQuantity: sql<number>`sum(cast(${expiredProducts.quantity} as decimal))`,
-        totalLoss: sql<number>`sum(cast(${expiredProducts.amount} as decimal))`,
-      })
-      .from(expiredProducts)
-      .where(eq(expiredProducts.expiryDate, date));
+      const totalItems = returns.length;
+      const totalQuantity = returns.reduce((sum, item) => sum + parseFloat(item.quantity), 0);
+      const totalLoss = returns.reduce((sum, item) => sum + parseFloat(item.amount), 0);
 
-      const summary = expiredToday[0] || {
-        totalItems: 0,
-        totalQuantity: 0,
-        totalLoss: 0,
+      const summaryData = {
+        summaryDate: date,
+        totalItems,
+        totalQuantity: totalQuantity.toString(),
+        totalLoss: totalLoss.toString(),
+        updatedAt: new Date(),
       };
 
-      // Check if summary already exists and is not closed
-      const existingSummary = await this.db.select()
-        .from(dailyExpirySummary)
-        .where(eq(dailyExpirySummary.summaryDate, date))
-        .limit(1);
+      await this.db
+        .insert(dailySalesReturnSummary)
+        .values(summaryData)
+        .onConflictDoUpdate({
+          target: dailySalesReturnSummary.summaryDate,
+          set: summaryData,
+        });
+    } catch (error: any) {
+      console.error("❌ Error updating daily sales return summary:", error);
+      throw new Error(`Failed to update daily sales return summary: ${error.message}`);
+    }
+  }
 
-      let result;
-      if (existingSummary.length > 0 && existingSummary[0].isDayClosed) {
-        // If day is already closed, return an error or specific message
-        throw new Error(`Day for ${date} has already been closed.`);
-      } else if (existingSummary.length > 0) {
-        // Update existing summary
-        result = await this.db.update(dailyExpirySummary)
-          .set({
-            totalItems: summary.totalItems,
-            totalQuantity: summary.totalQuantity?.toString() || '0',
-            totalLoss: summary.totalLoss?.toString() || '0',
-            isDayClosed: true,
-            closedBy,
-            closedAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(dailyExpirySummary.summaryDate, date))
-          .returning();
-      } else {
-        // Create new summary
-        result = await this.db.insert(dailyExpirySummary)
-          .values({
-            summaryDate: date,
-            totalItems: summary.totalItems,
-            totalQuantity: summary.totalQuantity?.toString() || '0',
-            totalLoss: summary.totalLoss?.toString() || '0',
-          })
-          .returning();
-      }
+  async closeDaySalesReturn(date: string, closedBy: string): Promise<any> {
+    try {
+      console.log(`🔒 Closing sales return day for ${date}...`);
 
-      // Mark all products for this day as closed
-      await this.db.update(expiredProducts)
+      await this.db
+        .update(salesReturns)
         .set({ isDayClosed: true })
-        .where(eq(expiredProducts.expiryDate, date));
+        .where(eq(salesReturns.returnDate, date));
 
-      console.log('✅ Day closed successfully for expired products');
-      return result[0];
-    } catch (error) {
-      console.error('❌ Error closing expiry day:', error);
-      throw error;
+      await this.db
+        .update(dailySalesReturnSummary)
+        .set({
+          isDayClosed: true,
+          closedBy,
+          closedAt: new Date(),
+        })
+        .where(eq(dailySalesReturnSummary.summaryDate, date));
+
+      console.log('✅ Sales return day closed successfully');
+      return await this.getDailySalesReturnSummary(date);
+    } catch (error: any) {
+      console.error("❌ Error closing sales return day:", error);
+      throw new Error(`Failed to close sales return day: ${error.message}`);
     }
   }
 
-  async reopenDayExpiry(date: string): Promise<any> {
+  async reopenDaySalesReturn(date: string): Promise<any> {
     try {
-      console.log(`🔓 Reopening expiry day for ${date}...`);
+      console.log(`🔓 Reopening sales return day for ${date}...`);
 
-      // Update summary to mark as not closed
-      await this.db.update(dailyExpirySummary)
+      await this.db
+        .update(salesReturns)
+        .set({ isDayClosed: false })
+        .where(eq(salesReturns.returnDate, date));
+
+      await this.db
+        .update(dailySalesReturnSummary)
         .set({
           isDayClosed: false,
           closedBy: null,
           closedAt: null,
-          updatedAt: new Date(),
         })
-        .where(eq(dailyExpirySummary.summaryDate, date));
+        .where(eq(dailySalesReturnSummary.summaryDate, date));
 
-      // Mark all products for this day as not closed
-      await this.db.update(expiredProducts)
-        .set({ isDayClosed: false })
-        .where(eq(expiredProducts.expiryDate, date));
+      console.log('✅ Sales return day reopened successfully');
+      return await this.getDailySalesReturnSummary(date);
+    } catch (error: any) {
+      console.error("❌ Error reopening sales return day:", error);
+      throw new Error(`Failed to reopen sales return day: ${error.message}`);
+    }
+  }
 
-      console.log('✅ Day reopened successfully for expiry tracking');
-      return { success: true, message: 'Day reopened successfully' };
-    } catch (error) {
-      console.error('❌ Error reopening expiry day:', error);
+  // Purchase Returns Methods
+  async getPurchaseReturns(date?: string): Promise<any[]> {
+    try {
+      console.log('📦 Fetching purchase returns...');
+
+      let query = this.db.select().from(purchaseReturns);
+
+      if (date) {
+        query = query.where(eq(purchaseReturns.returnDate, date));
+      }
+
+      const returns = await query.orderBy(purchaseReturns.serialNumber);
+      console.log(`✅ Found ${returns.length} purchase returns`);
+      return returns;
+    } catch (error: any) {
+      console.error("❌ Error fetching purchase returns:", error);
+      throw new Error(`Failed to fetch purchase returns: ${error.message}`);
+    }
+  }
+
+  async createPurchaseReturn(data: any): Promise<any> {
+    try {
+      console.log('💾 Creating purchase return entry...');
+
+      // Get next serial number for the date
+      const existingReturns = await this.db
+        .select({ serialNumber: purchaseReturns.serialNumber })
+        .from(purchaseReturns)
+        .where(eq(purchaseReturns.returnDate, data.returnDate))
+        .orderBy(desc(purchaseReturns.serialNumber))
+        .limit(1);
+
+      const nextSerialNumber = existingReturns.length > 0
+        ? existingReturns[0].serialNumber + 1
+        : 1;
+
+      const amount = parseFloat(data.quantity) * parseFloat(data.ratePerUnit);
+
+      const returnData = {
+        serialNumber: nextSerialNumber,
+        inventoryItemId: data.inventoryItemId,
+        inventoryItemName: data.inventoryItemName,
+        quantity: data.quantity.toString(),
+        unitId: data.unitId,
+        unitName: data.unitName,
+        ratePerUnit: data.ratePerUnit.toString(),
+        amount: amount.toString(),
+        returnDate: data.returnDate,
+        purchaseId: data.purchaseId || null,
+        partyId: data.partyId || null,
+        returnReason: data.returnReason || 'damaged',
+        notes: data.notes || null,
+        createdBy: data.createdBy || 'system',
+      };
+
+      const [result] = await this.db.insert(purchaseReturns).values(returnData).returning();
+
+      // Update summary
+      await this.updateDailyPurchaseReturnSummary(data.returnDate);
+
+      console.log('✅ Purchase return created successfully');
+      return result;
+    } catch (error: any) {
+      console.error("❌ Error creating purchase return:", error);
       throw error;
+    }
+  }
+
+  async updatePurchaseReturn(id: number, data: any): Promise<any> {
+    try {
+      console.log('💾 Updating purchase return:', id);
+
+      const updateData = {
+        inventoryItemId: data.inventoryItemId,
+        inventoryItemName: data.inventoryItemName,
+        quantity: data.quantity?.toString(),
+        unitId: data.unitId,
+        unitName: data.unitName,
+        ratePerUnit: data.ratePerUnit?.toString(),
+        amount: (parseFloat(data.quantity || 0) * parseFloat(data.ratePerUnit || 0)).toString(),
+        returnReason: data.returnReason,
+        partyId: data.partyId || null,
+        purchaseId: data.purchaseId || null,
+        notes: data.notes || null,
+        updatedAt: new Date(),
+      };
+
+      const [result] = await this.db
+        .update(purchaseReturns)
+        .set(updateData)
+        .where(eq(purchaseReturns.id, id))
+        .returning();
+
+      // Update summary
+      if (result) {
+        await this.updateDailyPurchaseReturnSummary(result.returnDate);
+      }
+
+      console.log('✅ Purchase return updated successfully');
+      return result;
+    } catch (error: any) {
+      console.error("❌ Error updating purchase return:", error);
+      throw error;
+    }
+  }
+
+  async deletePurchaseReturn(id: number): Promise<any> {
+    try {
+      console.log('🗑️ Deleting purchase return:', id);
+
+      // Get the return to know which date to update summary for
+      const purchaseReturn = await this.db
+        .select({ returnDate: purchaseReturns.returnDate })
+        .from(purchaseReturns)
+        .where(eq(purchaseReturns.id, id))
+        .limit(1);
+
+      const [deletedReturn] = await this.db
+        .delete(purchaseReturns)
+        .where(eq(purchaseReturns.id, id))
+        .returning();
+
+      // Update daily summary
+      if (deletedReturn) {
+        await this.updateDailyPurchaseReturnSummary(deletedReturn.returnDate);
+      }
+
+      console.log('✅ Purchase return deleted successfully');
+      return deletedReturn;
+    } catch (error: any) {
+      console.error("❌ Error deleting purchase return:", error);
+      throw error;
+    }
+  }
+
+  async getDailyPurchaseReturnSummary(date: string): Promise<any> {
+    try {
+      console.log(`📊 Fetching daily purchase return summary for ${date}...`);
+
+      const [summary] = await this.db
+        .select()
+        .from(dailyPurchaseReturnSummary)
+        .where(eq(dailyPurchaseReturnSummary.summaryDate, date))
+        .limit(1);
+
+      return summary || null;
+    } catch (error: any) {
+      console.error("❌ Error fetching daily purchase return summary:", error);
+      throw new Error(`Failed to fetch daily purchase return summary: ${error.message}`);
+    }
+  }
+
+  async updateDailyPurchaseReturnSummary(date: string): Promise<void> {
+    try {
+      const returns = await this.db
+        .select()
+        .from(purchaseReturns)
+        .where(eq(purchaseReturns.returnDate, date));
+
+      const totalItems = returns.length;
+      const totalQuantity = returns.reduce((sum, item) => sum + parseFloat(item.quantity), 0);
+      const totalLoss = returns.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+
+      const summaryData = {
+        summaryDate: date,
+        totalItems,
+        totalQuantity: totalQuantity.toString(),
+        totalLoss: totalLoss.toString(),
+        updatedAt: new Date(),
+      };
+
+      await this.db
+        .insert(dailyPurchaseReturnSummary)
+        .values(summaryData)
+        .onConflictDoUpdate({
+          target: dailyPurchaseReturnSummary.summaryDate,
+          set: summaryData,
+        });
+    } catch (error: any) {
+      console.error("❌ Error updating daily purchase return summary:", error);
+      throw new Error(`Failed to update daily purchase return summary: ${error.message}`);
+    }
+  }
+
+  async closeDayPurchaseReturn(date: string, closedBy: string): Promise<any> {
+    try {
+      console.log(`🔒 Closing purchase return day for ${date}...`);
+
+      await this.db
+        .update(purchaseReturns)
+        .set({ isDayClosed: true })
+        .where(eq(purchaseReturns.returnDate, date));
+
+      await this.db
+        .update(dailyPurchaseReturnSummary)
+        .set({
+          isDayClosed: true,
+          closedBy,
+          closedAt: new Date(),
+        })
+        .where(eq(dailyPurchaseReturnSummary.summaryDate, date));
+
+      console.log('✅ Purchase return day closed successfully');
+      return await this.getDailyPurchaseReturnSummary(date);
+    } catch (error: any) {
+      console.error("❌ Error closing purchase return day:", error);
+      throw new Error(`Failed to close purchase return day: ${error.message}`);
+    }
+  }
+
+  async reopenDayPurchaseReturn(date: string): Promise<any> {
+    try {
+      console.log(`🔓 Reopening purchase return day for ${date}...`);
+
+      await this.db
+        .update(purchaseReturns)
+        .set({ isDayClosed: false })
+        .where(eq(purchaseReturns.returnDate, date));
+
+      await this.db
+        .update(dailyPurchaseReturnSummary)
+        .set({
+          isDayClosed: false,
+          closedBy: null,
+          closedAt: null,
+        })
+        .where(eq(dailyPurchaseReturnSummary.summaryDate, date));
+
+      console.log('✅ Purchase return day reopened successfully');
+      return await this.getDailyPurchaseReturnSummary(date);
+    } catch (error: any) {
+      console.error("❌ Error reopening purchase return day:", error);
+      throw new Error(`Failed to reopen purchase return day: ${error.message}`);
     }
   }
 }

@@ -514,10 +514,18 @@ export default function Sales() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Record Sale
-            </Button>
+            <div className="flex gap-2">
+                  <Button onClick={() => printInvoice(sale)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Record Sale
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => window.location.href = '/sales-returns'}
+                  >
+                    🔄 Sales Returns
+                  </Button>
+                </div>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
