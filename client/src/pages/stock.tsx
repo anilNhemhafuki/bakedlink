@@ -34,7 +34,7 @@ import { SearchBar } from "@/components/search-bar";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useTableSort } from "@/hooks/useTableSort";
-import { SortableTableHeader } from "@/components/ui/sortable-table-header";
+import { useUnits } from "@/hooks/useUnits";
 import {
   Pagination,
   PaginationInfo,
@@ -53,6 +53,7 @@ import {
   Eye,
 } from "lucide-react";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest } from "@/lib/queryClient";
 
 interface StockItem {
   id: number;
@@ -63,6 +64,7 @@ interface StockItem {
   brand?: string;
   unit?: string;
   unitName?: string;
+  unitId?: number;
   currentStock: string;
   reorderLevel: string;
   costPrice: string;
@@ -84,26 +86,32 @@ export default function Stock() {
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
   const [viewingItem, setViewingItem] = useState<StockItem | null>(null);
   const { toast } = useToast();
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, symbol } = useCurrency();
   const queryClient = useQueryClient();
 
   // Fetch stock items
   const { data: stockItems = [], isLoading } = useQuery({
     queryKey: ["/api/inventory"],
+    queryFn: () => apiRequest("GET", "/api/inventory"),
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
     },
   });
 
-  // Fetch units for dropdown
-  const { data: units = [] } = useQuery({
-    queryKey: ["/api/units"],
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
+  // Use the useUnits hook to fetch units
+  const { units = [], isLoading: unitsLoading, error: unitsError } = useUnits();
+
+  // Fetch categories
+  const { data: categories = [] } = useQuery({
+    queryKey: ["/api/inventory-categories"],
+    queryFn: () => apiRequest("GET", "/api/inventory-categories"),
   });
+
+  // Filter active units
+  const activeUnits = Array.isArray(units)
+    ? units.filter((unit: any) => unit && unit.isActive)
+    : [];
 
   // Generate inventory ID with INV-XXXX format
   const generateInventoryId = () => {
@@ -118,7 +126,7 @@ export default function Stock() {
   };
 
   // Get unique categories from stock items, excluding empty/null values
-  const categories = useMemo(() => {
+  const stockCategories = useMemo(() => {
     const uniqueCategories = Array.from(
       new Set(
         stockItems
@@ -193,25 +201,14 @@ export default function Stock() {
       const url = editingItem
         ? `/api/inventory/${editingItem.id}`
         : "/api/inventory";
+      const method = editingItem ? "PUT" : "POST";
 
       const dataToSend = {
         ...itemData,
         inventoryId: editingItem ? editingItem.inventoryId : generateInventoryId(),
       };
 
-      const response = await fetch(url, {
-        method: editingItem ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSend),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to ${editingItem ? "update" : "create"} stock item`
-        );
-      }
-
-      return response.json();
+      return apiRequest(method, url, dataToSend);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
@@ -236,15 +233,7 @@ export default function Stock() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/inventory/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete stock item");
-      }
-
-      return response.json();
+      return apiRequest("DELETE", `/api/inventory/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
@@ -266,21 +255,30 @@ export default function Stock() {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
 
+    const selectedUnit = activeUnits.find(
+      (u: any) => u.id.toString() === formData.get("unitId")
+    );
+
     const data = {
-      itemName: formData.get("itemName") as string,
+      name: formData.get("itemName") as string,
       description: formData.get("description") as string,
       category: formData.get("category") as string,
+      categoryId: (formData.get("category") && !isNaN(parseInt(formData.get("category") as string))) 
+        ? parseInt(formData.get("category") as string) : null,
       brand: formData.get("brand") as string,
       unitId: parseInt(formData.get("unitId") as string) || null,
+      unit: selectedUnit?.abbreviation || "pcs",
       currentStock: parseFloat(formData.get("currentStock") as string) || 0,
-      reorderLevel: parseFloat(formData.get("reorderLevel") as string) || 0,
-      costPrice: parseFloat(formData.get("costPrice") as string) || 0,
+      minLevel: parseFloat(formData.get("reorderLevel") as string) || 0,
+      costPerUnit: parseFloat(formData.get("costPrice") as string) || 0,
       sellingPrice: parseFloat(formData.get("sellingPrice") as string) || 0,
       supplier: formData.get("supplier") as string,
       location: formData.get("location") as string,
       expiryDate: formData.get("expiryDate") as string || null,
       batchNumber: formData.get("batchNumber") as string,
       notes: formData.get("notes") as string,
+      invCode: editingItem ? editingItem.inventoryId : generateInventoryId(),
+      isActive: true,
     };
 
     saveMutation.mutate(data);
@@ -346,179 +344,282 @@ export default function Stock() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSave} className="space-y-6">
-              {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="itemName">Item Name *</Label>
-                  <Input
-                    id="itemName"
-                    name="itemName"
-                    placeholder="Enter item name"
-                    defaultValue={editingItem?.itemName || ""}
-                    required
-                  />
-                </div>
+              {/* Basic Information Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Basic Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Item Name and Category */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="itemName">
+                        Item Name <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="itemName"
+                        name="itemName"
+                        placeholder="Enter item name"
+                        defaultValue={editingItem?.itemName || ""}
+                        required
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Input
-                    id="category"
-                    name="category"
-                    placeholder="Enter category"
-                    defaultValue={editingItem?.category || ""}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Category</Label>
+                      <Select
+                        name="category"
+                        defaultValue={editingItem?.category || ""}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">No Category</SelectItem>
+                          <SelectItem value="ingredients">Ingredients</SelectItem>
+                          <SelectItem value="raw-materials">Raw Materials</SelectItem>
+                          <SelectItem value="packaging">Packaging</SelectItem>
+                          <SelectItem value="spices">Spices</SelectItem>
+                          <SelectItem value="dairy">Dairy</SelectItem>
+                          <SelectItem value="flour">Flour</SelectItem>
+                          <SelectItem value="sweeteners">Sweeteners</SelectItem>
+                          <SelectItem value="supplies">Supplies</SelectItem>
+                          {categories.map((category: any) => (
+                            <SelectItem key={category.id} value={category.id.toString()}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="brand">Brand/Company</Label>
-                  <Input
-                    id="brand"
-                    name="brand"
-                    placeholder="Enter brand or company name"
-                    defaultValue={editingItem?.brand || ""}
-                  />
-                </div>
+                  {/* Brand and Unit */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="brand">Brand/Company</Label>
+                      <Input
+                        id="brand"
+                        name="brand"
+                        placeholder="Enter brand or company name"
+                        defaultValue={editingItem?.brand || ""}
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="unitId">Unit</Label>
-                  <Select
-                    name="unitId"
-                    defaultValue={editingItem?.unitId?.toString() || ""}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {units.map((unit: any) => (
-                        <SelectItem key={unit.id} value={unit.id.toString()}>
-                          {unit.name} ({unit.abbreviation})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="unitId">
+                        Unit <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        name="unitId"
+                        defaultValue={editingItem?.unitId?.toString() || ""}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue 
+                            placeholder={
+                              unitsLoading 
+                                ? "Loading units..." 
+                                : unitsError 
+                                  ? "Error loading units"
+                                  : "Select unit"
+                            } 
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {unitsLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Loading units...
+                            </SelectItem>
+                          ) : unitsError ? (
+                            <SelectItem value="error" disabled>
+                              Error loading units. Please refresh.
+                            </SelectItem>
+                          ) : activeUnits.length > 0 ? (
+                            activeUnits.map((unit: any) => (
+                              <SelectItem key={unit.id} value={unit.id.toString()}>
+                                {unit.name} ({unit.abbreviation})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              No units available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  placeholder="Enter item description"
-                  defaultValue={editingItem?.description || ""}
-                  rows={3}
-                />
-              </div>
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      placeholder="Enter item description"
+                      defaultValue={editingItem?.description || ""}
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* Stock Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="currentStock">Current Stock *</Label>
-                  <Input
-                    id="currentStock"
-                    name="currentStock"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    defaultValue={editingItem?.currentStock || ""}
-                    required
-                  />
-                </div>
+              {/* Stock Information Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Stock Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentStock">
+                        Current Stock <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="currentStock"
+                        name="currentStock"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        defaultValue={editingItem?.currentStock || ""}
+                        required
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="reorderLevel">Reorder Level</Label>
-                  <Input
-                    id="reorderLevel"
-                    name="reorderLevel"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    defaultValue={editingItem?.reorderLevel || ""}
-                  />
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reorderLevel">
+                        Reorder Level <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="reorderLevel"
+                        name="reorderLevel"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        defaultValue={editingItem?.reorderLevel || ""}
+                        required
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* Pricing Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="costPrice">Cost Price</Label>
-                  <Input
-                    id="costPrice"
-                    name="costPrice"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    defaultValue={editingItem?.costPrice || ""}
-                  />
-                </div>
+              {/* Pricing Information Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Pricing Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="costPrice">
+                        Cost Price <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                          {symbol}
+                        </span>
+                        <Input
+                          id="costPrice"
+                          name="costPrice"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          defaultValue={editingItem?.costPrice || ""}
+                          className="pl-8"
+                          required
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="sellingPrice">Selling Price</Label>
-                  <Input
-                    id="sellingPrice"
-                    name="sellingPrice"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    defaultValue={editingItem?.sellingPrice || ""}
-                  />
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sellingPrice">Selling Price</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                          {symbol}
+                        </span>
+                        <Input
+                          id="sellingPrice"
+                          name="sellingPrice"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          defaultValue={editingItem?.sellingPrice || ""}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* Additional Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="supplier">Supplier</Label>
-                  <Input
-                    id="supplier"
-                    name="supplier"
-                    placeholder="Enter supplier name"
-                    defaultValue={editingItem?.supplier || ""}
-                  />
-                </div>
+              {/* Additional Details Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Additional Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="supplier">Supplier</Label>
+                      <Input
+                        id="supplier"
+                        name="supplier"
+                        placeholder="Enter supplier name"
+                        defaultValue={editingItem?.supplier || ""}
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    placeholder="Enter storage location"
-                    defaultValue={editingItem?.location || ""}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location</Label>
+                      <Input
+                        id="location"
+                        name="location"
+                        placeholder="Enter storage location"
+                        defaultValue={editingItem?.location || ""}
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="expiryDate">Expiry Date</Label>
-                  <Input
-                    id="expiryDate"
-                    name="expiryDate"
-                    type="date"
-                    defaultValue={editingItem?.expiryDate || ""}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="expiryDate">Expiry Date</Label>
+                      <Input
+                        id="expiryDate"
+                        name="expiryDate"
+                        type="date"
+                        defaultValue={editingItem?.expiryDate || ""}
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="batchNumber">Batch Number</Label>
-                  <Input
-                    id="batchNumber"
-                    name="batchNumber"
-                    placeholder="Enter batch number"
-                    defaultValue={editingItem?.batchNumber || ""}
-                  />
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="batchNumber">Batch Number</Label>
+                      <Input
+                        id="batchNumber"
+                        name="batchNumber"
+                        placeholder="Enter batch number"
+                        defaultValue={editingItem?.batchNumber || ""}
+                      />
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  placeholder="Enter any additional notes"
-                  defaultValue={editingItem?.notes || ""}
-                  rows={3}
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      name="notes"
+                      placeholder="Enter any additional notes"
+                      defaultValue={editingItem?.notes || ""}
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
+              {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                 <Button
                   type="button"
@@ -531,7 +632,7 @@ export default function Stock() {
                 <Button
                   type="submit"
                   disabled={saveMutation.isPending}
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white"
                 >
                   {editingItem ? "Update Item" : "Create Item"}
                 </Button>
@@ -640,7 +741,7 @@ export default function Stock() {
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
                   <SelectItem value="uncategorized">Uncategorized</SelectItem>
-                  {categories.map((category) => (
+                  {stockCategories.map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
                     </SelectItem>
@@ -685,49 +786,13 @@ export default function Stock() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHeader
-                      sortKey="inventoryId"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
-                      ID
-                    </SortableTableHeader>
-                    <SortableTableHeader
-                      sortKey="itemName"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
-                      Item Details
-                    </SortableTableHeader>
-                    <SortableTableHeader
-                      sortKey="brand"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
-                      Brand
-                    </SortableTableHeader>
-                    <SortableTableHeader
-                      sortKey="category"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
-                      Category
-                    </SortableTableHeader>
-                    <SortableTableHeader
-                      sortKey="currentStock"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
-                      Stock
-                    </SortableTableHeader>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Item Details</TableHead>
+                    <TableHead>Brand</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Stock</TableHead>
                     <TableHead>Status</TableHead>
-                    <SortableTableHeader
-                      sortKey="stockValue"
-                      sortConfig={sortConfig}
-                      onSort={requestSort}
-                    >
-                      Value
-                    </SortableTableHeader>
+                    <TableHead>Value</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
