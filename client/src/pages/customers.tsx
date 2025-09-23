@@ -292,12 +292,21 @@ export default function Customers() {
     const errors: any = {};
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
     const openingBalance = formData.get("openingBalance") as string;
+    const creditLimit = formData.get("creditLimit") as string;
+    const gstNumber = formData.get("gstNumber") as string;
 
     if (!name?.trim()) {
       errors.name = "Customer name is required";
     } else if (name.trim().length < 2) {
       errors.name = "Customer name must be at least 2 characters long";
+    }
+
+    if (!phone?.trim()) {
+      errors.phone = "Phone number is required";
+    } else if (phone.trim().length < 10) {
+      errors.phone = "Phone number must be at least 10 digits";
     }
 
     if (email && email.trim() && !/\S+@\S+\.\S+/.test(email.trim())) {
@@ -306,6 +315,14 @@ export default function Customers() {
 
     if (openingBalance && openingBalance.trim() && isNaN(parseFloat(openingBalance))) {
       errors.openingBalance = "Opening balance must be a valid number";
+    }
+
+    if (creditLimit && creditLimit.trim() && isNaN(parseFloat(creditLimit))) {
+      errors.creditLimit = "Credit limit must be a valid number";
+    }
+
+    if (gstNumber && gstNumber.trim() && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstNumber.trim())) {
+      errors.gstNumber = "Please enter a valid GST number";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -321,9 +338,19 @@ export default function Customers() {
     const data = {
       name: name.trim(),
       email: email?.trim() || null,
-      phone: (formData.get("phone") as string)?.trim() || null,
+      phone: phone?.trim() || null,
+      alternatePhone: (formData.get("alternatePhone") as string)?.trim() || null,
       address: (formData.get("address") as string)?.trim() || null,
+      city: (formData.get("city") as string)?.trim() || null,
+      state: (formData.get("state") as string)?.trim() || null,
+      pincode: (formData.get("pincode") as string)?.trim() || null,
+      customerType: (formData.get("customerType") as string) || "regular",
+      gstNumber: (formData.get("gstNumber") as string)?.trim() || null,
       openingBalance: openingBalance?.trim() ? parseFloat(openingBalance) : 0,
+      creditLimit: creditLimit?.trim() ? parseFloat(creditLimit) : 0,
+      paymentTerms: parseInt((formData.get("paymentTerms") as string) || "30"),
+      discountPercentage: parseFloat((formData.get("discountPercentage") as string) || "0"),
+      notes: (formData.get("notes") as string)?.trim() || null,
     };
 
     if (editingCustomer) {
@@ -465,7 +492,7 @@ export default function Customers() {
                 Add Customer
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingCustomer ? "Edit Customer" : "Add New Customer"}
@@ -474,52 +501,248 @@ export default function Customers() {
                   Enter customer details below
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSave} className="space-y-4">
-                <Input
-                  name="name"
-                  placeholder="Customer Name"
-                  defaultValue={editingCustomer?.name || ""}
-                  required
-                />
-                  {formErrors.name && (
-                      <p className="text-red-500 text-sm">{formErrors.name}</p>
-                  )}
-                <Input
-                  name="email"
-                  type="email"
-                  placeholder="Email Address"
-                  defaultValue={editingCustomer?.email || ""}
-                />
-                  {formErrors.email && (
-                      <p className="text-red-500 text-sm">{formErrors.email}</p>
-                  )}
-                <Input
-                  name="phone"
-                  placeholder="Phone Number"
-                  defaultValue={editingCustomer?.phone || ""}
-                />
-                  {formErrors.phone && (
-                      <p className="text-red-500 text-sm">{formErrors.phone}</p>
-                  )}
-                <Textarea
-                  name="address"
-                  placeholder="Address"
-                  defaultValue={editingCustomer?.address || ""}
-                  rows={3}
-                />
-                  {formErrors.address && (
+              <form onSubmit={handleSave} className="space-y-6">
+                {/* Basic Information Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Basic Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="name" className="text-sm font-medium">
+                        Customer Name <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        id="name"
+                        name="name"
+                        placeholder="Enter customer name"
+                        defaultValue={editingCustomer?.name || ""}
+                        required
+                      />
+                      {formErrors.name && (
+                        <p className="text-red-500 text-sm">{formErrors.name}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="customerType" className="text-sm font-medium">
+                        Customer Type
+                      </label>
+                      <Select name="customerType" defaultValue={editingCustomer?.customerType || "regular"}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select customer type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="regular">Regular Customer</SelectItem>
+                          <SelectItem value="wholesale">Wholesale Customer</SelectItem>
+                          <SelectItem value="retail">Retail Customer</SelectItem>
+                          <SelectItem value="corporate">Corporate Customer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="email" className="text-sm font-medium">
+                        Email Address
+                      </label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="customer@example.com"
+                        defaultValue={editingCustomer?.email || ""}
+                      />
+                      {formErrors.email && (
+                        <p className="text-red-500 text-sm">{formErrors.email}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="phone" className="text-sm font-medium">
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        placeholder="Enter phone number"
+                        defaultValue={editingCustomer?.phone || ""}
+                        required
+                      />
+                      {formErrors.phone && (
+                        <p className="text-red-500 text-sm">{formErrors.phone}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="alternatePhone" className="text-sm font-medium">
+                        Alternate Phone
+                      </label>
+                      <Input
+                        id="alternatePhone"
+                        name="alternatePhone"
+                        placeholder="Enter alternate phone"
+                        defaultValue={editingCustomer?.alternatePhone || ""}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="gstNumber" className="text-sm font-medium">
+                        GST Number
+                      </label>
+                      <Input
+                        id="gstNumber"
+                        name="gstNumber"
+                        placeholder="Enter GST number"
+                        defaultValue={editingCustomer?.gstNumber || ""}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Address Information Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Address Information</h3>
+                  <div className="space-y-2">
+                    <label htmlFor="address" className="text-sm font-medium">
+                      Street Address
+                    </label>
+                    <Textarea
+                      id="address"
+                      name="address"
+                      placeholder="Enter complete address"
+                      defaultValue={editingCustomer?.address || ""}
+                      rows={3}
+                    />
+                    {formErrors.address && (
                       <p className="text-red-500 text-sm">{formErrors.address}</p>
-                  )}
-                <Input
-                  name="openingBalance"
-                  type="number"
-                  step="0.01"
-                  placeholder="Opening Balance"
-                  defaultValue={editingCustomer?.openingBalance || "0"}
-                />
-                  {formErrors.openingBalance && (
-                      <p className="text-red-500 text-sm">{formErrors.openingBalance}</p>
-                  )}
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="city" className="text-sm font-medium">
+                        City
+                      </label>
+                      <Input
+                        id="city"
+                        name="city"
+                        placeholder="Enter city"
+                        defaultValue={editingCustomer?.city || ""}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="state" className="text-sm font-medium">
+                        State
+                      </label>
+                      <Input
+                        id="state"
+                        name="state"
+                        placeholder="Enter state"
+                        defaultValue={editingCustomer?.state || ""}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="pincode" className="text-sm font-medium">
+                        Pincode
+                      </label>
+                      <Input
+                        id="pincode"
+                        name="pincode"
+                        placeholder="Enter pincode"
+                        defaultValue={editingCustomer?.pincode || ""}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Financial Information Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Financial Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="openingBalance" className="text-sm font-medium">
+                        Opening Balance
+                      </label>
+                      <Input
+                        id="openingBalance"
+                        name="openingBalance"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        defaultValue={editingCustomer?.openingBalance || "0"}
+                      />
+                      {formErrors.openingBalance && (
+                        <p className="text-red-500 text-sm">{formErrors.openingBalance}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="creditLimit" className="text-sm font-medium">
+                        Credit Limit
+                      </label>
+                      <Input
+                        id="creditLimit"
+                        name="creditLimit"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        defaultValue={editingCustomer?.creditLimit || "0"}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="paymentTerms" className="text-sm font-medium">
+                        Payment Terms (Days)
+                      </label>
+                      <Input
+                        id="paymentTerms"
+                        name="paymentTerms"
+                        type="number"
+                        placeholder="30"
+                        defaultValue={editingCustomer?.paymentTerms || "30"}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="discountPercentage" className="text-sm font-medium">
+                        Discount Percentage
+                      </label>
+                      <Input
+                        id="discountPercentage"
+                        name="discountPercentage"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        placeholder="0.00"
+                        defaultValue={editingCustomer?.discountPercentage || "0"}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Information Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Additional Information</h3>
+                  <div className="space-y-2">
+                    <label htmlFor="notes" className="text-sm font-medium">
+                      Notes
+                    </label>
+                    <Textarea
+                      id="notes"
+                      name="notes"
+                      placeholder="Any additional notes about the customer"
+                      defaultValue={editingCustomer?.notes || ""}
+                      rows={3}
+                    />
+                  </div>
+                </div>
                 <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                   <Button
                     type="button"

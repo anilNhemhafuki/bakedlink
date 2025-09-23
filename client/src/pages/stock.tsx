@@ -369,13 +369,13 @@ export default function Stock() {
                       <Label htmlFor="category">Category</Label>
                       <Select
                         name="category"
-                        defaultValue={editingItem?.category || ""}
+                        defaultValue={editingItem?.category || "none"}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No Category</SelectItem>
+                          <SelectItem value="none">No Category</SelectItem>
                           <SelectItem value="ingredients">Ingredients</SelectItem>
                           <SelectItem value="raw-materials">Raw Materials</SelectItem>
                           <SelectItem value="packaging">Packaging</SelectItem>

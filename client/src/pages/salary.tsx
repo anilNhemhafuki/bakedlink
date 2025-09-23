@@ -67,9 +67,10 @@ export default function SalaryPayments() {
 
   const { data: salaryPayments = [], isLoading: paymentsLoading } = useQuery({
     queryKey: ["salary-payments", selectedStaff],
-    queryFn: () => {
+    queryFn: async () => {
       const params = selectedStaff ? `?staffId=${selectedStaff}` : "";
-      return apiRequest("GET", `/api/salary-payments${params}`);
+      const result = await apiRequest("GET", `/api/salary-payments${params}`);
+      return Array.isArray(result) ? result : result?.items || [];
     },
   });
 
@@ -256,7 +257,7 @@ export default function SalaryPayments() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const filteredPayments = salaryPayments.filter((payment: any) =>
+  const filteredPayments = (Array.isArray(salaryPayments) ? salaryPayments : []).filter((payment: any) =>
     payment.staffName?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
