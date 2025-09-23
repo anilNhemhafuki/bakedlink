@@ -91,6 +91,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
 import fsSync from "fs";
+import stockManagementRoutes from "./routes/stock-management";
 
 const router = express.Router();
 
@@ -106,6 +107,59 @@ const apiLimiter = rateLimit({
 
 // Apply rate limiting to all API routes
 router.use(apiLimiter);
+
+// Mount stock management routes
+router.use("/stock-management", stockManagementRoutes);
+
+// Products with recipes endpoint for production management
+router.get("/products-with-recipes", async (req, res) => {
+  try {
+    const productsWithRecipes = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        description: products.description,
+        cost: products.cost,
+        price: products.price,
+      })
+      .from(products)
+      .where(eq(products.isActive, true));
+
+    // Get ingredients for each product
+    const productsWithIngredients = await Promise.all(
+      productsWithRecipes.map(async (product) => {
+        const ingredients = await db
+          .select({
+            inventoryItemId: productIngredients.inventoryItemId,
+            quantity: productIngredients.quantity,
+            unit: productIngredients.unit,
+            unitId: productIngredients.unitId,
+            itemName: inventoryItems.name,
+          })
+          .from(productIngredients)
+          .leftJoin(inventoryItems, eq(productIngredients.inventoryItemId, inventoryItems.id))
+          .where(eq(productIngredients.productId, product.id));
+
+        return {
+          ...product,
+          ingredients: ingredients.map(ing => ({
+            inventoryItemId: ing.inventoryItemId,
+            quantity: parseFloat(ing.quantity),
+            unit: ing.unit,
+            unitId: ing.unitId,
+            itemName: ing.itemName,
+          })),
+        };
+      })
+    );
+
+    console.log(`✅ Found ${productsWithIngredients.length} products with recipes`);
+    res.json(productsWithIngredients);
+  } catch (error) {
+    console.error("❌ Error fetching products with recipes:", error);
+    res.status(500).json({ error: "Failed to fetch products with recipes" });
+  }
+});
 
 // In-memory notification storage (for demonstration - in production use database)
 let notifications: Array<{
