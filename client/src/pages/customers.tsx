@@ -52,6 +52,7 @@ import {
   FileText,
   Download,
   Calendar,
+  DollarSign,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -466,10 +467,15 @@ export default function Customers() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Users className="h-8 w-8 text-blue-600" />
+            Customer Management
+          </h1>
           <p className="text-gray-600">
-            Manage customer accounts with complete transaction history
+            Manage customer accounts with complete transaction history and financial details
           </p>
         </div>
         <PermissionWrapper resource="customers" action="write">
@@ -502,247 +508,429 @@ export default function Customers() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSave} className="space-y-6">
-                {/* Basic Information Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Basic Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Basic Information Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Basic Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="name" className="text-sm font-medium">
+                          Customer Name <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          id="name"
+                          name="name"
+                          placeholder="Enter full customer name"
+                          defaultValue={editingCustomer?.name || ""}
+                          required
+                        />
+                        {formErrors.name && (
+                          <p className="text-red-500 text-sm">{formErrors.name}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="customerType" className="text-sm font-medium">
+                          Customer Type <span className="text-red-500">*</span>
+                        </label>
+                        <Select name="customerType" defaultValue={editingCustomer?.customerType || "regular"}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select customer type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="regular">Regular Customer</SelectItem>
+                            <SelectItem value="wholesale">Wholesale Customer</SelectItem>
+                            <SelectItem value="retail">Retail Customer</SelectItem>
+                            <SelectItem value="corporate">Corporate Customer</SelectItem>
+                            <SelectItem value="vip">VIP Customer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="email" className="text-sm font-medium">
+                          Email Address
+                        </label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          placeholder="customer@example.com"
+                          defaultValue={editingCustomer?.email || ""}
+                        />
+                        {formErrors.email && (
+                          <p className="text-red-500 text-sm">{formErrors.email}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="phone" className="text-sm font-medium">
+                          Primary Phone <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          placeholder="+1 (555) 123-4567"
+                          defaultValue={editingCustomer?.phone || ""}
+                          required
+                        />
+                        {formErrors.phone && (
+                          <p className="text-red-500 text-sm">{formErrors.phone}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="alternatePhone" className="text-sm font-medium">
+                          Alternate Phone
+                        </label>
+                        <Input
+                          id="alternatePhone"
+                          name="alternatePhone"
+                          placeholder="+1 (555) 987-6543"
+                          defaultValue={editingCustomer?.alternatePhone || ""}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="dateOfBirth" className="text-sm font-medium">
+                          Date of Birth
+                        </label>
+                        <Input
+                          id="dateOfBirth"
+                          name="dateOfBirth"
+                          type="date"
+                          defaultValue={editingCustomer?.dateOfBirth || ""}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Business Information Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Business Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="companyName" className="text-sm font-medium">
+                          Company Name
+                        </label>
+                        <Input
+                          id="companyName"
+                          name="companyName"
+                          placeholder="Enter company name"
+                          defaultValue={editingCustomer?.companyName || ""}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="gstNumber" className="text-sm font-medium">
+                          GST Number
+                        </label>
+                        <Input
+                          id="gstNumber"
+                          name="gstNumber"
+                          placeholder="22AAAAA0000A1Z5"
+                          defaultValue={editingCustomer?.gstNumber || ""}
+                        />
+                        {formErrors.gstNumber && (
+                          <p className="text-red-500 text-sm">{formErrors.gstNumber}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="panNumber" className="text-sm font-medium">
+                          PAN Number
+                        </label>
+                        <Input
+                          id="panNumber"
+                          name="panNumber"
+                          placeholder="AAAAA1234A"
+                          defaultValue={editingCustomer?.panNumber || ""}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="businessType" className="text-sm font-medium">
+                          Business Type
+                        </label>
+                        <Select name="businessType" defaultValue={editingCustomer?.businessType || ""}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select business type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="individual">Individual</SelectItem>
+                            <SelectItem value="proprietorship">Proprietorship</SelectItem>
+                            <SelectItem value="partnership">Partnership</SelectItem>
+                            <SelectItem value="company">Private Limited Company</SelectItem>
+                            <SelectItem value="llp">Limited Liability Partnership</SelectItem>
+                            <SelectItem value="trust">Trust</SelectItem>
+                            <SelectItem value="society">Society</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Address Information Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Address Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <label htmlFor="name" className="text-sm font-medium">
-                        Customer Name <span className="text-red-500">*</span>
+                      <label htmlFor="address" className="text-sm font-medium">
+                        Street Address
                       </label>
-                      <Input
-                        id="name"
-                        name="name"
-                        placeholder="Enter customer name"
-                        defaultValue={editingCustomer?.name || ""}
-                        required
+                      <Textarea
+                        id="address"
+                        name="address"
+                        placeholder="Enter complete street address"
+                        defaultValue={editingCustomer?.address || ""}
+                        rows={3}
                       />
-                      {formErrors.name && (
-                        <p className="text-red-500 text-sm">{formErrors.name}</p>
-                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="city" className="text-sm font-medium">
+                          City <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          id="city"
+                          name="city"
+                          placeholder="Enter city"
+                          defaultValue={editingCustomer?.city || ""}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="state" className="text-sm font-medium">
+                          State/Province <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          id="state"
+                          name="state"
+                          placeholder="Enter state"
+                          defaultValue={editingCustomer?.state || ""}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="pincode" className="text-sm font-medium">
+                          Pincode/ZIP <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          id="pincode"
+                          name="pincode"
+                          placeholder="123456"
+                          defaultValue={editingCustomer?.pincode || ""}
+                          required
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="customerType" className="text-sm font-medium">
-                        Customer Type
+                      <label htmlFor="country" className="text-sm font-medium">
+                        Country
                       </label>
-                      <Select name="customerType" defaultValue={editingCustomer?.customerType || "regular"}>
+                      <Select name="country" defaultValue={editingCustomer?.country || "india"}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select customer type" />
+                          <SelectValue placeholder="Select country" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="regular">Regular Customer</SelectItem>
-                          <SelectItem value="wholesale">Wholesale Customer</SelectItem>
-                          <SelectItem value="retail">Retail Customer</SelectItem>
-                          <SelectItem value="corporate">Corporate Customer</SelectItem>
+                          <SelectItem value="india">India</SelectItem>
+                          <SelectItem value="usa">United States</SelectItem>
+                          <SelectItem value="uk">United Kingdom</SelectItem>
+                          <SelectItem value="canada">Canada</SelectItem>
+                          <SelectItem value="australia">Australia</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="email" className="text-sm font-medium">
-                        Email Address
-                      </label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="customer@example.com"
-                        defaultValue={editingCustomer?.email || ""}
-                      />
-                      {formErrors.email && (
-                        <p className="text-red-500 text-sm">{formErrors.email}</p>
-                      )}
+                {/* Financial Information Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5" />
+                      Financial Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="openingBalance" className="text-sm font-medium">
+                          Opening Balance ({symbol})
+                        </label>
+                        <Input
+                          id="openingBalance"
+                          name="openingBalance"
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          defaultValue={editingCustomer?.openingBalance || "0"}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Positive for receivable, negative for payable
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="creditLimit" className="text-sm font-medium">
+                          Credit Limit ({symbol})
+                        </label>
+                        <Input
+                          id="creditLimit"
+                          name="creditLimit"
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          defaultValue={editingCustomer?.creditLimit || "0"}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Maximum credit allowed
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="paymentTerms" className="text-sm font-medium">
+                          Payment Terms (Days)
+                        </label>
+                        <Select name="paymentTerms" defaultValue={editingCustomer?.paymentTerms?.toString() || "30"}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select terms" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">Immediate (COD)</SelectItem>
+                            <SelectItem value="7">7 Days</SelectItem>
+                            <SelectItem value="15">15 Days</SelectItem>
+                            <SelectItem value="30">30 Days</SelectItem>
+                            <SelectItem value="45">45 Days</SelectItem>
+                            <SelectItem value="60">60 Days</SelectItem>
+                            <SelectItem value="90">90 Days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="discountPercentage" className="text-sm font-medium">
+                          Default Discount (%)
+                        </label>
+                        <Input
+                          id="discountPercentage"
+                          name="discountPercentage"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          placeholder="0.00"
+                          defaultValue={editingCustomer?.discountPercentage || "0"}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="priceCategory" className="text-sm font-medium">
+                          Price Category
+                        </label>
+                        <Select name="priceCategory" defaultValue={editingCustomer?.priceCategory || "retail"}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select price category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="retail">Retail Price</SelectItem>
+                            <SelectItem value="wholesale">Wholesale Price</SelectItem>
+                            <SelectItem value="distributor">Distributor Price</SelectItem>
+                            <SelectItem value="special">Special Price</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Additional Information Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Additional Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label htmlFor="referenceBy" className="text-sm font-medium">
+                          Referred By
+                        </label>
+                        <Input
+                          id="referenceBy"
+                          name="referenceBy"
+                          placeholder="Name of referrer"
+                          defaultValue={editingCustomer?.referenceBy || ""}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="salesRep" className="text-sm font-medium">
+                          Assigned Sales Representative
+                        </label>
+                        <Input
+                          id="salesRep"
+                          name="salesRep"
+                          placeholder="Sales rep name"
+                          defaultValue={editingCustomer?.salesRep || ""}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="phone" className="text-sm font-medium">
-                        Phone Number <span className="text-red-500">*</span>
+                      <label htmlFor="notes" className="text-sm font-medium">
+                        Notes & Comments
                       </label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        placeholder="Enter phone number"
-                        defaultValue={editingCustomer?.phone || ""}
-                        required
-                      />
-                      {formErrors.phone && (
-                        <p className="text-red-500 text-sm">{formErrors.phone}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="alternatePhone" className="text-sm font-medium">
-                        Alternate Phone
-                      </label>
-                      <Input
-                        id="alternatePhone"
-                        name="alternatePhone"
-                        placeholder="Enter alternate phone"
-                        defaultValue={editingCustomer?.alternatePhone || ""}
+                      <Textarea
+                        id="notes"
+                        name="notes"
+                        placeholder="Any special instructions, preferences, or important notes about this customer"
+                        defaultValue={editingCustomer?.notes || ""}
+                        rows={4}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label htmlFor="gstNumber" className="text-sm font-medium">
-                        GST Number
-                      </label>
-                      <Input
-                        id="gstNumber"
-                        name="gstNumber"
-                        placeholder="Enter GST number"
-                        defaultValue={editingCustomer?.gstNumber || ""}
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="isActive"
+                        name="isActive"
+                        defaultChecked={editingCustomer?.isActive !== false}
+                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                       />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Address Information Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Address Information</h3>
-                  <div className="space-y-2">
-                    <label htmlFor="address" className="text-sm font-medium">
-                      Street Address
-                    </label>
-                    <Textarea
-                      id="address"
-                      name="address"
-                      placeholder="Enter complete address"
-                      defaultValue={editingCustomer?.address || ""}
-                      rows={3}
-                    />
-                    {formErrors.address && (
-                      <p className="text-red-500 text-sm">{formErrors.address}</p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="city" className="text-sm font-medium">
-                        City
+                      <label htmlFor="isActive" className="text-sm font-medium">
+                        Active Customer
                       </label>
-                      <Input
-                        id="city"
-                        name="city"
-                        placeholder="Enter city"
-                        defaultValue={editingCustomer?.city || ""}
-                      />
                     </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="state" className="text-sm font-medium">
-                        State
-                      </label>
-                      <Input
-                        id="state"
-                        name="state"
-                        placeholder="Enter state"
-                        defaultValue={editingCustomer?.state || ""}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="pincode" className="text-sm font-medium">
-                        Pincode
-                      </label>
-                      <Input
-                        id="pincode"
-                        name="pincode"
-                        placeholder="Enter pincode"
-                        defaultValue={editingCustomer?.pincode || ""}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Financial Information Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Financial Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="openingBalance" className="text-sm font-medium">
-                        Opening Balance
-                      </label>
-                      <Input
-                        id="openingBalance"
-                        name="openingBalance"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        defaultValue={editingCustomer?.openingBalance || "0"}
-                      />
-                      {formErrors.openingBalance && (
-                        <p className="text-red-500 text-sm">{formErrors.openingBalance}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="creditLimit" className="text-sm font-medium">
-                        Credit Limit
-                      </label>
-                      <Input
-                        id="creditLimit"
-                        name="creditLimit"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        defaultValue={editingCustomer?.creditLimit || "0"}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="paymentTerms" className="text-sm font-medium">
-                        Payment Terms (Days)
-                      </label>
-                      <Input
-                        id="paymentTerms"
-                        name="paymentTerms"
-                        type="number"
-                        placeholder="30"
-                        defaultValue={editingCustomer?.paymentTerms || "30"}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="discountPercentage" className="text-sm font-medium">
-                        Discount Percentage
-                      </label>
-                      <Input
-                        id="discountPercentage"
-                        name="discountPercentage"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        placeholder="0.00"
-                        defaultValue={editingCustomer?.discountPercentage || "0"}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Information Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Additional Information</h3>
-                  <div className="space-y-2">
-                    <label htmlFor="notes" className="text-sm font-medium">
-                      Notes
-                    </label>
-                    <Textarea
-                      id="notes"
-                      name="notes"
-                      placeholder="Any additional notes about the customer"
-                      defaultValue={editingCustomer?.notes || ""}
-                      rows={3}
-                    />
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
                 <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                   <Button
                     type="button"

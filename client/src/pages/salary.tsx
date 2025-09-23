@@ -70,7 +70,15 @@ export default function SalaryPayments() {
     queryFn: async () => {
       const params = selectedStaff ? `?staffId=${selectedStaff}` : "";
       const result = await apiRequest("GET", `/api/salary-payments${params}`);
-      return Array.isArray(result) ? result : result?.items || [];
+      // Ensure we always return an array
+      if (Array.isArray(result)) {
+        return result;
+      } else if (result && Array.isArray(result.items)) {
+        return result.items;
+      } else if (result && Array.isArray(result.data)) {
+        return result.data;
+      }
+      return [];
     },
   });
 
@@ -258,7 +266,8 @@ export default function SalaryPayments() {
   };
 
   const filteredPayments = (Array.isArray(salaryPayments) ? salaryPayments : []).filter((payment: any) =>
-    payment.staffName?.toLowerCase().includes(searchQuery.toLowerCase()),
+    payment.staffName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    payment.staffPosition?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const { sortedData, sortConfig, requestSort } = useTableSort(
