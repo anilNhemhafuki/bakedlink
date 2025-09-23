@@ -1,46 +1,31 @@
 import express from "express";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { eq, desc, asc, like, and, or, sql, count } from "drizzle-orm";
 import { db } from "./db";
-
-// Extend session types
-declare module "express-session" {
-  interface SessionData {
-    userId?: string;
-    user?: any;
-  }
-}
-import {
-  eq,
-  desc,
-  and,
-  or,
-  isNull,
-  sql,
-  asc,
-  gte,
-  lte,
-  count,
-  sum,
-  like,
-} from "drizzle-orm";
 import {
   users,
   products,
+  inventoryItems,
   orders,
   orderItems,
-  customers,
-  inventoryItems,
+  sales,
+  saleItems,
   purchases,
   purchaseItems,
-  expenses,
-  productionSchedule,
-  inventoryTransactions,
+  customers,
   parties,
+  ledgerTransactions,
+  productionSchedule,
+  productionScheduleHistory,
+  inventoryTransactions,
+  expenses,
   assets,
   permissions,
   rolePermissions,
   userPermissions,
   settings,
-  ledgerTransactions,
   loginLogs,
   auditLogs,
   staff,
@@ -48,15 +33,12 @@ import {
   salaryPayments,
   leaveRequests,
   staffSchedules,
-  units,
-  unitConversions,
-  inventoryCategories,
-  productIngredients,
   productionScheduleLabels,
-  productionScheduleHistory,
-} from "../shared/schema";
+  salesReturns,
+  purchaseReturns,
+  units,
+} from "@shared/schema";
 import {
-  insertUserSchema,
   insertProductSchema,
   insertCustomerSchema,
   insertPurchaseSchema,
@@ -66,100 +48,383 @@ import {
   insertUserPermissionSchema,
   insertLedgerTransactionSchema,
   insertLoginLogSchema,
-  insertUnitConversionSchema,
+  insertAuditLogSchema,
   insertStaffSchema,
   insertAttendanceSchema,
   insertSalaryPaymentSchema,
   insertLeaveRequestSchema,
   insertStaffScheduleSchema,
-  insertInventoryItemSchema,
-  insertOrderSchema,
-  insertProductionScheduleItemSchema,
-  insertPartySchema,
-  insertAssetSchema,
-  insertAuditLogSchema,
-} from "../shared/schema";
-import { Storage } from "./lib/storage";
-import bcrypt from "bcrypt";
+  insertSalesReturnSchema,
+  insertPurchaseReturnSchema,
+} from "@shared/schema";
+import { requireAuth } from "./localAuth";
+import { storage } from "./lib/storage";
+import { trackUserActivity } from "./lib/activityTracker";
 import {
-  notifyNewPublicOrder,
-  notifyLowStock,
-  notifyProductionSchedule,
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  clearNotification,
+  sendTestNotification,
+  notifyNewOrder,
+  checkLowStockAlerts,
+  checkProductionScheduleAlerts,
+  notifySystemAlert,
 } from "./notifications";
-import rateLimit from "express-rate-limit";
-import multer from "multer";
-import path from "path";
-import fs from "fs/promises";
-import fsSync from "fs";
 import stockManagementRoutes from "./routes/stock-management";
 
 const router = express.Router();
 
-// Create storage instance
-const storage = new Storage();
+// Utility function for pagination and sorting
+function buildPaginatedQuery(baseQuery: any, options: {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  search?: string;
+  searchFields?: string[];
+}) {
+  const {
+    page = 1,
+    limit = 10,
+    sortBy,
+    sortOrder = 'desc',
+    search,
+    searchFields = []
+  } = options;
 
-// Rate limiting for API routes
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // limit each IP to 1000 requests per windowMs
-  message: "Too many requests from this IP",
-});
+  const offset = (page - 1) * limit;
 
-// Apply rate limiting to all API routes
-router.use(apiLimiter);
+  let query = baseQuery;
 
-// Mount stock management routes
-router.use("/stock-management", stockManagementRoutes);
-
-// Products with recipes endpoint for production management
-router.get("/products-with-recipes", async (req, res) => {
-  try {
-    const productsWithRecipes = await db
-      .select({
-        id: products.id,
-        name: products.name,
-        description: products.description,
-        cost: products.cost,
-        price: products.price,
-      })
-      .from(products)
-      .where(eq(products.isActive, true));
-
-    // Get ingredients for each product
-    const productsWithIngredients = await Promise.all(
-      productsWithRecipes.map(async (product) => {
-        const ingredients = await db
-          .select({
-            inventoryItemId: productIngredients.inventoryItemId,
-            quantity: productIngredients.quantity,
-            unit: productIngredients.unit,
-            unitId: productIngredients.unitId,
-            itemName: inventoryItems.name,
-          })
-          .from(productIngredients)
-          .leftJoin(inventoryItems, eq(productIngredients.inventoryItemId, inventoryItems.id))
-          .where(eq(productIngredients.productId, product.id));
-
-        return {
-          ...product,
-          ingredients: ingredients.map(ing => ({
-            inventoryItemId: ing.inventoryItemId,
-            quantity: parseFloat(ing.quantity),
-            unit: ing.unit,
-            unitId: ing.unitId,
-            itemName: ing.itemName,
-          })),
-        };
-      })
+  // Apply search if provided
+  if (search && searchFields.length > 0) {
+    const searchConditions = searchFields.map(field =>
+      like(sql.identifier(field), `%${search}%`)
     );
+    query = query.where(or(...searchConditions));
+  }
 
-    console.log(`✅ Found ${productsWithIngredients.length} products with recipes`);
-    res.json(productsWithIngredients);
+  // Apply sorting
+  if (sortBy) {
+    const sortColumn = sql.identifier(sortBy);
+    query = query.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));
+  }
+
+  // Apply pagination
+  query = query.limit(limit).offset(offset);
+
+  return query;
+}
+
+// Notification endpoints
+router.get("/api/notifications", requireAuth, async (req, res) => {
+  try {
+    const notifications = getNotifications();
+    res.json(notifications);
   } catch (error) {
-    console.error("❌ Error fetching products with recipes:", error);
-    res.status(500).json({ error: "Failed to fetch products with recipes" });
+    console.error("Error fetching notifications:", error);
+    res.status(500).json({ error: "Failed to fetch notifications" });
   }
 });
+
+router.put("/api/notifications/:id/read", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const success = markNotificationAsRead(id);
+
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: "Notification not found" });
+    }
+  } catch (error) {
+    console.error("Error marking notification as read:", error);
+    res.status(500).json({ error: "Failed to mark notification as read" });
+  }
+});
+
+router.put("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
+  try {
+    markAllNotificationsAsRead();
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error marking all notifications as read:", error);
+    res.status(500).json({ error: "Failed to mark all notifications as read" });
+  }
+});
+
+router.delete("/api/notifications/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const success = clearNotification(id);
+
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: "Notification not found" });
+    }
+  } catch (error) {
+    console.error("Error clearing notification:", error);
+    res.status(500).json({ error: "Failed to clear notification" });
+  }
+});
+
+router.post("/api/notifications/test", requireAuth, async (req, res) => {
+  try {
+    sendTestNotification();
+    res.json({ success: true, message: "Test notification sent" });
+  } catch (error) {
+    console.error("Error sending test notification:", error);
+    res.status(500).json({ error: "Failed to send test notification" });
+  }
+});
+
+router.post("/api/notifications/check-alerts", requireAuth, async (req, res) => {
+  try {
+    await checkLowStockAlerts();
+    await checkProductionScheduleAlerts();
+    res.json({ success: true, message: "Alert checks completed" });
+  } catch (error) {
+    console.error("Error checking alerts:", error);
+    res.status(500).json({ error: "Failed to check alerts" });
+  }
+});
+
+// Enhanced table endpoints with pagination and sorting
+
+// Products with pagination and sorting
+router.get("/api/products/paginated", requireAuth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
+
+    const searchFields = ['name', 'sku', 'description'];
+    const offset = (Number(page) - 1) * Number(limit);
+
+    let query = db.select().from(products);
+    let countQuery = db.select({ count: count() }).from(products);
+
+    // Apply search
+    if (search) {
+      const searchConditions = searchFields.map(field =>
+        like(products[field as keyof typeof products], `%${search}%`)
+      );
+      const searchWhere = or(...searchConditions);
+      query = query.where(searchWhere);
+      countQuery = countQuery.where(searchWhere);
+    }
+
+    // Apply sorting
+    const sortColumn = products[sortBy as keyof typeof products];
+    if (sortColumn) {
+      query = query.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));
+    }
+
+    // Apply pagination
+    query = query.limit(Number(limit)).offset(offset);
+
+    const [data, totalResult] = await Promise.all([
+      query,
+      countQuery
+    ]);
+
+    const total = totalResult[0]?.count || 0;
+    const totalPages = Math.ceil(total / Number(limit));
+
+    res.json({
+      data,
+      pagination: {
+        currentPage: Number(page),
+        totalPages,
+        totalItems: total,
+        pageSize: Number(limit)
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching paginated products:", error);
+    res.status(500).json({ error: "Failed to fetch products" });
+  }
+});
+
+// Customers with pagination and sorting
+router.get("/api/customers/paginated", requireAuth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
+
+    const searchFields = ['name', 'email', 'phone'];
+    const offset = (Number(page) - 1) * Number(limit);
+
+    let query = db.select().from(customers);
+    let countQuery = db.select({ count: count() }).from(customers);
+
+    if (search) {
+      const searchConditions = searchFields.map(field =>
+        like(customers[field as keyof typeof customers], `%${search}%`)
+      );
+      const searchWhere = or(...searchConditions);
+      query = query.where(searchWhere);
+      countQuery = countQuery.where(searchWhere);
+    }
+
+    const sortColumn = customers[sortBy as keyof typeof customers];
+    if (sortColumn) {
+      query = query.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));
+    }
+
+    query = query.limit(Number(limit)).offset(offset);
+
+    const [data, totalResult] = await Promise.all([query, countQuery]);
+    const total = totalResult[0]?.count || 0;
+
+    res.json({
+      data,
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(total / Number(limit)),
+        totalItems: total,
+        pageSize: Number(limit)
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching paginated customers:", error);
+    res.status(500).json({ error: "Failed to fetch customers" });
+  }
+});
+
+// Sales with pagination and sorting
+router.get("/api/sales/paginated", requireAuth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
+
+    const searchFields = ['customerName', 'customerEmail', 'paymentMethod'];
+    const offset = (Number(page) - 1) * Number(limit);
+
+    let query = db.select().from(sales);
+    let countQuery = db.select({ count: count() }).from(sales);
+
+    if (search) {
+      const searchConditions = searchFields.map(field =>
+        like(sales[field as keyof typeof sales], `%${search}%`)
+      );
+      const searchWhere = or(...searchConditions);
+      query = query.where(searchWhere);
+      countQuery = countQuery.where(searchWhere);
+    }
+
+    const sortColumn = sales[sortBy as keyof typeof sales];
+    if (sortColumn) {
+      query = query.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));
+    }
+
+    query = query.limit(Number(limit)).offset(offset);
+
+    const [data, totalResult] = await Promise.all([query, countQuery]);
+    const total = totalResult[0]?.count || 0;
+
+    res.json({
+      data,
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(total / Number(limit)),
+        totalItems: total,
+        pageSize: Number(limit)
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching paginated sales:", error);
+    res.status(500).json({ error: "Failed to fetch sales" });
+  }
+});
+
+// Inventory with pagination and sorting
+router.get("/api/inventory/paginated", requireAuth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
+
+    const searchFields = ['name', 'invCode', 'supplier'];
+    const offset = (Number(page) - 1) * Number(limit);
+
+    let query = db.select().from(inventoryItems);
+    let countQuery = db.select({ count: count() }).from(inventoryItems);
+
+    if (search) {
+      const searchConditions = searchFields.map(field =>
+        like(inventoryItems[field as keyof typeof inventoryItems], `%${search}%`)
+      );
+      const searchWhere = or(...searchConditions);
+      query = query.where(searchWhere);
+      countQuery = countQuery.where(searchWhere);
+    }
+
+    const sortColumn = inventoryItems[sortBy as keyof typeof inventoryItems];
+    if (sortColumn) {
+      query = query.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));
+    }
+
+    query = query.limit(Number(limit)).offset(offset);
+
+    const [data, totalResult] = await Promise.all([query, countQuery]);
+    const total = totalResult[0]?.count || 0;
+
+    res.json({
+      data,
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(total / Number(limit)),
+        totalItems: total,
+        pageSize: Number(limit)
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching paginated inventory:", error);
+    res.status(500).json({ error: "Failed to fetch inventory" });
+  }
+});
+
+// Add more paginated endpoints for other tables...
+// Orders, Purchases, Staff, etc. following the same pattern
+
+// Include existing routes from your current routes.ts file
+// Products
+router.get("/api/products", requireAuth, async (req, res) => {
+  try {
+    const allProducts = await db.select().from(products).orderBy(desc(products.id));
+    res.json(allProducts);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).json({ error: "Failed to fetch products" });
+  }
+});
+
+router.post("/api/products", requireAuth, async (req, res) => {
+  try {
+    const validatedData = insertProductSchema.parse(req.body);
+    const [newProduct] = await db.insert(products).values(validatedData).returning();
+
+    // Track activity
+    await trackUserActivity(req.user.id, req.user.email, 'CREATE', 'product', newProduct.id.toString(), {
+      productName: newProduct.name,
+      price: newProduct.price,
+    }, req);
+
+    res.status(201).json(newProduct);
+  } catch (error) {
+    console.error("Error creating product:", error);
+    res.status(500).json({ error: "Failed to create product" });
+  }
+});
+
+// Use stock management routes
+router.use(stockManagementRoutes);
+
+// --- Existing Routes from Original File (Copied and Pasted) ---
+// Extend session types
+declare module "express-session" {
+  interface SessionData {
+    userId?: string;
+    user?: any;
+  }
+}
 
 // In-memory notification storage (for demonstration - in production use database)
 let notifications: Array<{
@@ -225,88 +490,7 @@ if (notifications.length === 0) {
   });
 }
 
-// Notification Routes
-router.get("/notifications", async (req, res) => {
-  try {
-    // Return notifications sorted by timestamp (newest first)
-    const sortedNotifications = [...notifications].sort(
-      (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
 
-    console.log(`✅ Found ${sortedNotifications.length} notifications`);
-    res.json(sortedNotifications);
-  } catch (error) {
-    console.error("❌ Error fetching notifications:", error);
-    res.status(500).json({ error: "Failed to fetch notifications" });
-  }
-});
-
-router.put("/notifications/:id/read", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const notification = notifications.find((n) => n.id === id);
-
-    if (notification) {
-      notification.read = true;
-      console.log(`✅ Marked notification ${id} as read`);
-      res.json({ success: true });
-    } else {
-      res.status(404).json({ error: "Notification not found" });
-    }
-  } catch (error) {
-    console.error("❌ Error marking notification as read:", error);
-    res.status(500).json({ error: "Failed to mark notification as read" });
-  }
-});
-
-router.put("/notifications/mark-all-read", async (req, res) => {
-  try {
-    notifications.forEach((n) => (n.read = true));
-    console.log("✅ Marked all notifications as read");
-    res.json({ success: true });
-  } catch (error) {
-    console.error("❌ Error marking all notifications as read:", error);
-    res.status(500).json({ error: "Failed to mark all notifications as read" });
-  }
-});
-
-router.post("/notifications/test", async (req, res) => {
-  try {
-    const testNotification = addNotification({
-      type: "system",
-      title: "Test Notification",
-      description: `Test notification sent at ${new Date().toLocaleString()}`,
-      priority: "low",
-    });
-
-    res.json({ success: true, notification: testNotification });
-  } catch (error) {
-    console.error("❌ Error sending test notification:", error);
-    res.status(500).json({ error: "Failed to send test notification" });
-  }
-});
-
-// Authentication check middleware
-function requireAuth(req: any, res: any, next: any) {
-  if (!req.session?.userId) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  next();
-}
-
-// Admin check middleware
-function requireAdmin(req: any, res: any, next: any) {
-  if (!req.session?.userId) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-
-  // For development, allow any authenticated user
-  // In production, check user role from database
-  next();
-}
-
-// Authentication routes
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -2351,11 +2535,11 @@ router.post(
         "File info:",
         req.file
           ? {
-              originalname: req.file.originalname,
-              mimetype: req.file.mimetype,
-              size: req.file.size,
-              path: req.file.path,
-            }
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            path: req.file.path,
+          }
           : "No file",
       );
 
@@ -3692,7 +3876,7 @@ router.post("/ledger", requireAuth, async (req, res) => {
 });
 
 router.get("/ledger/customer/:id", async (req, res) => {
-  try {
+ try {
     const customerId = parseInt(req.params.id);
     console.log("📊 Fetching customer ledger:", customerId);
     const result = await storage.getLedgerTransactions(customerId, "customer");

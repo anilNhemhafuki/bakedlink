@@ -1,263 +1,269 @@
-export interface OrderNotification {
-  orderNumber: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  totalAmount: number;
-  deliveryDate: string;
-  itemCount: number;
+
+import { db } from "./db";
+import { eq, desc, and, lt, gte } from "drizzle-orm";
+import { inventoryItems, products, orders, sales, purchases, productionSchedule, staff, customers, parties } from "@shared/schema";
+
+export interface NotificationRule {
+  id: string;
+  type: 'low_stock' | 'out_of_stock' | 'new_order' | 'production_due' | 'payment_overdue' | 'staff_attendance' | 'system_alert';
+  enabled: boolean;
+  threshold?: number;
+  conditions?: any;
+  recipients: string[];
+  lastTriggered?: Date;
 }
 
-export interface LowStockNotification {
-  itemName: string;
-  currentStock: number;
-  minLevel: number;
-  unit: string;
-  supplier?: string;
+export interface Notification {
+  id: string;
+  type: 'order' | 'production' | 'inventory' | 'shipping' | 'system';
+  title: string;
+  description: string;
+  timestamp: string;
+  read: boolean;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  actionUrl?: string;
+  data?: any;
 }
 
-export interface ProductionNotification {
-  productName: string;
-  scheduledDate: string;
-  targetAmount: number;
-  unit: string;
-  priority: string;
-  assignedTo?: string;
+// In-memory notification storage (replace with database in production)
+const notifications: Notification[] = [];
+const notificationRules: NotificationRule[] = [
+  {
+    id: 'low_stock',
+    type: 'low_stock',
+    enabled: true,
+    threshold: 10,
+    recipients: ['admin', 'manager'],
+  },
+  {
+    id: 'out_of_stock',
+    type: 'out_of_stock',
+    enabled: true,
+    threshold: 0,
+    recipients: ['admin', 'manager'],
+  },
+  {
+    id: 'new_order',
+    type: 'new_order',
+    enabled: true,
+    recipients: ['admin', 'manager', 'staff'],
+  },
+  {
+    id: 'production_due',
+    type: 'production_due',
+    enabled: true,
+    recipients: ['admin', 'manager'],
+  },
+];
+
+function generateNotificationId(): string {
+  return `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// In-memory notification storage (in production, use database)
-const notificationSubscriptions = new Map<string, any>();
-const notificationSettings = new Map<string, any>();
+function createNotification(
+  type: Notification['type'],
+  title: string,
+  description: string,
+  priority: Notification['priority'] = 'medium',
+  actionUrl?: string,
+  data?: any
+): void {
+  const notification: Notification = {
+    id: generateNotificationId(),
+    type,
+    title,
+    description,
+    timestamp: new Date().toISOString(),
+    read: false,
+    priority,
+    actionUrl,
+    data,
+  };
 
-export async function notifyNewPublicOrder(orderData: {
-  orderNumber: string;
-  orderId?: number;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  totalAmount: number;
-  deliveryDate: string;
-  itemCount: number;
-  attachmentCount?: number;
-  source?: string;
-  submissionTime?: string;
-}): Promise<void> {
-  try {
-    console.log(
-      "📧 Sending enhanced notifications for new public order:",
-      orderData.orderNumber,
-    );
-
-    // Enhanced notification details
-    const notificationData = {
-      orderNumber: orderData.orderNumber,
-      orderId: orderData.orderId,
-      customerName: orderData.customerName,
-      customerEmail: orderData.customerEmail,
-      customerPhone: orderData.customerPhone,
-      totalAmount: orderData.totalAmount,
-      deliveryDate: orderData.deliveryDate,
-      itemCount: orderData.itemCount,
-      attachmentCount: orderData.attachmentCount || 0,
-      source: orderData.source || "Website",
-      submissionTime: orderData.submissionTime || new Date().toISOString(),
-      priority: orderData.totalAmount > 500 ? "high" : "medium",
-      requiresReview:
-        orderData.attachmentCount > 0 || orderData.totalAmount > 1000,
-    };
-
-    console.log("🚨 NEW PUBLIC ORDER ALERT 🚨");
-    console.log("================================");
-    console.log(`📋 Order: ${notificationData.orderNumber}`);
-    console.log(`👤 Customer: ${notificationData.customerName}`);
-    console.log(`📧 Email: ${notificationData.customerEmail}`);
-    console.log(`📱 Phone: ${notificationData.customerPhone}`);
-    console.log(`💰 Total: $${notificationData.totalAmount}`);
-    console.log(`🛍️ Items: ${notificationData.itemCount}`);
-    console.log(`📎 Attachments: ${notificationData.attachmentCount}`);
-    console.log(`🚚 Delivery: ${notificationData.deliveryDate}`);
-    console.log(`🌐 Source: ${notificationData.source}`);
-    console.log(`⏰ Submitted: ${notificationData.submissionTime}`);
-    console.log(`⚡ Priority: ${notificationData.priority.toUpperCase()}`);
-    if (notificationData.requiresReview) {
-      console.log(`⚠️ REQUIRES MANUAL REVIEW`);
-    }
-    console.log("================================");
-
-    // In production, integrate with your notification services:
-    // - Email service (SendGrid, Mailgun, AWS SES)
-    // - SMS service (Twilio, AWS SNS)
-    // - Slack/Discord webhooks
-    // - Push notifications
-    // - WhatsApp Business API
-
-    // Simulate notification sending with different priorities
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    return Promise.resolve({
-      success: true,
-      notificationsSent: [
-        "email_to_admin",
-        "sms_to_manager",
-        "slack_to_sales_team",
-        "dashboard_notification",
-      ],
-      orderData: notificationData,
-    });
-  } catch (error) {
-    console.error("Error sending order notifications:", error);
+  notifications.unshift(notification);
+  
+  // Keep only last 100 notifications
+  if (notifications.length > 100) {
+    notifications.splice(100);
   }
+
+  console.log(`📢 NEW NOTIFICATION [${priority.toUpperCase()}]: ${title}`);
 }
 
-export async function notifyLowStock(
-  stockData: LowStockNotification,
-): Promise<void> {
+// Real notification triggers based on actual system events
+
+export async function checkLowStockAlerts(): Promise<void> {
   try {
-    console.log("⚠️ LOW STOCK ALERT");
-    console.log("==================");
-    console.log(`Item: ${stockData.itemName}`);
-    console.log(`Current Stock: ${stockData.currentStock} ${stockData.unit}`);
-    console.log(`Minimum Level: ${stockData.minLevel} ${stockData.unit}`);
-    console.log(`Supplier: ${stockData.supplier || "Not specified"}`);
-    console.log("==================");
+    const rule = notificationRules.find(r => r.type === 'low_stock' && r.enabled);
+    if (!rule) return;
 
-    await sendBrowserNotification("low_stock", {
-      title: `Low Stock Alert: ${stockData.itemName}`,
-      message: `Only ${stockData.currentStock} ${stockData.unit} remaining (Min: ${stockData.minLevel})`,
-      icon: "⚠️",
-      data: stockData,
-    });
-  } catch (error) {
-    console.error("Error sending low stock notifications:", error);
-  }
-}
+    const lowStockItems = await db
+      .select()
+      .from(inventoryItems)
+      .where(lt(inventoryItems.currentStock, inventoryItems.minLevel));
 
-export async function notifyProductionSchedule(
-  productionData: ProductionNotification,
-): Promise<void> {
-  try {
-    console.log("📅 PRODUCTION SCHEDULE NOTIFICATION");
-    console.log("===================================");
-    console.log(`Product: ${productionData.productName}`);
-    console.log(`Scheduled: ${productionData.scheduledDate}`);
-    console.log(
-      `Target: ${productionData.targetAmount} ${productionData.unit}`,
-    );
-    console.log(`Priority: ${productionData.priority}`);
-    console.log(`Assigned To: ${productionData.assignedTo || "Unassigned"}`);
-    console.log("===================================");
-
-    await sendBrowserNotification("production_reminder", {
-      title: `Production Scheduled: ${productionData.productName}`,
-      message: `${productionData.targetAmount} ${productionData.unit} scheduled for ${new Date(productionData.scheduledDate).toLocaleDateString()}`,
-      icon: "🏭",
-      data: productionData,
-    });
-  } catch (error) {
-    console.error("Error sending production notifications:", error);
-  }
-}
-
-async function sendBrowserNotification(
-  type: string,
-  notification: any,
-): Promise<void> {
-  try {
-    // Get all subscribed users with permission for this notification type
-    const recipients = await getNotificationRecipients();
-
-    for (const recipient of recipients) {
-      const subscription = notificationSubscriptions.get(recipient.id);
-      const settings =
-        notificationSettings.get(recipient.id) || getDefaultSettings();
-
-      // Check if user has this notification type enabled
-      const typeEnabled = getNotificationTypeEnabled(settings, type);
-
-      if (subscription && typeEnabled) {
-        // In a real implementation, you would use web-push library here
-        console.log(
-          `📱 Sending ${type} notification to user ${recipient.id}:`,
-          notification.title,
+    for (const item of lowStockItems) {
+      const currentStock = parseFloat(item.currentStock?.toString() || '0');
+      const minLevel = parseFloat(item.minLevel?.toString() || '0');
+      
+      if (currentStock <= rule.threshold!) {
+        createNotification(
+          'inventory',
+          `Low Stock Alert: ${item.name}`,
+          `Only ${currentStock} ${item.unit} remaining. Minimum level: ${minLevel} ${item.unit}`,
+          currentStock === 0 ? 'critical' : 'high',
+          '/inventory',
+          { itemId: item.id, currentStock, minLevel }
         );
-
-        // Simulate browser notification
-        if (typeof window !== "undefined" && "Notification" in window) {
-          new Notification(notification.title, {
-            body: notification.message,
-            icon: notification.icon,
-            data: notification.data,
-          });
-        }
       }
     }
   } catch (error) {
-    console.error("Error sending browser notifications:", error);
+    console.error('Error checking low stock alerts:', error);
   }
 }
 
-function getDefaultSettings() {
-  return {
-    low_stock: { enabled: true, dailyLimit: true },
-    new_order: { enabled: true, dailyLimit: false },
-    production_reminder: { enabled: true, dailyLimit: true },
-  };
-}
-
-function getNotificationTypeEnabled(settings: any, type: string): boolean {
-  return settings[type]?.enabled !== false;
-}
-
-// Function to get admin users for notifications
-export async function getNotificationRecipients(): Promise<any[]> {
+export async function notifyNewOrder(orderData: any): Promise<void> {
   try {
-    // This would typically query the database for admin/manager users
-    // For now, return a mock list
-    return [
-      { id: "admin_default", role: "admin" },
-      { id: "manager_default", role: "manager" },
-    ];
+    const rule = notificationRules.find(r => r.type === 'new_order' && r.enabled);
+    if (!rule) return;
+
+    createNotification(
+      'order',
+      `New Order Received`,
+      `Order from ${orderData.customerName} for $${orderData.totalAmount}`,
+      orderData.totalAmount > 500 ? 'high' : 'medium',
+      `/orders`,
+      orderData
+    );
   } catch (error) {
-    console.error("Error getting notification recipients:", error);
-    return [];
+    console.error('Error creating new order notification:', error);
   }
 }
 
-// Storage functions for notification preferences
-export function saveNotificationSubscription(
-  userId: string,
-  subscription: any,
-): void {
-  notificationSubscriptions.set(userId, subscription);
-}
-
-export function removeNotificationSubscription(userId: string): void {
-  notificationSubscriptions.delete(userId);
-}
-
-export function saveNotificationSettings(userId: string, settings: any): void {
-  notificationSettings.set(userId, settings);
-}
-
-export function getNotificationSettings(userId: string): any {
-  return notificationSettings.get(userId) || getDefaultSettings();
-}
-
-// Check for low stock items periodically
-export async function checkLowStockItems(storage: any): Promise<void> {
+export async function checkProductionScheduleAlerts(): Promise<void> {
   try {
-    const lowStockItems = await storage.getLowStockItems();
+    const rule = notificationRules.find(r => r.type === 'production_due' && r.enabled);
+    if (!rule) return;
 
-    for (const item of lowStockItems) {
-      await notifyLowStock({
-        itemName: item.name,
-        currentStock: parseFloat(item.currentStock || 0),
-        minLevel: parseFloat(item.minLevel || 0),
-        unit: item.unit,
-        supplier: item.supplier,
-      });
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const upcomingProduction = await db
+      .select()
+      .from(productionSchedule)
+      .where(
+        and(
+          gte(productionSchedule.scheduleDate, today.toISOString().split('T')[0]),
+          lt(productionSchedule.scheduleDate, tomorrow.toISOString().split('T')[0])
+        )
+      );
+
+    for (const schedule of upcomingProduction) {
+      const product = await db
+        .select()
+        .from(products)
+        .where(eq(products.id, schedule.productId))
+        .limit(1);
+
+      if (product.length > 0) {
+        createNotification(
+          'production',
+          `Production Due Today`,
+          `${product[0].name} - ${schedule.quantity} ${schedule.unitType} scheduled`,
+          'medium',
+          '/production',
+          { scheduleId: schedule.id, productName: product[0].name }
+        );
+      }
     }
   } catch (error) {
-    console.error("Error checking low stock items:", error);
+    console.error('Error checking production schedule alerts:', error);
   }
 }
+
+export async function notifyPaymentReceived(paymentData: any): Promise<void> {
+  try {
+    createNotification(
+      'system',
+      `Payment Received`,
+      `Payment of $${paymentData.amount} received from ${paymentData.customerName}`,
+      'low',
+      '/sales',
+      paymentData
+    );
+  } catch (error) {
+    console.error('Error creating payment notification:', error);
+  }
+}
+
+export async function notifySystemAlert(alertData: any): Promise<void> {
+  try {
+    createNotification(
+      'system',
+      alertData.title,
+      alertData.description,
+      alertData.priority || 'medium',
+      alertData.actionUrl,
+      alertData
+    );
+  } catch (error) {
+    console.error('Error creating system alert:', error);
+  }
+}
+
+// API functions for frontend
+export function getNotifications(): Notification[] {
+  return [...notifications].sort((a, b) => 
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+}
+
+export function markNotificationAsRead(notificationId: string): boolean {
+  const notification = notifications.find(n => n.id === notificationId);
+  if (notification) {
+    notification.read = true;
+    return true;
+  }
+  return false;
+}
+
+export function markAllNotificationsAsRead(): void {
+  notifications.forEach(n => n.read = true);
+}
+
+export function clearNotification(notificationId: string): boolean {
+  const index = notifications.findIndex(n => n.id === notificationId);
+  if (index !== -1) {
+    notifications.splice(index, 1);
+    return true;
+  }
+  return false;
+}
+
+export function sendTestNotification(): void {
+  createNotification(
+    'system',
+    'Test Notification',
+    'This is a test notification to verify the system is working correctly.',
+    'low',
+    '/notifications',
+    { test: true }
+  );
+}
+
+// Periodic checks (call these from your scheduler)
+export async function runPeriodicChecks(): Promise<void> {
+  await checkLowStockAlerts();
+  await checkProductionScheduleAlerts();
+}
+
+// Initialize with some sample notifications for testing
+setTimeout(() => {
+  createNotification(
+    'system',
+    'System Initialized',
+    'Notification system is now active and monitoring your bakery operations.',
+    'low'
+  );
+}, 1000);

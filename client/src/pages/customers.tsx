@@ -2,38 +2,8 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import {
-  PermissionWrapper,
-  ReadOnlyWrapper,
-} from "@/components/permission-wrapper";
 import { Input } from "@/components/ui/input";
-import SearchBar from "@/components/search-bar";
-import { useTableSort } from "@/hooks/useTableSort";
-import { SortableTableHeader } from "@/components/ui/sortable-table-header";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -43,8 +13,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import {
   Plus,
-  Search,
   Edit,
   Trash2,
   Users,
@@ -59,186 +37,130 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { format } from "date-fns";
-import {
-  Pagination,
-  PaginationInfo,
-  PageSizeSelector,
-  usePagination,
-} from "@/components/ui/pagination";
+import { DataTable, DataTableColumn, DataTableAction } from "@/components/ui/data-table";
 
-interface LedgerTransaction {
+interface Customer {
   id: number;
-  transactionDate: string;
-  description: string;
-  referenceNumber?: string;
-  debitAmount: string;
-  creditAmount: string;
-  runningBalance: string;
-  transactionType: string;
-  paymentMethod?: string;
-  notes?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  openingBalance: number;
+  currentBalance: number;
+  totalOrders: number;
+  totalSpent: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function Customers() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
-  const [isLedgerDialogOpen, setIsLedgerDialogOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<any>(null);
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-  const [transactionType, setTransactionType] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
+    key: 'id',
+    direction: 'desc'
+  });
   const { toast } = useToast();
-  const { formatCurrency } = useCurrency();
+  const { symbol, formatCurrency } = useCurrency();
 
-  const {
-    data: customers = [],
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: ["/api/customers"],
-    queryFn: async () => {
-      try {
-        console.log("Fetching customers...");
-        const response = await apiRequest("GET", "/api/customers");
-        console.log("Customers response:", response);
-        
-        // Handle different response formats
-        if (Array.isArray(response)) {
-          return response;
-        } else if (response && Array.isArray(response.items)) {
-          return response.items; // Handle paginated response
-        } else if (response && Array.isArray(response.data)) {
-          return response.data;
-        } else if (response && response.success && Array.isArray(response.data)) {
-          return response.data;
-        }
-        
-        console.warn("Unexpected customer response format:", response);
-        return [];
-      } catch (error) {
-        console.error("Error fetching customers:", error);
-        throw error;
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    openingBalance: "0",
+    currentBalance: "0",
+    totalOrders: "0",
+    totalSpent: "0",
+    isActive: true,
+  });
+
+  // Fetch customers with pagination
+  const { data: customersResponse, isLoading, error, refetch } = useQuery({
+    queryKey: ["/api/customers/paginated", currentPage, pageSize, sortConfig?.key, sortConfig?.direction, searchQuery],
+    queryFn: () => apiRequest("GET", "/api/customers/paginated", {
+      page: currentPage,
+      limit: pageSize,
+      sortBy: sortConfig?.key || 'id',
+      sortOrder: sortConfig?.direction || 'desc',
+      search: searchQuery || undefined
+    }),
+    keepPreviousData: true,
+  });
+
+  const customers = customersResponse?.data || [];
+  const pagination = customersResponse?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    pageSize: 10
+  };
+
+  // Create/Update customer mutation
+  const createUpdateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const transformedData = {
+        ...data,
+        openingBalance: parseFloat(data.openingBalance || "0"),
+        currentBalance: parseFloat(data.currentBalance || "0"),
+        totalOrders: parseInt(data.totalOrders || "0"),
+        totalSpent: parseFloat(data.totalSpent || "0"),
+      };
+
+      if (editingCustomer) {
+        await apiRequest("PUT", `/api/customers/${editingCustomer.id}`, transformedData);
+      } else {
+        await apiRequest("POST", "/api/customers", transformedData);
       }
     },
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
-    refetchOnWindowFocus: false,
-    staleTime: 0,
-  });
-
-  const { data: ledgerTransactions = [] } = useQuery({
-    queryKey: ["/api/ledger/customer", selectedCustomer?.id],
-    enabled: !!selectedCustomer?.id,
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
-  });
-
-  const createCustomerMutation = useMutation({
-    mutationFn: async (customerData: any) => {
-      console.log("Submitting customer data:", customerData);
-      const response = await apiRequest("POST", "/api/customers", customerData);
-      return response;
-    },
-    onSuccess: (data) => {
-      console.log("Customer created successfully:", data);
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      refetch();
-      setIsDialogOpen(false);
-      setEditingCustomer(null);
-      setFormErrors({});
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers/paginated"] });
       toast({
         title: "Success",
-        description: "Customer created successfully",
+        description: editingCustomer
+          ? "Customer updated successfully"
+          : "Customer created successfully",
+      });
+      handleCloseDialog();
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: editingCustomer
+          ? "Failed to update customer"
+          : "Failed to create customer",
+        variant: "destructive",
       });
     },
-    onError: (error: any) => {
-      console.error("Create customer error:", error);
-
-      // Handle unauthorized errors
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-
-      // Handle validation errors
-      if (error.response?.data?.errors) {
-        setFormErrors(error.response.data.errors);
-        toast({
-          title: "Validation Error",
-          description: "Please check the form for errors",
-          variant: "destructive",
-        });
-      } else {
-        const errorMessage = error.response?.data?.message || error.message || "Failed to create customer";
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      }
-    },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) =>
-      apiRequest("PUT", `/api/customers/${id}`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      refetch();
-      setIsDialogOpen(false);
-      setEditingCustomer(null);
-      setFormErrors({});
-      toast({ title: "Success", description: "Customer updated successfully" });
-    },
-    onError: (error: any) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-
-      // Handle validation errors
-      if (error.response?.data?.errors) {
-        setFormErrors(error.response.data.errors);
-        toast({
-          title: "Validation Error",
-          description: "Please check the form for errors",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: error.response?.data?.message || "Failed to update customer",
-          variant: "destructive",
-        });
-      }
-    },
-  });
-
+  // Delete customer mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/customers/${id}`),
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/customers/${id}`);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      refetch();
-      toast({ title: "Success", description: "Customer deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers/paginated"] });
+      toast({
+        title: "Success",
+        description: "Customer deleted successfully",
+      });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -260,1049 +182,315 @@ export default function Customers() {
     },
   });
 
-  const transactionMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/ledger", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      queryClient.invalidateQueries({
-        queryKey: ["/api/ledger/customer", selectedCustomer?.id],
-      });
-      setIsTransactionDialogOpen(false);
-      setTransactionType("");
-      toast({
-        title: "Success",
-        description: "Transaction added successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to add transaction",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormErrors({});
-    
-    const formData = new FormData(e.target as HTMLFormElement);
-    
-    // Client-side validation
-    const errors: any = {};
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const phone = formData.get("phone") as string;
-    const openingBalance = formData.get("openingBalance") as string;
-    const creditLimit = formData.get("creditLimit") as string;
-    const gstNumber = formData.get("gstNumber") as string;
-
-    if (!name?.trim()) {
-      errors.name = "Customer name is required";
-    } else if (name.trim().length < 2) {
-      errors.name = "Customer name must be at least 2 characters long";
-    }
-
-    if (!phone?.trim()) {
-      errors.phone = "Phone number is required";
-    } else if (phone.trim().length < 10) {
-      errors.phone = "Phone number must be at least 10 digits";
-    }
-
-    if (email && email.trim() && !/\S+@\S+\.\S+/.test(email.trim())) {
-      errors.email = "Please enter a valid email address";
-    }
-
-    if (openingBalance && openingBalance.trim() && isNaN(parseFloat(openingBalance))) {
-      errors.openingBalance = "Opening balance must be a valid number";
-    }
-
-    if (creditLimit && creditLimit.trim() && isNaN(parseFloat(creditLimit))) {
-      errors.creditLimit = "Credit limit must be a valid number";
-    }
-
-    if (gstNumber && gstNumber.trim() && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstNumber.trim())) {
-      errors.gstNumber = "Please enter a valid GST number";
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      toast({
-        title: "Validation Error",
-        description: "Please fix the errors in the form",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const data = {
-      name: name.trim(),
-      email: email?.trim() || null,
-      phone: phone?.trim() || null,
-      alternatePhone: (formData.get("alternatePhone") as string)?.trim() || null,
-      address: (formData.get("address") as string)?.trim() || null,
-      city: (formData.get("city") as string)?.trim() || null,
-      state: (formData.get("state") as string)?.trim() || null,
-      pincode: (formData.get("pincode") as string)?.trim() || null,
-      customerType: (formData.get("customerType") as string) || "regular",
-      gstNumber: (formData.get("gstNumber") as string)?.trim() || null,
-      openingBalance: openingBalance?.trim() ? parseFloat(openingBalance) : 0,
-      creditLimit: creditLimit?.trim() ? parseFloat(creditLimit) : 0,
-      paymentTerms: parseInt((formData.get("paymentTerms") as string) || "30"),
-      discountPercentage: parseFloat((formData.get("discountPercentage") as string) || "0"),
-      notes: (formData.get("notes") as string)?.trim() || null,
-    };
-
-    if (editingCustomer) {
-      updateMutation.mutate({ id: editingCustomer.id, data });
-    } else {
-      createCustomerMutation.mutate(data);
-    }
+  const handleEdit = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setFormData({
+      name: customer.name,
+      email: customer.email || "",
+      phone: customer.phone || "",
+      address: customer.address || "",
+      openingBalance: customer.openingBalance?.toString() || "0",
+      currentBalance: customer.currentBalance?.toString() || "0",
+      totalOrders: customer.totalOrders?.toString() || "0",
+      totalSpent: customer.totalSpent?.toString() || "0",
+      isActive: customer.isActive,
+    });
+    setIsDialogOpen(true);
   };
 
-  const handleTransactionSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-
-    const amount = parseFloat(formData.get("amount") as string);
-    const isDebit =
-      transactionType === "sale" || transactionType === "adjustment_debit";
-
-    const data = {
-      customerOrPartyId: selectedCustomer.id,
-      entityType: "customer",
-      transactionDate: formData.get("transactionDate") as string,
-      description: formData.get("description") as string,
-      referenceNumber: formData.get("referenceNumber") as string,
-      debitAmount: isDebit ? amount : 0,
-      creditAmount: !isDebit ? amount : 0,
-      transactionType,
-      paymentMethod: formData.get("paymentMethod") as string,
-      notes: formData.get("notes") as string,
-    };
-
-    transactionMutation.mutate(data);
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id);
   };
 
-  const exportLedger = () => {
-    const csvContent = [
-      ["Date", "Description", "Reference", "Debit", "Credit", "Balance"].join(
-        ",",
-      ),
-      ...ledgerTransactions.map((txn: LedgerTransaction) =>
-        [
-          format(new Date(txn.transactionDate), "dd/MM/yyyy"),
-          txn.description,
-          txn.referenceNumber || "",
-          txn.debitAmount,
-          txn.creditAmount,
-          txn.runningBalance,
-        ].join(","),
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${selectedCustomer?.name}_ledger.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-
-    toast({
-      title: "Export Successful",
-      description: "Ledger exported to CSV file",
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingCustomer(null);
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      openingBalance: "0",
+      currentBalance: "0",
+      totalOrders: "0",
+      totalSpent: "0",
+      isActive: true,
     });
   };
 
-  const filteredCustomers = Array.isArray(customers) ? customers.filter(
-    (customer: any) =>
-      customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone?.toLowerCase().includes(searchQuery.toLowerCase()),
-  ) : [];
-
-  // Add sorting functionality
-  const { sortedData, sortConfig, requestSort } = useTableSort(filteredCustomers, 'name');
-
-  // Add pagination
-  const pagination = usePagination(sortedData, 10);
-  const {
-    currentItems: paginatedCustomers,
-    currentPage,
-    pageSize,
-    totalPages,
-    totalItems,
-    goToPage: handlePageChange,
-    setPageSize: handlePageSizeChange,
-  } = pagination;
-
-  const getBalanceBadge = (balance: any) => {
-    const amount = parseFloat(balance || 0);
-    if (amount > 0) {
-      return { variant: "default" as const, text: `${formatCurrency(amount)}` };
-    } else if (amount < 0) {
-      return {
-        variant: "destructive" as const,
-        text: `${formatCurrency(Math.abs(amount))}`,
-      };
-    }
-    return { variant: "secondary" as const, text: formatCurrency(0) };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createUpdateMutation.mutate(formData);
   };
 
-  if (error && isUnauthorizedError(error)) {
-    toast({
-      title: "Unauthorized",
-      description: "You are logged out. Logging in again...",
-      variant: "destructive",
-    });
-    setTimeout(() => {
-      window.location.href = "/api/login";
-    }, 500);
-    return null;
-  }
+  const handleSort = (key: string) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev?.key === key && prev?.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
 
-  const [formErrors, setFormErrors] = useState<any>({});
+  // Define table columns
+  const columns: DataTableColumn<Customer>[] = [
+    {
+      key: 'name',
+      title: 'Customer Name',
+      sortable: true,
+      render: (value, row) => (
+        <div>
+          <div className="font-medium">{value}</div>
+          {row.email && (
+            <div className="text-sm text-muted-foreground">{row.email}</div>
+          )}
+          {row.phone && (
+            <div className="text-sm text-muted-foreground">{row.phone}</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'currentBalance',
+      title: 'Current Balance',
+      sortable: true,
+      render: (value) => (
+        <Badge variant={value >= 0 ? "default" : "destructive"}>
+          {formatCurrency(value)}
+        </Badge>
+      ),
+    },
+    {
+      key: 'totalOrders',
+      title: 'Total Orders',
+      sortable: true,
+    },
+    {
+      key: 'totalSpent',
+      title: 'Total Spent',
+      sortable: true,
+      render: (value) => formatCurrency(value),
+    },
+    {
+      key: 'isActive',
+      title: 'Status',
+      sortable: true,
+      render: (value) => (
+        <Badge variant={value ? "default" : "secondary"}>
+          {value ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    {
+      key: 'createdAt',
+      title: 'Created',
+      sortable: true,
+      render: (value) => format(new Date(value), "MMM dd, yyyy"),
+    },
+  ];
+
+  // Define table actions
+  const actions: DataTableAction<Customer>[] = [
+    {
+      label: "View Details",
+      icon: <Eye className="h-4 w-4" />,
+      onClick: (row) => {
+        // Navigate to customer details page
+        window.location.href = `/customers/${row.id}`;
+      },
+      variant: "ghost",
+    },
+    {
+      label: "Edit",
+      icon: <Edit className="h-4 w-4" />,
+      onClick: handleEdit,
+      variant: "ghost",
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 className="h-4 w-4" />,
+      onClick: (row) => handleDelete(row.id),
+      variant: "ghost",
+      className: "text-red-600 hover:text-red-700",
+    },
+  ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Users className="h-8 w-8 text-blue-600" />
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Users className="h-8 w-8" />
             Customer Management
           </h1>
-          <p className="text-gray-600">
-            Manage customer accounts with complete transaction history and financial details
+          <p className="text-muted-foreground">
+            Manage your customer information and relationships
           </p>
         </div>
-        <PermissionWrapper resource="customers" action="write">
-          <Dialog
-            open={isDialogOpen}
-            onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) {
-                setEditingCustomer(null);
-                setFormErrors({});
-              }
-            }}
-          >
+      </div>
+
+      <DataTable
+        title="Customers"
+        data={customers}
+        columns={columns}
+        actions={actions}
+        loading={isLoading}
+        error={error?.message}
+        searchable
+        searchPlaceholder="Search customers..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        exportable
+        onExportClick={() => {
+          toast({
+            title: "Export",
+            description: "Customer export functionality will be implemented soon",
+          });
+        }}
+        refreshable
+        onRefreshClick={() => refetch()}
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        pageSize={pagination.pageSize}
+        totalItems={pagination.totalItems}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+        sortConfig={sortConfig}
+        onSort={handleSort}
+        headerActions={
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button
-                onClick={() => setEditingCustomer(null)}
-                className="w-full sm:w-auto"
-              >
+              <Button>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Customer
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
                   {editingCustomer ? "Edit Customer" : "Add New Customer"}
                 </DialogTitle>
                 <DialogDescription>
-                  Enter customer details below
+                  {editingCustomer
+                    ? "Update customer information"
+                    : "Enter customer details to add a new customer"}
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSave} className="space-y-6">
-                {/* Basic Information Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Basic Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label htmlFor="name" className="text-sm font-medium">
-                          Customer Name <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                          id="name"
-                          name="name"
-                          placeholder="Enter full customer name"
-                          defaultValue={editingCustomer?.name || ""}
-                          required
-                        />
-                        {formErrors.name && (
-                          <p className="text-red-500 text-sm">{formErrors.name}</p>
-                        )}
-                      </div>
 
-                      <div className="space-y-2">
-                        <label htmlFor="customerType" className="text-sm font-medium">
-                          Customer Type <span className="text-red-500">*</span>
-                        </label>
-                        <Select name="customerType" defaultValue={editingCustomer?.customerType || "regular"}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select customer type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="regular">Regular Customer</SelectItem>
-                            <SelectItem value="wholesale">Wholesale Customer</SelectItem>
-                            <SelectItem value="retail">Retail Customer</SelectItem>
-                            <SelectItem value="corporate">Corporate Customer</SelectItem>
-                            <SelectItem value="vip">VIP Customer</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Customer Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label htmlFor="email" className="text-sm font-medium">
-                          Email Address
-                        </label>
-                        <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          placeholder="customer@example.com"
-                          defaultValue={editingCustomer?.email || ""}
-                        />
-                        {formErrors.email && (
-                          <p className="text-red-500 text-sm">{formErrors.email}</p>
-                        )}
-                      </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                    />
+                  </div>
 
-                      <div className="space-y-2">
-                        <label htmlFor="phone" className="text-sm font-medium">
-                          Primary Phone <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                          id="phone"
-                          name="phone"
-                          placeholder="+1 (555) 123-4567"
-                          defaultValue={editingCustomer?.phone || ""}
-                          required
-                        />
-                        {formErrors.phone && (
-                          <p className="text-red-500 text-sm">{formErrors.phone}</p>
-                        )}
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                    />
+                  </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label htmlFor="alternatePhone" className="text-sm font-medium">
-                          Alternate Phone
-                        </label>
-                        <Input
-                          id="alternatePhone"
-                          name="alternatePhone"
-                          placeholder="+1 (555) 987-6543"
-                          defaultValue={editingCustomer?.alternatePhone || ""}
-                        />
-                      </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="isActive">Status</Label>
+                    <Select
+                      value={formData.isActive.toString()}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, isActive: value === "true" })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">Active</SelectItem>
+                        <SelectItem value="false">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                      <div className="space-y-2">
-                        <label htmlFor="dateOfBirth" className="text-sm font-medium">
-                          Date of Birth
-                        </label>
-                        <Input
-                          id="dateOfBirth"
-                          name="dateOfBirth"
-                          type="date"
-                          defaultValue={editingCustomer?.dateOfBirth || ""}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="openingBalance">Opening Balance ({symbol})</Label>
+                    <Input
+                      id="openingBalance"
+                      type="number"
+                      step="0.01"
+                      value={formData.openingBalance}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          openingBalance: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
 
-                {/* Business Information Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Business Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label htmlFor="companyName" className="text-sm font-medium">
-                          Company Name
-                        </label>
-                        <Input
-                          id="companyName"
-                          name="companyName"
-                          placeholder="Enter company name"
-                          defaultValue={editingCustomer?.companyName || ""}
-                        />
-                      </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="currentBalance">Current Balance ({symbol})</Label>
+                    <Input
+                      id="currentBalance"
+                      type="number"
+                      step="0.01"
+                      value={formData.currentBalance}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          currentBalance: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
 
-                      <div className="space-y-2">
-                        <label htmlFor="gstNumber" className="text-sm font-medium">
-                          GST Number
-                        </label>
-                        <Input
-                          id="gstNumber"
-                          name="gstNumber"
-                          placeholder="22AAAAA0000A1Z5"
-                          defaultValue={editingCustomer?.gstNumber || ""}
-                        />
-                        {formErrors.gstNumber && (
-                          <p className="text-red-500 text-sm">{formErrors.gstNumber}</p>
-                        )}
-                      </div>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Textarea
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
+                    rows={3}
+                  />
+                </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label htmlFor="panNumber" className="text-sm font-medium">
-                          PAN Number
-                        </label>
-                        <Input
-                          id="panNumber"
-                          name="panNumber"
-                          placeholder="AAAAA1234A"
-                          defaultValue={editingCustomer?.panNumber || ""}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="businessType" className="text-sm font-medium">
-                          Business Type
-                        </label>
-                        <Select name="businessType" defaultValue={editingCustomer?.businessType || ""}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select business type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="individual">Individual</SelectItem>
-                            <SelectItem value="proprietorship">Proprietorship</SelectItem>
-                            <SelectItem value="partnership">Partnership</SelectItem>
-                            <SelectItem value="company">Private Limited Company</SelectItem>
-                            <SelectItem value="llp">Limited Liability Partnership</SelectItem>
-                            <SelectItem value="trust">Trust</SelectItem>
-                            <SelectItem value="society">Society</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Address Information Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Address Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <label htmlFor="address" className="text-sm font-medium">
-                        Street Address
-                      </label>
-                      <Textarea
-                        id="address"
-                        name="address"
-                        placeholder="Enter complete street address"
-                        defaultValue={editingCustomer?.address || ""}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <label htmlFor="city" className="text-sm font-medium">
-                          City <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                          id="city"
-                          name="city"
-                          placeholder="Enter city"
-                          defaultValue={editingCustomer?.city || ""}
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="state" className="text-sm font-medium">
-                          State/Province <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                          id="state"
-                          name="state"
-                          placeholder="Enter state"
-                          defaultValue={editingCustomer?.state || ""}
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="pincode" className="text-sm font-medium">
-                          Pincode/ZIP <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                          id="pincode"
-                          name="pincode"
-                          placeholder="123456"
-                          defaultValue={editingCustomer?.pincode || ""}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="country" className="text-sm font-medium">
-                        Country
-                      </label>
-                      <Select name="country" defaultValue={editingCustomer?.country || "india"}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="india">India</SelectItem>
-                          <SelectItem value="usa">United States</SelectItem>
-                          <SelectItem value="uk">United Kingdom</SelectItem>
-                          <SelectItem value="canada">Canada</SelectItem>
-                          <SelectItem value="australia">Australia</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Financial Information Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5" />
-                      Financial Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label htmlFor="openingBalance" className="text-sm font-medium">
-                          Opening Balance ({symbol})
-                        </label>
-                        <Input
-                          id="openingBalance"
-                          name="openingBalance"
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          defaultValue={editingCustomer?.openingBalance || "0"}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Positive for receivable, negative for payable
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="creditLimit" className="text-sm font-medium">
-                          Credit Limit ({symbol})
-                        </label>
-                        <Input
-                          id="creditLimit"
-                          name="creditLimit"
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          defaultValue={editingCustomer?.creditLimit || "0"}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Maximum credit allowed
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <label htmlFor="paymentTerms" className="text-sm font-medium">
-                          Payment Terms (Days)
-                        </label>
-                        <Select name="paymentTerms" defaultValue={editingCustomer?.paymentTerms?.toString() || "30"}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select terms" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">Immediate (COD)</SelectItem>
-                            <SelectItem value="7">7 Days</SelectItem>
-                            <SelectItem value="15">15 Days</SelectItem>
-                            <SelectItem value="30">30 Days</SelectItem>
-                            <SelectItem value="45">45 Days</SelectItem>
-                            <SelectItem value="60">60 Days</SelectItem>
-                            <SelectItem value="90">90 Days</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="discountPercentage" className="text-sm font-medium">
-                          Default Discount (%)
-                        </label>
-                        <Input
-                          id="discountPercentage"
-                          name="discountPercentage"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          placeholder="0.00"
-                          defaultValue={editingCustomer?.discountPercentage || "0"}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="priceCategory" className="text-sm font-medium">
-                          Price Category
-                        </label>
-                        <Select name="priceCategory" defaultValue={editingCustomer?.priceCategory || "retail"}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select price category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="retail">Retail Price</SelectItem>
-                            <SelectItem value="wholesale">Wholesale Price</SelectItem>
-                            <SelectItem value="distributor">Distributor Price</SelectItem>
-                            <SelectItem value="special">Special Price</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Additional Information Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Additional Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label htmlFor="referenceBy" className="text-sm font-medium">
-                          Referred By
-                        </label>
-                        <Input
-                          id="referenceBy"
-                          name="referenceBy"
-                          placeholder="Name of referrer"
-                          defaultValue={editingCustomer?.referenceBy || ""}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="salesRep" className="text-sm font-medium">
-                          Assigned Sales Representative
-                        </label>
-                        <Input
-                          id="salesRep"
-                          name="salesRep"
-                          placeholder="Sales rep name"
-                          defaultValue={editingCustomer?.salesRep || ""}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="notes" className="text-sm font-medium">
-                        Notes & Comments
-                      </label>
-                      <Textarea
-                        id="notes"
-                        name="notes"
-                        placeholder="Any special instructions, preferences, or important notes about this customer"
-                        defaultValue={editingCustomer?.notes || ""}
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="isActive"
-                        name="isActive"
-                        defaultChecked={editingCustomer?.isActive !== false}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                      />
-                      <label htmlFor="isActive" className="text-sm font-medium">
-                        Active Customer
-                      </label>
-                    </div>
-                  </CardContent>
-                </Card>
-                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    className="w-full sm:w-auto"
-                  >
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button type="button" variant="outline" onClick={handleCloseDialog}>
                     Cancel
                   </Button>
-                  <Button
-                    type="submit"
-                    disabled={
-                      createCustomerMutation.isPending || updateMutation.isPending
-                    }
-                    className="w-full sm:w-auto"
-                  >
-                    {editingCustomer ? "Update" : "Create"}
+                  <Button type="submit" disabled={createUpdateMutation.isPending}>
+                    {createUpdateMutation.isPending && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    )}
+                    {editingCustomer ? "Update" : "Create"} Customer
                   </Button>
                 </div>
               </form>
             </DialogContent>
           </Dialog>
-        </PermissionWrapper>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <CardTitle>Customers List</CardTitle>
-            <div className="w-full sm:w-64">
-              <SearchBar
-                placeholder="Search customers..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-                className="w-full"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableTableHeader sortKey="name" sortConfig={sortConfig} onSort={requestSort}>
-                      Customer
-                    </SortableTableHeader>
-                    <SortableTableHeader sortKey="email" sortConfig={sortConfig} onSort={requestSort} className="hidden md:table-cell">
-                      Contact
-                    </SortableTableHeader>
-                    <SortableTableHeader sortKey="currentBalance" sortConfig={sortConfig} onSort={requestSort}>
-                      Current Balance
-                    </SortableTableHeader>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedCustomers && paginatedCustomers.length > 0 ? (
-                    paginatedCustomers.map((customer: any) => {
-                    const balanceInfo = getBalanceBadge(
-                      customer.currentBalance,
-                    );
-                    return (
-                      <TableRow key={customer.id}>
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                              <Users className="h-4 w-4 text-primary" />
-                            </div>
-                            <div>
-                              <div className="font-medium">{customer.name}</div>
-                              <div className="text-sm text-muted-foreground md:hidden">
-                                {customer.email || customer.phone}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <div>
-                            {customer.email && (
-                              <div className="text-sm">{customer.email}</div>
-                            )}
-                            {customer.phone && (
-                              <div className="text-sm text-muted-foreground">
-                                {customer.phone}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={balanceInfo.variant}>
-                            {balanceInfo.text}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-1">
-                            <PermissionWrapper
-                              resource="customers"
-                              action="read"
-                            >
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedCustomer(customer);
-                                  setIsLedgerDialogOpen(true);
-                                }}
-                                className="text-green-600 hover:text-green-800 focus:outline-none"
-                                title="View"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </PermissionWrapper>
-                            <PermissionWrapper
-                              resource="customers"
-                              action="write"
-                            >
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedCustomer(customer);
-                                  setIsTransactionDialogOpen(true);
-                                }}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingCustomer(customer);
-                                  setIsDialogOpen(true);
-                                }}
-                                className="text-blue-600 hover:text-blue-800 focus:outline-none"
-                                title="Edit"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <DeleteConfirmationDialog
-                                trigger={
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-red-600 hover:text-red-800 focus:outline-none"
-                                    title="Delete"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                }
-                                title="Delete Customer"
-                                itemName={customer.name}
-                                onConfirm={() => deleteMutation.mutate(customer.id)}
-                                isLoading={deleteMutation.isPending}
-                              />
-                            </PermissionWrapper>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-12">
-                      <div className="flex flex-col items-center justify-center">
-                        <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold mb-2">No customers found</h3>
-                        <p className="text-muted-foreground mb-4">
-                          {searchQuery ? 'No customers match your search criteria.' : 'Start by adding your first customer.'}
-                        </p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-                </TableBody>
-              </Table>
-              
-
-              {/* Pagination Controls */}
-              {filteredCustomers.length > 0 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
-                  <PaginationInfo
-                    currentPage={currentPage}
-                    pageSize={pageSize}
-                    totalItems={totalItems}
-                  />
-                  <div className="flex items-center gap-4">
-                    <PageSizeSelector
-                      pageSize={pageSize}
-                      onPageSizeChange={handlePageSizeChange}
-                    />
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={handlePageChange}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Transaction Dialog */}
-      <Dialog
-        open={isTransactionDialogOpen}
-        onOpenChange={setIsTransactionDialogOpen}
-      >
-        <DialogContent className="max-w-md mx-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Add Transaction for {selectedCustomer?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Record a new transaction in the customer ledger
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleTransactionSave} className="space-y-4">
-            <Select
-              value={transactionType}
-              onValueChange={setTransactionType}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Transaction Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sale">Sale (Debit)</SelectItem>
-                <SelectItem value="payment_received">
-                  Payment Received (Credit)
-                </SelectItem>
-                <SelectItem value="adjustment_debit">
-                  Adjustment (Debit)
-                </SelectItem>
-                <SelectItem value="adjustment_credit">
-                  Adjustment (Credit)
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              name="transactionDate"
-              type="date"
-              defaultValue={format(new Date(), "yyyy-MM-dd")}
-              required
-            />
-            <Input
-              name="description"
-              placeholder="Transaction Description"
-              required
-            />
-            <Input
-              name="referenceNumber"
-              placeholder="Reference Number (Optional)"
-            />
-            <Input
-              name="amount"
-              type="number"
-              step="0.01"
-              placeholder="Amount"
-              required
-            />
-            <Select name="paymentMethod">
-              <SelectTrigger>
-                <SelectValue placeholder="Payment Method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                <SelectItem value="cheque">Cheque</SelectItem>
-                <SelectItem value="credit_card">Credit Card</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            <Textarea
-              name="notes"
-              placeholder="Additional Notes (Optional)"
-              rows={2}
-            />
-            <div className="flex justify-end space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsTransactionDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={transactionMutation.isPending}>
-                Add Transaction
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Ledger View Dialog */}
-      <Dialog open={isLedgerDialogOpen} onOpenChange={setIsLedgerDialogOpen}>
-        <DialogContent className="max-w-4xl mx-auto max-h-[80vh]">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle>
-                  Customer Ledger - {selectedCustomer?.name}
-                </DialogTitle>
-                <DialogDescription>
-                  Complete transaction history and running balance
-                </DialogDescription>
-              </div>
-              <Button variant="outline" onClick={exportLedger}>
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-            </div>
-          </DialogHeader>
-          <div className="overflow-y-auto max-h-[60vh]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead className="text-right">Debit</TableHead>
-                  <TableHead className="text-right">Credit</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ledgerTransactions.map((transaction: LedgerTransaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>
-                      {format(
-                        new Date(transaction.transactionDate),
-                        "dd/MM/yyyy",
-                      )}
-                    </TableCell>
-                    <TableCell>{transaction.description}</TableCell>
-                    <TableCell>{transaction.referenceNumber || "-"}</TableCell>
-                    <TableCell className="text-right">
-                      {parseFloat(transaction.debitAmount) > 0
-                        ? formatCurrency(parseFloat(transaction.debitAmount))
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {parseFloat(transaction.creditAmount) > 0
-                        ? formatCurrency(parseFloat(transaction.creditAmount))
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(parseFloat(transaction.runningBalance))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {ledgerTransactions.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      No transactions found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </DialogContent>
-      </Dialog>
+        }
+      />
     </div>
   );
 }

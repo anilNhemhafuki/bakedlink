@@ -1,196 +1,95 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import ProductForm from "@/components/product-form";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import ProductForm from "@/components/product-form";
-import CostCalculator from "@/components/recipe";
-import SearchBar from "@/components/search-bar";
-import { queryClient } from "@/lib/queryClient";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Edit, Trash2, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useTableSort } from "@/hooks/useTableSort";
-import { SortableTableHeader } from "@/components/ui/sortable-table-header";
-import { apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
-import {
-  Pagination,
-  PaginationInfo,
-  PageSizeSelector,
-  usePagination,
-} from "@/components/ui/pagination";
-import {
-  MoreHorizontal,
-  Plus,
-  Printer,
-  Edit,
-  Trash2,
-  Download,
-  Upload,
-  Cookie,
-  Calculator,
-} from "lucide-react";
-import { useUnits } from "@/hooks/useUnits";
+import { DataTable, DataTableColumn, DataTableAction } from "@/components/ui/data-table";
+
+interface Product {
+  id: number;
+  name: string;
+  description?: string;
+  sku?: string;
+  price: number;
+  cost: number;
+  margin: number;
+  imageUrl?: string;
+  categoryId?: number;
+  unitId?: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function Products() {
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [showProductForm, setShowProductForm] = useState(false);
-  const [showCostCalculator, setShowCostCalculator] = useState(false);
-  const [showLabelPrint, setShowLabelPrint] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [selectedProductForLabel, setSelectedProductForLabel] =
-    useState<any>(null);
-  const [labelData, setLabelData] = useState({
-    companyName: "",
-    companyLocation: "",
-    regNo: "",
-    dtqocNo: "",
-    batchNo: "",
-    netWeight: "",
-    ingredients: "",
-    mrp: "",
-    manufactureDate: "",
-    expireDate: "",
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
+    key: 'id',
+    direction: 'desc'
   });
-
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
-  // Fetch products
-  const {
-    data: productsData,
-    isLoading,
-    error: productsError,
-    refetch: refetchProducts,
-  } = useQuery({
-    queryKey: ["products"],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", "/api/products");
-        console.log("Products API response:", res);
-        
-        // Handle different response formats
-        if (res?.success && res?.products) {
-          return Array.isArray(res.products) ? res.products : [];
-        }
-        
-        if (res?.products) {
-          return Array.isArray(res.products) ? res.products : [];
-        }
-        
-        // If response is directly an array
-        if (Array.isArray(res)) {
-          return res;
-        }
-        
-        console.warn("Unexpected products response format:", res);
-        return [];
-      } catch (error) {
-        console.error("Failed to fetch products:", error);
-        throw error;
-      }
-    },
-    retry: (failureCount, error) =>
-      !isUnauthorizedError(error) && failureCount < 3,
+  // Fetch products with pagination
+  const { data: productsResponse, isLoading, error, refetch } = useQuery({
+    queryKey: ["/api/products/paginated", currentPage, pageSize, sortConfig?.key, sortConfig?.direction, searchQuery],
+    queryFn: () => apiRequest("GET", "/api/products/paginated", {
+      page: currentPage,
+      limit: pageSize,
+      sortBy: sortConfig?.key || 'id',
+      sortOrder: sortConfig?.direction || 'desc',
+      search: searchQuery || undefined
+    }),
+    keepPreviousData: true,
   });
 
-  const products = Array.isArray(productsData) ? productsData : [];
-  
-  // Debug logging
-  console.log("Products data in component:", products);
-  console.log("Products count:", products.length);
-  console.log("Is loading:", isLoading);
-  console.log("Products error:", productsError);
+  const products = productsResponse?.data || [];
+  const pagination = productsResponse?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    pageSize: 10
+  };
 
-  // Fetch units
-  const { data: units = [] } = useUnits();
-
-  // Fetch categories
-  const { data: categoriesData = [] } = useQuery({
-    queryKey: ["categories"],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", "/api/categories");
-        return Array.isArray(res) ? res : res.categories || [];
-      } catch (error) {
-        console.error("Failed to fetch categories:", error);
-        return [];
-      }
-    },
-    retry: (failureCount, error) =>
-      !isUnauthorizedError(error) && failureCount < 3,
-  });
-
-  const categories = Array.isArray(categoriesData) ? categoriesData : [];
-
-  // Fetch settings
-  const { data: settingsData = {} } = useQuery({
-    queryKey: ["settings"],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", "/api/settings");
-        return res || {};
-      } catch (error) {
-        console.error("Failed to fetch settings:", error);
-        return {};
-      }
-    },
-    retry: (failureCount, error) =>
-      !isUnauthorizedError(error) && failureCount < 3,
-  });
-
-  const settings = settingsData?.settings || {};
-
-  // Delete mutation
-  const deleteProductMutation = useMutation({
+  const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/products/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast({ title: "Success", description: "Product deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/products/paginated"] });
+      toast({
+        title: "Success",
+        description: "Product deleted successfully",
+      });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
-          description: "Session expired. Redirecting to login...",
+          description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-        setTimeout(() => (window.location.href = "/api/login"), 500);
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
         return;
       }
       toast({
@@ -201,809 +100,170 @@ export default function Products() {
     },
   });
 
-  const filteredProducts = products.filter((product: any) => {
-    const matchesSearch =
-      product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" ||
-      product.categoryId?.toString() === selectedCategory;
-    const matchesStatus =
-      selectedStatus === "all" ||
-      (selectedStatus === "active" && product.isActive) ||
-      (selectedStatus === "inactive" && !product.isActive);
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  const handleEdit = (product: Product) => {
+    setEditingProduct(product);
+    setIsDialogOpen(true);
+  };
 
-  const { sortedData, sortConfig, requestSort } = useTableSort(
-    filteredProducts,
-    "name",
-  );
-  const pagination = usePagination(sortedData || [], 10);
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id);
+  };
 
-  const {
-    currentPage,
-    pageSize,
-    totalPages,
-    totalItems,
-    paginatedData: paginatedProducts = [],
-    handlePageChange,
-    handlePageSizeChange,
-  } = pagination;
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingProduct(null);
+  };
 
-  // Update MRP when product or currency changes
-  useEffect(() => {
-    if (selectedProductForLabel) {
-      setLabelData((prev) => ({
-        ...prev,
-        mrp: formatCurrency(Number(selectedProductForLabel.price)),
-      }));
-    }
-  }, [selectedProductForLabel, formatCurrency]);
-
-  // Initialize label data when settings load
-  useEffect(() => {
-    setLabelData((prev) => ({
-      ...prev,
-      companyName: settings.companyName || "Mero BakeSoft",
-      companyLocation: settings.companyAddress || "",
-      regNo: settings.companyRegNo || "",
-      dtqocNo: settings.companyDtqocNo || "",
+  const handleSort = (key: string) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev?.key === key && prev?.direction === 'asc' ? 'desc' : 'asc'
     }));
-  }, [settings]);
-
-  const handleLabelPrint = (product: any) => {
-    setSelectedProductForLabel(product);
-    setShowLabelPrint(true);
   };
 
-  const printLabel = () => {
-    if (!labelData.companyName || !selectedProductForLabel) {
-      toast({
-        title: "Missing Info",
-        description: "Please ensure company name and product are set.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      toast({
-        title: "Blocked",
-        description: "Please allow pop-ups to print labels.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const labelSize = settings.labelSize || "small";
-    const orientation = settings.labelOrientation || "portrait";
-    const margin = settings.labelMargin || "2";
-
-    const sizeConfig = {
-      small: { width: "200px", height: "120px" },
-      medium: { width: "280px", height: "200px" },
-      large: { width: "350px", height: "260px" },
-      custom_40x30: { width: "40mm", height: "30mm" },
-    };
-
-    const currentSize =
-      sizeConfig[labelSize as keyof typeof sizeConfig] || sizeConfig.small;
-
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Product Label - ${selectedProductForLabel.name}</title>
-          <style>
-            @page { size: ${labelSize === 'custom_40x30' ? '40mm 30mm' : 'A4'}; margin: 0; }
-            body { 
-              font-family: 'Arial', sans-serif; 
-              margin: ${labelSize === 'custom_40x30' ? '1mm' : margin + 'mm'}; 
-              font-size: ${labelSize === 'custom_40x30' ? '6px' : '10px'}; 
-              background: white; 
-              width: ${labelSize === 'custom_40x30' ? '38mm' : 'auto'};
-              height: ${labelSize === 'custom_40x30' ? '28mm' : 'auto'};
-            }
-            .label {
-              border: ${labelSize === 'custom_40x30' ? '1px solid #000' : '2px solid #000'}; 
-              padding: ${labelSize === 'custom_40x30' ? '1mm' : '8px'}; 
-              width: ${currentSize.width}; 
-              height: ${currentSize.height};
-              margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column;
-              ${orientation === "landscape" ? "transform: rotate(90deg); transform-origin: center;" : ""}
-            }
-            .header { 
-              text-align: center; 
-              border-bottom: 1px solid #000; 
-              padding-bottom: ${labelSize === 'custom_40x30' ? '1px' : '6px'}; 
-              margin-bottom: ${labelSize === 'custom_40x30' ? '1px' : '6px'}; 
-            }
-            .company-name { 
-              font-size: ${labelSize === 'custom_40x30' ? '7px' : '12px'}; 
-              font-weight: bold; 
-              margin-bottom: ${labelSize === 'custom_40x30' ? '0px' : '2px'}; 
-            }
-            .company-location { font-size: ${labelSize === 'custom_40x30' ? '5px' : '8px'}; }
-            .product-name { 
-              font-size: ${labelSize === 'custom_40x30' ? '6px' : '11px'}; 
-              font-weight: bold; text-align: center; 
-              margin: ${labelSize === 'custom_40x30' ? '1px 0' : '4px 0'}; 
-              border: 1px solid #000; 
-              padding: ${labelSize === 'custom_40x30' ? '1px' : '3px'}; 
-              background: #f9f9f9; 
-            }
-            .fields { flex: 1; display: flex; flex-direction: column; gap: ${labelSize === 'custom_40x30' ? '0px' : '2px'}; }
-            .field { 
-              display: flex; justify-content: space-between; align-items: flex-start; 
-              line-height: ${labelSize === 'custom_40x30' ? '1' : '1.2'}; 
-            }
-            .field-label { 
-              font-weight: bold; width: 35%; 
-              font-size: ${labelSize === 'custom_40x30' ? '5px' : '9px'}; 
-            }
-            .field-value { 
-              width: 60%; text-align: right; 
-              font-size: ${labelSize === 'custom_40x30' ? '5px' : '9px'}; 
-              word-wrap: break-word; 
-            }
-            .ingredients .field-value { 
-              font-size: ${labelSize === 'custom_40x30' ? '4px' : '7px'}; 
-              line-height: ${labelSize === 'custom_40x30' ? '1' : '1.1'}; 
-            }
-            @media print { body { margin: 0; } .label { page-break-inside: avoid; } }
-          </style>
-        </head>
-        <body>
-          <div class="label">
-            <div class="header">
-              <div class="company-name">${labelData.companyName}</div>
-              ${labelData.companyLocation ? `<div class="company-location">${labelData.companyLocation}</div>` : ""}
-            </div>
-            <div class="product-name">${selectedProductForLabel.name}</div>
-            <div class="fields">
-              ${labelData.regNo ? `<div class="field"><span class="field-label">Reg. No:</span><span class="field-value">${labelData.regNo}</span></div>` : ""}
-              ${labelData.dtqocNo ? `<div class="field"><span class="field-label">DTQOC No:</span><span class="field-value">${labelData.dtqocNo}</span></div>` : ""}
-              ${labelData.batchNo ? `<div class="field"><span class="field-label">Batch No:</span><span class="field-value">${labelData.batchNo}</span></div>` : ""}
-              ${labelData.netWeight ? `<div class="field"><span class="field-label">Net Weight:</span><span class="field-value">${labelData.netWeight}</span></div>` : ""}
-              ${labelData.ingredients ? `<div class="field ingredients"><span class="field-label">Ingredients:</span><span class="field-value">${labelData.ingredients}</span></div>` : ""}
-              <div class="field"><span class="field-label">MRP:</span><span class="field-value">${labelData.mrp}</span></div>
-              ${labelData.manufactureDate ? `<div class="field"><span class="field-label">Mfg. Date:</span><span class="field-value">${new Date(labelData.manufactureDate).toLocaleDateString()}</span></div>` : ""}
-              ${labelData.expireDate ? `<div class="field"><span class="field-label">Exp. Date:</span><span class="field-value">${new Date(labelData.expireDate).toLocaleDateString()}</span></div>` : ""}
-            </div>
+  // Define table columns
+  const columns: DataTableColumn<Product>[] = [
+    {
+      key: 'name',
+      title: 'Product',
+      sortable: true,
+      render: (value, row) => (
+        <div className="flex items-center space-x-3">
+          {row.imageUrl && (
+            <img
+              src={row.imageUrl}
+              alt={row.name}
+              className="w-10 h-10 rounded-lg object-cover"
+            />
+          )}
+          <div>
+            <div className="font-medium">{value}</div>
+            {row.description && (
+              <div className="text-sm text-muted-foreground truncate max-w-xs">
+                {row.description}
+              </div>
+            )}
           </div>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.onafterprint = () => printWindow.close();
-  };
-
-  if (isLoading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-96 bg-gray-200 rounded"></div>
         </div>
-      </div>
-    );
-  }
+      ),
+    },
+    {
+      key: 'sku',
+      title: 'SKU',
+      sortable: true,
+      className: "hidden md:table-cell",
+      render: (value) => value || <span className="text-muted-foreground">-</span>,
+    },
+    {
+      key: 'price',
+      title: 'Price',
+      sortable: true,
+      render: (value) => <span className="font-medium">{formatCurrency(value)}</span>,
+    },
+    {
+      key: 'cost',
+      title: 'Cost',
+      sortable: true,
+      render: (value) => formatCurrency(value),
+    },
+    {
+      key: 'margin',
+      title: 'Margin',
+      sortable: true,
+      render: (value) => (
+        <Badge variant={value > 0 ? "default" : "destructive"}>
+          {formatCurrency(value)}
+        </Badge>
+      ),
+    },
+  ];
 
-  if (productsError) {
-    return (
-      <div className="p-6 text-center text-red-500">
-        <h2>Error loading products</h2>
-        <p>{(productsError as Error).message}</p>
-        <Button 
-          onClick={() => refetchProducts()} 
-          className="mt-4"
-        >
-          Retry Loading Products
-        </Button>
-      </div>
-    );
-  }
+  // Define table actions
+  const actions: DataTableAction<Product>[] = [
+    {
+      label: "Edit",
+      icon: <Edit className="h-4 w-4" />,
+      onClick: handleEdit,
+      variant: "ghost",
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 className="h-4 w-4" />,
+      onClick: (row) => handleDelete(row.id),
+      variant: "ghost",
+      className: "text-red-600 hover:text-red-700",
+    },
+  ];
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-gray-600">
-            Manage your bakery products and recipes
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Package className="h-8 w-8" />
+            Products
+          </h1>
+          <p className="text-muted-foreground">
+            Manage your product catalog and pricing
           </p>
-        </div>
-        <div className="flex space-x-2">
-          <Button onClick={() => setShowCostCalculator(true)} variant="outline">
-            <Calculator className="h-4 w-4 mr-2" />
-            Cost Calculator
-          </Button>
-          <Button onClick={() => setShowProductForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Product
-          </Button>
         </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-center">
-            <div className="flex-1">
-              <SearchBar
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-                className="w-full"
-              />
-            </div>
-            <div className="flex gap-2">
-
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button variant="outline" size="sm">
-                <Upload className="h-4 w-4 mr-2" />
-                Import
-              </Button>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Products Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <SortableTableHeader
-                  sortKey="name"
-                  sortConfig={sortConfig}
-                  onSort={requestSort}
-                >
-                  Name
-                </SortableTableHeader>
-                <SortableTableHeader
-                  sortKey="sku"
-                  sortConfig={sortConfig}
-                  onSort={requestSort}
-                >
-                  Code
-                </SortableTableHeader>
-                <SortableTableHeader
-                  sortKey="cost"
-                  sortConfig={sortConfig}
-                  onSort={requestSort}
-                >
-                  Cost
-                </SortableTableHeader>
-                <SortableTableHeader
-                  sortKey="price"
-                  sortConfig={sortConfig}
-                  onSort={requestSort}
-                >
-                  Regular Price
-                </SortableTableHeader>
-                <SortableTableHeader
-                  sortKey="isActive"
-                  sortConfig={sortConfig}
-                  onSort={requestSort}
-                >
-                  Status
-                </SortableTableHeader>
-                <SortableTableHeader
-                  sortKey="unit"
-                  sortConfig={sortConfig}
-                  onSort={requestSort}
-                >
-                  Unit
-                </SortableTableHeader>
-                <SortableTableHeader
-                  sortKey="categoryId"
-                  sortConfig={sortConfig}
-                  onSort={requestSort}
-                >
-                  Category
-                </SortableTableHeader>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedProducts.length > 0 ? (
-                paginatedProducts.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
-                          <Cookie className="h-4 w-4 text-orange-600" />
-                        </div>
-                        <span>{product.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{product.sku || "—"}</TableCell>
-                    <TableCell>
-                      {formatCurrency(Number(product.cost))}
-                    </TableCell>
-                    <TableCell>
-                      {formatCurrency(Number(product.price))}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={product.isActive ? "default" : "secondary"}
-                        className={
-                          product.isActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }
-                      >
-                        {product.isActive ? "In stock" : "Out of stock"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {product.unitName || product.unit || "—"}
-                    </TableCell>
-                    <TableCell>{product.categoryName || "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => {
-                            setEditingProduct(product);
-                            setShowProductForm(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-800 focus:outline-none"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleLabelPrint(product)}
-                          className="text-green-600 hover:text-green-800 focus:outline-none"
-                          title="Label Print"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </button>
-                        <DeleteConfirmationDialog
-                          trigger={
-                            <button
-                              className="text-red-600 hover:text-red-800 focus:outline-none"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          }
-                          title="Delete Product"
-                          itemName={product.name}
-                          onConfirm={() =>
-                            deleteProductMutation.mutate(product.id)
-                          }
-                          isLoading={deleteProductMutation.isPending}
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
-                    <div className="flex flex-col items-center">
-                      <Cookie className="text-4xl text-gray-300 mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                        No products found
-                      </h3>
-                      <p className="text-gray-500 mb-4">
-                        {searchQuery || selectedCategory !== "all"
-                          ? "Try adjusting your search criteria"
-                          : "Start by adding your first product"}
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      {filteredProducts.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <PaginationInfo
-            currentPage={currentPage}
-            pageSize={pageSize}
-            totalItems={totalItems}
-          />
-          <div className="flex items-center gap-4">
-            <PageSizeSelector
-              pageSize={pageSize}
-              onPageSizeChange={handlePageSizeChange}
-              options={[10, 25, 50, 100]}
-            />
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Modals */}
-      <Dialog
-        open={showProductForm}
-        onOpenChange={(open) => {
-          if (!open) setEditingProduct(null);
-          setShowProductForm(open);
+      <DataTable
+        title="Products List"
+        data={products}
+        columns={columns}
+        actions={actions}
+        loading={isLoading}
+        error={error?.message}
+        searchable
+        searchPlaceholder="Search products..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        exportable
+        onExportClick={() => {
+          toast({
+            title: "Export",
+            description: "Product export functionality will be implemented soon",
+          });
         }}
-      >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingProduct ? "Edit Product" : "Add New Product"}
-            </DialogTitle>
-          </DialogHeader>
-          <ProductForm
-            product={editingProduct}
-            onSuccess={() => {
-              setShowProductForm(false);
-              setEditingProduct(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showCostCalculator} onOpenChange={setShowCostCalculator}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Product Cost Calculator</DialogTitle>
-          </DialogHeader>
-          <CostCalculator
-            onSave={(productData) => {
-              setShowCostCalculator(false);
-              setEditingProduct(productData);
-              setShowProductForm(true);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showLabelPrint} onOpenChange={setShowLabelPrint}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Printer className="h-5 w-5" />
-              Print Product Label
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left: Form */}
-            <div className="space-y-4">
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
-                  Company Information
-                </h3>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <Label className="text-xs font-medium">Company Name</Label>
-                    <Input
-                      value={labelData.companyName}
-                      onChange={(e) =>
-                        setLabelData({
-                          ...labelData,
-                          companyName: e.target.value,
-                        })
-                      }
-                      className="h-8"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium">
-                      Location/Address
-                    </Label>
-                    <Input
-                      value={labelData.companyLocation}
-                      onChange={(e) =>
-                        setLabelData({
-                          ...labelData,
-                          companyLocation: e.target.value,
-                        })
-                      }
-                      className="h-8"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs font-medium">
-                        Registration No.
-                      </Label>
-                      <Input
-                        value={labelData.regNo}
-                        onChange={(e) =>
-                          setLabelData({ ...labelData, regNo: e.target.value })
-                        }
-                        className="h-8"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium">DTQOC No.</Label>
-                      <Input
-                        value={labelData.dtqocNo}
-                        onChange={(e) =>
-                          setLabelData({
-                            ...labelData,
-                            dtqocNo: e.target.value,
-                          })
-                        }
-                        className="h-8"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
-                  Product Information
-                </h3>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <Label className="text-xs font-medium">Product Name</Label>
-                    <Input
-                      value={selectedProductForLabel?.name || ""}
-                      readOnly
-                      className="bg-gray-50 h-8"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs font-medium">Batch No.</Label>
-                      <Input
-                        value={labelData.batchNo}
-                        onChange={(e) =>
-                          setLabelData({
-                            ...labelData,
-                            batchNo: e.target.value,
-                          })
-                        }
-                        className="h-8"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium">Net Weight</Label>
-                      <Input
-                        value={labelData.netWeight}
-                        onChange={(e) =>
-                          setLabelData({
-                            ...labelData,
-                            netWeight: e.target.value,
-                          })
-                        }
-                        placeholder="e.g., 250g"
-                        className="h-8"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium">Ingredients</Label>
-                    <Input
-                      value={labelData.ingredients}
-                      onChange={(e) =>
-                        setLabelData({
-                          ...labelData,
-                          ingredients: e.target.value,
-                        })
-                      }
-                      placeholder="List of ingredients"
-                      className="h-8"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium">MRP</Label>
-                    <Input
-                      value={labelData.mrp}
-                      onChange={(e) =>
-                        setLabelData({ ...labelData, mrp: e.target.value })
-                      }
-                      className="h-8"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs font-medium">
-                        Manufacture Date
-                      </Label>
-                      <Input
-                        type="date"
-                        value={labelData.manufactureDate}
-                        onChange={(e) =>
-                          setLabelData({
-                            ...labelData,
-                            manufactureDate: e.target.value,
-                          })
-                        }
-                        className="h-8"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium">Expire Date</Label>
-                      <Input
-                        type="date"
-                        value={labelData.expireDate}
-                        onChange={(e) =>
-                          setLabelData({
-                            ...labelData,
-                            expireDate: e.target.value,
-                          })
-                        }
-                        className="h-8"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
-                  Printing Options
-                </h3>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <Label className="text-xs font-medium">Printer Name</Label>
-                    <Input
-                      defaultValue={settings.defaultPrinter || ""}
-                      placeholder="Select or enter printer name"
-                      className="h-8"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs font-medium">Label Size</Label>
-                      <Select defaultValue={settings.labelSize || "small"}>
-                        <SelectTrigger className="h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="small">Small (50x30mm)</SelectItem>
-                          <SelectItem value="medium">
-                            Medium (75x50mm)
-                          </SelectItem>
-                          <SelectItem value="large">
-                            Large (100x75mm)
-                          </SelectItem>
-                          <SelectItem value="custom_40x30">
-                            Custom (40x30mm)
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs font-medium">Orientation</Label>
-                      <Select
-                        defaultValue={settings.labelOrientation || "portrait"}
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="portrait">Portrait</SelectItem>
-                          <SelectItem value="landscape">Landscape</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Preview */}
-            <div className="space-y-4">
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-3 text-sm text-gray-600 uppercase tracking-wide">
-                  Label Preview
-                </h3>
-                <div
-                  className="border-2 border-gray-300 p-4 bg-white shadow-sm max-w-sm mx-auto text-xs"
-                  style={{ fontFamily: "Arial", fontSize: "10px" }}
-                >
-                  <div className="text-center border-b border-gray-300 pb-2 mb-3">
-                    <div className="font-bold text-sm">
-                      {labelData.companyName}
-                    </div>
-                    {labelData.companyLocation && (
-                      <div>{labelData.companyLocation}</div>
-                    )}
-                  </div>
-                  <div className="font-bold text-center border border-gray-300 p-1 mb-2">
-                    {selectedProductForLabel?.name}
-                  </div>
-                  <div className="space-y-1">
-                    {labelData.regNo && (
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Reg. No:</span>
-                        <span>{labelData.regNo}</span>
-                      </div>
-                    )}
-                    {labelData.dtqocNo && (
-                      <div className="flex justify-between">
-                        <span className="font-semibold">DTQOC No:</span>
-                        <span>{labelData.dtqocNo}</span>
-                      </div>
-                    )}
-                    {labelData.batchNo && (
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Batch No:</span>
-                        <span>{labelData.batchNo}</span>
-                      </div>
-                    )}
-                    {labelData.netWeight && (
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Net Weight:</span>
-                        <span>{labelData.netWeight}</span>
-                      </div>
-                    )}
-                    {labelData.ingredients && (
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Ingredients:</span>
-                        <span>{labelData.ingredients}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="font-semibold">MRP:</span>
-                      <span>{labelData.mrp}</span>
-                    </div>
-                    {labelData.manufactureDate && (
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Mfg. Date:</span>
-                        <span>
-                          {new Date(
-                            labelData.manufactureDate,
-                          ).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                    {labelData.expireDate && (
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Exp. Date:</span>
-                        <span>
-                          {new Date(labelData.expireDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button variant="outline" onClick={() => setShowLabelPrint(false)}>
-              Cancel
-            </Button>
-            <Button onClick={printLabel}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print Label
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        refreshable
+        onRefreshClick={() => refetch()}
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        pageSize={pagination.pageSize}
+        totalItems={pagination.totalItems}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+        sortConfig={sortConfig}
+        onSort={handleSort}
+        headerActions={
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingProduct ? "Edit Product" : "Add New Product"}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingProduct
+                    ? "Update product information"
+                    : "Enter product details to add a new product"}
+                </DialogDescription>
+              </DialogHeader>
+              <ProductForm
+                product={editingProduct}
+                onSuccess={handleCloseDialog}
+              />
+            </DialogContent>
+          </Dialog>
+        }
+      />
     </div>
   );
 }
