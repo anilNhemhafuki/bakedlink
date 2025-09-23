@@ -68,6 +68,7 @@ import {
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
+import EnhancedStockItemForm from "@/components/enhanced-stock-item-form";
 
 interface StockItem {
   id: number;
@@ -460,6 +461,13 @@ export default function StockManagement() {
           >
             <Factory className="h-4 w-4 mr-2" />
             Production Entry
+          </Button>
+          <Button
+            onClick={() => openDialog("item")}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Stock Item
           </Button>
           <Button
             onClick={() => closeDayMutation.mutate(format(new Date(), "yyyy-MM-dd"))}
@@ -1174,6 +1182,18 @@ export default function StockManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Stock Item Form Dialog */}
+      {dialogType === "item" && (
+        <EnhancedStockItemForm
+          isOpen={isDialogOpen}
+          onClose={() => {
+            setIsDialogOpen(false);
+            setEditingItem(null);
+          }}
+          editingItem={editingItem}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, Suspense, startTransition } from "react";
+import React, { useState, useEffect, Suspense, startTransition } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useUnits } from "@/hooks/useUnits";
@@ -974,7 +974,7 @@ function StockFormContent({
   );
 }
 
-export default function EnhancedStockItemForm(props: StockItemFormProps) {
+export function EnhancedStockItemForm(props: StockItemFormProps) {
   return (
     <Suspense fallback={
       <div className="flex justify-center items-center py-12">
@@ -986,3 +986,6 @@ export default function EnhancedStockItemForm(props: StockItemFormProps) {
     </Suspense>
   );
 }
+
+// Also export as default for compatibility
+export default EnhancedStockItemForm;
