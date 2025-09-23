@@ -1,0 +1,50 @@
+Develop a comprehensive Stock Management Module (stock.tsx and enhanced-stock-item-form.tsx) that handles:
+
+1. Purchase Entry & Stock Update
+When a user records a purchase, the system must:
+Add the purchased item to the current stock
+Set the opening stock quantity and opening cost per unit based on this purchase
+Preserve the previous values as last stock quantity and last cost per unit
+Record timestamp, supplier, invoice number
+2. Unit Conversion Support (Primary & Secondary Units)
+Each inventory item has:
+Primary Unit (e.g., fetch unit)
+Secondary Unit (e.g., fetch unit)
+Conversion Factor (e.g., 1 Bag = 50 kg)
+The form must allow input in either unit and auto-convert:
+If user enters 2 bags → show 100 kg
+If user enters 75 kg → show 1.5 bags
+Fetch available units dynamically from the Units table (unitName, abbreviation, conversionFactor)
+Store both primary and secondary unit quantities in the database
+3. Production-Based Stock Deduction
+When a production entry is made:
+Select a product with a predefined Bill of Materials (BOM)/Recipe
+Automatically deduct raw materials from stock based on:
+Quantity used per unit of finished product
+Total production quantity
+Use FIFO (First In, First Out) logic to assign costs from oldest stock batches
+Record deduction with date, batch ID, produced quantity, and operator
+4. Daily Stock Snapshot
+At end of each day (or on close-day action), save a daily stock snapshot including:
+Item name, current quantity (primary & secondary), cost
+Total value
+Timestamped entry for audit and reporting
+Prevent modifications to past days if "day closed"
+5. User Interface Requirements (stock.tsx)
+Form fields:
+Product dropdown (with search)
+Primary Unit field + Secondary Unit auto-calculation
+Rate per unit (auto-filled from last purchase or manual override)
+Amount (auto-calculated: quantity × rate)
+Supplier, Date, Invoice No.
+Batch Number & Expiry Date (optional)
+Real-time display of:
+Current Stock Level
+Last Purchase Cost
+Average Cost
+Low Stock Alert (if below reorder level)
+Tabs or sections for:
+Purchase Entry
+Production Consumption
+Daily Stock Summary
+Historical Stock Logs
