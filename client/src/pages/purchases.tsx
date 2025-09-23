@@ -482,11 +482,15 @@ export default function Purchases() {
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.isArray(parties) && parties.map((party: any) => (
-                        <SelectItem key={party.id} value={party.id.toString()}>
-                          {party.name}
-                        </SelectItem>
-                      ))}
+                      {Array.isArray(parties) &&
+                        parties.map((party: any) => (
+                          <SelectItem
+                            key={party.id}
+                            value={party.id.toString()}
+                          >
+                            {party.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -694,6 +698,8 @@ export default function Purchases() {
                     </div>
 
                     <div className="col-span-2">
+                      <Label>Action</Label>
+
                       <Button
                         type="button"
                         variant="outline"
@@ -701,7 +707,7 @@ export default function Purchases() {
                         onClick={() => removeItem(index)}
                         disabled={purchaseForm.items.length === 1}
                       >
-                        Remove
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -1206,11 +1212,12 @@ export default function Purchases() {
                     <SelectValue placeholder="Select supplier" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.isArray(parties) && parties.map((party: any) => (
-                      <SelectItem key={party.id} value={party.id.toString()}>
-                        {party.name}
-                      </SelectItem>
-                    ))}
+                    {Array.isArray(parties) &&
+                      parties.map((party: any) => (
+                        <SelectItem key={party.id} value={party.id.toString()}>
+                          {party.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

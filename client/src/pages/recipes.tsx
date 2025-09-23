@@ -39,7 +39,7 @@ import {
   Package,
   Calculator,
   ChefHat,
-  Eye
+  Eye,
 } from "lucide-react";
 
 export default function Recipes() {
@@ -54,14 +54,6 @@ export default function Recipes() {
   // Fetch recipes (products with recipe data)
   const { data: recipes = [], isLoading } = useQuery({
     queryKey: ["/api/products"],
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
-  });
-
-  const { data: categories = [] } = useQuery({
-    queryKey: ["/api/categories"],
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error)) return false;
       return failureCount < 3;
@@ -103,7 +95,11 @@ export default function Recipes() {
   };
 
   const handleDelete = (recipe: any) => {
-    if (window.confirm(`Are you sure you want to delete the recipe "${recipe.name}"?`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to delete the recipe "${recipe.name}"?`,
+      )
+    ) {
       deleteMutation.mutate(recipe.id);
     }
   };
@@ -113,18 +109,17 @@ export default function Recipes() {
     setIsDialogOpen(true);
   };
 
-  const getCategoryName = (categoryId: number) => {
-    const category = categories.find((c: any) => c.id === categoryId);
-    return category?.name || "Uncategorized";
-  };
-
   const getStatusBadge = (recipe: any) => {
     if (recipe.cost && recipe.price) {
       const margin = ((recipe.price - recipe.cost) / recipe.price) * 100;
       if (margin > 30) {
-        return <Badge className="bg-green-100 text-green-800">Profitable</Badge>;
+        return (
+          <Badge className="bg-green-100 text-green-800">Profitable</Badge>
+        );
       } else if (margin > 10) {
-        return <Badge className="bg-yellow-100 text-yellow-800">Moderate</Badge>;
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800">Moderate</Badge>
+        );
       } else {
         return <Badge className="bg-red-100 text-red-800">Low Margin</Badge>;
       }
@@ -146,7 +141,9 @@ export default function Recipes() {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to ${editingRecipe ? 'update' : 'create'} recipe`);
+        throw new Error(
+          `Failed to ${editingRecipe ? "update" : "create"} recipe`,
+        );
       }
 
       return response.json();
@@ -157,13 +154,15 @@ export default function Recipes() {
       setEditingRecipe(null);
       toast({
         title: "Success",
-        description: `Recipe ${editingRecipe ? 'updated' : 'created'} successfully`,
+        description: `Recipe ${editingRecipe ? "updated" : "created"} successfully`,
       });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || `Failed to ${editingRecipe ? 'update' : 'create'} recipe`,
+        description:
+          error.message ||
+          `Failed to ${editingRecipe ? "update" : "create"} recipe`,
         variant: "destructive",
       });
     },
@@ -197,7 +196,6 @@ export default function Recipes() {
       });
     },
   });
-
 
   return (
     <div className="p-6 space-y-6">
@@ -235,10 +233,7 @@ export default function Recipes() {
                 {editingRecipe ? "Edit Recipe" : "Create New Recipe"}
               </DialogTitle>
             </DialogHeader>
-            <Recipe
-              product={editingRecipe}
-              onSave={handleSaveProduct}
-            />
+            <Recipe product={editingRecipe} onSave={handleSaveProduct} />
           </DialogContent>
         </Dialog>
       </div>
@@ -287,8 +282,12 @@ export default function Recipes() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHeader sortConfig={sortConfig} requestSort={() => requestSort("name")}>Recipe Name</SortableTableHeader>
-                    <SortableTableHeader sortConfig={sortConfig} requestSort={() => requestSort("categoryId")}>Category</SortableTableHeader>
+                    <SortableTableHeader
+                      sortConfig={sortConfig}
+                      requestSort={() => requestSort("name")}
+                    >
+                      Recipe Name
+                    </SortableTableHeader>
                     <TableHead>Cost per Unit</TableHead>
                     <TableHead>Selling Price</TableHead>
                     <TableHead>Margin</TableHead>
@@ -299,9 +298,10 @@ export default function Recipes() {
                 </TableHeader>
                 <TableBody>
                   {currentItems.map((recipe: any) => {
-                    const margin = recipe.cost && recipe.price
-                      ? ((recipe.price - recipe.cost) / recipe.price) * 100
-                      : 0;
+                    const margin =
+                      recipe.cost && recipe.price
+                        ? ((recipe.price - recipe.cost) / recipe.price) * 100
+                        : 0;
 
                     return (
                       <TableRow key={recipe.id}>
@@ -315,11 +315,7 @@ export default function Recipes() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {getCategoryName(recipe.categoryId)}
-                          </Badge>
-                        </TableCell>
+
                         <TableCell>
                           {recipe.cost ? formatCurrency(recipe.cost) : "-"}
                         </TableCell>
@@ -328,19 +324,22 @@ export default function Recipes() {
                         </TableCell>
                         <TableCell>
                           {margin > 0 ? (
-                            <span className={`font-medium ${
-                              margin > 30 ? 'text-green-600' :
-                              margin > 10 ? 'text-yellow-600' : 'text-red-600'
-                            }`}>
+                            <span
+                              className={`font-medium ${
+                                margin > 30
+                                  ? "text-green-600"
+                                  : margin > 10
+                                    ? "text-yellow-600"
+                                    : "text-red-600"
+                              }`}
+                            >
                               {margin.toFixed(1)}%
                             </span>
                           ) : (
                             "-"
                           )}
                         </TableCell>
-                        <TableCell>
-                          {getStatusBadge(recipe)}
-                        </TableCell>
+                        <TableCell>{getStatusBadge(recipe)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Calculator className="h-4 w-4 text-gray-400" />
@@ -427,23 +426,29 @@ export default function Recipes() {
               {/* Basic Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Category</label>
-                  <p className="text-sm">{getCategoryName(viewingRecipe.categoryId)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Status</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Status
+                  </label>
                   <div className="mt-1">{getStatusBadge(viewingRecipe)}</div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Cost per Unit</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Cost per Unit
+                  </label>
                   <p className="text-sm font-medium">
-                    {viewingRecipe.cost ? formatCurrency(viewingRecipe.cost) : "Not calculated"}
+                    {viewingRecipe.cost
+                      ? formatCurrency(viewingRecipe.cost)
+                      : "Not calculated"}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Selling Price</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Selling Price
+                  </label>
                   <p className="text-sm font-medium">
-                    {viewingRecipe.price ? formatCurrency(viewingRecipe.price) : "Not set"}
+                    {viewingRecipe.price
+                      ? formatCurrency(viewingRecipe.price)
+                      : "Not set"}
                   </p>
                 </div>
               </div>
@@ -451,39 +456,48 @@ export default function Recipes() {
               {/* Description */}
               {viewingRecipe.description && (
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Description</label>
+                  <label className="text-sm font-medium text-gray-600">
+                    Description
+                  </label>
                   <p className="text-sm mt-1">{viewingRecipe.description}</p>
                 </div>
               )}
 
               {/* Ingredients */}
-              {viewingRecipe.ingredients && viewingRecipe.ingredients.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-gray-600 mb-3 block">
-                    Ingredients ({viewingRecipe.ingredients.length})
-                  </label>
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Ingredient</TableHead>
-                          <TableHead>Quantity</TableHead>
-                          <TableHead>Unit</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {viewingRecipe.ingredients.map((ingredient: any, index: number) => (
-                          <TableRow key={index}>
-                            <TableCell>{ingredient.name || "Unknown"}</TableCell>
-                            <TableCell>{ingredient.quantity}</TableCell>
-                            <TableCell>{ingredient.unit || "unit"}</TableCell>
+              {viewingRecipe.ingredients &&
+                viewingRecipe.ingredients.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 mb-3 block">
+                      Ingredients ({viewingRecipe.ingredients.length})
+                    </label>
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Ingredient</TableHead>
+                            <TableHead>Quantity</TableHead>
+                            <TableHead>Unit</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {viewingRecipe.ingredients.map(
+                            (ingredient: any, index: number) => (
+                              <TableRow key={index}>
+                                <TableCell>
+                                  {ingredient.name || "Unknown"}
+                                </TableCell>
+                                <TableCell>{ingredient.quantity}</TableCell>
+                                <TableCell>
+                                  {ingredient.unit || "unit"}
+                                </TableCell>
+                              </TableRow>
+                            ),
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               <div className="flex justify-end gap-2">
                 <Button

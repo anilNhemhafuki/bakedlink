@@ -84,9 +84,15 @@ export default function Stock() {
   });
 
   // Handle both array and object response formats
-  const items = Array.isArray(inventoryData) ? inventoryData : (inventoryData?.items || []);
-  const totalCount = Array.isArray(inventoryData) ? inventoryData.length : (inventoryData?.totalCount || 0);
-  const totalPages = Array.isArray(inventoryData) ? Math.ceil(inventoryData.length / 10) : (inventoryData?.totalPages || 0);
+  const items = Array.isArray(inventoryData)
+    ? inventoryData
+    : inventoryData?.items || [];
+  const totalCount = Array.isArray(inventoryData)
+    ? inventoryData.length
+    : inventoryData?.totalCount || 0;
+  const totalPages = Array.isArray(inventoryData)
+    ? Math.ceil(inventoryData.length / 10)
+    : inventoryData?.totalPages || 0;
 
   // Fetch ingredients specifically
   const { data: ingredients = [] } = useQuery({
@@ -461,7 +467,7 @@ export default function Stock() {
                         <TableCell>
                           <div className="text-sm">
                             <div className="font-medium">
-                              {item.unit || "pcs"}
+                              {item.unit || "kg"}
                             </div>
                             {item.secondaryUnitId && (
                               <div className="text-xs text-muted-foreground">

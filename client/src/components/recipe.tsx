@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -83,14 +82,6 @@ export default function Recipe({ product, onSave }: RecipeProps) {
 
   const { formatCurrency } = useCurrency();
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ["/api/categories"],
-    retry: (failureCount, error) => {
-      if (isUnauthorizedError(error)) return false;
-      return failureCount < 3;
-    },
-  });
-
   const { data: inventoryItems = [] } = useQuery({
     queryKey: ["/api/inventory"],
     retry: (failureCount, error) => {
@@ -114,42 +105,45 @@ export default function Recipe({ product, onSave }: RecipeProps) {
       normalLossOnSold: "0",
       mfgAndPackagingCost: "45",
       overheadCost: "5",
-      ingredients: product?.ingredients?.length > 0 
-        ? product.ingredients.map((ing: any) => ({
-            inventoryItemId: ing.inventoryItemId?.toString() || "",
-            quantity: ing.quantity?.toString() || "",
-            unitId: ing.unitId?.toString() || ""
-          }))
-        : [{ inventoryItemId: "", quantity: "", unitId: "" }],
+      ingredients:
+        product?.ingredients?.length > 0
+          ? product.ingredients.map((ing: any) => ({
+              inventoryItemId: ing.inventoryItemId?.toString() || "",
+              quantity: ing.quantity?.toString() || "",
+              unitId: ing.unitId?.toString() || "",
+            }))
+          : [{ inventoryItemId: "", quantity: "", unitId: "" }],
     },
   });
 
   // Filter items that are suitable as ingredients
-  const ingredients = Array.isArray(inventoryItems) ? (inventoryItems as any[]).filter(
-    (item: any) =>
-      item?.name &&
-      (item.group === "raw-materials" ||
-        item.group === "ingredients" ||
-        item.group === "flour" ||
-        item.group === "dairy" ||
-        item.group === "sweeteners" ||
-        item.group === "spices" ||
-        item.group === "leavening" ||
-        item.group === "extracts" ||
-        item.group === "chocolate" ||
-        item.group === "nuts" ||
-        item.group === "fruits" ||
-        !item.group ||
-        item.name.toLowerCase().includes("flour") ||
-        item.name.toLowerCase().includes("sugar") ||
-        item.name.toLowerCase().includes("butter") ||
-        item.name.toLowerCase().includes("milk") ||
-        item.name.toLowerCase().includes("egg") ||
-        item.name.toLowerCase().includes("chocolate") ||
-        item.name.toLowerCase().includes("vanilla") ||
-        item.name.toLowerCase().includes("salt") ||
-        item.name.toLowerCase().includes("baking")),
-  ) : [];
+  const ingredients = Array.isArray(inventoryItems)
+    ? (inventoryItems as any[]).filter(
+        (item: any) =>
+          item?.name &&
+          (item.group === "raw-materials" ||
+            item.group === "ingredients" ||
+            item.group === "flour" ||
+            item.group === "dairy" ||
+            item.group === "sweeteners" ||
+            item.group === "spices" ||
+            item.group === "leavening" ||
+            item.group === "extracts" ||
+            item.group === "chocolate" ||
+            item.group === "nuts" ||
+            item.group === "fruits" ||
+            !item.group ||
+            item.name.toLowerCase().includes("flour") ||
+            item.name.toLowerCase().includes("sugar") ||
+            item.name.toLowerCase().includes("butter") ||
+            item.name.toLowerCase().includes("milk") ||
+            item.name.toLowerCase().includes("egg") ||
+            item.name.toLowerCase().includes("chocolate") ||
+            item.name.toLowerCase().includes("vanilla") ||
+            item.name.toLowerCase().includes("salt") ||
+            item.name.toLowerCase().includes("baking")),
+      )
+    : [];
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -184,33 +178,53 @@ export default function Recipe({ product, onSave }: RecipeProps) {
             );
             if (item && ingredient.quantity && ingredient.unitId) {
               const quantity = parseFloat(ingredient.quantity);
-              const selectedUnit = Array.isArray(units) ? units.find((u: any) => u.id?.toString() === ingredient.unitId) : null;
-              const unitAbbr = selectedUnit?.abbreviation || item.unit || "unit";
-              
+              const selectedUnit = Array.isArray(units)
+                ? units.find((u: any) => u.id?.toString() === ingredient.unitId)
+                : null;
+              const unitAbbr =
+                selectedUnit?.abbreviation || item.unit || "unit";
+
               // Get the inventory item's storage unit details
-              const inventoryUnit = Array.isArray(units) ? units.find((u: any) => u.id === item.unitId) : null;
-              const inventoryUnitAbbr = inventoryUnit?.abbreviation || item.unit || "unit";
-              
+              const inventoryUnit = Array.isArray(units)
+                ? units.find((u: any) => u.id === item.unitId)
+                : null;
+              const inventoryUnitAbbr =
+                inventoryUnit?.abbreviation || item.unit || "unit";
+
               // Calculate proper price per selected unit with improved conversion
               let pricePerSelectedUnit = parseFloat(item.costPerUnit || "0");
               let amount = quantity * pricePerSelectedUnit;
-              
+
               // Handle unit conversion for cost calculation
-              if (inventoryUnitAbbr.toLowerCase() === 'bag' && unitAbbr.toLowerCase() !== 'bag') {
-                const bagToKgConversion = item.conversionRate ? parseFloat(item.conversionRate) : 50;
+              if (
+                inventoryUnitAbbr.toLowerCase() === "bag" &&
+                unitAbbr.toLowerCase() !== "bag"
+              ) {
+                const bagToKgConversion = item.conversionRate
+                  ? parseFloat(item.conversionRate)
+                  : 50;
                 const pricePerKg = pricePerSelectedUnit / bagToKgConversion;
-                
-                if (unitAbbr.toLowerCase() === 'kg') {
+
+                if (unitAbbr.toLowerCase() === "kg") {
                   pricePerSelectedUnit = pricePerKg;
                   amount = quantity * pricePerSelectedUnit;
-                } else if (unitAbbr.toLowerCase() === 'g' || unitAbbr.toLowerCase() === 'gm') {
+                } else if (
+                  unitAbbr.toLowerCase() === "g" ||
+                  unitAbbr.toLowerCase() === "gm"
+                ) {
                   pricePerSelectedUnit = pricePerKg / 1000;
                   amount = quantity * pricePerSelectedUnit;
                 }
-              } else if (inventoryUnitAbbr.toLowerCase() === 'kg' && unitAbbr.toLowerCase() === 'g') {
+              } else if (
+                inventoryUnitAbbr.toLowerCase() === "kg" &&
+                unitAbbr.toLowerCase() === "g"
+              ) {
                 pricePerSelectedUnit = pricePerSelectedUnit / 1000;
                 amount = quantity * pricePerSelectedUnit;
-              } else if (inventoryUnitAbbr.toLowerCase() === 'g' && unitAbbr.toLowerCase() === 'kg') {
+              } else if (
+                inventoryUnitAbbr.toLowerCase() === "g" &&
+                unitAbbr.toLowerCase() === "kg"
+              ) {
                 pricePerSelectedUnit = pricePerSelectedUnit * 1000;
                 amount = quantity * pricePerSelectedUnit;
               }
@@ -246,28 +260,28 @@ export default function Recipe({ product, onSave }: RecipeProps) {
       // Total weight in grams with improved conversion
       const totalForProductionGm = ingredientDetails.reduce((sum, item) => {
         if (!item) return sum;
-        
+
         let qtyInGrams = item.qty;
 
-        switch(item.unit.toLowerCase()) {
-          case 'kg':
+        switch (item.unit.toLowerCase()) {
+          case "kg":
             qtyInGrams = item.qty * 1000;
             break;
-          case 'g':
-          case 'gm':
-          case 'grams':
+          case "g":
+          case "gm":
+          case "grams":
             qtyInGrams = item.qty;
             break;
-          case 'ml':
-          case 'milliliters':
+          case "ml":
+          case "milliliters":
             qtyInGrams = item.qty;
             break;
-          case 'l':
-          case 'ltr':
-          case 'liters':
+          case "l":
+          case "ltr":
+          case "liters":
             qtyInGrams = item.qty * 1000;
             break;
-          case 'bag':
+          case "bag":
             qtyInGrams = item.qty * 50000;
             break;
           default:
@@ -285,7 +299,8 @@ export default function Recipe({ product, onSave }: RecipeProps) {
 
       // Loss values in units
       const normalLossDuringMFG = noOfFgToBeProduced * (normalLossMfg / 100);
-      const normalLossOnSoldValue = noOfFgToBeProduced * (normalLossOnSold / 100);
+      const normalLossOnSoldValue =
+        noOfFgToBeProduced * (normalLossOnSold / 100);
 
       // Effective units produced after losses
       const effectiveUnitsProduced =
@@ -336,13 +351,14 @@ export default function Recipe({ product, onSave }: RecipeProps) {
         normalLossOnSold: "0",
         mfgAndPackagingCost: "45",
         overheadCost: "5",
-        ingredients: product.ingredients?.length > 0 
-          ? product.ingredients.map((ing: any) => ({
-              inventoryItemId: ing.inventoryItemId?.toString() || "",
-              quantity: ing.quantity?.toString() || "",
-              unitId: ing.unitId?.toString() || ""
-            }))
-          : [{ inventoryItemId: "", quantity: "", unitId: "" }],
+        ingredients:
+          product.ingredients?.length > 0
+            ? product.ingredients.map((ing: any) => ({
+                inventoryItemId: ing.inventoryItemId?.toString() || "",
+                quantity: ing.quantity?.toString() || "",
+                unitId: ing.unitId?.toString() || "",
+              }))
+            : [{ inventoryItemId: "", quantity: "", unitId: "" }],
       });
     }
   }, [product, form]);
@@ -392,41 +408,16 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   name="productName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold">Product Name</FormLabel>
+                      <FormLabel className="text-sm font-semibold">
+                        Product Name
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Artisan Bread" className="h-11" {...field} />
+                        <Input
+                          placeholder="e.g., Artisan Bread"
+                          className="h-11"
+                          {...field}
+                        />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-semibold">Category</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {Array.isArray(categories) && categories.map((category: any) => (
-                            <SelectItem
-                              key={category.id}
-                              value={category.id.toString()}
-                            >
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -437,7 +428,9 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   name="unitId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold">Product Unit</FormLabel>
+                      <FormLabel className="text-sm font-semibold">
+                        Product Unit
+                      </FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
@@ -448,16 +441,17 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {Array.isArray(units) && units
-                            .filter((unit: any) => unit.isActive)
-                            .map((unit: any) => (
-                              <SelectItem
-                                key={unit.id}
-                                value={unit.id.toString()}
-                              >
-                                {unit.name} ({unit.abbreviation})
-                              </SelectItem>
-                            ))}
+                          {Array.isArray(units) &&
+                            units
+                              .filter((unit: any) => unit.isActive)
+                              .map((unit: any) => (
+                                <SelectItem
+                                  key={unit.id}
+                                  value={unit.id.toString()}
+                                >
+                                  {unit.name} ({unit.abbreviation})
+                                </SelectItem>
+                              ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -477,7 +471,7 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   Recipe Ingredients
                 </CardTitle>
                 <Badge variant="outline" className="bg-white">
-                  {fields.length} ingredient{fields.length !== 1 ? 's' : ''}
+                  {fields.length} ingredient{fields.length !== 1 ? "s" : ""}
                 </Badge>
               </div>
             </CardHeader>
@@ -496,10 +490,16 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   {/* Table Body */}
                   <div className="divide-y divide-gray-100">
                     {fields.map((field, index) => (
-                      <div key={field.id} className="grid grid-cols-12 gap-4 p-4 hover:bg-gray-50 transition-colors">
+                      <div
+                        key={field.id}
+                        className="grid grid-cols-12 gap-4 p-4 hover:bg-gray-50 transition-colors"
+                      >
                         {/* Serial Number */}
                         <div className="col-span-1 flex items-center justify-center">
-                          <Badge variant="secondary" className="w-8 h-8 rounded-full flex items-center justify-center">
+                          <Badge
+                            variant="secondary"
+                            className="w-8 h-8 rounded-full flex items-center justify-center"
+                          >
                             {index + 1}
                           </Badge>
                         </div>
@@ -527,9 +527,12 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                                         value={item.id.toString()}
                                       >
                                         <div className="flex flex-col">
-                                          <span className="font-medium">{item.name}</span>
+                                          <span className="font-medium">
+                                            {item.name}
+                                          </span>
                                           <span className="text-xs text-gray-500">
-                                            {formatCurrency(item.costPerUnit)}/{item.unit}
+                                            {formatCurrency(item.costPerUnit)}/
+                                            {item.unit}
                                           </span>
                                         </div>
                                       </SelectItem>
@@ -581,16 +584,17 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    {Array.isArray(units) && units
-                                      .filter((unit: any) => unit.isActive)
-                                      .map((unit: any) => (
-                                        <SelectItem
-                                          key={unit.id}
-                                          value={unit.id.toString()}
-                                        >
-                                          {unit.name} ({unit.abbreviation})
-                                        </SelectItem>
-                                      ))}
+                                    {Array.isArray(units) &&
+                                      units
+                                        .filter((unit: any) => unit.isActive)
+                                        .map((unit: any) => (
+                                          <SelectItem
+                                            key={unit.id}
+                                            value={unit.id.toString()}
+                                          >
+                                            {unit.name} ({unit.abbreviation})
+                                          </SelectItem>
+                                        ))}
                                   </SelectContent>
                                 </Select>
                                 <FormMessage className="text-xs" />
@@ -654,9 +658,16 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   name="batchSize"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold">Batch Size (kg)</FormLabel>
+                      <FormLabel className="text-sm font-semibold">
+                        Batch Size (kg)
+                      </FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" className="h-11" {...field} />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          className="h-11"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -668,9 +679,16 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   name="finishedGoodRequired"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold">1 unit FG required (Gm RM)</FormLabel>
+                      <FormLabel className="text-sm font-semibold">
+                        1 unit FG required (Gm RM)
+                      </FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" className="h-11" {...field} />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          className="h-11"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -682,9 +700,16 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   name="normalLossMfg"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold">Normal Loss during mfg. (%)</FormLabel>
+                      <FormLabel className="text-sm font-semibold">
+                        Normal Loss during mfg. (%)
+                      </FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.1" className="h-11" {...field} />
+                        <Input
+                          type="number"
+                          step="0.1"
+                          className="h-11"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -696,9 +721,16 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   name="normalLossOnSold"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold">Normal Loss on sold FG (%)</FormLabel>
+                      <FormLabel className="text-sm font-semibold">
+                        Normal Loss on sold FG (%)
+                      </FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.1" className="h-11" {...field} />
+                        <Input
+                          type="number"
+                          step="0.1"
+                          className="h-11"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -710,9 +742,16 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   name="mfgAndPackagingCost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold">Mfg. and packaging cost (%)</FormLabel>
+                      <FormLabel className="text-sm font-semibold">
+                        Mfg. and packaging cost (%)
+                      </FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.1" className="h-11" {...field} />
+                        <Input
+                          type="number"
+                          step="0.1"
+                          className="h-11"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -724,9 +763,16 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   name="overheadCost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-semibold">Overhead cost (%)</FormLabel>
+                      <FormLabel className="text-sm font-semibold">
+                        Overhead cost (%)
+                      </FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.1" className="h-11" {...field} />
+                        <Input
+                          type="number"
+                          step="0.1"
+                          className="h-11"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -743,42 +789,73 @@ export default function Recipe({ product, onSave }: RecipeProps) {
         <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50">
           <CardTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5 text-orange-600" />
-            {product ? "Edit Recipe" : "Recipe"}: {form.getValues("productName") || "Untitled Recipe"}
+            {product ? "Edit Recipe" : "Recipe"}:{" "}
+            {form.getValues("productName") || "Untitled Recipe"}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           {/* Computation of Total Cost */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Computation of Total Cost</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+              Computation of Total Cost
+            </h3>
             <div className="overflow-x-auto rounded-lg border">
               <table className="w-full bg-white">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">S.N</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Particulars</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Qty.</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Unit</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Unit</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      S.N
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Particulars
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Qty.
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Unit
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Price
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Unit
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Amount
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {calculations.ingredientDetails.map((item, index) => (
                     <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-center">{item.sn}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.particular}</td>
-                      <td className="px-4 py-3 text-sm text-right">{item.qty?.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm text-center">
+                        {item.sn}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        {item.particular}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right">
+                        {item.qty?.toFixed(2)}
+                      </td>
                       <td className="px-4 py-3 text-sm text-center">
                         <Badge variant="outline">{item.unit}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm text-right">{formatCurrency(item.price)}</td>
-                      <td className="px-4 py-3 text-sm text-center text-gray-600">{item.unitType}</td>
-                      <td className="px-4 py-3 text-sm text-right font-medium">{formatCurrency(item.amount)}</td>
+                      <td className="px-4 py-3 text-sm text-right">
+                        {formatCurrency(item.price)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-center text-gray-600">
+                        {item.unitType}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-medium">
+                        {formatCurrency(item.amount)}
+                      </td>
                     </tr>
                   ))}
                   <tr className="bg-yellow-50 border-t-2 border-yellow-200">
-                    <td className="px-4 py-3 text-sm font-bold text-center">A.</td>
+                    <td className="px-4 py-3 text-sm font-bold text-center">
+                      A.
+                    </td>
                     <td className="px-4 py-3 text-sm font-bold">
                       Total for {form.getValues("batchSize")} kg
                     </td>
@@ -801,51 +878,87 @@ export default function Recipe({ product, onSave }: RecipeProps) {
 
           {/* Computation of Effective Unit */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Computation of Effective Unit</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+              Computation of Effective Unit
+            </h3>
             <div className="overflow-x-auto rounded-lg border">
               <table className="w-full bg-white">
                 <tbody className="divide-y divide-gray-200">
                   <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm w-12">1</td>
-                    <td className="px-4 py-3 text-sm">Total for {form.getValues("batchSize")} kg</td>
-                    <td className="px-4 py-3 text-sm text-right font-medium" colSpan={4}>
+                    <td className="px-4 py-3 text-sm">
+                      Total for {form.getValues("batchSize")} kg
+                    </td>
+                    <td
+                      className="px-4 py-3 text-sm text-right font-medium"
+                      colSpan={4}
+                    >
                       {calculations.totalForProductionGm.toFixed(1)} gm
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm">2</td>
-                    <td className="px-4 py-3 text-sm">1 unit FG required ..... Gm RM</td>
-                    <td className="px-4 py-3 text-sm text-right font-medium" colSpan={4}>
+                    <td className="px-4 py-3 text-sm">
+                      1 unit FG required ..... Gm RM
+                    </td>
+                    <td
+                      className="px-4 py-3 text-sm text-right font-medium"
+                      colSpan={4}
+                    >
                       {form.getValues("finishedGoodRequired")} gm
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm">3</td>
-                    <td className="px-4 py-3 text-sm">No. of FG to be Produced</td>
-                    <td className="px-4 py-3 text-sm text-right font-medium" colSpan={4}>
+                    <td className="px-4 py-3 text-sm">
+                      No. of FG to be Produced
+                    </td>
+                    <td
+                      className="px-4 py-3 text-sm text-right font-medium"
+                      colSpan={4}
+                    >
                       {calculations.noOfFgToBeProduced.toFixed(2)} pcs
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm">4</td>
-                    <td className="px-4 py-3 text-sm">Less: Normal Loss during mfg.</td>
-                    <td className="px-4 py-3 text-sm text-right">{form.getValues("normalLossMfg")}%</td>
-                    <td className="px-4 py-3 text-sm text-right font-medium" colSpan={3}>
+                    <td className="px-4 py-3 text-sm">
+                      Less: Normal Loss during mfg.
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      {form.getValues("normalLossMfg")}%
+                    </td>
+                    <td
+                      className="px-4 py-3 text-sm text-right font-medium"
+                      colSpan={3}
+                    >
                       {calculations.normalLossDuringMFG.toFixed(2)} pcs
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm">5</td>
-                    <td className="px-4 py-3 text-sm">Less: Normal Loss on sold FG</td>
-                    <td className="px-4 py-3 text-sm text-right">{form.getValues("normalLossOnSold")}%</td>
-                    <td className="px-4 py-3 text-sm text-right font-medium" colSpan={3}>
+                    <td className="px-4 py-3 text-sm">
+                      Less: Normal Loss on sold FG
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      {form.getValues("normalLossOnSold")}%
+                    </td>
+                    <td
+                      className="px-4 py-3 text-sm text-right font-medium"
+                      colSpan={3}
+                    >
                       {calculations.normalLossOnSoldValue.toFixed(2)} pcs
                     </td>
                   </tr>
                   <tr className="bg-yellow-50 border-t-2 border-yellow-200">
                     <td className="px-4 py-3 text-sm font-bold">B.</td>
-                    <td className="px-4 py-3 text-sm font-bold">Effective No. of FG produced</td>
-                    <td className="px-4 py-3 text-sm text-right font-bold text-green-700" colSpan={4}>
+                    <td className="px-4 py-3 text-sm font-bold">
+                      Effective No. of FG produced
+                    </td>
+                    <td
+                      className="px-4 py-3 text-sm text-right font-bold text-green-700"
+                      colSpan={4}
+                    >
                       {calculations.effectiveUnitsProduced.toFixed(2)} pcs
                     </td>
                   </tr>
@@ -856,13 +969,17 @@ export default function Recipe({ product, onSave }: RecipeProps) {
 
           {/* Cost per unit And selling price per unit */}
           <div>
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Cost per unit And selling price per unit</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+              Cost per unit And selling price per unit
+            </h3>
             <div className="overflow-x-auto rounded-lg border">
               <table className="w-full bg-white">
                 <tbody className="divide-y divide-gray-200">
                   <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm w-12">I</td>
-                    <td className="px-4 py-3 text-sm">Estimated Cost per unit</td>
+                    <td className="px-4 py-3 text-sm">
+                      Estimated Cost per unit
+                    </td>
                     <td className="px-4 py-3 text-sm text-center">A / B</td>
                     <td className="px-4 py-3 text-sm text-right font-medium">
                       {formatCurrency(calculations.estimatedCostPerUnit)}
@@ -870,24 +987,36 @@ export default function Recipe({ product, onSave }: RecipeProps) {
                   </tr>
                   <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm">II</td>
-                    <td className="px-4 py-3 text-sm">Mfg. and packaging cost per unit</td>
-                    <td className="px-4 py-3 text-sm text-right">{form.getValues("mfgAndPackagingCost")}%</td>
+                    <td className="px-4 py-3 text-sm">
+                      Mfg. and packaging cost per unit
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      {form.getValues("mfgAndPackagingCost")}%
+                    </td>
                     <td className="px-4 py-3 text-sm text-right font-medium">
                       {formatCurrency(calculations.mfgCostPerUnit)}
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm">III</td>
-                    <td className="px-4 py-3 text-sm">Overhead cost per unit</td>
-                    <td className="px-4 py-3 text-sm text-right">{form.getValues("overheadCost")}%</td>
+                    <td className="px-4 py-3 text-sm">
+                      Overhead cost per unit
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      {form.getValues("overheadCost")}%
+                    </td>
                     <td className="px-4 py-3 text-sm text-right font-medium">
                       {formatCurrency(calculations.overheadCostPerUnit)}
                     </td>
                   </tr>
                   <tr className="bg-green-50 border-t-2 border-green-200">
                     <td className="px-4 py-3 text-sm font-bold"></td>
-                    <td className="px-4 py-3 text-sm font-bold">Cost per unit</td>
-                    <td className="px-4 py-3 text-sm text-center font-medium">I + II + III</td>
+                    <td className="px-4 py-3 text-sm font-bold">
+                      Cost per unit
+                    </td>
+                    <td className="px-4 py-3 text-sm text-center font-medium">
+                      I + II + III
+                    </td>
                     <td className="px-4 py-3 text-sm text-right font-bold text-2xl text-green-700">
                       {formatCurrency(calculations.finalCostPerUnit)}
                     </td>
