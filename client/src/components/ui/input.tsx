@@ -28,11 +28,17 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
               const input = ref.current;
               if (input) {
                 const value = parseFloat(input.value) || 0;
-                input.value = (value + 1).toString();
+                const step = parseFloat(input.step) || 1; // Respect step attribute
+                input.value = (value + step).toString();
                 input.dispatchEvent(new Event("input", { bubbles: true }));
+                input.focus(); // Keep focus on input
               }
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center  text-orange-500 transition-colors cursor-pointer"
+            className="absolute right-2 top-2 w-6 h-6 flex items-center justify-center 
+                       rounded-full bg-gray-600 text-orange-500 hover:bg-gray-700 
+                       active:bg-gray-800 transition-colors cursor-pointer 
+                       ring-0 outline-none focus:ring-2 focus:ring-orange-400 
+                       focus:ring-offset-1"
             aria-label="Increment"
           >
             <svg
@@ -59,11 +65,17 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
               const input = ref.current;
               if (input) {
                 const value = parseFloat(input.value) || 0;
-                input.value = (value - 1).toString();
+                const step = parseFloat(input.step) || 1;
+                input.value = (value - step).toString();
                 input.dispatchEvent(new Event("input", { bubbles: true }));
+                input.focus();
               }
             }}
-            className="absolute right-3 bottom-1/2 translate-y-1/2 w-4 h-4 flex items-center justify-center text-orange-500 transition-colors cursor-pointer"
+            className="absolute right-2 bottom-2 w-6 h-6 flex items-center justify-center 
+                       rounded-full bg-gray-600 text-orange-500 hover:bg-gray-700 
+                       active:bg-gray-800 transition-colors cursor-pointer 
+                       ring-0 outline-none focus:ring-2 focus:ring-orange-400 
+                       focus:ring-offset-1"
             aria-label="Decrement"
           >
             <svg
