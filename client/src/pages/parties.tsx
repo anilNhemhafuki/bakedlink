@@ -461,7 +461,6 @@ export default function Parties() {
   );
 
   // Add pagination
-  const pagination = usePagination(sortedData, 10);
   const {
     currentItems: paginatedParties,
     currentPage,
@@ -470,7 +469,7 @@ export default function Parties() {
     totalItems,
     goToPage: handlePageChange,
     setPageSize: handlePageSizeChange,
-  } = pagination;
+  } = usePagination(sortedData, 10);
 
   const getTypeBadge = (type: string) => {
     const variants: Record<

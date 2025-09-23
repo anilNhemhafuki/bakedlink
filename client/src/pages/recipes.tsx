@@ -283,8 +283,9 @@ export default function Recipes() {
                 <TableHeader>
                   <TableRow>
                     <SortableTableHeader
+                      sortKey="name"
                       sortConfig={sortConfig}
-                      requestSort={() => requestSort("name")}
+                      onSort={requestSort}
                     >
                       Recipe Name
                     </SortableTableHeader>
