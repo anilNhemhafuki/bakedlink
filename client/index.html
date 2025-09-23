@@ -1,28 +1,63 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, user-scalable=yes" />
+    
+    <!-- PWA Meta Tags -->
     <title>BakerSoft</title>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-    />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧁</text></svg>"
-    />
+    <meta name="description" content="Professional All In One Solution" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Hotel Mitra" />
+    
+    <!-- iOS PWA Meta Tags - Critical for standalone mode -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Hotel Mitra" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    
+    <!-- iOS Icons - Must be exact sizes for proper recognition -->
+    <link rel="apple-touch-icon" href="/favicon-icon.jpg" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/favicon-icon.jpg" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/favicon-icon.jpg" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/favicon-icon.jpg" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/favicon-icon.jpg" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/favicon-icon.jpg" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/favicon-icon.jpg" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/favicon-icon.jpg" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/favicon-icon.jpg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon-icon.jpg" />
+    
+    <!-- Standard Icons -->
+    <link rel="icon" type="image/jpg" sizes="32x32" href="/favicon-icon.jpg" />
+    <link rel="icon" type="image/jpg" sizes="16x16" href="/favicon-icon.jpg" />
+    <link rel="icon" type="image/jpg" sizes="192x192" href="/favicon-icon.jpg" />
+    <link rel="icon" type="image/jpg" sizes="512x512" href="/favicon-icon.jpg" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS Splash Screen Configuration -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-startup-image" href="/favic-trans-icon.jpg" />
+    
+    <!-- Additional iOS Meta Tags -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    <meta name="msapplication-TileImage" content="/favicon-icon.jpg" />
+    
+    <!-- Disable automatic phone number detection -->
+    <meta name="format-detection" content="telephone=no" />
+    
+    <!-- Color scheme and additional PWA support -->
+    <meta name="color-scheme" content="light dark" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
-    <script
-      type="text/javascript"
-      src="https://replit.com/public/js/replit-dev-banner.js"
-    ></script>
-  </body>
 </html>
