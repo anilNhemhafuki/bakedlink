@@ -32,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
-import EnhancedStockItemForm from "@/components/enhanced-stock-item-form";
+import { EnhancedStockItemForm } from "@/components/enhanced-stock-item-form";
 import {
   Pagination,
   PaginationInfo,

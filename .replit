@@ -15,12 +15,8 @@ run = ["npm", "run", "start"]
 localPort = 5000
 externalPort = 80
 
-[[ports]]
-localPort = 46317
-externalPort = 3000
-
 [workflows]
-runButton = "Start Development Application"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"
