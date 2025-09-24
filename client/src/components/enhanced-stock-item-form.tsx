@@ -441,7 +441,9 @@ export function EnhancedStockItemForm({
 
   // Auto-generate inventory code if not provided
   const generateInvCode = () => {
-    const code = `INV-${Date.now().toString().slice(-6)}`;
+    // Generate a random 4-digit number (from 1000 to 9999)
+    const fourDigitNumber = Math.floor(1000 + Math.random() * 9000);
+    const code = `INV-${fourDigitNumber}`;
     handleInputChange("invCode", code);
   };
 

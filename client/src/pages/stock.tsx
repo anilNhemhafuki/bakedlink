@@ -421,17 +421,6 @@ export default function Stock() {
       </div>
 
       <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Stock Items ({items.length} total)
-            </CardTitle>
-            <CardDescription>
-              Opening + Purchased - Consumed = Closing Stock
-            </CardDescription>
-          </div>
-        </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center py-8">
@@ -547,40 +536,18 @@ export default function Stock() {
                               <div className="text-sm text-muted-foreground">
                                 {item.supplier || "No supplier"}
                               </div>
-                              {/* Real-time Stock Information */}
-                              <div className="mt-2 space-y-1">
-                                <div className="flex items-center gap-2 text-xs">
-                                  <span className="font-medium text-blue-600">
-                                    Current: {closingStock.toFixed(2)}{" "}
-                                    {item.unit || "pcs"}
-                                  </span>
-                                  {closingStock <= parseFloat(item.minLevel || 0) && (
-                                    <Badge
-                                      variant="destructive"
-                                      className="text-xs px-1 py-0"
-                                    >
-                                      LOW
-                                    </Badge>
-                                  )}
+                              {/* Reorder Level Alert */}
+                              <div className="mt-1">
+                                <div className="text-xs text-muted-foreground">
+                                  Min:{" "}
+                                  {parseFloat(item.minLevel || 0).toFixed(2)}
                                 </div>
-                                <div className="text-xs text-gray-600">
-                                  Last Cost:{" "}
-                                  {formatCurrency(
-                                    parseFloat(
-                                      item.lastPurchaseCost ||
-                                        item.costPerUnit ||
-                                        0,
-                                    ),
-                                  )}
-                                </div>
-                                <div className="text-xs text-gray-600">
-                                  Avg Cost:{" "}
-                                  {formatCurrency(
-                                    parseFloat(
-                                      item.averageCost || item.costPerUnit || 0,
-                                    ),
-                                  )}
-                                </div>
+                                {closingStock <=
+                                  parseFloat(item.minLevel || 0) && (
+                                  <div className="text-xs text-red-600 font-medium">
+                                    ⚠️ Reorder needed
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -588,24 +555,13 @@ export default function Stock() {
                         <TableCell>
                           <div className="text-sm">
                             <div className="font-medium">
-                              {item.unit || "pcs"}
+                              {item.unit || "kg"}
                             </div>
                             {item.secondaryUnitId && (
                               <div className="text-xs text-muted-foreground">
-                                Secondary unit available
+                                {item.secondaryUnit || "kg"}
                               </div>
                             )}
-                            {/* Reorder Level Alert */}
-                            <div className="mt-1">
-                              <div className="text-xs text-muted-foreground">
-                                Min: {parseFloat(item.minLevel || 0).toFixed(2)}
-                              </div>
-                              {closingStock <= parseFloat(item.minLevel || 0) && (
-                                <div className="text-xs text-red-600 font-medium">
-                                  ⚠️ Reorder needed
-                                </div>
-                              )}
-                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -629,15 +585,13 @@ export default function Stock() {
                               className={`font-bold text-lg ${
                                 closingStock <= 0
                                   ? "text-red-600"
-                                  : closingStock <= parseFloat(item.minLevel || 0)
+                                  : closingStock <=
+                                      parseFloat(item.minLevel || 0)
                                     ? "text-orange-600"
                                     : "text-green-600"
                               }`}
                             >
                               {closingStock.toFixed(2)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              Min: {parseFloat(item.minLevel || 0).toFixed(2)}
                             </div>
                             <div className="text-xs font-medium text-gray-700">
                               Value:{" "}
@@ -648,13 +602,17 @@ export default function Stock() {
                                   ),
                               )}
                             </div>
-                            {closingStock <= parseFloat(item.minLevel || 0) && closingStock > 0 && (
-                              <div className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                                Reorder:{" "}
-                                {(parseFloat(item.minLevel || 0) * 2 - closingStock).toFixed(2)}{" "}
-                                {item.unit}
-                              </div>
-                            )}
+                            {closingStock <= parseFloat(item.minLevel || 0) &&
+                              closingStock > 0 && (
+                                <div className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                                  Reorder:{" "}
+                                  {(
+                                    parseFloat(item.minLevel || 0) * 2 -
+                                    closingStock
+                                  ).toFixed(2)}{" "}
+                                  {item.unit}
+                                </div>
+                              )}
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
