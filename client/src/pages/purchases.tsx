@@ -332,6 +332,20 @@ export default function Purchases() {
     setPurchaseForm({ ...purchaseForm, items: updatedItems });
   };
 
+  // Calculate Sub Total
+  const calculateSubTotal = () => {
+    return purchaseForm.items.reduce(
+      (sum, item) =>
+        sum + parseFloat(item.quantity) * parseFloat(item.unitPrice),
+      0,
+    );
+  };
+
+  // Calculate Total (Sub Total + Tax)
+  const calculateTotal = () => {
+    return calculateSubTotal() + (purchaseForm.tax || 0);
+  };
+
   // Filter and search logic
   const filteredPurchases = useMemo(() => {
     return purchases.filter((purchase: Purchase) => {
@@ -457,7 +471,7 @@ export default function Purchases() {
             </DialogTrigger>
             <Button
               variant="outline"
-              onClick={() => window.location.href = '/purchase-returns'}
+              onClick={() => (window.location.href = "/purchase-returns")}
             >
               📦 Purchase Returns
             </Button>
@@ -609,23 +623,44 @@ export default function Purchases() {
                 </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Purchase Items</Label>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="font-medium">Purchase Items</Label>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="bg-green-100 text-green-800 hover:bg-green-200"
                     onClick={addItem}
                   >
-                    Add Item
+                    + Add Item
                   </Button>
                 </div>
-                {purchaseForm.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 mb-2">
-                    <div className="col-span-4">
-                      <Label>Particular *</Label>
 
+                {/* Table Header Row */}
+                <div className="grid grid-cols-12 gap-2 pb-2 border-b font-medium text-sm invoice-item-row">
+                  <div className="col-span-1 text-center">S.No.</div>
+                  <div className="col-span-3">Particular *</div>
+                  <div className="col-span-1">Qty *</div>
+                  <div className="col-span-2">Unit *</div>
+                  <div className="col-span-2">Rate *</div>
+                  <div className="col-span-2">Amount *</div>
+                  <div className="col-span-1">Action</div>
+                </div>
+
+                {/* Data Rows */}
+                {purchaseForm.items.map((item, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-12 gap-2 bg-white hover:bg-gray-50"
+                  >
+                    {/* S.No. */}
+                    <div className="col-span-1 flex items-center justify-center">
+                      {index + 1}
+                    </div>
+
+                    {/* Particular */}
+                    <div className="col-span-3">
                       <Select
                         value={item.inventoryItemId || undefined}
                         onValueChange={(value) =>
@@ -653,9 +688,9 @@ export default function Purchases() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="col-span-2">
-                      <Label>Quantity *</Label>
 
+                    {/* Quantity */}
+                    <div className="col-span-1">
                       <Input
                         type="number"
                         value={item.quantity}
@@ -663,16 +698,16 @@ export default function Purchases() {
                           updateItem(
                             index,
                             "quantity",
-                            parseInt(e.target.value),
+                            parseInt(e.target.value) || 0,
                           )
                         }
                         min="1"
                         placeholder="Qty"
                       />
                     </div>
-                    <div className="col-span-2">
-                      <Label>Unit *</Label>
 
+                    {/* Unit */}
+                    <div className="col-span-2">
                       <Select
                         value={item.unitId || undefined}
                         onValueChange={(value) =>
@@ -693,33 +728,98 @@ export default function Purchases() {
                     </div>
 
                     <div className="col-span-2">
-                      <Label>Rate *</Label>
                       <Input
                         type="number"
-                        step="0.01"
                         value={item.unitPrice}
                         onChange={(e) =>
-                          updateItem(index, "unitPrice", e.target.value)
+                          updateItem(
+                            index,
+                            "rate",
+                            parseInt(e.target.value) || 0,
+                          )
                         }
-                        placeholder="Price"
+                        min="1"
+                        placeholder="rate"
                       />
                     </div>
 
+                    {/* Amount (Calculated as Quantity × Rate) */}
                     <div className="col-span-2">
-                      <Label>Action</Label>
+                      <Input
+                        value={(
+                          parseFloat(item.quantity) * parseFloat(item.unitPrice)
+                        ).toFixed(2)}
+                        readOnly
+                        className="bg-gray-100"
+                        placeholder="0.00"
+                      />
+                    </div>
 
+                    {/* Action */}
+                    <div className="col-span-1 flex items-center justify-center">
                       <Button
                         type="button"
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => removeItem(index)}
                         disabled={purchaseForm.items.length === 1}
+                        className="text-red-500 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 ))}
+
+                {/* Summary Section */}
+                <div className="mt-6 p-4 border-t border-gray-200 bg-white rounded-lg">
+                  <div className="grid grid-cols-12 gap-4">
+                    <div className="col-span-8"></div>
+                    <div className="col-span-2 text-right font-medium">
+                      Sub Total:
+                    </div>
+                    <div className="col-span-2">
+                      <Input
+                        value={calculateSubTotal().toFixed(2)}
+                        readOnly
+                        className="bg-gray-100 font-medium"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-12 gap-4 mt-2">
+                    <div className="col-span-8"></div>
+                    <div className="col-span-2 text-right font-medium">
+                      Tax:
+                    </div>
+                    <div className="col-span-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={purchaseForm.tax || 0}
+                        onChange={(e) =>
+                          setPurchaseForm({
+                            ...purchaseForm,
+                            tax: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-12 gap-4 mt-2">
+                    <div className="col-span-8"></div>
+                    <div className="col-span-2 text-right font-bold">
+                      Total:
+                    </div>
+                    <div className="col-span-2">
+                      <Input
+                        value={calculateTotal().toFixed(2)}
+                        readOnly
+                        className="bg-gray-100 font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2">
