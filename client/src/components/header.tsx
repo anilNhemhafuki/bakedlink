@@ -32,6 +32,7 @@ import {
 // Sub-components
 import ProfileEditor from "./profile-editor";
 import NotificationDropdown from "./notification-dropdown";
+import { InstallPrompt } from "./install-prompt";
 
 interface HeaderProps {
   onMenuClick?: () => void;

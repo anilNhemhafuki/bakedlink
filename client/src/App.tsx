@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 // Page Components
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
+import { MobileInstallBanner } from "@/components/mobile-install-banner";
 import Products from "@/pages/products";
 import Inventory from "@/pages/inventory";
 import Orders from "@/pages/orders";
@@ -176,6 +177,7 @@ function AuthenticatedApp({
       >
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         <div className="flex-1 overflow-y-auto bg-gray-50/30">
+          <MobileInstallBanner />
           <Switch>
             <Route
               path="/"

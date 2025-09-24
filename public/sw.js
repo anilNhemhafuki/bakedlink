@@ -17,6 +17,17 @@ self.addEventListener("install", (event) => {
       })
       .then(() => {
         console.log("✅ Service Worker installed");
+        
+        // Notify clients about the new service worker
+        self.clients.matchAll().then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({
+              type: "SW_INSTALLED",
+              message: "Service Worker installed successfully"
+            });
+          });
+        });
+        
         return self.skipWaiting();
       })
       .catch((error) => {
