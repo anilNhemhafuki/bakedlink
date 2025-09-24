@@ -988,6 +988,3 @@ export function EnhancedStockItemForm({
     </>
   );
 }
-
-// Also export as default for compatibility
-export default EnhancedStockItemForm;
