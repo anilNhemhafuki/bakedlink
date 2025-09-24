@@ -258,6 +258,78 @@ export default function Stock() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      {/* Real-time Stock Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Items</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {items.length}
+                </p>
+              </div>
+              <Package className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Low Stock</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {items.filter(item => {
+                    const stock = parseFloat(item.closingStock || item.currentStock || 0);
+                    const min = parseFloat(item.minLevel || 0);
+                    return stock <= min && stock > 0;
+                  }).length}
+                </p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Out of Stock</p>
+                <p className="text-2xl font-bold text-gray-600">
+                  {items.filter(item => {
+                    const stock = parseFloat(item.closingStock || item.currentStock || 0);
+                    return stock <= 0;
+                  }).length}
+                </p>
+              </div>
+              <Minus className="h-8 w-8 text-gray-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Value</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(
+                    items.reduce((total, item) => {
+                      const stock = parseFloat(item.closingStock || item.currentStock || 0);
+                      const cost = parseFloat(item.averageCost || item.costPerUnit || 0);
+                      return total + (stock * cost);
+                    }, 0)
+                  )}
+                </p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <p className="text-gray-600">
@@ -461,6 +533,25 @@ export default function Stock() {
                               <div className="text-sm text-muted-foreground">
                                 {item.supplier || "No supplier"}
                               </div>
+                              {/* Real-time Stock Information */}
+                              <div className="mt-2 space-y-1">
+                                <div className="flex items-center gap-2 text-xs">
+                                  <span className="font-medium text-blue-600">
+                                    Current: {closingStock.toFixed(2)} {item.unit || "pcs"}
+                                  </span>
+                                  {closingStock <= minLevel && (
+                                    <Badge variant="destructive" className="text-xs px-1 py-0">
+                                      LOW
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                  Last Cost: {formatCurrency(parseFloat(item.lastPurchaseCost || item.costPerUnit || 0))}
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                  Avg Cost: {formatCurrency(parseFloat(item.averageCost || item.costPerUnit || 0))}
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </TableCell>
@@ -474,6 +565,17 @@ export default function Stock() {
                                 Secondary unit available
                               </div>
                             )}
+                            {/* Reorder Level Alert */}
+                            <div className="mt-1">
+                              <div className="text-xs text-muted-foreground">
+                                Min: {minLevel.toFixed(2)}
+                              </div>
+                              {closingStock <= minLevel && (
+                                <div className="text-xs text-red-600 font-medium">
+                                  ⚠️ Reorder needed
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -492,11 +594,27 @@ export default function Stock() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-bold">
-                            {closingStock.toFixed(2)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Min: {parseFloat(item.minLevel || 0).toFixed(2)}
+                          <div className="space-y-1">
+                            <div className={`font-bold text-lg ${
+                              closingStock <= 0 ? "text-red-600" :
+                              closingStock <= minLevel ? "text-orange-600" :
+                              "text-green-600"
+                            }`}>
+                              {closingStock.toFixed(2)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Min: {parseFloat(item.minLevel || 0).toFixed(2)}
+                            </div>
+                            <div className="text-xs font-medium text-gray-700">
+                              Value: {formatCurrency(
+                                closingStock * parseFloat(item.averageCost || item.costPerUnit || 0)
+                              )}
+                            </div>
+                            {closingStock <= minLevel && closingStock > 0 && (
+                              <div className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                                Reorder: {(minLevel * 2 - closingStock).toFixed(2)} {item.unit}
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
@@ -505,16 +623,23 @@ export default function Stock() {
                           )}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
-                          <div className="text-sm">
-                            {item.lastRestocked
-                              ? new Date(
-                                  item.lastRestocked,
-                                ).toLocaleDateString()
-                              : new Date(item.createdAt).toLocaleDateString()}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatCurrency(parseFloat(item.costPerUnit || 0))}{" "}
-                            per unit
+                          <div className="text-sm space-y-1">
+                            <div className="font-medium">
+                              {item.lastRestocked
+                                ? new Date(item.lastRestocked).toLocaleDateString()
+                                : new Date(item.createdAt).toLocaleDateString()}
+                            </div>
+                            <div className="text-xs space-y-1">
+                              <div className="text-blue-600">
+                                Last: {formatCurrency(parseFloat(item.lastPurchaseCost || item.costPerUnit || 0))}
+                              </div>
+                              <div className="text-green-600">
+                                Avg: {formatCurrency(parseFloat(item.averageCost || item.costPerUnit || 0))}
+                              </div>
+                              <div className="text-gray-500">
+                                per {item.unit || "unit"}
+                              </div>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
