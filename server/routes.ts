@@ -38,6 +38,10 @@ import {
   purchaseReturns,
   units,
   productIngredients,
+  stockBatches,
+  stockBatchConsumptions,
+  dailyInventorySnapshots,
+  inventoryCostHistory,
 } from "@shared/schema";
 import {
   insertProductSchema,
@@ -530,6 +534,7 @@ router.post("/api/stock/purchase-entry", isAuthenticated, async (req, res) => {
           quantity,
           unitPrice: unitCost,
           totalPrice: quantity * unitCost,
+          unitId: parseInt(req.body.unitId), // Include unitId here
         })
         .returning();
 
@@ -883,11 +888,11 @@ router.post("/api/stock/daily-snapshot", isAuthenticated, async (req, res) => {
           totalValue: sql`sum(${stockBatches.remainingQuantity} * ${stockBatches.unitCost})`,
           totalQuantity: sql`sum(${stockBatches.remainingQuantity})`,
           lastPurchaseCost: sql`(
-            SELECT ${stockBatches.unitCost} 
-            FROM ${stockBatches} 
+            SELECT ${stockBatches.unitCost}
+            FROM ${stockBatches}
             WHERE ${stockBatches.inventoryItemId} = ${item.id}
             AND ${stockBatches.isActive} = true
-            ORDER BY ${stockBatches.receivedDate} DESC 
+            ORDER BY ${stockBatches.receivedDate} DESC
             LIMIT 1
           )`,
         })
@@ -4283,7 +4288,7 @@ router.post("/sales-returns/close-day", isAuthenticated, async (req, res) => {
       );
     }
 
-    // Add day closure notification
+    // Add sales return notification
     addNotification({
       type: "system",
       title: "Sales Return Day Closed",
@@ -4327,7 +4332,7 @@ router.post("/sales-returns/reopen-day", isAuthenticated, async (req, res) => {
       );
     }
 
-    // Add day reopening notification
+    // Add sales return notification
     addNotification({
       type: "system",
       title: "Sales Return Day Reopened",

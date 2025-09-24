@@ -73,10 +73,15 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
     queryFn: () => apiRequest("GET", "/api/inventory/all"),
   });
 
-  const { data: units = [] } = useQuery({
+  const { data: unitsResponse = [], isLoading: unitsLoading } = useQuery({
     queryKey: ["/api/units"],
     queryFn: () => apiRequest("GET", "/api/units"),
   });
+
+  // Handle both direct array and wrapped response formats
+  const units = Array.isArray(unitsResponse) 
+    ? unitsResponse 
+    : (unitsResponse?.data || unitsResponse?.units || []);
 
   const { data: parties = [] } = useQuery({
     queryKey: ["/api/parties"],
@@ -223,7 +228,7 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
     if (validItems.length === 0) {
       toast({
         title: "Error",
-        description: "At least one valid purchase item with a selected unit is required",
+        description: "Please complete all required fields including selecting units for all items",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -378,8 +383,8 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="md:col-span-2 lg:col-span-1">
                         <Label>Inventory Item *</Label>
                         <Select
                           value={item.inventoryItemId}
@@ -391,7 +396,7 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
                           <SelectContent>
                             {inventoryItems.map((invItem: any) => (
                               <SelectItem key={invItem.id} value={invItem.id.toString()}>
-                                {invItem.name} ({invItem.unit}) - Stock: {invItem.currentStock}
+                                {invItem.name} - Stock: {invItem.currentStock} {invItem.unit}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -408,7 +413,11 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
                           onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
                           placeholder="0.00"
                         />
-                        {item.unit && <span className="text-xs text-gray-500">Unit: {item.unit}</span>}
+                        {item.unitId && (
+                          <span className="text-xs text-gray-500">
+                            Unit: {units.find((u: any) => u.id.toString() === item.unitId)?.abbreviation || item.unit}
+                          </span>
+                        )}
                       </div>
 
                       <div>
@@ -450,8 +459,8 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
                     </div>
 
                     {/* Unit Selector */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="col-span-1"> {/* Changed col-span to 1 for better layout */}
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
                         <Label>Unit *</Label>
                         <Select
                           value={item.unitId || ""}
@@ -464,14 +473,26 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
                           }}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select unit" />
+                            <SelectValue placeholder={unitsLoading ? "Loading units..." : "Select unit"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {units.map((unit: any) => (
-                              <SelectItem key={unit.id} value={unit.id.toString()}>
-                                {unit.name} ({unit.abbreviation})
+                            {unitsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading units...
                               </SelectItem>
-                            ))}
+                            ) : units.length > 0 ? (
+                              units
+                                .filter((unit: any) => unit.isActive !== false)
+                                .map((unit: any) => (
+                                  <SelectItem key={unit.id} value={unit.id.toString()}>
+                                    {unit.name} ({unit.abbreviation})
+                                  </SelectItem>
+                                ))
+                            ) : (
+                              <SelectItem value="none" disabled>
+                                No units available
+                              </SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                         {item.unit && <span className="text-xs text-gray-500">Selected: {item.unit}</span>}
