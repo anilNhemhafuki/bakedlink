@@ -629,7 +629,7 @@ export default function Stock() {
                               className={`font-bold text-lg ${
                                 closingStock <= 0
                                   ? "text-red-600"
-                                  : closingStock <= minLevel
+                                  : closingStock <= parseFloat(item.minLevel || 0)
                                     ? "text-orange-600"
                                     : "text-green-600"
                               }`}
