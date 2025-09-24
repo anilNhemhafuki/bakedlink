@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { eq, desc, asc, like, and, or, sql, count } from "drizzle-orm";
+import { eq, desc, asc, like, and, or, sql, count, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
@@ -37,6 +37,7 @@ import {
   salesReturns,
   purchaseReturns,
   units,
+  productIngredients,
 } from "@shared/schema";
 import {
   insertProductSchema,
@@ -56,10 +57,6 @@ import {
   insertStaffScheduleSchema,
   insertSalesReturnSchema,
   insertPurchaseReturnSchema,
-  stockBatches,
-  stockBatchConsumptions,
-  dailyInventorySnapshots,
-  inventoryCostHistory,
   insertStockBatchSchema,
   insertStockBatchConsumptionSchema,
   insertDailyInventorySnapshotSchema,
@@ -79,6 +76,8 @@ import {
   checkProductionScheduleAlerts,
   notifySystemAlert,
 } from "./notifications";
+import bcrypt from "bcryptjs";
+import fsSync from "fs";
 
 const router = express.Router();
 
@@ -103,7 +102,7 @@ function buildPaginatedQuery(
     searchFields = [],
   } = options;
 
-  const offset = (page - 1) * limit;
+  const offset = (Number(page) - 1) * Number(limit);
 
   let query = baseQuery;
 

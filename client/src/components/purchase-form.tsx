@@ -37,6 +37,7 @@ interface PurchaseItem {
   unit: string;
   currentStock: number;
   currentRate: number;
+  unitId?: string; // Added unitId to store the selected unit's ID
 }
 
 export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
@@ -63,12 +64,18 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
       unit: "",
       currentStock: 0,
       currentRate: 0,
+      unitId: "", // Initialize unitId
     }
   ]);
 
   const { data: inventoryItems = [] } = useQuery({
     queryKey: ["/api/inventory/all"],
     queryFn: () => apiRequest("GET", "/api/inventory/all"),
+  });
+
+  const { data: units = [] } = useQuery({
+    queryKey: ["/api/units"],
+    queryFn: () => apiRequest("GET", "/api/units"),
   });
 
   const { data: parties = [] } = useQuery({
@@ -81,20 +88,37 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
 
   const handleItemChange = (index: number, field: keyof PurchaseItem, value: string) => {
     const updatedItems = [...purchaseItems];
-    const item = updatedItems[index];
+    let item = updatedItems[index]; // Use let as item might be reassigned
 
     if (field === "inventoryItemId") {
       const selectedInventory = inventoryItems.find((inv: any) => inv.id.toString() === value);
       if (selectedInventory) {
         item.inventoryItemName = selectedInventory.name;
-        item.unit = selectedInventory.unit;
+        // Use the abbreviation from the selected unit, which will be set via handleItemChange with unitId
+        item.unit = selectedInventory.unit; // This will be overridden by the unit selector logic
         item.currentStock = parseFloat(selectedInventory.currentStock);
         item.currentRate = parseFloat(selectedInventory.costPerUnit);
         item.unitPrice = selectedInventory.costPerUnit; // Default to current rate
+        // If a unit is already selected, ensure the unitId is set
+        if (item.unitId) {
+          const selectedUnit = units.find((u: any) => u.id.toString() === item.unitId);
+          if (selectedUnit) {
+            item.unit = selectedUnit.abbreviation;
+          }
+        }
       }
     }
 
-    item[field] = value as any;
+    // If the field is 'unitId', update the unit abbreviation as well
+    if (field === "unitId") {
+      const selectedUnit = units.find((u: any) => u.id.toString() === value);
+      if (selectedUnit) {
+        item.unit = selectedUnit.abbreviation;
+      }
+    }
+
+    // Update the specific field with the new value
+    item = { ...item, [field]: value };
 
     // Recalculate total price when quantity or unit price changes
     if (field === "quantity" || field === "unitPrice") {
@@ -106,6 +130,7 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
     updatedItems[index] = item;
     setPurchaseItems(updatedItems);
   };
+
 
   const addPurchaseItem = () => {
     setPurchaseItems([
@@ -120,6 +145,7 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
         unit: "",
         currentStock: 0,
         currentRate: 0,
+        unitId: "", // Initialize unitId
       }
     ]);
   };
@@ -159,6 +185,7 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
         unit: "",
         currentStock: 0,
         currentRate: 0,
+        unitId: "", // Initialize unitId
       }]);
     },
     onError: (error: any) => {
@@ -189,13 +216,14 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
     const validItems = purchaseItems.filter(item => 
       item.inventoryItemId && 
       parseFloat(item.quantity) > 0 && 
-      parseFloat(item.unitPrice) > 0
+      parseFloat(item.unitPrice) > 0 &&
+      item.unitId // Ensure unit is selected
     );
 
     if (validItems.length === 0) {
       toast({
         title: "Error",
-        description: "At least one valid purchase item is required",
+        description: "At least one valid purchase item with a selected unit is required",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -214,6 +242,7 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
         quantity: parseFloat(item.quantity),
         unitPrice: parseFloat(item.unitPrice),
         totalPrice: item.totalPrice,
+        unitId: parseInt(item.unitId!), // Include unitId in the submission
       })),
     };
 
@@ -417,6 +446,35 @@ export function PurchaseForm({ isOpen, onClose }: PurchaseFormProps) {
                             readOnly
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Unit Selector */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="col-span-1"> {/* Changed col-span to 1 for better layout */}
+                        <Label>Unit *</Label>
+                        <Select
+                          value={item.unitId || ""}
+                          onValueChange={(value) => {
+                            const selectedUnit = units.find((u: any) => u.id.toString() === value);
+                            if (selectedUnit) {
+                              handleItemChange(index, "unitId", value);
+                              handleItemChange(index, "unit", selectedUnit.abbreviation);
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {units.map((unit: any) => (
+                              <SelectItem key={unit.id} value={unit.id.toString()}>
+                                {unit.name} ({unit.abbreviation})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {item.unit && <span className="text-xs text-gray-500">Selected: {item.unit}</span>}
                       </div>
                     </div>
 
