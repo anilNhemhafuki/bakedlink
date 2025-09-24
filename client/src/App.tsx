@@ -143,6 +143,14 @@ function AuthenticatedApp({
     };
   }, []);
 
+  const toggleCollapse = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem("sidebar-collapsed", JSON.stringify(newState));
+    // Dispatch custom event for same-page updates
+    window.dispatchEvent(new CustomEvent("sidebar-toggle"));
+  };
+
   // Super Admin gets unrestricted access - no ProtectedRoute wrapper needed
   const isSuperAdmin = user?.role === "super_admin";
 
@@ -175,7 +183,11 @@ function AuthenticatedApp({
       <main
         className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? "lg:ml-20" : "lg:ml-64"}`}
       >
-        <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <Header 
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={toggleCollapse}
+        />
         <div className="flex-1 overflow-y-auto bg-gray-50/30">
           <MobileInstallBanner />
           <Switch>

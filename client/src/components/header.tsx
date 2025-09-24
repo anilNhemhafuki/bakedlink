@@ -27,6 +27,8 @@ import {
   Calendar,
   Bell,
   HelpCircle,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
 // Sub-components
@@ -36,9 +38,11 @@ import { InstallPrompt } from "./install-prompt";
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export default function Header({ onMenuClick }: HeaderProps) {
+export default function Header({ onMenuClick, isCollapsed = false, onToggleCollapse }: HeaderProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { branding } = useCompanyBranding();
@@ -83,33 +87,39 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
   const getPageTitle = () => {
     const pathTitles: Record<string, string> = {
-      "/": t("dashboard"),
-      "/products": t("products"),
-      "/inventory": t("inventory"),
-      "/stock": t("stock"),
-      "/orders": t("orders"),
-      "/production": t("production"),
-      "/parties": t("parties"),
-      "/customers": t("customers"),
-      "/assets": t("assets"),
-      "/expenses": t("expenses"),
-      "/reports": t("reports"),
-      "/day-book": t("dayBook"),
-      "/transactions": t("transactions"),
-      "/billing": t("billing"),
-      "/settings": t("settings"),
-      "/notifications": t("notifications"),
-      "/admin/users": t("userManagement"),
-      "/admin/login-logs": t("loginLogs"),
-      "/category-management": t("categoryManagement"),
-      "/sales": t("sales"),
-      "/purchases": t("purchases"),
-      "/ingredients": t("ingredients"),
-      "/units": t("units"),
-      "/unit-conversion": t("unitConversions"),
+      "/": "Bakery Dashboard",
+      "/products": "Products Management",
+      "/inventory": "Inventory Management",
+      "/stock": "Stock & Ingredients",
+      "/orders": "Orders Management",
+      "/production": "Production Planning",
+      "/parties": "Parties Management",
+      "/customers": "Customer Management",
+      "/assets": "Assets Management",
+      "/expenses": "Expenses & Income",
+      "/reports": "Reports & Analytics",
+      "/day-book": "Day Book",
+      "/transactions": "Transactions",
+      "/billing": "Billing & Subscription",
+      "/settings": "System Settings",
+      "/notifications": "Notifications",
+      "/admin/users": "User Management",
+      "/admin/login-logs": "Audit Logs",
+      "/category-management": "Category Management",
+      "/sales": "Sales Management",
+      "/purchases": "Purchase Management",
+      "/ingredients": "Ingredients",
+      "/units": "Measuring Units",
+      "/unit-conversion": "Unit Conversions",
+      "/staff": "Staff Directory",
+      "/attendance": "Attendance Management",
+      "/salary": "Salary Management",
+      "/leave-requests": "Leave Requests",
+      "/recipes": "Recipe Management",
+      "/branches": "Branch Management",
     };
 
-    return pathTitles[location] || t("dashboard");
+    return pathTitles[location] || "Bakery Dashboard";
   };
 
   return (
@@ -117,14 +127,33 @@ export default function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center justify-between">
         {/* Left Section */}
         <div className="flex items-center space-x-4">
+          {/* Mobile Menu Toggle */}
           <Button
             variant="ghost"
             size="icon"
             onClick={onMenuClick}
             className="lg:hidden hover:bg-gray-100 transition-all duration-200 hover:scale-105 text-gray-700"
+            data-testid="button-mobile-menu"
           >
             <Menu className="h-5 w-5" />
           </Button>
+          
+          {/* Desktop Sidebar Collapse/Expand Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleCollapse}
+            className="hidden lg:flex hover:bg-gray-100 transition-all duration-200 hover:scale-105 text-gray-700"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            data-testid="button-toggle-sidebar-desktop"
+          >
+            {isCollapsed ? (
+              <ChevronsRight className="h-5 w-5" />
+            ) : (
+              <ChevronsLeft className="h-5 w-5" />
+            )}
+          </Button>
+          
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               {getPageTitle()}

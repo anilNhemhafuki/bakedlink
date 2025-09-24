@@ -214,7 +214,10 @@ export default function Purchases() {
       return;
     }
 
-    if (purchaseForm.items.length === 0 || !purchaseForm.items.some(item => item.inventoryItemId)) {
+    if (
+      purchaseForm.items.length === 0 ||
+      !purchaseForm.items.some((item) => item.inventoryItemId)
+    ) {
       toast({
         title: "Validation Error",
         description: "At least one item is required.",
@@ -223,10 +226,11 @@ export default function Purchases() {
       return;
     }
 
-    const validItems = purchaseForm.items.filter(item => 
-      item.inventoryItemId && 
-      parseFloat(item.unitPrice) > 0 && 
-      item.quantity > 0
+    const validItems = purchaseForm.items.filter(
+      (item) =>
+        item.inventoryItemId &&
+        parseFloat(item.unitPrice) > 0 &&
+        item.quantity > 0,
     );
 
     if (validItems.length === 0) {
@@ -257,7 +261,9 @@ export default function Purchases() {
         quantity: parseFloat(item.quantity.toString()),
         unitPrice: parseFloat(item.unitPrice),
         unitId: item.unitId ? parseInt(item.unitId) : null,
-        totalPrice: (parseFloat(item.unitPrice) * parseFloat(item.quantity.toString())).toString(),
+        totalPrice: (
+          parseFloat(item.unitPrice) * parseFloat(item.quantity.toString())
+        ).toString(),
       })),
     };
 
@@ -519,7 +525,7 @@ export default function Purchases() {
               variant="outline"
               onClick={() => (window.location.href = "/purchase-returns")}
             >
-              📦 Purchase Returns
+              Purchase Returns
             </Button>
           </div>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

@@ -11,8 +11,6 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronLeft,
-  ChevronsLeft,
-  ChevronsRight,
   Building2,
   Receipt,
   BarChart3,
@@ -102,9 +100,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
     window.dispatchEvent(new CustomEvent("sidebar-toggle"));
   }, [isCollapsed]);
 
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
-  };
 
   const toggleSection = (section: string) => {
     if (isCollapsed) return; // Don't allow section toggle when collapsed
@@ -615,26 +610,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           </Link>
         </div>
 
-        {/* Toggle Button */}
-        <div
-          className={`flex ${isCollapsed ? "justify-center px-2" : "justify-end px-4"} py-2 border-b border-gray-200/30`}
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleCollapse}
-            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 
-                       focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2"
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            data-testid="button-toggle-sidebar"
-          >
-            {isCollapsed ? (
-              <ChevronsRight className="h-4 w-4 text-gray-600 transition-transform duration-200 hover:scale-110" />
-            ) : (
-              <ChevronsLeft className="h-4 w-4 text-gray-600 transition-transform duration-200 hover:scale-110" />
-            )}
-          </Button>
-        </div>
 
         {/* Scrollable Navigation */}
         <div className="flex-1 overflow-hidden">

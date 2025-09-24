@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -218,7 +217,10 @@ export default function Sales() {
       return;
     }
 
-    if (saleForm.items.length === 0 || !saleForm.items.some(item => item.productId)) {
+    if (
+      saleForm.items.length === 0 ||
+      !saleForm.items.some((item) => item.productId)
+    ) {
       toast({
         title: "Validation Error",
         description: "At least one item is required.",
@@ -227,10 +229,9 @@ export default function Sales() {
       return;
     }
 
-    const validItems = saleForm.items.filter(item => 
-      item.productId && 
-      parseFloat(item.unitPrice) > 0 && 
-      item.quantity > 0
+    const validItems = saleForm.items.filter(
+      (item) =>
+        item.productId && parseFloat(item.unitPrice) > 0 && item.quantity > 0,
     );
 
     if (validItems.length === 0) {
@@ -260,7 +261,9 @@ export default function Sales() {
         quantity: parseFloat(item.quantity.toString()),
         unitPrice: parseFloat(item.unitPrice),
         unitId: item.unitId ? parseInt(item.unitId) : null,
-        totalPrice: (parseFloat(item.unitPrice) * parseFloat(item.quantity.toString())).toString(),
+        totalPrice: (
+          parseFloat(item.unitPrice) * parseFloat(item.quantity.toString())
+        ).toString(),
       })),
     };
 
@@ -367,9 +370,7 @@ export default function Sales() {
     const updatedItems = saleForm.items.map((item, i) => {
       if (i === index) {
         if (field === "productId") {
-          const product = products.find(
-            (p: any) => p.id === parseInt(value),
-          );
+          const product = products.find((p: any) => p.id === parseInt(value));
           return {
             ...item,
             productId: value,
@@ -418,9 +419,7 @@ export default function Sales() {
       const matchesCustomer =
         customerFilter === "all" || sale.customerName === customerFilter;
 
-      const saleDate = new Date(
-        sale.saleDate || sale.createdAt,
-      );
+      const saleDate = new Date(sale.saleDate || sale.createdAt);
       const matchesDateFrom = !dateFrom || saleDate >= new Date(dateFrom);
       const matchesDateTo =
         !dateTo || saleDate <= new Date(dateTo + "T23:59:59");
@@ -454,9 +453,7 @@ export default function Sales() {
 
   // Get unique customers for filter
   const uniqueCustomers = useMemo(() => {
-    const customers = [
-      ...new Set(sales.map((s: Sale) => s.customerName)),
-    ];
+    const customers = [...new Set(sales.map((s: Sale) => s.customerName))];
     return customers.filter(Boolean);
   }, [sales]);
 
@@ -702,7 +699,7 @@ export default function Sales() {
               variant="outline"
               onClick={() => (window.location.href = "/sales-returns")}
             >
-              🔄 Sales Returns
+              Sales Returns
             </Button>
           </div>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1060,10 +1057,7 @@ export default function Sales() {
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={createSaleMutation.isPending}
-                >
+                <Button type="submit" disabled={createSaleMutation.isPending}>
                   {createSaleMutation.isPending
                     ? "Recording..."
                     : "Record Sale"}
@@ -1078,9 +1072,7 @@ export default function Sales() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Sales
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -1211,8 +1203,7 @@ export default function Sales() {
                 Clear Filters
               </Button>
               <span className="text-sm text-muted-foreground self-center">
-                Showing {filteredSales.length} of {sales.length}{" "}
-                sales
+                Showing {filteredSales.length} of {sales.length} sales
               </span>
             </div>
           )}
@@ -1280,9 +1271,7 @@ export default function Sales() {
                             variant="ghost"
                             size="sm"
                             className="ml-2 h-6 px-2"
-                            onClick={() =>
-                              viewCustomerLedger(sale.customerId!)
-                            }
+                            onClick={() => viewCustomerLedger(sale.customerId!)}
                             title="View Customer Ledger"
                           >
                             <ExternalLink className="h-3 w-3" />
@@ -1414,10 +1403,7 @@ export default function Sales() {
                   <Label className="text-sm font-medium">Sale Date</Label>
                   <p className="text-sm">
                     {format(
-                      new Date(
-                        selectedSale.saleDate ||
-                          selectedSale.createdAt,
-                      ),
+                      new Date(selectedSale.saleDate || selectedSale.createdAt),
                       "PPP",
                     )}
                   </p>
@@ -1493,9 +1479,7 @@ export default function Sales() {
               {selectedSale.customerId && (
                 <div className="border-t pt-4">
                   <Button
-                    onClick={() =>
-                      viewCustomerLedger(selectedSale.customerId!)
-                    }
+                    onClick={() => viewCustomerLedger(selectedSale.customerId!)}
                     className="w-full"
                   >
                     <FileText className="h-4 w-4 mr-2" />
@@ -1538,7 +1522,10 @@ export default function Sales() {
                   <SelectContent>
                     {Array.isArray(customers) &&
                       customers.map((customer: any) => (
-                        <SelectItem key={customer.id} value={customer.id.toString()}>
+                        <SelectItem
+                          key={customer.id}
+                          value={customer.id.toString()}
+                        >
                           {customer.name}
                         </SelectItem>
                       ))}
@@ -1646,9 +1633,7 @@ export default function Sales() {
                 Cancel
               </Button>
               <Button type="submit" disabled={updateSaleMutation.isPending}>
-                {updateSaleMutation.isPending
-                  ? "Updating..."
-                  : "Update Sale"}
+                {updateSaleMutation.isPending ? "Updating..." : "Update Sale"}
               </Button>
             </div>
           </form>

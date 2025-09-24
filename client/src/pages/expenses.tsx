@@ -59,7 +59,7 @@ export default function Expenses() {
   const [editingExpense, setEditingExpense] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
   const { toast } = useToast();
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, formatCurrencyWithCommas } = useCurrency();
 
   const resetForm = () => {
     setEditingExpense(null);
@@ -172,9 +172,11 @@ export default function Expenses() {
       title,
       category,
       amount: amount.toString(),
-      date: dateValue ? new Date(dateValue).toISOString() : new Date().toISOString(),
+      date: dateValue
+        ? new Date(dateValue).toISOString()
+        : new Date().toISOString(),
       description: description || null,
-      paymentMethod: 'cash', // Default payment method
+      paymentMethod: "cash", // Default payment method
     };
 
     if (editingExpense) {
@@ -350,7 +352,9 @@ export default function Expenses() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="expense-amount">Amount ($) *</Label>
+                    <Label htmlFor="expense-amount">
+                      Amount ({formatCurrency}) *
+                    </Label>
                     <Input
                       id="expense-amount"
                       name="amount"
