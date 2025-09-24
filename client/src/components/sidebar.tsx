@@ -60,9 +60,10 @@ import {
 interface SidebarProps {
   isOpen?: boolean;
   onToggle?: () => void;
+  isCollapsed?: boolean;
 }
 
-export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
+export default function Sidebar({ isOpen = true, onToggle, isCollapsed = false }: SidebarProps) {
   const [location] = useLocation();
   const { user } = useAuth();
   const { branding } = useCompanyBranding();
@@ -77,28 +78,10 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
     canManageBranches,
   } = useRoleAccess();
 
-  // Sidebar collapse state
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
   const [openSections, setOpenSections] = useState<string[]>([
     "core",
     "Finance",
   ]);
-
-  // Load collapsed state from localStorage on mount
-  useEffect(() => {
-    const savedState = localStorage.getItem("sidebar-collapsed");
-    if (savedState !== null) {
-      setIsCollapsed(JSON.parse(savedState));
-    }
-  }, []);
-
-  // Save collapsed state to localStorage when it changes
-  useEffect(() => {
-    localStorage.setItem("sidebar-collapsed", JSON.stringify(isCollapsed));
-    // Dispatch custom event for same-page updates
-    window.dispatchEvent(new CustomEvent("sidebar-toggle"));
-  }, [isCollapsed]);
 
 
   const toggleSection = (section: string) => {
@@ -613,7 +596,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
         {/* Scrollable Navigation */}
         <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full" type="scroll">
+          <ScrollArea className="h-full" showScrollButtons={true}>
             <div className={`py-4 space-y-2 ${isCollapsed ? "px-2" : "px-4"}`}>
               <nav className="space-y-1" role="navigation" aria-label="Main navigation">
                 {/* Render top-level items directly without Collapsible */}
