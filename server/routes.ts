@@ -79,7 +79,6 @@ import {
   checkProductionScheduleAlerts,
   notifySystemAlert,
 } from "./notifications";
-import stockManagementRoutes from "./routes/stock";
 
 const router = express.Router();
 
@@ -482,9 +481,6 @@ router.post("/api/products", isAuthenticated, async (req, res) => {
     res.status(500).json({ error: "Failed to create product" });
   }
 });
-
-// Use stock management routes
-router.use(stockManagementRoutes);
 
 // ===== COMPREHENSIVE STOCK MANAGEMENT APIs WITH FIFO LOGIC =====
 
