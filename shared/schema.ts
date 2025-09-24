@@ -265,6 +265,7 @@ export const purchaseItems = pgTable("purchase_items", {
   quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
   unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
+  unitId: integer("unit_id"), // Reference to units table
   createdAt: timestamp("created_at").defaultNow(),
 });
 

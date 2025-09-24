@@ -3071,12 +3071,13 @@ router.get("/staff", async (req, res) => {
   try {
     console.log("👥 Fetching staff members...");
 
+    const staffId = req.query.staffId ? parseInt(req.query.staffId as string) : undefined;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = (req.query.search as string) || "";
     const offset = (page - 1) * limit;
 
-    const result = await storage.getStaff(limit, offset, search);
+    const result = await storage.getStaff(staffId, limit, offset, search);
     console.log(
       `✅ Found ${result.items.length} staff members (page ${result.currentPage} of ${result.totalPages})`,
     );

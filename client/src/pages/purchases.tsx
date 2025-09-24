@@ -112,6 +112,10 @@ export default function Purchases() {
     queryKey: ["/api/parties"],
   });
 
+  const { data: units = [], isLoading: unitsLoading } = useQuery({
+    queryKey: ["/api/units"],
+  });
+
   const [purchaseForm, setPurchaseForm] = useState({
     partyId: "",
     supplierName: "",
@@ -215,10 +219,10 @@ export default function Purchases() {
       notes: purchaseForm.notes || null,
       items: purchaseForm.items.map((item) => ({
         inventoryItemId: parseInt(item.inventoryItemId),
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        unitId: item.unitId,
-        totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
+        quantity: parseFloat(item.quantity),
+        unitPrice: parseFloat(item.unitPrice),
+        unitId: item.unitId ? parseInt(item.unitId) : null,
+        totalPrice: (parseFloat(item.unitPrice) * parseFloat(item.quantity)).toString(),
       })),
     };
 
@@ -241,9 +245,9 @@ export default function Purchases() {
         purchase.items && purchase.items.length > 0
           ? purchase.items.map((item) => ({
               inventoryItemId: item.inventoryItemId.toString(),
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              unitId: item.unitId || "",
+              quantity: parseFloat(item.quantity),
+              unitPrice: parseFloat(item.unitPrice),
+              unitId: item.unitId ? item.unitId.toString() : "",
             }))
           : [{ inventoryItemId: "", quantity: 1, unitPrice: "0", unitId: "" }],
     });
@@ -718,11 +722,26 @@ export default function Purchases() {
                           <SelectValue placeholder="Unit" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pcs">Pcs</SelectItem>
-                          <SelectItem value="kg">Kg</SelectItem>
-                          <SelectItem value="ltr">Ltr</SelectItem>
-                          <SelectItem value="mtr">Mtr</SelectItem>
-                          <SelectItem value="box">Box</SelectItem>
+                          {unitsLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Loading units...
+                            </SelectItem>
+                          ) : units && Array.isArray(units) ? (
+                            units
+                              .filter((unit: any) => unit.isActive)
+                              .map((unit: any) => (
+                                <SelectItem
+                                  key={unit.id}
+                                  value={unit.id.toString()}
+                                >
+                                  {unit.name} ({unit.abbreviation})
+                                </SelectItem>
+                              ))
+                          ) : (
+                            <SelectItem value="no-units" disabled>
+                              No units available
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -730,16 +749,17 @@ export default function Purchases() {
                     <div className="col-span-2">
                       <Input
                         type="number"
+                        step="0.01"
                         value={item.unitPrice}
                         onChange={(e) =>
                           updateItem(
                             index,
-                            "rate",
-                            parseInt(e.target.value) || 0,
+                            "unitPrice",
+                            parseFloat(e.target.value) || 0,
                           )
                         }
-                        min="1"
-                        placeholder="rate"
+                        min="0"
+                        placeholder="Rate per unit"
                       />
                     </div>
 
