@@ -694,6 +694,81 @@ export const productionScheduleLabels = pgTable("production_schedule_labels", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Stock Batches table - For FIFO batch tracking
+export const stockBatches = pgTable("stock_batches", {
+  id: serial("id").primaryKey(),
+  purchaseItemId: integer("purchase_item_id").notNull(), // Reference to purchase_items
+  inventoryItemId: integer("inventory_item_id").notNull(), // Reference to inventory_items
+  batchNumber: varchar("batch_number", { length: 100 }), // Supplier batch number
+  quantityReceived: numeric("quantity_received", { precision: 10, scale: 2 }).notNull(),
+  remainingQuantity: numeric("remaining_quantity", { precision: 10, scale: 2 }).notNull(),
+  unitCost: numeric("unit_cost", { precision: 10, scale: 2 }).notNull(), // Cost per unit at purchase
+  expiryDate: date("expiry_date"), // Optional expiry tracking
+  receivedDate: timestamp("received_date").defaultNow(),
+  supplierId: integer("supplier_id"), // Reference to parties table
+  branchId: integer("branch_id"), // Branch where batch is stored
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Stock Batch Consumptions table - Track FIFO consumption in production
+export const stockBatchConsumptions = pgTable("stock_batch_consumptions", {
+  id: serial("id").primaryKey(),
+  stockBatchId: integer("stock_batch_id").notNull(), // Reference to stock_batches
+  productionScheduleId: integer("production_schedule_id"), // Reference to production_schedule
+  inventoryTransactionId: integer("inventory_transaction_id"), // Reference to inventory_transactions
+  quantityConsumed: numeric("quantity_consumed", { precision: 10, scale: 2 }).notNull(),
+  unitCostAtConsumption: numeric("unit_cost_at_consumption", { precision: 10, scale: 2 }).notNull(),
+  totalCost: numeric("total_cost", { precision: 10, scale: 2 }).notNull(),
+  consumedDate: timestamp("consumed_date").defaultNow(),
+  consumedBy: varchar("consumed_by"), // User who processed the consumption
+  reason: varchar("reason", { length: 100 }), // production, adjustment, sale, etc.
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Daily Inventory Snapshots table - Immutable daily stock snapshots
+export const dailyInventorySnapshots = pgTable("daily_inventory_snapshots", {
+  id: serial("id").primaryKey(),
+  snapshotDate: date("snapshot_date").notNull(),
+  inventoryItemId: integer("inventory_item_id").notNull(),
+  branchId: integer("branch_id"),
+  openingStock: numeric("opening_stock", { precision: 10, scale: 2 }).notNull(),
+  purchasedQuantity: numeric("purchased_quantity", { precision: 10, scale: 2 }).default("0"),
+  consumedQuantity: numeric("consumed_quantity", { precision: 10, scale: 2 }).default("0"),
+  adjustmentQuantity: numeric("adjustment_quantity", { precision: 10, scale: 2 }).default("0"),
+  closingStock: numeric("closing_stock", { precision: 10, scale: 2 }).notNull(),
+  averageCost: numeric("average_cost", { precision: 10, scale: 2 }).notNull(),
+  lastPurchaseCost: numeric("last_purchase_cost", { precision: 10, scale: 2 }),
+  totalValue: numeric("total_value", { precision: 12, scale: 2 }).notNull(),
+  activeBatches: integer("active_batches").default(0), // Number of active batches
+  isLocked: boolean("is_locked").default(false), // Prevent modifications once day is closed
+  capturedAt: timestamp("captured_at").defaultNow(),
+  capturedBy: varchar("captured_by"), // User who captured the snapshot
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Inventory Cost History table - Track cost changes over time
+export const inventoryCostHistory = pgTable("inventory_cost_history", {
+  id: serial("id").primaryKey(),
+  inventoryItemId: integer("inventory_item_id").notNull(),
+  branchId: integer("branch_id"),
+  previousCost: numeric("previous_cost", { precision: 10, scale: 2 }),
+  newCost: numeric("new_cost", { precision: 10, scale: 2 }).notNull(),
+  previousAverageCost: numeric("previous_average_cost", { precision: 10, scale: 2 }),
+  newAverageCost: numeric("new_average_cost", { precision: 10, scale: 2 }).notNull(),
+  changeReason: varchar("change_reason", { length: 100 }).notNull(), // purchase, adjustment, revaluation
+  referenceId: integer("reference_id"), // ID of purchase, adjustment, etc.
+  referenceType: varchar("reference_type", { length: 50 }), // purchase_item, inventory_transaction, etc.
+  changeDate: timestamp("change_date").defaultNow(),
+  changedBy: varchar("changed_by"), // User who caused the cost change
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Type definitions
 export type Branch = typeof branches.$inferSelect;
 export type InsertBranch = typeof branches.$inferInsert;
@@ -769,6 +844,14 @@ export type PurchaseReturn = typeof purchaseReturns.$inferSelect;
 export type InsertPurchaseReturn = typeof purchaseReturns.$insert;
 export type DailyPurchaseReturnSummary = typeof dailyPurchaseReturnSummary.$inferSelect;
 export type InsertDailyPurchaseReturnSummary = typeof dailyPurchaseReturnSummary.$insert;
+export type StockBatch = typeof stockBatches.$inferSelect;
+export type InsertStockBatch = typeof stockBatches.$inferInsert;
+export type StockBatchConsumption = typeof stockBatchConsumptions.$inferSelect;
+export type InsertStockBatchConsumption = typeof stockBatchConsumptions.$inferInsert;
+export type DailyInventorySnapshot = typeof dailyInventorySnapshots.$inferSelect;
+export type InsertDailyInventorySnapshot = typeof dailyInventorySnapshots.$inferInsert;
+export type InventoryCostHistory = typeof inventoryCostHistory.$inferSelect;
+export type InsertInventoryCostHistory = typeof inventoryCostHistory.$inferInsert;
 
 // Insert schemas for validation
 export const insertBranchSchema = createInsertSchema(branches).omit({
@@ -943,4 +1026,26 @@ export const insertDailyPurchaseReturnSummarySchema = createInsertSchema(dailyPu
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+// Stock Management Insert Schemas
+export const insertStockBatchSchema = createInsertSchema(stockBatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStockBatchConsumptionSchema = createInsertSchema(stockBatchConsumptions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDailyInventorySnapshotSchema = createInsertSchema(dailyInventorySnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertInventoryCostHistorySchema = createInsertSchema(inventoryCostHistory).omit({
+  id: true,
+  createdAt: true,
 });

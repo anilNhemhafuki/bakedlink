@@ -56,6 +56,14 @@ import {
   insertStaffScheduleSchema,
   insertSalesReturnSchema,
   insertPurchaseReturnSchema,
+  stockBatches,
+  stockBatchConsumptions,
+  dailyInventorySnapshots,
+  inventoryCostHistory,
+  insertStockBatchSchema,
+  insertStockBatchConsumptionSchema,
+  insertDailyInventorySnapshotSchema,
+  insertInventoryCostHistorySchema,
 } from "@shared/schema";
 import { isAuthenticated } from "./localAuth";
 import { storage } from "./lib/storage";
@@ -416,6 +424,633 @@ router.post("/api/products", isAuthenticated, async (req, res) => {
 
 // Use stock management routes
 router.use(stockManagementRoutes);
+
+// ===== COMPREHENSIVE STOCK MANAGEMENT APIs WITH FIFO LOGIC =====
+
+// Enhanced Purchase Entry with FIFO Batch Creation
+router.post("/api/stock/purchase-entry", isAuthenticated, async (req, res) => {
+  const transaction = await db.transaction(async (tx) => {
+    try {
+      const {
+        inventoryItemId,
+        quantity,
+        unitCost,
+        supplierName,
+        supplierInvoiceNumber,
+        batchNumber,
+        expiryDate,
+        notes
+      } = req.body;
+
+      // Get inventory item details
+      const [inventoryItem] = await tx
+        .select()
+        .from(inventoryItems)
+        .where(eq(inventoryItems.id, inventoryItemId));
+
+      if (!inventoryItem) {
+        throw new Error("Inventory item not found");
+      }
+
+      // Create purchase record
+      const [newPurchase] = await tx
+        .insert(purchases)
+        .values({
+          supplierName,
+          totalAmount: quantity * unitCost,
+          paymentMethod: "credit", // Default for purchase entry
+          status: "completed",
+          invoiceNumber: supplierInvoiceNumber,
+          notes
+        })
+        .returning();
+
+      // Create purchase item record
+      const [newPurchaseItem] = await tx
+        .insert(purchaseItems)
+        .values({
+          purchaseId: newPurchase.id,
+          inventoryItemId,
+          quantity,
+          unitPrice: unitCost,
+          totalPrice: quantity * unitCost
+        })
+        .returning();
+
+      // Create FIFO stock batch
+      const [newStockBatch] = await tx
+        .insert(stockBatches)
+        .values({
+          purchaseItemId: newPurchaseItem.id,
+          inventoryItemId,
+          batchNumber: batchNumber || `BATCH-${Date.now()}`,
+          quantityReceived: quantity,
+          remainingQuantity: quantity,
+          unitCost,
+          expiryDate: expiryDate ? new Date(expiryDate) : null,
+          supplierId: null, // TODO: Link to parties table if needed
+          branchId: null, // TODO: Add branch support
+          notes
+        })
+        .returning();
+
+      // Calculate new weighted average cost
+      const existingBatches = await tx
+        .select()
+        .from(stockBatches)
+        .where(
+          and(
+            eq(stockBatches.inventoryItemId, inventoryItemId),
+            eq(stockBatches.isActive, true),
+            sql`${stockBatches.remainingQuantity} > 0`
+          )
+        );
+
+      const totalValue = existingBatches.reduce(
+        (sum, batch) => sum + parseFloat(batch.remainingQuantity) * parseFloat(batch.unitCost),
+        0
+      );
+      const totalQuantity = existingBatches.reduce(
+        (sum, batch) => sum + parseFloat(batch.remainingQuantity),
+        0
+      );
+      const newAverageCost = totalQuantity > 0 ? totalValue / totalQuantity : unitCost;
+
+      // Update inventory item with new stock levels and costs
+      const updatedCurrentStock = parseFloat(inventoryItem.currentStock) + quantity;
+      await tx
+        .update(inventoryItems)
+        .set({
+          currentStock: updatedCurrentStock.toString(),
+          purchasedQuantity: (parseFloat(inventoryItem.purchasedQuantity || "0") + quantity).toString(),
+          costPerUnit: newAverageCost.toString(),
+          lastRestocked: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(inventoryItems.id, inventoryItemId));
+
+      // Record cost history
+      await tx
+        .insert(inventoryCostHistory)
+        .values({
+          inventoryItemId,
+          previousCost: parseFloat(inventoryItem.costPerUnit),
+          newCost: unitCost,
+          previousAverageCost: parseFloat(inventoryItem.costPerUnit),
+          newAverageCost,
+          changeReason: "purchase",
+          referenceId: newPurchaseItem.id,
+          referenceType: "purchase_item",
+          changedBy: req.user?.email || "system",
+          notes: `Purchase entry: ${quantity} units at $${unitCost} each`
+        });
+
+      // Record inventory transaction
+      await tx
+        .insert(inventoryTransactions)
+        .values({
+          inventoryItemId,
+          type: "in",
+          quantity: quantity.toString(),
+          reason: "purchase",
+          reference: `Purchase #${newPurchase.id}`,
+          createdBy: req.user?.email || "system"
+        });
+
+      // Track user activity
+      await trackUserActivity(
+        req.user.id,
+        req.user.email,
+        'PURCHASE_ENTRY',
+        'stock_batch',
+        newStockBatch.id.toString(),
+        {
+          inventoryItemName: inventoryItem.name,
+          quantity,
+          unitCost,
+          totalValue: quantity * unitCost,
+          supplierName
+        },
+        req
+      );
+
+      return {
+        purchase: newPurchase,
+        purchaseItem: newPurchaseItem,
+        stockBatch: newStockBatch,
+        updatedStock: updatedCurrentStock,
+        newAverageCost
+      };
+    } catch (error) {
+      throw error;
+    }
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "Purchase entry created successfully with FIFO batch tracking",
+    data: transaction
+  });
+});
+
+// Enhanced Production Consumption with FIFO Logic
+router.post("/api/stock/production-consume", isAuthenticated, async (req, res) => {
+  const transactionResult = await db.transaction(async (tx) => {
+    try {
+      const {
+        productId,
+        productionQuantity,
+        productionScheduleId,
+        notes
+      } = req.body;
+
+      // Get product ingredients (BOM)
+      const ingredients = await tx
+        .select({
+          productIngredient: productIngredients,
+          inventoryItem: inventoryItems
+        })
+        .from(productIngredients)
+        .innerJoin(inventoryItems, eq(productIngredients.inventoryItemId, inventoryItems.id))
+        .where(eq(productIngredients.productId, productId));
+
+      if (ingredients.length === 0) {
+        throw new Error("No recipe/BOM found for this product");
+      }
+
+      const consumptionResults = [];
+
+      // Process each ingredient with FIFO consumption
+      for (const ingredient of ingredients) {
+        const requiredQuantity = parseFloat(ingredient.productIngredient.quantity) * productionQuantity;
+        
+        // Get available batches in FIFO order (oldest first)
+        const availableBatches = await tx
+          .select()
+          .from(stockBatches)
+          .where(
+            and(
+              eq(stockBatches.inventoryItemId, ingredient.inventoryItem.id),
+              eq(stockBatches.isActive, true),
+              sql`${stockBatches.remainingQuantity} > 0`
+            )
+          )
+          .orderBy(stockBatches.receivedDate); // FIFO order
+
+        let remainingToConsume = requiredQuantity;
+        const batchConsumptions = [];
+
+        // Allocate consumption across batches using FIFO
+        for (const batch of availableBatches) {
+          if (remainingToConsume <= 0) break;
+
+          const batchRemaining = parseFloat(batch.remainingQuantity);
+          const consumeFromBatch = Math.min(remainingToConsume, batchRemaining);
+
+          if (consumeFromBatch > 0) {
+            // Update batch remaining quantity
+            const newRemainingQuantity = batchRemaining - consumeFromBatch;
+            await tx
+              .update(stockBatches)
+              .set({
+                remainingQuantity: newRemainingQuantity.toString(),
+                updatedAt: new Date()
+              })
+              .where(eq(stockBatches.id, batch.id));
+
+            // Record batch consumption
+            const [batchConsumption] = await tx
+              .insert(stockBatchConsumptions)
+              .values({
+                stockBatchId: batch.id,
+                productionScheduleId,
+                quantityConsumed: consumeFromBatch.toString(),
+                unitCostAtConsumption: parseFloat(batch.unitCost),
+                totalCost: (consumeFromBatch * parseFloat(batch.unitCost)).toString(),
+                consumedBy: req.user?.email || "system",
+                reason: "production",
+                notes: `Production of ${productionQuantity} units`
+              })
+              .returning();
+
+            batchConsumptions.push(batchConsumption);
+            remainingToConsume -= consumeFromBatch;
+          }
+        }
+
+        // Check if we have sufficient stock
+        if (remainingToConsume > 0) {
+          throw new Error(
+            `Insufficient stock for ${ingredient.inventoryItem.name}. ` +
+            `Required: ${requiredQuantity}, Available: ${requiredQuantity - remainingToConsume}`
+          );
+        }
+
+        // Update inventory item stock levels
+        const currentStock = parseFloat(ingredient.inventoryItem.currentStock);
+        const newCurrentStock = currentStock - requiredQuantity;
+        
+        await tx
+          .update(inventoryItems)
+          .set({
+            currentStock: newCurrentStock.toString(),
+            consumedQuantity: (parseFloat(ingredient.inventoryItem.consumedQuantity || "0") + requiredQuantity).toString(),
+            lastConsumed: new Date(),
+            updatedAt: new Date()
+          })
+          .where(eq(inventoryItems.id, ingredient.inventoryItem.id));
+
+        // Record inventory transaction
+        await tx
+          .insert(inventoryTransactions)
+          .values({
+            inventoryItemId: ingredient.inventoryItem.id,
+            type: "out",
+            quantity: requiredQuantity.toString(),
+            reason: "production",
+            reference: `Production Schedule #${productionScheduleId}`,
+            createdBy: req.user?.email || "system"
+          });
+
+        consumptionResults.push({
+          ingredientId: ingredient.inventoryItem.id,
+          ingredientName: ingredient.inventoryItem.name,
+          quantityConsumed: requiredQuantity,
+          batchConsumptions,
+          newStockLevel: newCurrentStock
+        });
+      }
+
+      // Track user activity
+      await trackUserActivity(
+        req.user.id,
+        req.user.email,
+        'PRODUCTION_CONSUME',
+        'production_schedule',
+        productionScheduleId?.toString() || "manual",
+        {
+          productId,
+          productionQuantity,
+          ingredientsConsumed: consumptionResults.length,
+          totalIngredientValue: consumptionResults.reduce((sum, r) => 
+            sum + r.batchConsumptions.reduce((bSum, b) => bSum + parseFloat(b.totalCost), 0), 0
+          )
+        },
+        req
+      );
+
+      return {
+        productId,
+        productionQuantity,
+        consumptionResults,
+        message: "Production consumption completed with FIFO allocation"
+      };
+    } catch (error) {
+      throw error;
+    }
+  });
+
+  res.status(200).json({
+    success: true,
+    data: transactionResult
+  });
+});
+
+// Daily Stock Snapshot Creation (Immutable)
+router.post("/api/stock/daily-snapshot", isAuthenticated, async (req, res) => {
+  try {
+    const { snapshotDate } = req.body;
+    const targetDate = snapshotDate ? new Date(snapshotDate) : new Date();
+    
+    // Format date as YYYY-MM-DD
+    const dateString = targetDate.toISOString().split('T')[0];
+
+    // Check if snapshot already exists for this date
+    const existingSnapshot = await db
+      .select()
+      .from(dailyInventorySnapshots)
+      .where(eq(dailyInventorySnapshots.snapshotDate, dateString))
+      .limit(1);
+
+    if (existingSnapshot.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Daily snapshot already exists for this date"
+      });
+    }
+
+    // Get all inventory items with current stock levels
+    const inventoryItemsData = await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.isActive, true));
+
+    const snapshots = [];
+
+    for (const item of inventoryItemsData) {
+      // Calculate active batches count
+      const activeBatches = await db
+        .select({ count: sql`count(*)` })
+        .from(stockBatches)
+        .where(
+          and(
+            eq(stockBatches.inventoryItemId, item.id),
+            eq(stockBatches.isActive, true),
+            sql`${stockBatches.remainingQuantity} > 0`
+          )
+        );
+
+      // Get weighted average cost from active batches
+      const batchCostData = await db
+        .select({
+          totalValue: sql`sum(${stockBatches.remainingQuantity} * ${stockBatches.unitCost})`,
+          totalQuantity: sql`sum(${stockBatches.remainingQuantity})`,
+          lastPurchaseCost: sql`(
+            SELECT ${stockBatches.unitCost} 
+            FROM ${stockBatches} 
+            WHERE ${stockBatches.inventoryItemId} = ${item.id}
+            AND ${stockBatches.isActive} = true
+            ORDER BY ${stockBatches.receivedDate} DESC 
+            LIMIT 1
+          )`
+        })
+        .from(stockBatches)
+        .where(
+          and(
+            eq(stockBatches.inventoryItemId, item.id),
+            eq(stockBatches.isActive, true),
+            sql`${stockBatches.remainingQuantity} > 0`
+          )
+        );
+
+      const totalValue = parseFloat(batchCostData[0]?.totalValue || "0");
+      const totalQuantity = parseFloat(batchCostData[0]?.totalQuantity || "0");
+      const averageCost = totalQuantity > 0 ? totalValue / totalQuantity : parseFloat(item.costPerUnit);
+      const lastPurchaseCost = parseFloat(batchCostData[0]?.lastPurchaseCost || item.costPerUnit);
+
+      // Create immutable snapshot
+      const [snapshot] = await db
+        .insert(dailyInventorySnapshots)
+        .values({
+          snapshotDate: dateString,
+          inventoryItemId: item.id,
+          branchId: item.branchId,
+          openingStock: item.openingStock,
+          purchasedQuantity: item.purchasedQuantity,
+          consumedQuantity: item.consumedQuantity,
+          adjustmentQuantity: "0", // TODO: Add adjustment tracking
+          closingStock: item.currentStock,
+          averageCost: averageCost.toString(),
+          lastPurchaseCost: lastPurchaseCost.toString(),
+          totalValue: (parseFloat(item.currentStock) * averageCost).toString(),
+          activeBatches: parseInt(activeBatches[0]?.count || "0"),
+          isLocked: true, // Lock immediately to prevent modifications
+          capturedBy: req.user?.email || "system",
+          notes: `Daily snapshot for ${dateString}`
+        })
+        .returning();
+
+      snapshots.push(snapshot);
+    }
+
+    // Track user activity
+    await trackUserActivity(
+      req.user.id,
+      req.user.email,
+      'DAILY_SNAPSHOT',
+      'daily_inventory_snapshots',
+      dateString,
+      {
+        snapshotDate: dateString,
+        itemsSnapshotted: snapshots.length,
+        totalValue: snapshots.reduce((sum, s) => sum + parseFloat(s.totalValue), 0)
+      },
+      req
+    );
+
+    res.status(201).json({
+      success: true,
+      message: `Daily snapshot created for ${snapshots.length} inventory items`,
+      data: {
+        snapshotDate: dateString,
+        itemsCount: snapshots.length,
+        snapshots: snapshots.slice(0, 5) // Return first 5 for preview
+      }
+    });
+  } catch (error) {
+    console.error("Error creating daily snapshot:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to create daily snapshot",
+      message: error.message
+    });
+  }
+});
+
+// Get Stock Batches with FIFO Information
+router.get("/api/stock/batches/:inventoryItemId", isAuthenticated, async (req, res) => {
+  try {
+    const { inventoryItemId } = req.params;
+
+    const batches = await db
+      .select({
+        stockBatch: stockBatches,
+        purchaseItem: purchaseItems,
+        purchase: purchases
+      })
+      .from(stockBatches)
+      .leftJoin(purchaseItems, eq(stockBatches.purchaseItemId, purchaseItems.id))
+      .leftJoin(purchases, eq(purchaseItems.purchaseId, purchases.id))
+      .where(
+        and(
+          eq(stockBatches.inventoryItemId, parseInt(inventoryItemId)),
+          eq(stockBatches.isActive, true)
+        )
+      )
+      .orderBy(stockBatches.receivedDate); // FIFO order
+
+    res.json({
+      success: true,
+      data: batches
+    });
+  } catch (error) {
+    console.error("Error fetching stock batches:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch stock batches"
+    });
+  }
+});
+
+// Get Real-time Stock Alerts
+router.get("/api/stock/alerts", isAuthenticated, async (req, res) => {
+  try {
+    // Low stock alerts
+    const lowStockItems = await db
+      .select()
+      .from(inventoryItems)
+      .where(
+        and(
+          sql`${inventoryItems.currentStock}::numeric <= ${inventoryItems.minLevel}::numeric`,
+          eq(inventoryItems.isActive, true)
+        )
+      );
+
+    // Expiring batches (next 30 days)
+    const expiringBatches = await db
+      .select({
+        stockBatch: stockBatches,
+        inventoryItem: inventoryItems
+      })
+      .from(stockBatches)
+      .innerJoin(inventoryItems, eq(stockBatches.inventoryItemId, inventoryItems.id))
+      .where(
+        and(
+          eq(stockBatches.isActive, true),
+          sql`${stockBatches.remainingQuantity} > 0`,
+          sql`${stockBatches.expiryDate} <= CURRENT_DATE + INTERVAL '30 days'`,
+          sql`${stockBatches.expiryDate} IS NOT NULL`
+        )
+      )
+      .orderBy(stockBatches.expiryDate);
+
+    // Zero stock items
+    const zeroStockItems = await db
+      .select()
+      .from(inventoryItems)
+      .where(
+        and(
+          sql`${inventoryItems.currentStock}::numeric <= 0`,
+          eq(inventoryItems.isActive, true)
+        )
+      );
+
+    res.json({
+      success: true,
+      data: {
+        lowStock: lowStockItems,
+        expiringBatches,
+        zeroStock: zeroStockItems,
+        alertCounts: {
+          lowStock: lowStockItems.length,
+          expiring: expiringBatches.length,
+          zeroStock: zeroStockItems.length
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching stock alerts:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch stock alerts"
+    });
+  }
+});
+
+// Get Stock Cost History
+router.get("/api/stock/cost-history/:inventoryItemId", isAuthenticated, async (req, res) => {
+  try {
+    const { inventoryItemId } = req.params;
+    const { limit = 50 } = req.query;
+
+    const costHistory = await db
+      .select()
+      .from(inventoryCostHistory)
+      .where(eq(inventoryCostHistory.inventoryItemId, parseInt(inventoryItemId)))
+      .orderBy(desc(inventoryCostHistory.changeDate))
+      .limit(parseInt(limit as string));
+
+    res.json({
+      success: true,
+      data: costHistory
+    });
+  } catch (error) {
+    console.error("Error fetching cost history:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch cost history"
+    });
+  }
+});
+
+// Get Daily Snapshots
+router.get("/api/stock/snapshots", isAuthenticated, async (req, res) => {
+  try {
+    const { startDate, endDate, inventoryItemId } = req.query;
+
+    let query = db.select().from(dailyInventorySnapshots);
+    const conditions = [];
+
+    if (startDate) {
+      conditions.push(gte(dailyInventorySnapshots.snapshotDate, startDate as string));
+    }
+    if (endDate) {
+      conditions.push(lte(dailyInventorySnapshots.snapshotDate, endDate as string));
+    }
+    if (inventoryItemId) {
+      conditions.push(eq(dailyInventorySnapshots.inventoryItemId, parseInt(inventoryItemId as string)));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    const snapshots = await query
+      .orderBy(desc(dailyInventorySnapshots.snapshotDate))
+      .limit(100);
+
+    res.json({
+      success: true,
+      data: snapshots
+    });
+  } catch (error) {
+    console.error("Error fetching snapshots:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch snapshots"
+    });
+  }
+});
 
 // --- Existing Routes from Original File (Copied and Pasted) ---
 // Extend session types

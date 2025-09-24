@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, Suspense, startTransition } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useUnits } from "@/hooks/useUnits";
@@ -25,11 +24,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Plus, AlertCircle, Package, Calculator } from "lucide-react";
+import { ChevronDown, Plus, AlertCircle, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Textarea } from "@/components/ui/textarea";
 
 interface StockItemFormProps {
   isOpen: boolean;
@@ -41,14 +39,6 @@ interface CategoryDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onCategoryCreated: () => void;
-}
-
-interface UnitConversion {
-  primaryUnitId: number;
-  secondaryUnitId: number;
-  conversionFactor: number;
-  primaryQuantity: number;
-  secondaryQuantity: number;
 }
 
 function CategoryDialog({
@@ -145,7 +135,7 @@ function CategoryDialog({
   );
 }
 
-function StockFormContent({
+export function EnhancedStockItemForm({
   isOpen,
   onClose,
   editingItem,
@@ -155,159 +145,129 @@ function StockFormContent({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
-  const [unitConversion, setUnitConversion] = useState<UnitConversion>({
-    primaryUnitId: 0,
-    secondaryUnitId: 0,
-    conversionFactor: 1,
-    primaryQuantity: 0,
-    secondaryQuantity: 0,
-  });
 
   const [formData, setFormData] = useState({
     name: "",
-    inventoryId: "",
     primaryUnitId: "",
     secondaryUnitId: "",
-    conversionFactor: "1",
-    currentStock: "",
-    reorderLevel: "",
+    conversionRate: "",
+    costPerUnit: "",
+    group: "",
+    minLevel: "",
     openingStock: "",
-    openingCostPerUnit: "",
-    lastStock: "",
-    lastCostPerUnit: "",
-    averageCost: "",
-    totalValue: "",
+    purchasedQuantity: "",
+    consumedQuantity: "",
+    closingStock: "",
     supplier: "",
-    location: "",
-    category: "",
-    brand: "",
-    description: "",
-    batchNumber: "",
-    expiryDate: "",
-    invoiceNumber: "",
     notes: "",
+    invCode: "",
   });
 
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
 
-  // Fetch units with error handling
-  const { data: units = [], isLoading: unitsLoading, error: unitsError } = useUnits();
+  const {
+    data: units = [],
+    isLoading: unitsLoading,
+    error: unitsError,
+  } = useUnits();
 
-  // Fetch categories with error handling
-  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ["/api/inventory-categories"],
     queryFn: () => apiRequest("GET", "/api/inventory-categories"),
-    staleTime: 5 * 60 * 1000,
-    retry: 3,
   });
 
-  // Filter active units safely
+  // Fetch ingredients from recipes and inventory
+  const { data: ingredients = [] } = useQuery({
+    queryKey: ["/api/ingredients/all"],
+    queryFn: () => apiRequest("GET", "/api/ingredients"),
+  });
+
+  // Filter active units
   const activeUnits = Array.isArray(units)
     ? units.filter((unit: any) => unit && unit.isActive)
     : [];
 
   useEffect(() => {
-    if (isOpen) {
-      startTransition(() => {
-        if (editingItem) {
-          setFormData({
-            name: editingItem.itemName || "",
-            inventoryId: editingItem.inventoryId || "",
-            primaryUnitId: editingItem.primaryUnitId?.toString() || "",
-            secondaryUnitId: editingItem.secondaryUnitId?.toString() || "",
-            conversionFactor: editingItem.conversionFactor?.toString() || "1",
-            currentStock: editingItem.currentStock?.toString() || "",
-            reorderLevel: editingItem.reorderLevel?.toString() || "",
-            openingStock: editingItem.openingStock?.toString() || "",
-            openingCostPerUnit: editingItem.openingCostPerUnit?.toString() || "",
-            lastStock: editingItem.lastStock?.toString() || "",
-            lastCostPerUnit: editingItem.lastCostPerUnit?.toString() || "",
-            averageCost: editingItem.averageCost?.toString() || "",
-            totalValue: editingItem.totalValue?.toString() || "",
-            supplier: editingItem.supplier || "",
-            location: editingItem.location || "",
-            category: editingItem.category || "",
-            brand: editingItem.brand || "",
-            description: editingItem.description || "",
-            batchNumber: editingItem.batchNumber || "",
-            expiryDate: editingItem.expiryDate || "",
-            invoiceNumber: editingItem.invoiceNumber || "",
-            notes: editingItem.notes || "",
-          });
-        } else {
-          setFormData({
-            name: "",
-            inventoryId: generateInventoryId(),
-            primaryUnitId: "",
-            secondaryUnitId: "",
-            conversionFactor: "1",
-            currentStock: "",
-            reorderLevel: "",
-            openingStock: "",
-            openingCostPerUnit: "",
-            lastStock: "",
-            lastCostPerUnit: "",
-            averageCost: "",
-            totalValue: "",
-            supplier: "",
-            location: "",
-            category: "",
-            brand: "",
-            description: "",
-            batchNumber: "",
-            expiryDate: "",
-            invoiceNumber: "",
-            notes: "",
-          });
-        }
+    if (editingItem) {
+      // Determine group value from editingItem
+      let groupValue = "";
+      if (editingItem.categoryId) {
+        groupValue = editingItem.categoryId.toString();
+      } else if (editingItem.isIngredient) {
+        groupValue = "ingredients";
+      } else if (editingItem.group && editingItem.group !== "uncategorized") {
+        groupValue = editingItem.group;
+      }
+
+      setFormData({
+        name: editingItem.name || "",
+        primaryUnitId: editingItem.unitId?.toString() || "",
+        secondaryUnitId: editingItem.secondaryUnitId?.toString() || "",
+        conversionRate: editingItem.conversionRate || "",
+        costPerUnit: editingItem.costPerUnit || "",
+        group: groupValue,
+        minLevel: editingItem.minLevel || "",
+        openingStock:
+          editingItem.openingStock || editingItem.currentStock || "",
+        purchasedQuantity: editingItem.purchasedQuantity || "0",
+        consumedQuantity: editingItem.consumedQuantity || "0",
+        closingStock:
+          editingItem.closingStock || editingItem.currentStock || "",
+        supplier: editingItem.supplier || "",
+        notes: editingItem.notes || "",
+        invCode: editingItem.invCode || editingItem.id?.toString() || "",
+      });
+    } else {
+      setFormData({
+        name: "",
+        primaryUnitId: "",
+        secondaryUnitId: "",
+        conversionRate: "",
+        costPerUnit: "",
+        group: "",
+        minLevel: "",
+        openingStock: "",
+        purchasedQuantity: "0",
+        consumedQuantity: "0",
+        closingStock: "",
+        supplier: "",
+        notes: "",
+        invCode: "",
       });
     }
   }, [editingItem, isOpen]);
 
-  const generateInventoryId = () => {
-    return `INV-${Date.now().toString().slice(-6)}`;
-  };
-
-  // Unit conversion calculations
+  // Auto-calculate closing stock
   useEffect(() => {
-    const primaryId = parseInt(formData.primaryUnitId);
-    const secondaryId = parseInt(formData.secondaryUnitId);
-    const factor = parseFloat(formData.conversionFactor) || 1;
+    const opening = parseFloat(formData.openingStock) || 0;
+    const purchased = parseFloat(formData.purchasedQuantity) || 0;
+    const consumed = parseFloat(formData.consumedQuantity) || 0;
+    const closing = opening + purchased - consumed;
 
-    if (primaryId && secondaryId && primaryId !== secondaryId) {
-      setUnitConversion({
-        primaryUnitId: primaryId,
-        secondaryUnitId: secondaryId,
-        conversionFactor: factor,
-        primaryQuantity: parseFloat(formData.currentStock) || 0,
-        secondaryQuantity: (parseFloat(formData.currentStock) || 0) / factor,
-      });
-    }
-  }, [formData.primaryUnitId, formData.secondaryUnitId, formData.conversionFactor, formData.currentStock]);
-
-  // Auto-calculate total value
-  useEffect(() => {
-    const stock = parseFloat(formData.currentStock) || 0;
-    const cost = parseFloat(formData.averageCost) || parseFloat(formData.openingCostPerUnit) || 0;
-    const totalValue = stock * cost;
-    
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      totalValue: totalValue.toString()
+      closingStock: closing.toString(),
     }));
-  }, [formData.currentStock, formData.averageCost, formData.openingCostPerUnit]);
+  }, [
+    formData.openingStock,
+    formData.purchasedQuantity,
+    formData.consumedQuantity,
+  ]);
 
   const saveMutation = useMutation({
     mutationFn: (data: any) => {
       const url = editingItem
-        ? `/api/stock-management/items/${editingItem.id}`
-        : "/api/stock-management/items";
+        ? `/api/inventory/${editingItem.id}`
+        : "/api/inventory";
       const method = editingItem ? "PUT" : "POST";
       return apiRequest(method, url, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/stock-management"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ingredients"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/low-stock"] });
       toast({
         title: "Success",
@@ -319,10 +279,14 @@ function StockFormContent({
       let errorMessage = `Failed to ${editingItem ? "update" : "create"} stock item`;
 
       if (error.message?.includes("Item with this name already exists")) {
-        setValidationErrors({ name: "Item with this name already exists. Please use a different name." });
+        setValidationErrors({
+          name: "Item with this name already exists. Please use a different name.",
+        });
         errorMessage = "Item name already exists";
       } else if (error.message?.includes("duplicate")) {
-        setValidationErrors({ name: "This item name is already in use. Please choose a different name." });
+        setValidationErrors({
+          name: "This item name is already in use. Please choose a different name.",
+        });
         errorMessage = "Duplicate item name";
       } else if (error.message) {
         errorMessage = error.message;
@@ -337,25 +301,23 @@ function StockFormContent({
   });
 
   const handleInputChange = (field: string, value: string) => {
-    startTransition(() => {
-      setFormData((prev) => ({
-        ...prev,
-        [field]: value,
-      }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
 
-      if (validationErrors[field]) {
-        setValidationErrors((prev) => {
-          const newErrors = { ...prev };
-          delete newErrors[field];
-          return newErrors;
-        });
-      }
-    });
+    if (validationErrors[field]) {
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
   };
 
   const getConversionInfoText = () => {
     if (!formData.primaryUnitId) {
-      return "Select Primary Unit";
+      return "Select a Primary Unit";
     }
 
     if (!formData.secondaryUnitId) {
@@ -366,19 +328,28 @@ function StockFormContent({
       return "Units must be different";
     }
 
-    const primaryUnit = activeUnits.find((u: any) => u.id.toString() === formData.primaryUnitId);
-    const secondaryUnit = activeUnits.find((u: any) => u.id.toString() === formData.secondaryUnitId);
+    const primaryUnit = activeUnits.find(
+      (u: any) => u.id.toString() === formData.primaryUnitId,
+    );
+    const secondaryUnit = activeUnits.find(
+      (u: any) => u.id.toString() === formData.secondaryUnitId,
+    );
 
     if (!primaryUnit || !secondaryUnit) {
       return "Invalid unit selection";
     }
 
-    const rate = formData.conversionFactor?.trim();
-    if (!rate || parseFloat(rate) <= 0) {
-      return "Enter valid conversion factor";
+    const rate = formData.conversionRate?.trim();
+    if (!rate) {
+      return "Enter a conversion rate";
     }
 
-    return `1 ${primaryUnit.name} = ${rate} ${secondaryUnit.name}`;
+    const numRate = parseFloat(rate);
+    if (isNaN(numRate) || numRate <= 0) {
+      return "Enter a valid positive number";
+    }
+
+    return `1 ${primaryUnit.name} = ${numRate} ${secondaryUnit.name}`;
   };
 
   const validateForm = () => {
@@ -392,16 +363,24 @@ function StockFormContent({
       errors.primaryUnitId = "Primary unit is required";
     }
 
-    if (!formData.currentStock || parseFloat(formData.currentStock) < 0) {
-      errors.currentStock = "Valid current stock is required";
+    if (!formData.costPerUnit || parseFloat(formData.costPerUnit) <= 0) {
+      errors.costPerUnit = "Valid cost per unit is required";
     }
 
-    if (!formData.reorderLevel || parseFloat(formData.reorderLevel) < 0) {
-      errors.reorderLevel = "Reorder level must be 0 or greater";
+    if (!formData.minLevel || parseFloat(formData.minLevel) < 0) {
+      errors.minLevel = "Minimum level must be 0 or greater";
     }
 
-    if (formData.secondaryUnitId && (!formData.conversionFactor || parseFloat(formData.conversionFactor) <= 0)) {
-      errors.conversionFactor = "Valid conversion factor is required when secondary unit is selected";
+    if (!formData.openingStock || parseFloat(formData.openingStock) < 0) {
+      errors.openingStock = "Valid opening stock is required";
+    }
+
+    if (
+      formData.secondaryUnitId &&
+      (!formData.conversionRate || parseFloat(formData.conversionRate) <= 0)
+    ) {
+      errors.conversionRate =
+        "Valid conversion rate is required when secondary unit is selected";
     }
 
     return errors;
@@ -423,38 +402,33 @@ function StockFormContent({
       (u: any) => u.id.toString() === formData.primaryUnitId,
     );
 
-    const selectedSecondaryUnit = formData.secondaryUnitId ? activeUnits.find(
-      (u: any) => u.id.toString() === formData.secondaryUnitId,
-    ) : null;
-
     const submitData = {
-      itemName: formData.name.trim(),
-      inventoryId: formData.inventoryId.trim() || generateInventoryId(),
-      description: formData.description.trim() || null,
-      category: formData.category || null,
-      brand: formData.brand.trim() || null,
-      primaryUnit: selectedPrimaryUnit?.abbreviation || "pcs",
-      primaryUnitId: parseInt(formData.primaryUnitId),
-      secondaryUnit: selectedSecondaryUnit?.abbreviation || null,
-      secondaryUnitId: formData.secondaryUnitId ? parseInt(formData.secondaryUnitId) : null,
-      conversionFactor: formData.secondaryUnitId ? parseFloat(formData.conversionFactor) : null,
-      currentStock: parseFloat(formData.currentStock),
-      secondaryStock: unitConversion.secondaryQuantity || null,
-      reorderLevel: parseFloat(formData.reorderLevel),
-      openingStock: parseFloat(formData.openingStock) || parseFloat(formData.currentStock),
-      openingCostPerUnit: parseFloat(formData.openingCostPerUnit) || 0,
-      lastStock: parseFloat(formData.lastStock) || null,
-      lastCostPerUnit: parseFloat(formData.lastCostPerUnit) || null,
-      averageCost: parseFloat(formData.averageCost) || parseFloat(formData.openingCostPerUnit) || 0,
-      totalValue: parseFloat(formData.totalValue) || 0,
+      name: formData.name.trim(),
+      invCode: formData.invCode.trim() || `INV-${Date.now()}`,
+      currentStock: parseFloat(formData.closingStock),
+      openingStock: parseFloat(formData.openingStock),
+      purchasedQuantity: parseFloat(formData.purchasedQuantity) || 0,
+      consumedQuantity: parseFloat(formData.consumedQuantity) || 0,
+      closingStock: parseFloat(formData.closingStock),
+      minLevel: parseFloat(formData.minLevel),
+      unit: selectedPrimaryUnit?.abbreviation || "pcs",
+      unitId: parseInt(formData.primaryUnitId),
+      secondaryUnitId: formData.secondaryUnitId
+        ? parseInt(formData.secondaryUnitId)
+        : null,
+      conversionRate: formData.secondaryUnitId
+        ? parseFloat(formData.conversionRate)
+        : null,
+      costPerUnit: parseFloat(formData.costPerUnit),
       supplier: formData.supplier.trim() || null,
-      location: formData.location.trim() || null,
-      batchNumber: formData.batchNumber.trim() || null,
-      expiryDate: formData.expiryDate || null,
-      invoiceNumber: formData.invoiceNumber.trim() || null,
+      group: formData.group || null,
+      categoryId:
+        formData.group && !isNaN(parseInt(formData.group))
+          ? parseInt(formData.group)
+          : null,
       notes: formData.notes.trim() || null,
-      isActive: true,
-      isDayClosed: false,
+      lastRestocked: new Date().toISOString(),
+      isIngredient: formData.group === "ingredients",
     };
 
     saveMutation.mutate(submitData);
@@ -465,505 +439,546 @@ function StockFormContent({
     queryClient.invalidateQueries({ queryKey: ["/api/inventory-categories"] });
   };
 
-  if (unitsLoading || categoriesLoading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-2">Loading form data...</span>
-      </div>
-    );
-  }
-
-  if (unitsError) {
-    return (
-      <Alert className="m-4">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load units. Please refresh the page and try again.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  // Auto-generate inventory code if not provided
+  const generateInvCode = () => {
+    const code = `INV-${Date.now().toString().slice(-6)}`;
+    handleInputChange("invCode", code);
+  };
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-center flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Basic Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="inventoryId" className="text-sm font-medium">
-                  Inventory ID <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="inventoryId"
-                  value={formData.inventoryId}
-                  onChange={(e) => handleInputChange("inventoryId", e.target.value)}
-                  placeholder="INV-001"
-                  className={validationErrors.inventoryId ? "border-red-500" : ""}
-                />
-                {validationErrors.inventoryId && (
-                  <p className="text-red-500 text-xs mt-1">{validationErrors.inventoryId}</p>
-                )}
-              </div>
+              {editingItem ? "Edit Stock Item" : "Create Stock Item"}
+            </DialogTitle>
+          </DialogHeader>
 
-              <div>
-                <Label htmlFor="itemName" className="text-sm font-medium">
-                  Item Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="itemName"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="Enter item name"
-                  className={validationErrors.name ? "border-red-500" : ""}
-                  required
-                />
-                {validationErrors.name && (
-                  <p className="text-red-500 text-xs mt-1">{validationErrors.name}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="category" className="text-sm font-medium">
-                  Category
-                </Label>
-                <div className="flex gap-2">
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => handleInputChange("category", value)}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="raw-materials">Raw Materials</SelectItem>
-                      <SelectItem value="ingredients">Ingredients</SelectItem>
-                      <SelectItem value="packaging">Packaging</SelectItem>
-                      <SelectItem value="supplies">Supplies</SelectItem>
-                      {Array.isArray(categories) && categories.map((category: any) => (
-                        <SelectItem key={category.id} value={category.id.toString()}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowCategoryDialog(true)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="brand" className="text-sm font-medium">
-                  Brand
-                </Label>
-                <Input
-                  id="brand"
-                  value={formData.brand}
-                  onChange={(e) => handleInputChange("brand", e.target.value)}
-                  placeholder="Enter brand name"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="description" className="text-sm font-medium">
-                Description
-              </Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                placeholder="Enter item description"
-                rows={3}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Unit Configuration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calculator className="h-5 w-5" />
-              Unit Configuration
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="primaryUnit" className="text-sm font-medium">
-                  Primary Unit <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.primaryUnitId}
-                  onValueChange={(value) => handleInputChange("primaryUnitId", value)}
-                  required
-                >
-                  <SelectTrigger className={validationErrors.primaryUnitId ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select Primary Unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeUnits.length > 0 ? (
-                      activeUnits.map((unit: any) => (
-                        <SelectItem key={unit.id} value={unit.id.toString()}>
-                          {unit.name} ({unit.abbreviation})
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-units" disabled>
-                        No units available
-                      </SelectItem>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Basic Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Inventory Code and Item Name */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="invCode" className="text-sm font-medium">
+                      Inventory Code <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="invCode"
+                        value={formData.invCode}
+                        onChange={(e) =>
+                          handleInputChange("invCode", e.target.value)
+                        }
+                        placeholder="INV-001"
+                        className={
+                          validationErrors.invCode ? "border-red-500" : ""
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={generateInvCode}
+                      >
+                        Generate
+                      </Button>
+                    </div>
+                    {validationErrors.invCode && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {validationErrors.invCode}
+                      </p>
                     )}
-                  </SelectContent>
-                </Select>
-                {validationErrors.primaryUnitId && (
-                  <p className="text-red-500 text-xs mt-1">{validationErrors.primaryUnitId}</p>
-                )}
-              </div>
+                  </div>
 
-              <div>
-                <Label htmlFor="secondaryUnit" className="text-sm font-medium">
-                  Secondary Unit (Optional)
-                </Label>
-                <Select
-                  value={formData.secondaryUnitId || "none"}
-                  onValueChange={(value) =>
-                    handleInputChange("secondaryUnitId", value === "none" ? "" : value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="No Secondary Unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No Secondary Unit</SelectItem>
-                    {activeUnits
-                      .filter((unit: any) => unit.id.toString() !== formData.primaryUnitId)
-                      .map((unit: any) => (
-                        <SelectItem key={unit.id} value={unit.id.toString()}>
-                          {unit.name} ({unit.abbreviation})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                  <div>
+                    <Label htmlFor="itemName" className="text-sm font-medium">
+                      Item Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="itemName"
+                      value={formData.name}
+                      onChange={(e) =>
+                        handleInputChange("name", e.target.value)
+                      }
+                      placeholder="Enter unique name (e.g., Flour)"
+                      className={validationErrors.name ? "border-red-500" : ""}
+                      required
+                    />
+                    {validationErrors.name && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {validationErrors.name}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-            {formData.secondaryUnitId && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="conversionFactor" className="text-sm font-medium">
-                    Conversion Factor <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="conversionFactor"
-                    type="number"
-                    step="0.000001"
-                    min="0.000001"
-                    value={formData.conversionFactor}
-                    onChange={(e) => handleInputChange("conversionFactor", e.target.value)}
-                    placeholder="e.g., 50 (for 1 bag = 50 kg)"
-                    className={validationErrors.conversionFactor ? "border-red-500" : ""}
-                    required
-                  />
-                  {validationErrors.conversionFactor && (
-                    <p className="text-red-500 text-xs mt-1">{validationErrors.conversionFactor}</p>
+                {/* Primary Unit and Group */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label
+                      htmlFor="primaryUnit"
+                      className="text-sm font-medium"
+                    >
+                      Primary Unit <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.primaryUnitId || ""}
+                      onValueChange={(value) => {
+                        try {
+                          if (value && value !== "none") {
+                            handleInputChange("primaryUnitId", value);
+                          }
+                        } catch (error) {
+                          console.error("Error updating primary unit:", error);
+                        }
+                      }}
+                      required
+                    >
+                      <SelectTrigger
+                        className={
+                          validationErrors.primaryUnitId ? "border-red-500" : ""
+                        }
+                      >
+                        <SelectValue placeholder="Select Primary Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {unitsLoading ? (
+                          <SelectItem value="loading" disabled>
+                            Loading units...
+                          </SelectItem>
+                        ) : unitsError ? (
+                          <SelectItem value="error" disabled>
+                            Error loading units
+                          </SelectItem>
+                        ) : activeUnits.length > 0 ? (
+                          activeUnits.map((unit: any) => (
+                            <SelectItem
+                              key={unit.id}
+                              value={unit.id.toString()}
+                            >
+                              {unit.name} ({unit.abbreviation})
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            No units available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {validationErrors.primaryUnitId && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {validationErrors.primaryUnitId}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="group" className="text-sm font-medium">
+                      Group/Category <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="flex gap-2">
+                      <Select
+                        value={formData.group}
+                        onValueChange={(value) =>
+                          handleInputChange("group", value)
+                        }
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select Group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ingredients">
+                            Ingredients
+                          </SelectItem>
+                          <SelectItem value="raw-materials">
+                            Raw Materials
+                          </SelectItem>
+                          <SelectItem value="packaging">Packaging</SelectItem>
+                          <SelectItem value="spices">Spices</SelectItem>
+                          <SelectItem value="dairy">Dairy</SelectItem>
+                          <SelectItem value="flour">Flour</SelectItem>
+                          <SelectItem value="sweeteners">Sweeteners</SelectItem>
+                          <SelectItem value="supplies">Supplies</SelectItem>
+                          {categories.map((category: any) => (
+                            <SelectItem
+                              key={category.id}
+                              value={category.id.toString()}
+                            >
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowCategoryDialog(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Secondary Unit and Conversion */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label
+                      htmlFor="secondaryUnit"
+                      className="text-sm font-medium"
+                    >
+                      Secondary Unit
+                    </Label>
+                    <Select
+                      value={formData.secondaryUnitId || "none"}
+                      onValueChange={(value) =>
+                        handleInputChange(
+                          "secondaryUnitId",
+                          value === "none" ? "" : value,
+                        )
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="No Secondary Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Secondary Unit</SelectItem>
+                        {activeUnits
+                          .filter(
+                            (unit: any) =>
+                              unit.id.toString() !== formData.primaryUnitId,
+                          )
+                          .map((unit: any) => (
+                            <SelectItem
+                              key={unit.id}
+                              value={unit.id.toString()}
+                            >
+                              {unit.name} ({unit.abbreviation})
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.secondaryUnitId && (
+                    <div>
+                      <Label
+                        htmlFor="conversionRate"
+                        className="text-sm font-medium"
+                      >
+                        Conversion Rate <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="conversionRate"
+                        type="number"
+                        step="0.000001"
+                        min="0.000001"
+                        value={formData.conversionRate}
+                        onChange={(e) =>
+                          handleInputChange("conversionRate", e.target.value)
+                        }
+                        placeholder="e.g., 50"
+                        className={
+                          validationErrors.conversionRate
+                            ? "border-red-500"
+                            : ""
+                        }
+                        required
+                      />
+                      {validationErrors.conversionRate && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {validationErrors.conversionRate}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {formData.secondaryUnitId && (
+                    <div>
+                      <Label className="text-sm font-medium">
+                        Conversion Info
+                      </Label>
+                      <div className="mt-1 p-2 bg-blue-50 rounded text-sm text-blue-700 min-h-[40px] flex items-center">
+                        {getConversionInfoText()}
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                <div>
-                  <Label className="text-sm font-medium">Conversion Preview</Label>
-                  <div className="mt-1 p-3 bg-blue-50 rounded border text-sm text-blue-700 min-h-[40px] flex items-center">
-                    {getConversionInfoText()}
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Stock Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Stock Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="currentStock" className="text-sm font-medium">
-                  Current Stock <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="currentStock"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.currentStock}
-                  onChange={(e) => handleInputChange("currentStock", e.target.value)}
-                  placeholder="0.00"
-                  className={validationErrors.currentStock ? "border-red-500" : ""}
-                  required
-                />
-                {validationErrors.currentStock && (
-                  <p className="text-red-500 text-xs mt-1">{validationErrors.currentStock}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="reorderLevel" className="text-sm font-medium">
-                  Reorder Level <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="reorderLevel"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.reorderLevel}
-                  onChange={(e) => handleInputChange("reorderLevel", e.target.value)}
-                  placeholder="0.00"
-                  className={validationErrors.reorderLevel ? "border-red-500" : ""}
-                  required
-                />
-                {validationErrors.reorderLevel && (
-                  <p className="text-red-500 text-xs mt-1">{validationErrors.reorderLevel}</p>
-                )}
-              </div>
-
-              {unitConversion.secondaryUnitId && (
-                <div>
-                  <Label className="text-sm font-medium">Secondary Stock</Label>
-                  <Input
-                    value={unitConversion.secondaryQuantity.toFixed(2)}
-                    readOnly
-                    className="bg-gray-50"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Auto-calculated</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Cost Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Cost Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="openingCostPerUnit" className="text-sm font-medium">
-                  Opening Cost per Unit
-                </Label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                    {symbol}
-                  </span>
-                  <Input
-                    id="openingCostPerUnit"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.openingCostPerUnit}
-                    onChange={(e) => handleInputChange("openingCostPerUnit", e.target.value)}
-                    placeholder="0.00"
-                    className="rounded-l-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="averageCost" className="text-sm font-medium">
-                  Average Cost per Unit
-                </Label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                    {symbol}
-                  </span>
-                  <Input
-                    id="averageCost"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.averageCost}
-                    onChange={(e) => handleInputChange("averageCost", e.target.value)}
-                    placeholder="0.00"
-                    className="rounded-l-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="lastCostPerUnit" className="text-sm font-medium">
-                  Last Cost per Unit
-                </Label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                    {symbol}
-                  </span>
-                  <Input
-                    id="lastCostPerUnit"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.lastCostPerUnit}
-                    onChange={(e) => handleInputChange("lastCostPerUnit", e.target.value)}
-                    placeholder="0.00"
-                    className="rounded-l-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="totalValue" className="text-sm font-medium">
-                  Total Stock Value
-                </Label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                    {symbol}
-                  </span>
-                  <Input
-                    id="totalValue"
-                    type="number"
-                    value={formData.totalValue}
-                    readOnly
-                    className="rounded-l-none bg-gray-50"
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Auto-calculated: Stock × Average Cost</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Additional Details */}
-        <Collapsible open={showAdditionalDetails} onOpenChange={setShowAdditionalDetails}>
-          <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer hover:bg-gray-50">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center justify-between">
-                  Additional Details
-                  <ChevronDown className={`h-4 w-4 transition-transform ${showAdditionalDetails ? 'rotate-180' : ''}`} />
-                </CardTitle>
-              </CardHeader>
-            </Card>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <Card>
-              <CardContent className="pt-6 space-y-4">
+                {/* Cost Per Unit and Minimum Level */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="supplier" className="text-sm font-medium">
-                      Supplier
+                    <Label
+                      htmlFor="costPerUnit"
+                      className="text-sm font-medium"
+                    >
+                      Cost Per Unit <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      id="supplier"
-                      value={formData.supplier}
-                      onChange={(e) => handleInputChange("supplier", e.target.value)}
-                      placeholder="Enter supplier name"
-                    />
+                    <div className="flex mt-1">
+                      <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                        {symbol}
+                      </span>
+                      <Input
+                        id="costPerUnit"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={formData.costPerUnit}
+                        onChange={(e) =>
+                          handleInputChange("costPerUnit", e.target.value)
+                        }
+                        placeholder="0.00"
+                        className={`rounded-l-none ${validationErrors.costPerUnit ? "border-red-500" : ""}`}
+                        required
+                      />
+                    </div>
+                    {validationErrors.costPerUnit && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {validationErrors.costPerUnit}
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <Label htmlFor="location" className="text-sm font-medium">
-                      Storage Location
+                    <Label htmlFor="minLevel" className="text-sm font-medium">
+                      Minimum Level <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="location"
-                      value={formData.location}
-                      onChange={(e) => handleInputChange("location", e.target.value)}
-                      placeholder="Enter storage location"
+                      id="minLevel"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.minLevel}
+                      onChange={(e) =>
+                        handleInputChange("minLevel", e.target.value)
+                      }
+                      placeholder="0.00"
+                      className={
+                        validationErrors.minLevel ? "border-red-500" : ""
+                      }
+                      required
                     />
+                    {validationErrors.minLevel && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {validationErrors.minLevel}
+                      </p>
+                    )}
                   </div>
-
-                  <div>
-                    <Label htmlFor="batchNumber" className="text-sm font-medium">
-                      Batch Number
-                    </Label>
-                    <Input
-                      id="batchNumber"
-                      value={formData.batchNumber}
-                      onChange={(e) => handleInputChange("batchNumber", e.target.value)}
-                      placeholder="Enter batch number"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="expiryDate" className="text-sm font-medium">
-                      Expiry Date
-                    </Label>
-                    <Input
-                      id="expiryDate"
-                      type="date"
-                      value={formData.expiryDate}
-                      onChange={(e) => handleInputChange("expiryDate", e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="invoiceNumber" className="text-sm font-medium">
-                      Last Invoice Number
-                    </Label>
-                    <Input
-                      id="invoiceNumber"
-                      value={formData.invoiceNumber}
-                      onChange={(e) => handleInputChange("invoiceNumber", e.target.value)}
-                      placeholder="Enter invoice number"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="notes" className="text-sm font-medium">
-                    Notes
-                  </Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => handleInputChange("notes", e.target.value)}
-                    placeholder="Enter any additional notes"
-                    rows={3}
-                  />
                 </div>
               </CardContent>
             </Card>
-          </CollapsibleContent>
-        </Collapsible>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="w-full sm:w-auto"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={saveMutation.isPending}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            {saveMutation.isPending ? "Saving..." : editingItem ? "Update Item" : "Create Item"}
-          </Button>
-        </div>
-      </form>
+            {/* Stock Management Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Stock Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label
+                      htmlFor="openingStock"
+                      className="text-sm font-medium"
+                    >
+                      Opening Stock <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="openingStock"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.openingStock}
+                      onChange={(e) =>
+                        handleInputChange("openingStock", e.target.value)
+                      }
+                      placeholder="0.00"
+                      className={
+                        validationErrors.openingStock ? "border-red-500" : ""
+                      }
+                      required
+                    />
+                    {validationErrors.openingStock && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {validationErrors.openingStock}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label
+                      htmlFor="purchasedQuantity"
+                      className="text-sm font-medium"
+                    >
+                      Purchased
+                    </Label>
+                    <Input
+                      id="purchasedQuantity"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.purchasedQuantity}
+                      onChange={(e) =>
+                        handleInputChange("purchasedQuantity", e.target.value)
+                      }
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <Label
+                      htmlFor="consumedQuantity"
+                      className="text-sm font-medium"
+                    >
+                      Consumed/Used
+                    </Label>
+                    <Input
+                      id="consumedQuantity"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.consumedQuantity}
+                      onChange={(e) =>
+                        handleInputChange("consumedQuantity", e.target.value)
+                      }
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <Label
+                      htmlFor="closingStock"
+                      className="text-sm font-medium"
+                    >
+                      Closing Stock
+                    </Label>
+                    <Input
+                      id="closingStock"
+                      value={parseFloat(formData.closingStock || "0").toFixed(
+                        2,
+                      )}
+                      placeholder="0.00"
+                      className="bg-gray-50"
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                {/* Stock Calculation Display */}
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">
+                    Stock Calculation
+                  </h4>
+                  <div className="text-sm text-blue-800">
+                    <p>
+                      Opening Stock:{" "}
+                      {parseFloat(formData.openingStock || "0").toFixed(2)}
+                    </p>
+                    <p>
+                      + Purchased:{" "}
+                      {parseFloat(formData.purchasedQuantity || "0").toFixed(2)}
+                    </p>
+                    <p>
+                      - Consumed:{" "}
+                      {parseFloat(formData.consumedQuantity || "0").toFixed(2)}
+                    </p>
+                    <hr className="my-2 border-blue-200" />
+                    <p className="font-medium">
+                      = Closing Stock:{" "}
+                      {parseFloat(formData.closingStock || "0").toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Warning for minimum level */}
+                {parseFloat(formData.closingStock || "0") <=
+                  parseFloat(formData.minLevel || "0") &&
+                  parseFloat(formData.closingStock || "0") > 0 && (
+                    <Alert className="mt-4 border-yellow-500 bg-yellow-50">
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-yellow-800">
+                        Warning: Closing stock is at or below minimum level
+                      </AlertDescription>
+                    </Alert>
+                  )}
+              </CardContent>
+            </Card>
+
+            {/* Additional Details */}
+            <Collapsible
+              open={showAdditionalDetails}
+              onOpenChange={setShowAdditionalDetails}
+            >
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-between p-0 h-auto font-normal text-blue-600 hover:text-blue-700"
+                >
+                  Additional Details
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${showAdditionalDetails ? "rotate-180" : ""}`}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 mt-4">
+                <Card>
+                  <CardContent className="pt-6 space-y-4">
+                    <div>
+                      <Label htmlFor="supplier" className="text-sm font-medium">
+                        Supplier
+                      </Label>
+                      <Input
+                        id="supplier"
+                        value={formData.supplier}
+                        onChange={(e) =>
+                          handleInputChange("supplier", e.target.value)
+                        }
+                        placeholder="Enter supplier name"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="notes" className="text-sm font-medium">
+                        Notes
+                      </Label>
+                      <Input
+                        id="notes"
+                        value={formData.notes}
+                        onChange={(e) =>
+                          handleInputChange("notes", e.target.value)
+                        }
+                        placeholder="Additional notes"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Action Buttons */}
+            <div className="flex justify-between pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-green-500 hover:bg-green-600 text-white min-w-[120px]"
+              >
+                {isSubmitting ? "Saving..." : "Save Item"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <CategoryDialog
         isOpen={showCategoryDialog}
@@ -971,19 +986,6 @@ function StockFormContent({
         onCategoryCreated={handleCategoryCreated}
       />
     </>
-  );
-}
-
-export function EnhancedStockItemForm(props: StockItemFormProps) {
-  return (
-    <Suspense fallback={
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-2">Loading form...</span>
-      </div>
-    }>
-      <StockFormContent {...props} />
-    </Suspense>
   );
 }
 

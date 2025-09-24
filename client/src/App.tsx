@@ -38,7 +38,7 @@ import Purchases from "@/pages/purchases";
 import SalesReturns from "@/pages/sales-returns";
 import PurchaseReturns from "@/pages/purchase-returns";
 import PublicOrderForm from "@/components/public-order-form";
-import Stock from "@/pages/stock";
+import ComprehensiveStockManagement from "@/pages/comprehensive-stock";
 import Ingredients from "@/pages/ingredients";
 import Units from "@/pages/units";
 import LabelPrinting from "@/pages/label-printing";
@@ -255,7 +255,7 @@ function AuthenticatedApp({
               path="/stock"
               component={() => (
                 <RouteWrapper resource="inventory" action="read">
-                  <Stock />
+                  <ComprehensiveStockManagement />
                 </RouteWrapper>
               )}
             />
