@@ -554,7 +554,7 @@ export default function Stock() {
                                     Current: {closingStock.toFixed(2)}{" "}
                                     {item.unit || "pcs"}
                                   </span>
-                                  {closingStock <= minLevel && (
+                                  {closingStock <= parseFloat(item.minLevel || 0) && (
                                     <Badge
                                       variant="destructive"
                                       className="text-xs px-1 py-0"
@@ -598,9 +598,9 @@ export default function Stock() {
                             {/* Reorder Level Alert */}
                             <div className="mt-1">
                               <div className="text-xs text-muted-foreground">
-                                Min: {minLevel.toFixed(2)}
+                                Min: {parseFloat(item.minLevel || 0).toFixed(2)}
                               </div>
-                              {closingStock <= minLevel && (
+                              {closingStock <= parseFloat(item.minLevel || 0) && (
                                 <div className="text-xs text-red-600 font-medium">
                                   ⚠️ Reorder needed
                                 </div>
@@ -648,10 +648,10 @@ export default function Stock() {
                                   ),
                               )}
                             </div>
-                            {closingStock <= minLevel && closingStock > 0 && (
+                            {closingStock <= parseFloat(item.minLevel || 0) && closingStock > 0 && (
                               <div className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
                                 Reorder:{" "}
-                                {(minLevel * 2 - closingStock).toFixed(2)}{" "}
+                                {(parseFloat(item.minLevel || 0) * 2 - closingStock).toFixed(2)}{" "}
                                 {item.unit}
                               </div>
                             )}
