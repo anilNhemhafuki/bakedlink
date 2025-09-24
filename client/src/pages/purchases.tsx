@@ -124,6 +124,7 @@ export default function Purchases() {
     purchaseDate: new Date().toISOString().split("T")[0],
     status: "completed",
     notes: "",
+    tax: 0,
     items: [{ inventoryItemId: "", quantity: 1, unitPrice: "0", unitId: "" }],
   });
 
@@ -203,26 +204,60 @@ export default function Purchases() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const totalAmount = purchaseForm.items.reduce((sum, item) => {
+    // Validate form
+    if (!purchaseForm.supplierName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Supplier name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (purchaseForm.items.length === 0 || !purchaseForm.items.some(item => item.inventoryItemId)) {
+      toast({
+        title: "Validation Error",
+        description: "At least one item is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validItems = purchaseForm.items.filter(item => 
+      item.inventoryItemId && 
+      parseFloat(item.unitPrice) > 0 && 
+      item.quantity > 0
+    );
+
+    if (validItems.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please add valid items with prices and quantities.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const totalAmount = validItems.reduce((sum, item) => {
       const itemTotal = parseFloat(item.unitPrice) * item.quantity;
       return sum + itemTotal;
     }, 0);
 
     const purchaseData = {
       partyId: purchaseForm.partyId ? parseInt(purchaseForm.partyId) : null,
-      supplierName: purchaseForm.supplierName,
+      supplierName: purchaseForm.supplierName.trim(),
       totalAmount: totalAmount.toString(),
       paymentMethod: purchaseForm.paymentMethod,
       status: purchaseForm.status,
       invoiceNumber: purchaseForm.invoiceNumber || null,
       purchaseDate: purchaseForm.purchaseDate,
       notes: purchaseForm.notes || null,
-      items: purchaseForm.items.map((item) => ({
+      items: validItems.map((item) => ({
         inventoryItemId: parseInt(item.inventoryItemId),
-        quantity: parseFloat(item.quantity),
+        quantity: parseFloat(item.quantity.toString()),
         unitPrice: parseFloat(item.unitPrice),
         unitId: item.unitId ? parseInt(item.unitId) : null,
-        totalPrice: (parseFloat(item.unitPrice) * parseFloat(item.quantity)).toString(),
+        totalPrice: (parseFloat(item.unitPrice) * parseFloat(item.quantity.toString())).toString(),
       })),
     };
 
@@ -305,6 +340,7 @@ export default function Purchases() {
       purchaseDate: new Date().toISOString().split("T")[0],
       status: "completed",
       notes: "",
+      tax: 0,
       items: [{ inventoryItemId: "", quantity: 1, unitPrice: "0", unitId: "" }],
     });
   };
@@ -329,7 +365,13 @@ export default function Purchases() {
   const updateItem = (index: number, field: string, value: any) => {
     const updatedItems = purchaseForm.items.map((item, i) => {
       if (i === index) {
-        return { ...item, [field]: value };
+        if (field === "quantity") {
+          return { ...item, [field]: parseInt(value) || 1 };
+        } else if (field === "unitPrice") {
+          return { ...item, [field]: parseFloat(value) || 0 };
+        } else {
+          return { ...item, [field]: value };
+        }
       }
       return item;
     });
