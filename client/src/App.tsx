@@ -38,13 +38,12 @@ import Purchases from "@/pages/purchases";
 import SalesReturns from "@/pages/sales-returns";
 import PurchaseReturns from "@/pages/purchase-returns";
 import PublicOrderForm from "@/components/public-order-form";
-import ComprehensiveStockManagement from "@/pages/comprehensive-stock";
+import ComprehensiveStockManagement from "@/pages/stock";
 import Ingredients from "@/pages/ingredients";
 import Units from "@/pages/units";
 import LabelPrinting from "@/pages/label-printing";
 import Recipes from "@/pages/recipes";
 // import ExpireProducts from "@/pages/expire-products"; // Removed as it's being replaced
-
 
 import Staff from "@/pages/staff";
 import Attendance from "@/pages/attendance";
@@ -147,7 +146,15 @@ function AuthenticatedApp({
   const isSuperAdmin = user?.role === "super_admin";
 
   // Component wrapper that conditionally adds protection
-  const RouteWrapper = ({ children, resource, action }: { children: React.ReactNode, resource: string, action: "read" | "write" | "read_write" }) => {
+  const RouteWrapper = ({
+    children,
+    resource,
+    action,
+  }: {
+    children: React.ReactNode;
+    resource: string;
+    action: "read" | "write" | "read_write";
+  }) => {
     if (isSuperAdmin) {
       return <>{children}</>;
     }

@@ -79,26 +79,29 @@ import {
   checkProductionScheduleAlerts,
   notifySystemAlert,
 } from "./notifications";
-import stockManagementRoutes from "./routes/stock-management";
+import stockManagementRoutes from "./routes/stock";
 
 const router = express.Router();
 
 // Utility function for pagination and sorting
-function buildPaginatedQuery(baseQuery: any, options: {
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  search?: string;
-  searchFields?: string[];
-}) {
+function buildPaginatedQuery(
+  baseQuery: any,
+  options: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    search?: string;
+    searchFields?: string[];
+  },
+) {
   const {
     page = 1,
     limit = 10,
     sortBy,
-    sortOrder = 'desc',
+    sortOrder = "desc",
     search,
-    searchFields = []
+    searchFields = [],
   } = options;
 
   const offset = (page - 1) * limit;
@@ -107,8 +110,8 @@ function buildPaginatedQuery(baseQuery: any, options: {
 
   // Apply search if provided
   if (search && searchFields.length > 0) {
-    const searchConditions = searchFields.map(field =>
-      like(sql.identifier(field), `%${search}%`)
+    const searchConditions = searchFields.map((field) =>
+      like(sql.identifier(field), `%${search}%`),
     );
     query = query.where(or(...searchConditions));
   }
@@ -116,7 +119,9 @@ function buildPaginatedQuery(baseQuery: any, options: {
   // Apply sorting
   if (sortBy) {
     const sortColumn = sql.identifier(sortBy);
-    query = query.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));
+    query = query.orderBy(
+      sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn),
+    );
   }
 
   // Apply pagination
@@ -152,15 +157,21 @@ router.put("/api/notifications/:id/read", isAuthenticated, async (req, res) => {
   }
 });
 
-router.put("/api/notifications/mark-all-read", isAuthenticated, async (req, res) => {
-  try {
-    markAllNotificationsAsRead();
-    res.json({ success: true });
-  } catch (error) {
-    console.error("Error marking all notifications as read:", error);
-    res.status(500).json({ error: "Failed to mark all notifications as read" });
-  }
-});
+router.put(
+  "/api/notifications/mark-all-read",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      markAllNotificationsAsRead();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to mark all notifications as read" });
+    }
+  },
+);
 
 router.delete("/api/notifications/:id", isAuthenticated, async (req, res) => {
   try {
@@ -188,25 +199,35 @@ router.post("/api/notifications/test", isAuthenticated, async (req, res) => {
   }
 });
 
-router.post("/api/notifications/check-alerts", isAuthenticated, async (req, res) => {
-  try {
-    await checkLowStockAlerts();
-    await checkProductionScheduleAlerts();
-    res.json({ success: true, message: "Alert checks completed" });
-  } catch (error) {
-    console.error("Error checking alerts:", error);
-    res.status(500).json({ error: "Failed to check alerts" });
-  }
-});
+router.post(
+  "/api/notifications/check-alerts",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      await checkLowStockAlerts();
+      await checkProductionScheduleAlerts();
+      res.json({ success: true, message: "Alert checks completed" });
+    } catch (error) {
+      console.error("Error checking alerts:", error);
+      res.status(500).json({ error: "Failed to check alerts" });
+    }
+  },
+);
 
 // Enhanced table endpoints with pagination and sorting
 
 // Products with pagination and sorting
 router.get("/api/products/paginated", isAuthenticated, async (req, res) => {
   try {
-    const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = "id",
+      sortOrder = "desc",
+      search,
+    } = req.query;
 
-    const searchFields = ['name', 'sku', 'description'];
+    const searchFields = ["name", "sku", "description"];
     const offset = (Number(page) - 1) * Number(limit);
 
     let query = db.select().from(products);
@@ -214,8 +235,8 @@ router.get("/api/products/paginated", isAuthenticated, async (req, res) => {
 
     // Apply search
     if (search) {
-      const searchConditions = searchFields.map(field =>
-        like(products[field as keyof typeof products], `%${search}%`)
+      const searchConditions = searchFields.map((field) =>
+        like(products[field as keyof typeof products], `%${search}%`),
       );
       const searchWhere = or(...searchConditions);
       query = query.where(searchWhere);
@@ -225,16 +246,15 @@ router.get("/api/products/paginated", isAuthenticated, async (req, res) => {
     // Apply sorting
     const sortColumn = products[sortBy as keyof typeof products];
     if (sortColumn) {
-      query = query.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));
+      query = query.orderBy(
+        sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn),
+      );
     }
 
     // Apply pagination
     query = query.limit(Number(limit)).offset(offset);
 
-    const [data, totalResult] = await Promise.all([
-      query,
-      countQuery
-    ]);
+    const [data, totalResult] = await Promise.all([query, countQuery]);
 
     const total = totalResult[0]?.count || 0;
     const totalPages = Math.ceil(total / Number(limit));
@@ -245,8 +265,8 @@ router.get("/api/products/paginated", isAuthenticated, async (req, res) => {
         currentPage: Number(page),
         totalPages,
         totalItems: total,
-        pageSize: Number(limit)
-      }
+        pageSize: Number(limit),
+      },
     });
   } catch (error) {
     console.error("Error fetching paginated products:", error);
@@ -257,17 +277,23 @@ router.get("/api/products/paginated", isAuthenticated, async (req, res) => {
 // Customers with pagination and sorting
 router.get("/api/customers/paginated", isAuthenticated, async (req, res) => {
   try {
-    const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = "id",
+      sortOrder = "desc",
+      search,
+    } = req.query;
 
-    const searchFields = ['name', 'email', 'phone'];
+    const searchFields = ["name", "email", "phone"];
     const offset = (Number(page) - 1) * Number(limit);
 
     let query = db.select().from(customers);
     let countQuery = db.select({ count: count() }).from(customers);
 
     if (search) {
-      const searchConditions = searchFields.map(field =>
-        like(customers[field as keyof typeof customers], `%${search}%`)
+      const searchConditions = searchFields.map((field) =>
+        like(customers[field as keyof typeof customers], `%${search}%`),
       );
       const searchWhere = or(...searchConditions);
       query = query.where(searchWhere);
@@ -276,7 +302,9 @@ router.get("/api/customers/paginated", isAuthenticated, async (req, res) => {
 
     const sortColumn = customers[sortBy as keyof typeof customers];
     if (sortColumn) {
-      query = query.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));
+      query = query.orderBy(
+        sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn),
+      );
     }
 
     query = query.limit(Number(limit)).offset(offset);
@@ -290,8 +318,8 @@ router.get("/api/customers/paginated", isAuthenticated, async (req, res) => {
         currentPage: Number(page),
         totalPages: Math.ceil(total / Number(limit)),
         totalItems: total,
-        pageSize: Number(limit)
-      }
+        pageSize: Number(limit),
+      },
     });
   } catch (error) {
     console.error("Error fetching paginated customers:", error);
@@ -302,17 +330,23 @@ router.get("/api/customers/paginated", isAuthenticated, async (req, res) => {
 // Sales with pagination and sorting
 router.get("/api/sales/paginated", isAuthenticated, async (req, res) => {
   try {
-    const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = "id",
+      sortOrder = "desc",
+      search,
+    } = req.query;
 
-    const searchFields = ['customerName', 'customerEmail', 'paymentMethod'];
+    const searchFields = ["customerName", "customerEmail", "paymentMethod"];
     const offset = (Number(page) - 1) * Number(limit);
 
     let query = db.select().from(sales);
     let countQuery = db.select({ count: count() }).from(sales);
 
     if (search) {
-      const searchConditions = searchFields.map(field =>
-        like(sales[field as keyof typeof sales], `%${search}%`)
+      const searchConditions = searchFields.map((field) =>
+        like(sales[field as keyof typeof sales], `%${search}%`),
       );
       const searchWhere = or(...searchConditions);
       query = query.where(searchWhere);
@@ -321,7 +355,9 @@ router.get("/api/sales/paginated", isAuthenticated, async (req, res) => {
 
     const sortColumn = sales[sortBy as keyof typeof sales];
     if (sortColumn) {
-      query = query.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));
+      query = query.orderBy(
+        sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn),
+      );
     }
 
     query = query.limit(Number(limit)).offset(offset);
@@ -335,8 +371,8 @@ router.get("/api/sales/paginated", isAuthenticated, async (req, res) => {
         currentPage: Number(page),
         totalPages: Math.ceil(total / Number(limit)),
         totalItems: total,
-        pageSize: Number(limit)
-      }
+        pageSize: Number(limit),
+      },
     });
   } catch (error) {
     console.error("Error fetching paginated sales:", error);
@@ -347,17 +383,26 @@ router.get("/api/sales/paginated", isAuthenticated, async (req, res) => {
 // Inventory with pagination and sorting
 router.get("/api/inventory/paginated", isAuthenticated, async (req, res) => {
   try {
-    const { page = 1, limit = 10, sortBy = 'id', sortOrder = 'desc', search } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = "id",
+      sortOrder = "desc",
+      search,
+    } = req.query;
 
-    const searchFields = ['name', 'invCode', 'supplier'];
+    const searchFields = ["name", "invCode", "supplier"];
     const offset = (Number(page) - 1) * Number(limit);
 
     let query = db.select().from(inventoryItems);
     let countQuery = db.select({ count: count() }).from(inventoryItems);
 
     if (search) {
-      const searchConditions = searchFields.map(field =>
-        like(inventoryItems[field as keyof typeof inventoryItems], `%${search}%`)
+      const searchConditions = searchFields.map((field) =>
+        like(
+          inventoryItems[field as keyof typeof inventoryItems],
+          `%${search}%`,
+        ),
       );
       const searchWhere = or(...searchConditions);
       query = query.where(searchWhere);
@@ -366,7 +411,9 @@ router.get("/api/inventory/paginated", isAuthenticated, async (req, res) => {
 
     const sortColumn = inventoryItems[sortBy as keyof typeof inventoryItems];
     if (sortColumn) {
-      query = query.orderBy(sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn));
+      query = query.orderBy(
+        sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn),
+      );
     }
 
     query = query.limit(Number(limit)).offset(offset);
@@ -380,8 +427,8 @@ router.get("/api/inventory/paginated", isAuthenticated, async (req, res) => {
         currentPage: Number(page),
         totalPages: Math.ceil(total / Number(limit)),
         totalItems: total,
-        pageSize: Number(limit)
-      }
+        pageSize: Number(limit),
+      },
     });
   } catch (error) {
     console.error("Error fetching paginated inventory:", error);
@@ -396,7 +443,10 @@ router.get("/api/inventory/paginated", isAuthenticated, async (req, res) => {
 // Products
 router.get("/api/products", isAuthenticated, async (req, res) => {
   try {
-    const allProducts = await db.select().from(products).orderBy(desc(products.id));
+    const allProducts = await db
+      .select()
+      .from(products)
+      .orderBy(desc(products.id));
     res.json(allProducts);
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -407,13 +457,24 @@ router.get("/api/products", isAuthenticated, async (req, res) => {
 router.post("/api/products", isAuthenticated, async (req, res) => {
   try {
     const validatedData = insertProductSchema.parse(req.body);
-    const [newProduct] = await db.insert(products).values(validatedData).returning();
+    const [newProduct] = await db
+      .insert(products)
+      .values(validatedData)
+      .returning();
 
     // Track activity
-    await trackUserActivity(req.user.id, req.user.email, 'CREATE', 'product', newProduct.id.toString(), {
-      productName: newProduct.name,
-      price: newProduct.price,
-    }, req);
+    await trackUserActivity(
+      req.user.id,
+      req.user.email,
+      "CREATE",
+      "product",
+      newProduct.id.toString(),
+      {
+        productName: newProduct.name,
+        price: newProduct.price,
+      },
+      req,
+    );
 
     res.status(201).json(newProduct);
   } catch (error) {
@@ -439,7 +500,7 @@ router.post("/api/stock/purchase-entry", isAuthenticated, async (req, res) => {
         supplierInvoiceNumber,
         batchNumber,
         expiryDate,
-        notes
+        notes,
       } = req.body;
 
       // Get inventory item details
@@ -461,7 +522,7 @@ router.post("/api/stock/purchase-entry", isAuthenticated, async (req, res) => {
           paymentMethod: "credit", // Default for purchase entry
           status: "completed",
           invoiceNumber: supplierInvoiceNumber,
-          notes
+          notes,
         })
         .returning();
 
@@ -473,7 +534,7 @@ router.post("/api/stock/purchase-entry", isAuthenticated, async (req, res) => {
           inventoryItemId,
           quantity,
           unitPrice: unitCost,
-          totalPrice: quantity * unitCost
+          totalPrice: quantity * unitCost,
         })
         .returning();
 
@@ -490,7 +551,7 @@ router.post("/api/stock/purchase-entry", isAuthenticated, async (req, res) => {
           expiryDate: expiryDate ? new Date(expiryDate) : null,
           supplierId: null, // TODO: Link to parties table if needed
           branchId: null, // TODO: Add branch support
-          notes
+          notes,
         })
         .returning();
 
@@ -502,76 +563,78 @@ router.post("/api/stock/purchase-entry", isAuthenticated, async (req, res) => {
           and(
             eq(stockBatches.inventoryItemId, inventoryItemId),
             eq(stockBatches.isActive, true),
-            sql`${stockBatches.remainingQuantity} > 0`
-          )
+            sql`${stockBatches.remainingQuantity} > 0`,
+          ),
         );
 
       const totalValue = existingBatches.reduce(
-        (sum, batch) => sum + parseFloat(batch.remainingQuantity) * parseFloat(batch.unitCost),
-        0
+        (sum, batch) =>
+          sum +
+          parseFloat(batch.remainingQuantity) * parseFloat(batch.unitCost),
+        0,
       );
       const totalQuantity = existingBatches.reduce(
         (sum, batch) => sum + parseFloat(batch.remainingQuantity),
-        0
+        0,
       );
-      const newAverageCost = totalQuantity > 0 ? totalValue / totalQuantity : unitCost;
+      const newAverageCost =
+        totalQuantity > 0 ? totalValue / totalQuantity : unitCost;
 
       // Update inventory item with new stock levels and costs
-      const updatedCurrentStock = parseFloat(inventoryItem.currentStock) + quantity;
+      const updatedCurrentStock =
+        parseFloat(inventoryItem.currentStock) + quantity;
       await tx
         .update(inventoryItems)
         .set({
           currentStock: updatedCurrentStock.toString(),
-          purchasedQuantity: (parseFloat(inventoryItem.purchasedQuantity || "0") + quantity).toString(),
+          purchasedQuantity: (
+            parseFloat(inventoryItem.purchasedQuantity || "0") + quantity
+          ).toString(),
           costPerUnit: newAverageCost.toString(),
           lastRestocked: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(inventoryItems.id, inventoryItemId));
 
       // Record cost history
-      await tx
-        .insert(inventoryCostHistory)
-        .values({
-          inventoryItemId,
-          previousCost: parseFloat(inventoryItem.costPerUnit),
-          newCost: unitCost,
-          previousAverageCost: parseFloat(inventoryItem.costPerUnit),
-          newAverageCost,
-          changeReason: "purchase",
-          referenceId: newPurchaseItem.id,
-          referenceType: "purchase_item",
-          changedBy: req.user?.email || "system",
-          notes: `Purchase entry: ${quantity} units at $${unitCost} each`
-        });
+      await tx.insert(inventoryCostHistory).values({
+        inventoryItemId,
+        previousCost: parseFloat(inventoryItem.costPerUnit),
+        newCost: unitCost,
+        previousAverageCost: parseFloat(inventoryItem.costPerUnit),
+        newAverageCost,
+        changeReason: "purchase",
+        referenceId: newPurchaseItem.id,
+        referenceType: "purchase_item",
+        changedBy: req.user?.email || "system",
+        notes: `Purchase entry: ${quantity} units at $${unitCost} each`,
+      });
 
       // Record inventory transaction
-      await tx
-        .insert(inventoryTransactions)
-        .values({
-          inventoryItemId,
-          type: "in",
-          quantity: quantity.toString(),
-          reason: "purchase",
-          reference: `Purchase #${newPurchase.id}`,
-          createdBy: req.user?.email || "system"
-        });
+      await tx.insert(inventoryTransactions).values({
+        inventoryItemId,
+        type: "in",
+        quantity: quantity.toString(),
+        reason: "purchase",
+        reference: `Purchase #${newPurchase.id}`,
+        createdBy: req.user?.email || "system",
+      });
 
       // Track user activity
       await trackUserActivity(
         req.user.id,
         req.user.email,
-        'PURCHASE_ENTRY',
-        'stock_batch',
+        "PURCHASE_ENTRY",
+        "stock_batch",
         newStockBatch.id.toString(),
         {
           inventoryItemName: inventoryItem.name,
           quantity,
           unitCost,
           totalValue: quantity * unitCost,
-          supplierName
+          supplierName,
         },
-        req
+        req,
       );
 
       return {
@@ -579,7 +642,7 @@ router.post("/api/stock/purchase-entry", isAuthenticated, async (req, res) => {
         purchaseItem: newPurchaseItem,
         stockBatch: newStockBatch,
         updatedStock: updatedCurrentStock,
-        newAverageCost
+        newAverageCost,
       };
     } catch (error) {
       throw error;
@@ -589,181 +652,200 @@ router.post("/api/stock/purchase-entry", isAuthenticated, async (req, res) => {
   res.status(201).json({
     success: true,
     message: "Purchase entry created successfully with FIFO batch tracking",
-    data: transaction
+    data: transaction,
   });
 });
 
 // Enhanced Production Consumption with FIFO Logic
-router.post("/api/stock/production-consume", isAuthenticated, async (req, res) => {
-  const transactionResult = await db.transaction(async (tx) => {
-    try {
-      const {
-        productId,
-        productionQuantity,
-        productionScheduleId,
-        notes
-      } = req.body;
+router.post(
+  "/api/stock/production-consume",
+  isAuthenticated,
+  async (req, res) => {
+    const transactionResult = await db.transaction(async (tx) => {
+      try {
+        const { productId, productionQuantity, productionScheduleId, notes } =
+          req.body;
 
-      // Get product ingredients (BOM)
-      const ingredients = await tx
-        .select({
-          productIngredient: productIngredients,
-          inventoryItem: inventoryItems
-        })
-        .from(productIngredients)
-        .innerJoin(inventoryItems, eq(productIngredients.inventoryItemId, inventoryItems.id))
-        .where(eq(productIngredients.productId, productId));
-
-      if (ingredients.length === 0) {
-        throw new Error("No recipe/BOM found for this product");
-      }
-
-      const consumptionResults = [];
-
-      // Process each ingredient with FIFO consumption
-      for (const ingredient of ingredients) {
-        const requiredQuantity = parseFloat(ingredient.productIngredient.quantity) * productionQuantity;
-        
-        // Get available batches in FIFO order (oldest first)
-        const availableBatches = await tx
-          .select()
-          .from(stockBatches)
-          .where(
-            and(
-              eq(stockBatches.inventoryItemId, ingredient.inventoryItem.id),
-              eq(stockBatches.isActive, true),
-              sql`${stockBatches.remainingQuantity} > 0`
-            )
-          )
-          .orderBy(stockBatches.receivedDate); // FIFO order
-
-        let remainingToConsume = requiredQuantity;
-        const batchConsumptions = [];
-
-        // Allocate consumption across batches using FIFO
-        for (const batch of availableBatches) {
-          if (remainingToConsume <= 0) break;
-
-          const batchRemaining = parseFloat(batch.remainingQuantity);
-          const consumeFromBatch = Math.min(remainingToConsume, batchRemaining);
-
-          if (consumeFromBatch > 0) {
-            // Update batch remaining quantity
-            const newRemainingQuantity = batchRemaining - consumeFromBatch;
-            await tx
-              .update(stockBatches)
-              .set({
-                remainingQuantity: newRemainingQuantity.toString(),
-                updatedAt: new Date()
-              })
-              .where(eq(stockBatches.id, batch.id));
-
-            // Record batch consumption
-            const [batchConsumption] = await tx
-              .insert(stockBatchConsumptions)
-              .values({
-                stockBatchId: batch.id,
-                productionScheduleId,
-                quantityConsumed: consumeFromBatch.toString(),
-                unitCostAtConsumption: parseFloat(batch.unitCost),
-                totalCost: (consumeFromBatch * parseFloat(batch.unitCost)).toString(),
-                consumedBy: req.user?.email || "system",
-                reason: "production",
-                notes: `Production of ${productionQuantity} units`
-              })
-              .returning();
-
-            batchConsumptions.push(batchConsumption);
-            remainingToConsume -= consumeFromBatch;
-          }
-        }
-
-        // Check if we have sufficient stock
-        if (remainingToConsume > 0) {
-          throw new Error(
-            `Insufficient stock for ${ingredient.inventoryItem.name}. ` +
-            `Required: ${requiredQuantity}, Available: ${requiredQuantity - remainingToConsume}`
-          );
-        }
-
-        // Update inventory item stock levels
-        const currentStock = parseFloat(ingredient.inventoryItem.currentStock);
-        const newCurrentStock = currentStock - requiredQuantity;
-        
-        await tx
-          .update(inventoryItems)
-          .set({
-            currentStock: newCurrentStock.toString(),
-            consumedQuantity: (parseFloat(ingredient.inventoryItem.consumedQuantity || "0") + requiredQuantity).toString(),
-            lastConsumed: new Date(),
-            updatedAt: new Date()
+        // Get product ingredients (BOM)
+        const ingredients = await tx
+          .select({
+            productIngredient: productIngredients,
+            inventoryItem: inventoryItems,
           })
-          .where(eq(inventoryItems.id, ingredient.inventoryItem.id));
+          .from(productIngredients)
+          .innerJoin(
+            inventoryItems,
+            eq(productIngredients.inventoryItemId, inventoryItems.id),
+          )
+          .where(eq(productIngredients.productId, productId));
 
-        // Record inventory transaction
-        await tx
-          .insert(inventoryTransactions)
-          .values({
+        if (ingredients.length === 0) {
+          throw new Error("No recipe/BOM found for this product");
+        }
+
+        const consumptionResults = [];
+
+        // Process each ingredient with FIFO consumption
+        for (const ingredient of ingredients) {
+          const requiredQuantity =
+            parseFloat(ingredient.productIngredient.quantity) *
+            productionQuantity;
+
+          // Get available batches in FIFO order (oldest first)
+          const availableBatches = await tx
+            .select()
+            .from(stockBatches)
+            .where(
+              and(
+                eq(stockBatches.inventoryItemId, ingredient.inventoryItem.id),
+                eq(stockBatches.isActive, true),
+                sql`${stockBatches.remainingQuantity} > 0`,
+              ),
+            )
+            .orderBy(stockBatches.receivedDate); // FIFO order
+
+          let remainingToConsume = requiredQuantity;
+          const batchConsumptions = [];
+
+          // Allocate consumption across batches using FIFO
+          for (const batch of availableBatches) {
+            if (remainingToConsume <= 0) break;
+
+            const batchRemaining = parseFloat(batch.remainingQuantity);
+            const consumeFromBatch = Math.min(
+              remainingToConsume,
+              batchRemaining,
+            );
+
+            if (consumeFromBatch > 0) {
+              // Update batch remaining quantity
+              const newRemainingQuantity = batchRemaining - consumeFromBatch;
+              await tx
+                .update(stockBatches)
+                .set({
+                  remainingQuantity: newRemainingQuantity.toString(),
+                  updatedAt: new Date(),
+                })
+                .where(eq(stockBatches.id, batch.id));
+
+              // Record batch consumption
+              const [batchConsumption] = await tx
+                .insert(stockBatchConsumptions)
+                .values({
+                  stockBatchId: batch.id,
+                  productionScheduleId,
+                  quantityConsumed: consumeFromBatch.toString(),
+                  unitCostAtConsumption: parseFloat(batch.unitCost),
+                  totalCost: (
+                    consumeFromBatch * parseFloat(batch.unitCost)
+                  ).toString(),
+                  consumedBy: req.user?.email || "system",
+                  reason: "production",
+                  notes: `Production of ${productionQuantity} units`,
+                })
+                .returning();
+
+              batchConsumptions.push(batchConsumption);
+              remainingToConsume -= consumeFromBatch;
+            }
+          }
+
+          // Check if we have sufficient stock
+          if (remainingToConsume > 0) {
+            throw new Error(
+              `Insufficient stock for ${ingredient.inventoryItem.name}. ` +
+                `Required: ${requiredQuantity}, Available: ${requiredQuantity - remainingToConsume}`,
+            );
+          }
+
+          // Update inventory item stock levels
+          const currentStock = parseFloat(
+            ingredient.inventoryItem.currentStock,
+          );
+          const newCurrentStock = currentStock - requiredQuantity;
+
+          await tx
+            .update(inventoryItems)
+            .set({
+              currentStock: newCurrentStock.toString(),
+              consumedQuantity: (
+                parseFloat(ingredient.inventoryItem.consumedQuantity || "0") +
+                requiredQuantity
+              ).toString(),
+              lastConsumed: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(inventoryItems.id, ingredient.inventoryItem.id));
+
+          // Record inventory transaction
+          await tx.insert(inventoryTransactions).values({
             inventoryItemId: ingredient.inventoryItem.id,
             type: "out",
             quantity: requiredQuantity.toString(),
             reason: "production",
             reference: `Production Schedule #${productionScheduleId}`,
-            createdBy: req.user?.email || "system"
+            createdBy: req.user?.email || "system",
           });
 
-        consumptionResults.push({
-          ingredientId: ingredient.inventoryItem.id,
-          ingredientName: ingredient.inventoryItem.name,
-          quantityConsumed: requiredQuantity,
-          batchConsumptions,
-          newStockLevel: newCurrentStock
-        });
-      }
+          consumptionResults.push({
+            ingredientId: ingredient.inventoryItem.id,
+            ingredientName: ingredient.inventoryItem.name,
+            quantityConsumed: requiredQuantity,
+            batchConsumptions,
+            newStockLevel: newCurrentStock,
+          });
+        }
 
-      // Track user activity
-      await trackUserActivity(
-        req.user.id,
-        req.user.email,
-        'PRODUCTION_CONSUME',
-        'production_schedule',
-        productionScheduleId?.toString() || "manual",
-        {
+        // Track user activity
+        await trackUserActivity(
+          req.user.id,
+          req.user.email,
+          "PRODUCTION_CONSUME",
+          "production_schedule",
+          productionScheduleId?.toString() || "manual",
+          {
+            productId,
+            productionQuantity,
+            ingredientsConsumed: consumptionResults.length,
+            totalIngredientValue: consumptionResults.reduce(
+              (sum, r) =>
+                sum +
+                r.batchConsumptions.reduce(
+                  (bSum, b) => bSum + parseFloat(b.totalCost),
+                  0,
+                ),
+              0,
+            ),
+          },
+          req,
+        );
+
+        return {
           productId,
           productionQuantity,
-          ingredientsConsumed: consumptionResults.length,
-          totalIngredientValue: consumptionResults.reduce((sum, r) => 
-            sum + r.batchConsumptions.reduce((bSum, b) => bSum + parseFloat(b.totalCost), 0), 0
-          )
-        },
-        req
-      );
+          consumptionResults,
+          message: "Production consumption completed with FIFO allocation",
+        };
+      } catch (error) {
+        throw error;
+      }
+    });
 
-      return {
-        productId,
-        productionQuantity,
-        consumptionResults,
-        message: "Production consumption completed with FIFO allocation"
-      };
-    } catch (error) {
-      throw error;
-    }
-  });
-
-  res.status(200).json({
-    success: true,
-    data: transactionResult
-  });
-});
+    res.status(200).json({
+      success: true,
+      data: transactionResult,
+    });
+  },
+);
 
 // Daily Stock Snapshot Creation (Immutable)
 router.post("/api/stock/daily-snapshot", isAuthenticated, async (req, res) => {
   try {
     const { snapshotDate } = req.body;
     const targetDate = snapshotDate ? new Date(snapshotDate) : new Date();
-    
+
     // Format date as YYYY-MM-DD
-    const dateString = targetDate.toISOString().split('T')[0];
+    const dateString = targetDate.toISOString().split("T")[0];
 
     // Check if snapshot already exists for this date
     const existingSnapshot = await db
@@ -775,7 +857,7 @@ router.post("/api/stock/daily-snapshot", isAuthenticated, async (req, res) => {
     if (existingSnapshot.length > 0) {
       return res.status(400).json({
         success: false,
-        error: "Daily snapshot already exists for this date"
+        error: "Daily snapshot already exists for this date",
       });
     }
 
@@ -796,8 +878,8 @@ router.post("/api/stock/daily-snapshot", isAuthenticated, async (req, res) => {
           and(
             eq(stockBatches.inventoryItemId, item.id),
             eq(stockBatches.isActive, true),
-            sql`${stockBatches.remainingQuantity} > 0`
-          )
+            sql`${stockBatches.remainingQuantity} > 0`,
+          ),
         );
 
       // Get weighted average cost from active batches
@@ -812,21 +894,26 @@ router.post("/api/stock/daily-snapshot", isAuthenticated, async (req, res) => {
             AND ${stockBatches.isActive} = true
             ORDER BY ${stockBatches.receivedDate} DESC 
             LIMIT 1
-          )`
+          )`,
         })
         .from(stockBatches)
         .where(
           and(
             eq(stockBatches.inventoryItemId, item.id),
             eq(stockBatches.isActive, true),
-            sql`${stockBatches.remainingQuantity} > 0`
-          )
+            sql`${stockBatches.remainingQuantity} > 0`,
+          ),
         );
 
       const totalValue = parseFloat(batchCostData[0]?.totalValue || "0");
       const totalQuantity = parseFloat(batchCostData[0]?.totalQuantity || "0");
-      const averageCost = totalQuantity > 0 ? totalValue / totalQuantity : parseFloat(item.costPerUnit);
-      const lastPurchaseCost = parseFloat(batchCostData[0]?.lastPurchaseCost || item.costPerUnit);
+      const averageCost =
+        totalQuantity > 0
+          ? totalValue / totalQuantity
+          : parseFloat(item.costPerUnit);
+      const lastPurchaseCost = parseFloat(
+        batchCostData[0]?.lastPurchaseCost || item.costPerUnit,
+      );
 
       // Create immutable snapshot
       const [snapshot] = await db
@@ -846,7 +933,7 @@ router.post("/api/stock/daily-snapshot", isAuthenticated, async (req, res) => {
           activeBatches: parseInt(activeBatches[0]?.count || "0"),
           isLocked: true, // Lock immediately to prevent modifications
           capturedBy: req.user?.email || "system",
-          notes: `Daily snapshot for ${dateString}`
+          notes: `Daily snapshot for ${dateString}`,
         })
         .returning();
 
@@ -857,15 +944,18 @@ router.post("/api/stock/daily-snapshot", isAuthenticated, async (req, res) => {
     await trackUserActivity(
       req.user.id,
       req.user.email,
-      'DAILY_SNAPSHOT',
-      'daily_inventory_snapshots',
+      "DAILY_SNAPSHOT",
+      "daily_inventory_snapshots",
       dateString,
       {
         snapshotDate: dateString,
         itemsSnapshotted: snapshots.length,
-        totalValue: snapshots.reduce((sum, s) => sum + parseFloat(s.totalValue), 0)
+        totalValue: snapshots.reduce(
+          (sum, s) => sum + parseFloat(s.totalValue),
+          0,
+        ),
       },
-      req
+      req,
     );
 
     res.status(201).json({
@@ -874,53 +964,60 @@ router.post("/api/stock/daily-snapshot", isAuthenticated, async (req, res) => {
       data: {
         snapshotDate: dateString,
         itemsCount: snapshots.length,
-        snapshots: snapshots.slice(0, 5) // Return first 5 for preview
-      }
+        snapshots: snapshots.slice(0, 5), // Return first 5 for preview
+      },
     });
   } catch (error) {
     console.error("Error creating daily snapshot:", error);
     res.status(500).json({
       success: false,
       error: "Failed to create daily snapshot",
-      message: error.message
+      message: error.message,
     });
   }
 });
 
 // Get Stock Batches with FIFO Information
-router.get("/api/stock/batches/:inventoryItemId", isAuthenticated, async (req, res) => {
-  try {
-    const { inventoryItemId } = req.params;
+router.get(
+  "/api/stock/batches/:inventoryItemId",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const { inventoryItemId } = req.params;
 
-    const batches = await db
-      .select({
-        stockBatch: stockBatches,
-        purchaseItem: purchaseItems,
-        purchase: purchases
-      })
-      .from(stockBatches)
-      .leftJoin(purchaseItems, eq(stockBatches.purchaseItemId, purchaseItems.id))
-      .leftJoin(purchases, eq(purchaseItems.purchaseId, purchases.id))
-      .where(
-        and(
-          eq(stockBatches.inventoryItemId, parseInt(inventoryItemId)),
-          eq(stockBatches.isActive, true)
+      const batches = await db
+        .select({
+          stockBatch: stockBatches,
+          purchaseItem: purchaseItems,
+          purchase: purchases,
+        })
+        .from(stockBatches)
+        .leftJoin(
+          purchaseItems,
+          eq(stockBatches.purchaseItemId, purchaseItems.id),
         )
-      )
-      .orderBy(stockBatches.receivedDate); // FIFO order
+        .leftJoin(purchases, eq(purchaseItems.purchaseId, purchases.id))
+        .where(
+          and(
+            eq(stockBatches.inventoryItemId, parseInt(inventoryItemId)),
+            eq(stockBatches.isActive, true),
+          ),
+        )
+        .orderBy(stockBatches.receivedDate); // FIFO order
 
-    res.json({
-      success: true,
-      data: batches
-    });
-  } catch (error) {
-    console.error("Error fetching stock batches:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to fetch stock batches"
-    });
-  }
-});
+      res.json({
+        success: true,
+        data: batches,
+      });
+    } catch (error) {
+      console.error("Error fetching stock batches:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch stock batches",
+      });
+    }
+  },
+);
 
 // Get Real-time Stock Alerts
 router.get("/api/stock/alerts", isAuthenticated, async (req, res) => {
@@ -932,25 +1029,28 @@ router.get("/api/stock/alerts", isAuthenticated, async (req, res) => {
       .where(
         and(
           sql`${inventoryItems.currentStock}::numeric <= ${inventoryItems.minLevel}::numeric`,
-          eq(inventoryItems.isActive, true)
-        )
+          eq(inventoryItems.isActive, true),
+        ),
       );
 
     // Expiring batches (next 30 days)
     const expiringBatches = await db
       .select({
         stockBatch: stockBatches,
-        inventoryItem: inventoryItems
+        inventoryItem: inventoryItems,
       })
       .from(stockBatches)
-      .innerJoin(inventoryItems, eq(stockBatches.inventoryItemId, inventoryItems.id))
+      .innerJoin(
+        inventoryItems,
+        eq(stockBatches.inventoryItemId, inventoryItems.id),
+      )
       .where(
         and(
           eq(stockBatches.isActive, true),
           sql`${stockBatches.remainingQuantity} > 0`,
           sql`${stockBatches.expiryDate} <= CURRENT_DATE + INTERVAL '30 days'`,
-          sql`${stockBatches.expiryDate} IS NOT NULL`
-        )
+          sql`${stockBatches.expiryDate} IS NOT NULL`,
+        ),
       )
       .orderBy(stockBatches.expiryDate);
 
@@ -961,8 +1061,8 @@ router.get("/api/stock/alerts", isAuthenticated, async (req, res) => {
       .where(
         and(
           sql`${inventoryItems.currentStock}::numeric <= 0`,
-          eq(inventoryItems.isActive, true)
-        )
+          eq(inventoryItems.isActive, true),
+        ),
       );
 
     res.json({
@@ -974,44 +1074,50 @@ router.get("/api/stock/alerts", isAuthenticated, async (req, res) => {
         alertCounts: {
           lowStock: lowStockItems.length,
           expiring: expiringBatches.length,
-          zeroStock: zeroStockItems.length
-        }
-      }
+          zeroStock: zeroStockItems.length,
+        },
+      },
     });
   } catch (error) {
     console.error("Error fetching stock alerts:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to fetch stock alerts"
+      error: "Failed to fetch stock alerts",
     });
   }
 });
 
 // Get Stock Cost History
-router.get("/api/stock/cost-history/:inventoryItemId", isAuthenticated, async (req, res) => {
-  try {
-    const { inventoryItemId } = req.params;
-    const { limit = 50 } = req.query;
+router.get(
+  "/api/stock/cost-history/:inventoryItemId",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const { inventoryItemId } = req.params;
+      const { limit = 50 } = req.query;
 
-    const costHistory = await db
-      .select()
-      .from(inventoryCostHistory)
-      .where(eq(inventoryCostHistory.inventoryItemId, parseInt(inventoryItemId)))
-      .orderBy(desc(inventoryCostHistory.changeDate))
-      .limit(parseInt(limit as string));
+      const costHistory = await db
+        .select()
+        .from(inventoryCostHistory)
+        .where(
+          eq(inventoryCostHistory.inventoryItemId, parseInt(inventoryItemId)),
+        )
+        .orderBy(desc(inventoryCostHistory.changeDate))
+        .limit(parseInt(limit as string));
 
-    res.json({
-      success: true,
-      data: costHistory
-    });
-  } catch (error) {
-    console.error("Error fetching cost history:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to fetch cost history"
-    });
-  }
-});
+      res.json({
+        success: true,
+        data: costHistory,
+      });
+    } catch (error) {
+      console.error("Error fetching cost history:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch cost history",
+      });
+    }
+  },
+);
 
 // Get Daily Snapshots
 router.get("/api/stock/snapshots", isAuthenticated, async (req, res) => {
@@ -1022,13 +1128,22 @@ router.get("/api/stock/snapshots", isAuthenticated, async (req, res) => {
     const conditions = [];
 
     if (startDate) {
-      conditions.push(gte(dailyInventorySnapshots.snapshotDate, startDate as string));
+      conditions.push(
+        gte(dailyInventorySnapshots.snapshotDate, startDate as string),
+      );
     }
     if (endDate) {
-      conditions.push(lte(dailyInventorySnapshots.snapshotDate, endDate as string));
+      conditions.push(
+        lte(dailyInventorySnapshots.snapshotDate, endDate as string),
+      );
     }
     if (inventoryItemId) {
-      conditions.push(eq(dailyInventorySnapshots.inventoryItemId, parseInt(inventoryItemId as string)));
+      conditions.push(
+        eq(
+          dailyInventorySnapshots.inventoryItemId,
+          parseInt(inventoryItemId as string),
+        ),
+      );
     }
 
     if (conditions.length > 0) {
@@ -1041,13 +1156,13 @@ router.get("/api/stock/snapshots", isAuthenticated, async (req, res) => {
 
     res.json({
       success: true,
-      data: snapshots
+      data: snapshots,
     });
   } catch (error) {
     console.error("Error fetching snapshots:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to fetch snapshots"
+      error: "Failed to fetch snapshots",
     });
   }
 });
@@ -1124,7 +1239,6 @@ if (notifications.length === 0) {
     data: { orderNumber: "ORD-001", customer: "John Doe", amount: 1250 },
   });
 }
-
 
 router.post("/login", async (req, res) => {
   try {
@@ -2078,30 +2192,34 @@ router.delete("/branches/:id", isAuthenticated, async (req, res) => {
   }
 });
 
-router.post("/users/:userId/assign-branch", isAuthenticated, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { branchId } = req.body;
+router.post(
+  "/users/:userId/assign-branch",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { branchId } = req.body;
 
-    console.log("🔄 Assigning user to branch:", { userId, branchId });
-    await storage.assignUserToBranch(userId, branchId);
+      console.log("🔄 Assigning user to branch:", { userId, branchId });
+      await storage.assignUserToBranch(userId, branchId);
 
-    // Add user assignment notification
-    addNotification({
-      type: "system",
-      title: "User Branch Assignment",
-      description: `User has been assigned to a new branch`,
-      priority: "medium",
-      actionUrl: "/admin-users",
-    });
+      // Add user assignment notification
+      addNotification({
+        type: "system",
+        title: "User Branch Assignment",
+        description: `User has been assigned to a new branch`,
+        priority: "medium",
+        actionUrl: "/admin-users",
+      });
 
-    console.log("✅ User assigned to branch successfully");
-    res.json({ message: "User assigned to branch successfully" });
-  } catch (error) {
-    console.error("❌ Error assigning user to branch:", error);
-    res.status(500).json({ error: "Failed to assign user to branch" });
-  }
-});
+      console.log("✅ User assigned to branch successfully");
+      res.json({ message: "User assigned to branch successfully" });
+    } catch (error) {
+      console.error("❌ Error assigning user to branch:", error);
+      res.status(500).json({ error: "Failed to assign user to branch" });
+    }
+  },
+);
 
 router.get("/users/with-branches", isAuthenticated, async (req, res) => {
   try {
@@ -3170,11 +3288,11 @@ router.post(
         "File info:",
         req.file
           ? {
-            originalname: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            path: req.file.path,
-          }
+              originalname: req.file.originalname,
+              mimetype: req.file.mimetype,
+              size: req.file.size,
+              path: req.file.path,
+            }
           : "No file",
       );
 
@@ -3367,59 +3485,67 @@ router.delete("/attendance/:id", isAuthenticated, async (req, res) => {
 });
 
 // Clock in/out endpoints
-router.post("/attendance/clock-in/:staffId", isAuthenticated, async (req, res) => {
-  try {
-    const staffId = parseInt(req.params.staffId);
-    console.log("⏰ Clocking in staff member:", staffId);
-    const result = await storage.clockIn(staffId);
+router.post(
+  "/attendance/clock-in/:staffId",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const staffId = parseInt(req.params.staffId);
+      console.log("⏰ Clocking in staff member:", staffId);
+      const result = await storage.clockIn(staffId);
 
-    // Add clock-in notification
-    addNotification({
-      type: "system",
-      title: "Staff Clocked In",
-      description: `Staff member has clocked in`,
-      priority: "low",
-      actionUrl: "/attendance",
-    });
+      // Add clock-in notification
+      addNotification({
+        type: "system",
+        title: "Staff Clocked In",
+        description: `Staff member has clocked in`,
+        priority: "low",
+        actionUrl: "/attendance",
+      });
 
-    console.log("✅ Staff member clocked in successfully");
-    res.json(result);
-  } catch (error: any) {
-    console.error("❌ Error clocking in:", error);
-    res.status(400).json({
-      error: "Failed to clock in",
-      message: error.message,
-      success: false,
-    });
-  }
-});
+      console.log("✅ Staff member clocked in successfully");
+      res.json(result);
+    } catch (error: any) {
+      console.error("❌ Error clocking in:", error);
+      res.status(400).json({
+        error: "Failed to clock in",
+        message: error.message,
+        success: false,
+      });
+    }
+  },
+);
 
-router.post("/attendance/clock-out/:staffId", isAuthenticated, async (req, res) => {
-  try {
-    const staffId = parseInt(req.params.staffId);
-    console.log("⏰ Clocking out staff member:", staffId);
-    const result = await storage.clockOut(staffId);
+router.post(
+  "/attendance/clock-out/:staffId",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const staffId = parseInt(req.params.staffId);
+      console.log("⏰ Clocking out staff member:", staffId);
+      const result = await storage.clockOut(staffId);
 
-    // Add clock-out notification
-    addNotification({
-      type: "system",
-      title: "Staff Clocked Out",
-      description: `Staff member has clocked out`,
-      priority: "low",
-      actionUrl: "/attendance",
-    });
+      // Add clock-out notification
+      addNotification({
+        type: "system",
+        title: "Staff Clocked Out",
+        description: `Staff member has clocked out`,
+        priority: "low",
+        actionUrl: "/attendance",
+      });
 
-    console.log("✅ Staff member clocked out successfully");
-    res.json(result);
-  } catch (error: any) {
-    console.error("❌ Error clocking out:", error);
-    res.status(400).json({
-      error: "Failed to clock out",
-      message: error.message,
-      success: false,
-    });
-  }
-});
+      console.log("✅ Staff member clocked out successfully");
+      res.json(result);
+    } catch (error: any) {
+      console.error("❌ Error clocking out:", error);
+      res.status(400).json({
+        error: "Failed to clock out",
+        message: error.message,
+        success: false,
+      });
+    }
+  },
+);
 
 // Salary payments routes
 router.get("/salary-payments", async (req, res) => {
@@ -4056,10 +4182,7 @@ router.put("/sales-returns/:id", isAuthenticated, async (req, res) => {
     const salesReturnId = parseInt(req.params.id);
     console.log("💾 Updating sales return:", salesReturnId);
 
-    const result = await storage.updateSalesReturn(
-      salesReturnId,
-      req.body,
-    );
+    const result = await storage.updateSalesReturn(salesReturnId, req.body);
 
     // Log the sales return update
     if (req.session?.user) {
@@ -4253,7 +4376,11 @@ router.post("/purchase-returns", isAuthenticated, async (req, res) => {
     console.log("💾 Creating purchase return entry:", req.body);
 
     // Validate required fields
-    if (!req.body.inventoryItemId || !req.body.quantity || !req.body.ratePerUnit) {
+    if (
+      !req.body.inventoryItemId ||
+      !req.body.quantity ||
+      !req.body.ratePerUnit
+    ) {
       return res.status(400).json({
         error: "Validation failed",
         message: "Inventory item, quantity, and rate per unit are required",
@@ -4393,95 +4520,103 @@ router.get("/purchase-returns/summary/:date", async (req, res) => {
   }
 });
 
-router.post("/purchase-returns/close-day", isAuthenticated, async (req, res) => {
-  try {
-    const { date } = req.body;
-    const closedBy = req.session?.user?.id || "system";
+router.post(
+  "/purchase-returns/close-day",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const { date } = req.body;
+      const closedBy = req.session?.user?.id || "system";
 
-    console.log(`🔒 Closing purchase return day for ${date}...`);
+      console.log(`🔒 Closing purchase return day for ${date}...`);
 
-    const result = await storage.closeDayPurchaseReturn(date, closedBy);
+      const result = await storage.closeDayPurchaseReturn(date, closedBy);
 
-    // Log the day closure
-    if (req.session?.user) {
-      await storage.logUserAction(
-        req.session.user.id,
-        "UPDATE",
-        "purchase_returns",
-        {
-          action: "close_day",
-          date,
-          totalLoss: result.totalLoss,
-        },
-        req.ip,
-        req.get("User-Agent"),
-      );
+      // Log the day closure
+      if (req.session?.user) {
+        await storage.logUserAction(
+          req.session.user.id,
+          "UPDATE",
+          "purchase_returns",
+          {
+            action: "close_day",
+            date,
+            totalLoss: result.totalLoss,
+          },
+          req.ip,
+          req.get("User-Agent"),
+        );
+      }
+
+      // Add day closure notification
+      addNotification({
+        type: "system",
+        title: "Purchase Return Day Closed",
+        description: `Day closed for ${date}. Total loss: ${result.totalLoss}`,
+        priority: "medium",
+        actionUrl: "/purchase-returns",
+      });
+
+      console.log("✅ Purchase return day closed successfully");
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("❌ Error closing purchase return day:", error);
+      res.status(400).json({
+        error: "Failed to close purchase return day",
+        message: error.message,
+        success: false,
+      });
     }
+  },
+);
 
-    // Add day closure notification
-    addNotification({
-      type: "system",
-      title: "Purchase Return Day Closed",
-      description: `Day closed for ${date}. Total loss: ${result.totalLoss}`,
-      priority: "medium",
-      actionUrl: "/purchase-returns",
-    });
+router.post(
+  "/purchase-returns/reopen-day",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const { date } = req.body;
 
-    console.log("✅ Purchase return day closed successfully");
-    res.json({ success: true, data: result });
-  } catch (error: any) {
-    console.error("❌ Error closing purchase return day:", error);
-    res.status(400).json({
-      error: "Failed to close purchase return day",
-      message: error.message,
-      success: false,
-    });
-  }
-});
+      console.log(`🔓 Reopening purchase return day for ${date}...`);
 
-router.post("/purchase-returns/reopen-day", isAuthenticated, async (req, res) => {
-  try {
-    const { date } = req.body;
+      const result = await storage.reopenDayPurchaseReturn(date);
 
-    console.log(`🔓 Reopening purchase return day for ${date}...`);
+      // Log the day reopening
+      if (req.session?.user) {
+        await storage.logUserAction(
+          req.session.user.id,
+          "UPDATE",
+          "purchase_returns",
+          {
+            action: "reopen_day",
+            date,
+          },
+          req.ip,
+          req.get("User-Agent"),
+        );
+      }
 
-    const result = await storage.reopenDayPurchaseReturn(date);
+      // Add day reopening notification
+      addNotification({
+        type: "system",
+        title: "Purchase Return Day Reopened",
+        description: `Day reopened for ${date}. New entries can be added.`,
+        priority: "medium",
+        actionUrl: "/purchase-returns",
+      });
 
-    // Log the day reopening
-    if (req.session?.user) {
-      await storage.logUserAction(
-        req.session.user.id,
-        "UPDATE",
-        "purchase_returns",
-        {
-          action: "reopen_day",
-          date,
-        },
-        req.ip,
-        req.get("User-Agent"),
-      );
+      console.log("✅ Purchase return day reopened successfully");
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("❌ Error reopening purchase return day:", error);
+      res.status(400).json({
+        error: "Failed to reopen purchase return day",
+        message: error.message,
+        success: false,
+      });
     }
-
-    // Add day reopening notification
-    addNotification({
-      type: "system",
-      title: "Purchase Return Day Reopened",
-      description: `Day reopened for ${date}. New entries can be added.`,
-      priority: "medium",
-      actionUrl: "/purchase-returns",
-    });
-
-    console.log("✅ Purchase return day reopened successfully");
-    res.json({ success: true, data: result });
-  } catch (error: any) {
-    console.error("❌ Error reopening purchase return day:", error);
-    res.status(400).json({
-      error: "Failed to reopen purchase return day",
-      message: error.message,
-      success: false,
-    });
-  }
-});
+  },
+);
 
 // Ledger Transaction Routes
 router.post("/ledger", isAuthenticated, async (req, res) => {
@@ -4511,7 +4646,7 @@ router.post("/ledger", isAuthenticated, async (req, res) => {
 });
 
 router.get("/ledger/customer/:id", async (req, res) => {
- try {
+  try {
     const customerId = parseInt(req.params.id);
     console.log("📊 Fetching customer ledger:", customerId);
     const result = await storage.getLedgerTransactions(customerId, "customer");
