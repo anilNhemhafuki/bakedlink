@@ -345,13 +345,9 @@ export default function AdminUserManagement() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Shield className="h-8 w-8" />
-            System Administration
-          </h1>
           <p className="text-muted-foreground">
             Manage users, permissions, and monitor system activities
           </p>

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -82,7 +81,8 @@ function BranchManagement() {
   });
 
   const createBranchMutation = useMutation({
-    mutationFn: (data: InsertBranch) => apiRequest("POST", "/api/branches", data),
+    mutationFn: (data: InsertBranch) =>
+      apiRequest("POST", "/api/branches", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/branches"] });
       setIsDialogOpen(false);
@@ -212,13 +212,9 @@ function BranchManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Building2 className="h-8 w-8" />
-            Branch Management
-          </h1>
           <p className="text-muted-foreground">
             Manage company branches and locations
           </p>
@@ -261,7 +257,10 @@ function BranchManagement() {
                         id="branchCode"
                         value={branchData.branchCode}
                         onChange={(e) =>
-                          setBranchData({ ...branchData, branchCode: e.target.value })
+                          setBranchData({
+                            ...branchData,
+                            branchCode: e.target.value,
+                          })
                         }
                         placeholder="BR001"
                         required
@@ -287,7 +286,10 @@ function BranchManagement() {
                       id="address"
                       value={branchData.address}
                       onChange={(e) =>
-                        setBranchData({ ...branchData, address: e.target.value })
+                        setBranchData({
+                          ...branchData,
+                          address: e.target.value,
+                        })
                       }
                       placeholder="Enter branch address"
                       rows={2}
@@ -301,7 +303,10 @@ function BranchManagement() {
                         id="phone"
                         value={branchData.phone}
                         onChange={(e) =>
-                          setBranchData({ ...branchData, phone: e.target.value })
+                          setBranchData({
+                            ...branchData,
+                            phone: e.target.value,
+                          })
                         }
                         placeholder="+977-1-4567890"
                       />
@@ -313,7 +318,10 @@ function BranchManagement() {
                         type="email"
                         value={branchData.email}
                         onChange={(e) =>
-                          setBranchData({ ...branchData, email: e.target.value })
+                          setBranchData({
+                            ...branchData,
+                            email: e.target.value,
+                          })
                         }
                         placeholder="branch@company.com"
                       />
@@ -326,7 +334,10 @@ function BranchManagement() {
                       id="managerName"
                       value={branchData.managerName}
                       onChange={(e) =>
-                        setBranchData({ ...branchData, managerName: e.target.value })
+                        setBranchData({
+                          ...branchData,
+                          managerName: e.target.value,
+                        })
                       }
                       placeholder="Branch Manager"
                     />
@@ -366,14 +377,16 @@ function BranchManagement() {
                   <Button
                     type="submit"
                     disabled={
-                      createBranchMutation.isPending || updateBranchMutation.isPending
+                      createBranchMutation.isPending ||
+                      updateBranchMutation.isPending
                     }
                   >
-                    {createBranchMutation.isPending || updateBranchMutation.isPending
+                    {createBranchMutation.isPending ||
+                    updateBranchMutation.isPending
                       ? "Saving..."
                       : editingBranch
-                      ? "Update"
-                      : "Create"}
+                        ? "Update"
+                        : "Create"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -405,7 +418,9 @@ function BranchManagement() {
             <TableBody>
               {branches.map((branch) => (
                 <TableRow key={branch.id}>
-                  <TableCell className="font-mono">{branch.branchCode}</TableCell>
+                  <TableCell className="font-mono">
+                    {branch.branchCode}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {branch.isHeadOffice && (
@@ -454,9 +469,7 @@ function BranchManagement() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={branch.isActive ? "default" : "secondary"}
-                    >
+                    <Badge variant={branch.isActive ? "default" : "secondary"}>
                       {branch.isActive ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>

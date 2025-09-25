@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +20,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Calendar, Download, Filter, Search, Eye, Activity, Users, AlertTriangle, CheckCircle } from "lucide-react";
+import {
+  Shield,
+  Calendar,
+  Download,
+  Filter,
+  Search,
+  Eye,
+  Activity,
+  Users,
+  AlertTriangle,
+  CheckCircle,
+} from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import {
@@ -44,20 +54,29 @@ export default function AuditLogs() {
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [dateFilter, setDateFilter] = useState({
     startDate: "",
-    endDate: ""
+    endDate: "",
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["/api/audit-logs", page, limit, actionFilter, resourceFilter, statusFilter, dateFilter.startDate, dateFilter.endDate],
+    queryKey: [
+      "/api/audit-logs",
+      page,
+      limit,
+      actionFilter,
+      resourceFilter,
+      statusFilter,
+      dateFilter.startDate,
+      dateFilter.endDate,
+    ],
     queryFn: () => {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
-        ...(actionFilter !== 'all' && { action: actionFilter }),
-        ...(resourceFilter !== 'all' && { resource: resourceFilter }),
-        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(actionFilter !== "all" && { action: actionFilter }),
+        ...(resourceFilter !== "all" && { resource: resourceFilter }),
+        ...(statusFilter !== "all" && { status: statusFilter }),
         ...(dateFilter.startDate && { startDate: dateFilter.startDate }),
-        ...(dateFilter.endDate && { endDate: dateFilter.endDate })
+        ...(dateFilter.endDate && { endDate: dateFilter.endDate }),
       });
       return apiRequest(`/api/audit-logs?${params.toString()}`, "GET");
     },
@@ -89,23 +108,27 @@ export default function AuditLogs() {
       VIEW: "bg-teal-100 text-teal-800 border-teal-200",
     };
 
-    const actionClass = colors[action as keyof typeof colors] || "bg-gray-100 text-gray-800 border-gray-200";
-    
+    const actionClass =
+      colors[action as keyof typeof colors] ||
+      "bg-gray-100 text-gray-800 border-gray-200";
+
     return (
-      <Badge className={`${actionClass} font-medium border`}>
-        {action}
-      </Badge>
+      <Badge className={`${actionClass} font-medium border`}>{action}</Badge>
     );
   };
 
   const getStatusBadge = (status: string) => {
     const isSuccess = status === "success";
     return (
-      <Badge 
+      <Badge
         variant={isSuccess ? "default" : "destructive"}
-        className={`flex items-center gap-1 ${isSuccess ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}`}
+        className={`flex items-center gap-1 ${isSuccess ? "bg-green-100 text-green-800 border-green-200" : "bg-red-100 text-red-800 border-red-200"}`}
       >
-        {isSuccess ? <CheckCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+        {isSuccess ? (
+          <CheckCircle className="h-3 w-3" />
+        ) : (
+          <AlertTriangle className="h-3 w-3" />
+        )}
         {isSuccess ? "Success" : "Failed"}
       </Badge>
     );
@@ -129,39 +152,43 @@ export default function AuditLogs() {
       parties: "🤝",
       attendance: "📅",
       salary: "💵",
-      leave_requests: "🏖️"
+      leave_requests: "🏖️",
     };
     return icons[resource] || "📄";
   };
 
-  const filteredLogs = auditLogs.filter((log: any) =>
-    searchTerm === "" || 
-    log.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.resource.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (log.resourceId && log.resourceId.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredLogs = auditLogs.filter(
+    (log: any) =>
+      searchTerm === "" ||
+      log.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.resource.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.resourceId &&
+        log.resourceId.toLowerCase().includes(searchTerm.toLowerCase())),
   );
 
   const { sortedData, sortConfig, requestSort } = useTableSort(
     filteredLogs,
-    "timestamp"
+    "timestamp",
   );
 
   const exportLogs = async () => {
     try {
       const response = await apiRequest("/api/audit-logs/export", "GET");
-      const blob = new Blob([JSON.stringify(response, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(response, null, 2)], {
+        type: "application/json",
+      });
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
+      const a = document.createElement("a");
+      a.style.display = "none";
       a.href = url;
-      a.download = `audit-logs-${format(new Date(), 'yyyy-MM-dd')}.json`;
+      a.download = `audit-logs-${format(new Date(), "yyyy-MM-dd")}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Failed to export logs:', error);
+      console.error("Failed to export logs:", error);
     }
   };
 
@@ -170,10 +197,6 @@ export default function AuditLogs() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Activity className="h-8 w-8 text-primary" />
-            System Audit Logs
-          </h1>
           <p className="text-muted-foreground">
             Complete activity trail for security monitoring and compliance
           </p>
@@ -192,8 +215,12 @@ export default function AuditLogs() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-2xl font-bold text-blue-600">{analytics.totalActions}</div>
-                    <p className="text-sm text-muted-foreground">Total Activities</p>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {analytics.totalActions}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Total Activities
+                    </p>
                   </div>
                   <Activity className="h-8 w-8 text-blue-500" />
                 </div>
@@ -206,7 +233,9 @@ export default function AuditLogs() {
                     <div className="text-2xl font-bold text-green-600">
                       {Object.keys(analytics.actionsByUser || {}).length}
                     </div>
-                    <p className="text-sm text-muted-foreground">Active Users</p>
+                    <p className="text-sm text-muted-foreground">
+                      Active Users
+                    </p>
                   </div>
                   <Users className="h-8 w-8 text-green-500" />
                 </div>
@@ -219,7 +248,9 @@ export default function AuditLogs() {
                     <div className="text-2xl font-bold text-purple-600">
                       {analytics.actionsByType?.CREATE || 0}
                     </div>
-                    <p className="text-sm text-muted-foreground">Items Created</p>
+                    <p className="text-sm text-muted-foreground">
+                      Items Created
+                    </p>
                   </div>
                   <CheckCircle className="h-8 w-8 text-purple-500" />
                 </div>
@@ -232,7 +263,9 @@ export default function AuditLogs() {
                     <div className="text-2xl font-bold text-orange-600">
                       {analytics.actionsByType?.UPDATE || 0}
                     </div>
-                    <p className="text-sm text-muted-foreground">Items Modified</p>
+                    <p className="text-sm text-muted-foreground">
+                      Items Modified
+                    </p>
                   </div>
                   <Shield className="h-8 w-8 text-orange-500" />
                 </div>
@@ -359,13 +392,23 @@ export default function AuditLogs() {
                 <Input
                   type="date"
                   value={dateFilter.startDate}
-                  onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
+                  onChange={(e) =>
+                    setDateFilter((prev) => ({
+                      ...prev,
+                      startDate: e.target.value,
+                    }))
+                  }
                   className="text-xs"
                 />
                 <Input
                   type="date"
                   value={dateFilter.endDate}
-                  onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
+                  onChange={(e) =>
+                    setDateFilter((prev) => ({
+                      ...prev,
+                      endDate: e.target.value,
+                    }))
+                  }
                   className="text-xs"
                 />
               </div>
@@ -383,7 +426,9 @@ export default function AuditLogs() {
           {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading audit logs...</p>
+              <p className="text-muted-foreground mt-2">
+                Loading audit logs...
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -439,28 +484,41 @@ export default function AuditLogs() {
                   {sortedData.map((log: any) => (
                     <TableRow key={log.id} className="hover:bg-gray-50">
                       <TableCell className="font-mono text-sm">
-                        {format(new Date(log.timestamp), "MMM dd, yyyy HH:mm:ss")}
+                        {format(
+                          new Date(log.timestamp),
+                          "MMM dd, yyyy HH:mm:ss",
+                        )}
                       </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">{log.userName}</div>
-                          <div className="text-sm text-muted-foreground">{log.userEmail}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {log.userEmail}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>{getActionBadge(log.action)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">{getResourceIcon(log.resource)}</span>
+                          <span className="text-lg">
+                            {getResourceIcon(log.resource)}
+                          </span>
                           <div>
-                            <div className="font-medium capitalize">{log.resource.replace('_', ' ')}</div>
+                            <div className="font-medium capitalize">
+                              {log.resource.replace("_", " ")}
+                            </div>
                             {log.resourceId && (
-                              <div className="text-sm text-muted-foreground font-mono">ID: {log.resourceId}</div>
+                              <div className="text-sm text-muted-foreground font-mono">
+                                ID: {log.resourceId}
+                              </div>
                             )}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(log.status)}</TableCell>
-                      <TableCell className="font-mono text-sm">{log.ipAddress}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {log.ipAddress}
+                      </TableCell>
                       <TableCell>
                         <Dialog>
                           <DialogTrigger asChild>
@@ -484,66 +542,114 @@ export default function AuditLogs() {
                               <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                   <div>
-                                    <Label className="font-semibold">User</Label>
-                                    <p className="text-sm mt-1">{selectedLog.userName} ({selectedLog.userEmail})</p>
+                                    <Label className="font-semibold">
+                                      User
+                                    </Label>
+                                    <p className="text-sm mt-1">
+                                      {selectedLog.userName} (
+                                      {selectedLog.userEmail})
+                                    </p>
                                   </div>
                                   <div>
-                                    <Label className="font-semibold">Action</Label>
-                                    <div className="mt-1">{getActionBadge(selectedLog.action)}</div>
-                                  </div>
-                                  <div>
-                                    <Label className="font-semibold">Resource</Label>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-lg">{getResourceIcon(selectedLog.resource)}</span>
-                                      <span className="text-sm capitalize">{selectedLog.resource.replace('_', ' ')}</span>
+                                    <Label className="font-semibold">
+                                      Action
+                                    </Label>
+                                    <div className="mt-1">
+                                      {getActionBadge(selectedLog.action)}
                                     </div>
                                   </div>
                                   <div>
-                                    <Label className="font-semibold">Status</Label>
-                                    <div className="mt-1">{getStatusBadge(selectedLog.status)}</div>
+                                    <Label className="font-semibold">
+                                      Resource
+                                    </Label>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-lg">
+                                        {getResourceIcon(selectedLog.resource)}
+                                      </span>
+                                      <span className="text-sm capitalize">
+                                        {selectedLog.resource.replace("_", " ")}
+                                      </span>
+                                    </div>
                                   </div>
                                   <div>
-                                    <Label className="font-semibold">IP Address</Label>
-                                    <p className="text-sm mt-1 font-mono">{selectedLog.ipAddress}</p>
+                                    <Label className="font-semibold">
+                                      Status
+                                    </Label>
+                                    <div className="mt-1">
+                                      {getStatusBadge(selectedLog.status)}
+                                    </div>
                                   </div>
                                   <div>
-                                    <Label className="font-semibold">Timestamp</Label>
+                                    <Label className="font-semibold">
+                                      IP Address
+                                    </Label>
                                     <p className="text-sm mt-1 font-mono">
-                                      {format(new Date(selectedLog.timestamp), "PPpp")}
+                                      {selectedLog.ipAddress}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <Label className="font-semibold">
+                                      Timestamp
+                                    </Label>
+                                    <p className="text-sm mt-1 font-mono">
+                                      {format(
+                                        new Date(selectedLog.timestamp),
+                                        "PPpp",
+                                      )}
                                     </p>
                                   </div>
                                 </div>
 
                                 {selectedLog.details && (
                                   <div>
-                                    <Label className="font-semibold">Request Details</Label>
+                                    <Label className="font-semibold">
+                                      Request Details
+                                    </Label>
                                     <pre className="text-xs bg-gray-50 p-3 rounded-lg overflow-x-auto mt-2 border">
-                                      {JSON.stringify(selectedLog.details, null, 2)}
+                                      {JSON.stringify(
+                                        selectedLog.details,
+                                        null,
+                                        2,
+                                      )}
                                     </pre>
                                   </div>
                                 )}
 
                                 {selectedLog.oldValues && (
                                   <div>
-                                    <Label className="font-semibold">Previous Values</Label>
+                                    <Label className="font-semibold">
+                                      Previous Values
+                                    </Label>
                                     <pre className="text-xs bg-red-50 p-3 rounded-lg overflow-x-auto mt-2 border border-red-200">
-                                      {JSON.stringify(selectedLog.oldValues, null, 2)}
+                                      {JSON.stringify(
+                                        selectedLog.oldValues,
+                                        null,
+                                        2,
+                                      )}
                                     </pre>
                                   </div>
                                 )}
 
                                 {selectedLog.newValues && (
                                   <div>
-                                    <Label className="font-semibold">New Values</Label>
+                                    <Label className="font-semibold">
+                                      New Values
+                                    </Label>
                                     <pre className="text-xs bg-green-50 p-3 rounded-lg overflow-x-auto mt-2 border border-green-200">
-                                      {JSON.stringify(selectedLog.newValues, null, 2)}
+                                      {JSON.stringify(
+                                        selectedLog.newValues,
+                                        null,
+                                        2,
+                                      )}
                                     </pre>
                                   </div>
                                 )}
 
                                 {selectedLog.errorMessage && (
                                   <div>
-                                    <Label className="font-semibold text-red-600">Error Message</Label>
+                                    <Label className="font-semibold text-red-600">
+                                      Error Message
+                                    </Label>
                                     <div className="text-sm bg-red-50 p-3 rounded-lg mt-2 border border-red-200 text-red-800">
                                       {selectedLog.errorMessage}
                                     </div>
@@ -565,9 +671,9 @@ export default function AuditLogs() {
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-6 pt-4 border-t">
               <div className="text-sm text-muted-foreground">
-                Showing {((pagination.page - 1) * pagination.limit) + 1} to{" "}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-                {pagination.total} entries
+                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total} entries
               </div>
               <div className="flex gap-2">
                 <Button
@@ -600,8 +706,10 @@ export default function AuditLogs() {
                 No audit logs found
               </h3>
               <p className="text-muted-foreground">
-                {searchTerm || actionFilter !== 'all' || resourceFilter !== 'all' 
-                  ? "Try adjusting your filters" 
+                {searchTerm ||
+                actionFilter !== "all" ||
+                resourceFilter !== "all"
+                  ? "Try adjusting your filters"
                   : "System activities will appear here"}
               </p>
             </div>

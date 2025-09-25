@@ -8,9 +8,7 @@ export default function PerformanceMetrics() {
     <ProtectedRoute resource="performance" action="read">
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3">
-          <Zap className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">Performance Metrics</h1>
             <p className="text-muted-foreground">
               Detailed performance analytics and optimization insights
             </p>

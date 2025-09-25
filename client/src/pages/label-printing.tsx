@@ -661,7 +661,6 @@ export default function LabelPrinting() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Barcode & Label Management</h1>
           <p className="text-gray-600 mt-1">Generate barcodes, print labels, and manage bulk printing</p>
         </div>
         <div className="flex gap-2">

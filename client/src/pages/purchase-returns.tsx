@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -83,7 +82,9 @@ export default function PurchaseReturns() {
     format(new Date(), "yyyy-MM-dd"),
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingReturn, setEditingReturn] = useState<PurchaseReturn | null>(null);
+  const [editingReturn, setEditingReturn] = useState<PurchaseReturn | null>(
+    null,
+  );
   const [formData, setFormData] = useState({
     inventoryItemId: "",
     quantity: "",
@@ -140,9 +141,9 @@ export default function PurchaseReturns() {
         const allUnits = res?.data || res || [];
         return allUnits.filter(
           (unit: any) =>
-            unit.type === "weight" || 
-            unit.type === "count" || 
-            unit.type === "volume"
+            unit.type === "weight" ||
+            unit.type === "count" ||
+            unit.type === "volume",
         );
       } catch (error) {
         console.error("Failed to fetch units:", error);
@@ -201,11 +202,7 @@ export default function PurchaseReturns() {
     toast({ title: "Success", description: msg });
   };
 
-  const handleError = (
-    error: unknown,
-    variables: any,
-    context: unknown,
-  ) => {
+  const handleError = (error: unknown, variables: any, context: unknown) => {
     console.error("Mutation error:", error);
 
     let message = "Failed to process request.";
@@ -238,7 +235,8 @@ export default function PurchaseReturns() {
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/purchase-returns", data),
+    mutationFn: (data: any) =>
+      apiRequest("POST", "/api/purchase-returns", data),
     onSuccess: () => {
       handleSuccess("Purchase return entry created successfully");
     },
@@ -385,9 +383,6 @@ export default function PurchaseReturns() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2 text-gray-800">
-            📦 Purchase Returns
-          </h1>
           <p className="text-gray-600 mt-1">
             {format(new Date(selectedDate), "EEEE, MMMM do, yyyy")}
           </p>
@@ -424,7 +419,10 @@ export default function PurchaseReturns() {
                       <Select
                         value={formData.inventoryItemId}
                         onValueChange={(val) =>
-                          setFormData((prev) => ({ ...prev, inventoryItemId: val }))
+                          setFormData((prev) => ({
+                            ...prev,
+                            inventoryItemId: val,
+                          }))
                         }
                         disabled={inventoryLoading}
                       >
@@ -433,7 +431,10 @@ export default function PurchaseReturns() {
                         </SelectTrigger>
                         <SelectContent>
                           {inventoryItems.map((item) => (
-                            <SelectItem key={item.id} value={item.id.toString()}>
+                            <SelectItem
+                              key={item.id}
+                              value={item.id.toString()}
+                            >
                               {item.name}
                             </SelectItem>
                           ))}
@@ -501,7 +502,10 @@ export default function PurchaseReturns() {
                       <Select
                         value={formData.returnReason}
                         onValueChange={(val) =>
-                          setFormData((prev) => ({ ...prev, returnReason: val }))
+                          setFormData((prev) => ({
+                            ...prev,
+                            returnReason: val,
+                          }))
                         }
                       >
                         <SelectTrigger>
@@ -511,7 +515,9 @@ export default function PurchaseReturns() {
                           <SelectItem value="damaged">Damaged</SelectItem>
                           <SelectItem value="expired">Expired</SelectItem>
                           <SelectItem value="wrong_item">Wrong Item</SelectItem>
-                          <SelectItem value="quality_issue">Quality Issue</SelectItem>
+                          <SelectItem value="quality_issue">
+                            Quality Issue
+                          </SelectItem>
                           <SelectItem value="overorder">Over Order</SelectItem>
                         </SelectContent>
                       </Select>
@@ -529,11 +535,15 @@ export default function PurchaseReturns() {
                           <SelectValue placeholder="Select supplier" />
                         </SelectTrigger>
                         <SelectContent>
-                          {parties.filter(p => p.type === 'supplier' || p.type === 'both').map((p) => (
-                            <SelectItem key={p.id} value={p.id.toString()}>
-                              {p.name}
-                            </SelectItem>
-                          ))}
+                          {parties
+                            .filter(
+                              (p) => p.type === "supplier" || p.type === "both",
+                            )
+                            .map((p) => (
+                              <SelectItem key={p.id} value={p.id.toString()}>
+                                {p.name}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -769,8 +779,8 @@ export default function PurchaseReturns() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Reopen Day?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will allow adding or editing purchase return entries
-                        again.
+                        This will allow adding or editing purchase return
+                        entries again.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -842,7 +852,7 @@ export default function PurchaseReturns() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {item.returnReason.replace('_', ' ')}
+                        {item.returnReason.replace("_", " ")}
                       </Badge>
                     </TableCell>
                     <TableCell>{item.notes || "—"}</TableCell>

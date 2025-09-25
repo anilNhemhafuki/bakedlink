@@ -37,7 +37,11 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 import { format } from "date-fns";
-import { DataTable, DataTableColumn, DataTableAction } from "@/components/ui/data-table";
+import {
+  DataTable,
+  DataTableColumn,
+  DataTableAction,
+} from "@/components/ui/data-table";
 
 interface Customer {
   id: number;
@@ -60,9 +64,12 @@ export default function Customers() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
-    key: 'id',
-    direction: 'desc'
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: "asc" | "desc";
+  } | null>({
+    key: "id",
+    direction: "desc",
   });
   const { toast } = useToast();
   const { symbol, formatCurrency } = useCurrency();
@@ -81,15 +88,28 @@ export default function Customers() {
   });
 
   // Fetch customers with pagination
-  const { data: customersResponse, isLoading, error, refetch } = useQuery({
-    queryKey: ["/api/customers/paginated", currentPage, pageSize, sortConfig?.key, sortConfig?.direction, searchQuery],
-    queryFn: () => apiRequest("GET", "/api/customers/paginated", {
-      page: currentPage,
-      limit: pageSize,
-      sortBy: sortConfig?.key || 'id',
-      sortOrder: sortConfig?.direction || 'desc',
-      search: searchQuery || undefined
-    }),
+  const {
+    data: customersResponse,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      "/api/customers/paginated",
+      currentPage,
+      pageSize,
+      sortConfig?.key,
+      sortConfig?.direction,
+      searchQuery,
+    ],
+    queryFn: () =>
+      apiRequest("GET", "/api/customers/paginated", {
+        page: currentPage,
+        limit: pageSize,
+        sortBy: sortConfig?.key || "id",
+        sortOrder: sortConfig?.direction || "desc",
+        search: searchQuery || undefined,
+      }),
     keepPreviousData: true,
   });
 
@@ -98,7 +118,7 @@ export default function Customers() {
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    pageSize: 10
+    pageSize: 10,
   };
 
   // Create/Update customer mutation
@@ -113,7 +133,11 @@ export default function Customers() {
       };
 
       if (editingCustomer) {
-        await apiRequest("PUT", `/api/customers/${editingCustomer.id}`, transformedData);
+        await apiRequest(
+          "PUT",
+          `/api/customers/${editingCustomer.id}`,
+          transformedData,
+        );
       } else {
         await apiRequest("POST", "/api/customers", transformedData);
       }
@@ -224,17 +248,18 @@ export default function Customers() {
   };
 
   const handleSort = (key: string) => {
-    setSortConfig(prev => ({
+    setSortConfig((prev) => ({
       key,
-      direction: prev?.key === key && prev?.direction === 'asc' ? 'desc' : 'asc'
+      direction:
+        prev?.key === key && prev?.direction === "asc" ? "desc" : "asc",
     }));
   };
 
   // Define table columns
   const columns: DataTableColumn<Customer>[] = [
     {
-      key: 'name',
-      title: 'Customer Name',
+      key: "name",
+      title: "Customer Name",
       sortable: true,
       render: (value, row) => (
         <div>
@@ -249,8 +274,8 @@ export default function Customers() {
       ),
     },
     {
-      key: 'currentBalance',
-      title: 'Current Balance',
+      key: "currentBalance",
+      title: "Current Balance",
       sortable: true,
       render: (value) => (
         <Badge variant={value >= 0 ? "default" : "destructive"}>
@@ -259,19 +284,19 @@ export default function Customers() {
       ),
     },
     {
-      key: 'totalOrders',
-      title: 'Total Orders',
+      key: "totalOrders",
+      title: "Total Orders",
       sortable: true,
     },
     {
-      key: 'totalSpent',
-      title: 'Total Spent',
+      key: "totalSpent",
+      title: "Total Spent",
       sortable: true,
       render: (value) => formatCurrency(value),
     },
     {
-      key: 'isActive',
-      title: 'Status',
+      key: "isActive",
+      title: "Status",
       sortable: true,
       render: (value) => (
         <Badge variant={value ? "default" : "secondary"}>
@@ -280,8 +305,8 @@ export default function Customers() {
       ),
     },
     {
-      key: 'createdAt',
-      title: 'Created',
+      key: "createdAt",
+      title: "Created",
       sortable: true,
       render: (value) => format(new Date(value), "MMM dd, yyyy"),
     },
@@ -317,10 +342,6 @@ export default function Customers() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8" />
-            Customer Management
-          </h1>
           <p className="text-muted-foreground">
             Manage your customer information and relationships
           </p>
@@ -342,7 +363,8 @@ export default function Customers() {
         onExportClick={() => {
           toast({
             title: "Export",
-            description: "Customer export functionality will be implemented soon",
+            description:
+              "Customer export functionality will be implemented soon",
           });
         }}
         refreshable
@@ -431,7 +453,9 @@ export default function Customers() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="openingBalance">Opening Balance ({symbol})</Label>
+                    <Label htmlFor="openingBalance">
+                      Opening Balance ({symbol})
+                    </Label>
                     <Input
                       id="openingBalance"
                       type="number"
@@ -447,7 +471,9 @@ export default function Customers() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="currentBalance">Current Balance ({symbol})</Label>
+                    <Label htmlFor="currentBalance">
+                      Current Balance ({symbol})
+                    </Label>
                     <Input
                       id="currentBalance"
                       type="number"
@@ -476,10 +502,17 @@ export default function Customers() {
                 </div>
 
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button type="button" variant="outline" onClick={handleCloseDialog}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCloseDialog}
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createUpdateMutation.isPending}>
+                  <Button
+                    type="submit"
+                    disabled={createUpdateMutation.isPending}
+                  >
                     {createUpdateMutation.isPending && (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     )}

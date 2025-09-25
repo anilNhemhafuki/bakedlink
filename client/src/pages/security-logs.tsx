@@ -9,9 +9,7 @@ export default function SecurityLogs() {
     <ProtectedRoute resource="security" action="read">
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3">
-          <Shield className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">Security Logs</h1>
             <p className="text-muted-foreground">
               Monitor security events and potential threats
             </p>

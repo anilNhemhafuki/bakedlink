@@ -246,7 +246,7 @@ function BillingContent() {
                 <tr>
                   <td>${item.productName}</td>
                   <td>${item.quantity}</td>
-                  <td>${item.unit || 'N/A'}</td>
+                  <td>${item.unit || "N/A"}</td>
                   <td>$${item.unitPrice.toFixed(2)}</td>
                   <td>$${(item.quantity * item.unitPrice).toFixed(2)}</td>
                 </tr>
@@ -285,7 +285,6 @@ function BillingContent() {
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Billing & Invoices</h1>
           <p className="text-gray-600">Create and manage customer bills</p>
         </div>
         <Dialog
@@ -387,8 +386,12 @@ function BillingContent() {
                     />
                     <div className="text-sm text-gray-600 w-16 flex items-center">
                       {(() => {
-                        const product = products.find((p: any) => p.id.toString() === item.productId);
-                        return product?.unitAbbreviation || product?.unit || "N/A";
+                        const product = products.find(
+                          (p: any) => p.id.toString() === item.productId,
+                        );
+                        return (
+                          product?.unitAbbreviation || product?.unit || "N/A"
+                        );
                       })()}
                     </div>
                     <Input

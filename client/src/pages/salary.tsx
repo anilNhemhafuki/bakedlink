@@ -265,9 +265,12 @@ export default function SalaryPayments() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const filteredPayments = (Array.isArray(salaryPayments) ? salaryPayments : []).filter((payment: any) =>
-    payment.staffName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    payment.staffPosition?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredPayments = (
+    Array.isArray(salaryPayments) ? salaryPayments : []
+  ).filter(
+    (payment: any) =>
+      payment.staffName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.staffPosition?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const { sortedData, sortConfig, requestSort } = useTableSort(
@@ -280,10 +283,6 @@ export default function SalaryPayments() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <DollarSign className="h-8 w-8" />
-            Salary Payments
-          </h1>
           <p className="text-muted-foreground">
             Manage staff salary payments and payroll
           </p>
@@ -571,7 +570,10 @@ export default function SalaryPayments() {
             className="w-full"
           />
         </div>
-        <Select value={selectedStaff || undefined} onValueChange={setSelectedStaff}>
+        <Select
+          value={selectedStaff || undefined}
+          onValueChange={setSelectedStaff}
+        >
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Filter by staff" />
           </SelectTrigger>

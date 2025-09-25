@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Database, Table, Activity, HardDrive } from "lucide-react";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -8,9 +7,7 @@ export default function DatabaseManager() {
     <ProtectedRoute resource="database" action="read_write">
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3">
-          <Database className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">Database Manager</h1>
             <p className="text-muted-foreground">
               Monitor and manage database operations
             </p>
@@ -40,7 +37,9 @@ export default function DatabaseManager() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">5</div>
-              <p className="text-sm text-muted-foreground">Active connections</p>
+              <p className="text-sm text-muted-foreground">
+                Active connections
+              </p>
             </CardContent>
           </Card>
 

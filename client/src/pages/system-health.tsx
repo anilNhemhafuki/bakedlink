@@ -9,9 +9,7 @@ export default function SystemHealth() {
     <ProtectedRoute resource="monitoring" action="read">
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3">
-          <Heart className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">System Health</h1>
             <p className="text-muted-foreground">
               Monitor system performance and health metrics
             </p>

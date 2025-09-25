@@ -42,7 +42,11 @@ interface HeaderProps {
   onToggleCollapse?: () => void;
 }
 
-export default function Header({ onMenuClick, isCollapsed = false, onToggleCollapse }: HeaderProps) {
+export default function Header({
+  onMenuClick,
+  isCollapsed = false,
+  onToggleCollapse,
+}: HeaderProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { branding } = useCompanyBranding();
@@ -87,7 +91,7 @@ export default function Header({ onMenuClick, isCollapsed = false, onToggleColla
 
   const getPageTitle = () => {
     const pathTitles: Record<string, string> = {
-      "/": "Bakery Dashboard",
+      "/": "Dashboard",
       "/products": "Products Management",
       "/inventory": "Inventory Management",
       "/stock": "Stock & Ingredients",
@@ -117,9 +121,28 @@ export default function Header({ onMenuClick, isCollapsed = false, onToggleColla
       "/leave-requests": "Leave Requests",
       "/recipes": "Recipe Management",
       "/branches": "Branch Management",
+      "/label-printing": "Label Printing",
+      "/purchase-returns": "Purchase Returns",
+      "/sales-returns": "Sales Returns",
+      "/security-logs": "Security Logs",
+      "/system-config": "System Configuration",
+      "/system-health": "System Health",
+      "/database": "Database Manager",
+      "/api-docs": "API Documentation",
+      "/monitoring": "System Monitoring",
+      "/performance": "Performance Metrics",
+      "/expire-products": "Expired Products",
+      "/landing": "Landing Page",
+      "/not-found": "Page Not Found",
+      "/login-logs": "Login Logs", // if you have a direct route
+      "/api-docs": "API Documentation",
+      "/expire-products": "Expired Products",
+      "/landing": "Landing Page",
+      "/not-found": "Page Not Found",
+      "/login-logs": "Login Logs", // if you have a direct route
     };
 
-    return pathTitles[location] || "Bakery Dashboard";
+    return pathTitles[location] || "Dashboard";
   };
 
   return (
@@ -137,7 +160,7 @@ export default function Header({ onMenuClick, isCollapsed = false, onToggleColla
           >
             <Menu className="h-5 w-5" />
           </Button>
-          
+
           {/* Desktop Sidebar Collapse/Expand Toggle */}
           <Button
             variant="ghost"
@@ -148,12 +171,12 @@ export default function Header({ onMenuClick, isCollapsed = false, onToggleColla
             data-testid="button-toggle-sidebar-desktop"
           >
             {isCollapsed ? (
-              <ChevronsRight className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             ) : (
-              <ChevronsLeft className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             )}
           </Button>
-          
+
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               {getPageTitle()}

@@ -313,7 +313,6 @@ export default function Units() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold">Units of Measurement</h2>
           <p className="text-gray-600">
             Manage units for inventory and products
           </p>
@@ -506,6 +505,7 @@ export default function Units() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="text-blue-800"
                                 onClick={() => {
                                   setEditingUnit(unit);
                                   setIsDialogOpen(true);
@@ -519,6 +519,7 @@ export default function Units() {
                                   unit.isActive ? "destructive" : "default"
                                 }
                                 size="sm"
+                                className="bg-red-600 text-white"
                                 onClick={() =>
                                   toggleActiveMutation.mutate({
                                     id: unit.id,
@@ -535,7 +536,7 @@ export default function Units() {
                                     size="sm"
                                     title="Delete"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-4 w-4 text-red-800" />
                                   </Button>
                                 }
                                 title="Delete Unit"

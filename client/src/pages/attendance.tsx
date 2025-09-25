@@ -62,8 +62,8 @@ export default function AttendanceManagement() {
     const endOfWeek = new Date(today);
     endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
 
-    setStartDate(startOfWeek.toISOString().split('T')[0]);
-    setEndDate(endOfWeek.toISOString().split('T')[0]);
+    setStartDate(startOfWeek.toISOString().split("T")[0]);
+    setEndDate(endOfWeek.toISOString().split("T")[0]);
   }, []);
 
   const { data: staff = [] } = useQuery({
@@ -74,11 +74,15 @@ export default function AttendanceManagement() {
     queryKey: ["/api/attendance", selectedStaff, startDate, endDate],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (selectedStaff && selectedStaff !== "all") params.append('staffId', selectedStaff);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
+      if (selectedStaff && selectedStaff !== "all")
+        params.append("staffId", selectedStaff);
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
 
-      const result = await apiRequest("GET", `/api/attendance?${params.toString()}`);
+      const result = await apiRequest(
+        "GET",
+        `/api/attendance?${params.toString()}`,
+      );
       return Array.isArray(result) ? result : [];
     },
   });
@@ -212,11 +216,17 @@ export default function AttendanceManagement() {
     const date = new Date(record.date);
     setFormData({
       staffId: record.staffId?.toString() || "",
-      date: format(date, 'yyyy-MM-dd'),
-      clockIn: record.clockIn ? format(new Date(record.clockIn), 'HH:mm') : "",
-      clockOut: record.clockOut ? format(new Date(record.clockOut), 'HH:mm') : "",
-      breakStart: record.breakStart ? format(new Date(record.breakStart), 'HH:mm') : "",
-      breakEnd: record.breakEnd ? format(new Date(record.breakEnd), 'HH:mm') : "",
+      date: format(date, "yyyy-MM-dd"),
+      clockIn: record.clockIn ? format(new Date(record.clockIn), "HH:mm") : "",
+      clockOut: record.clockOut
+        ? format(new Date(record.clockOut), "HH:mm")
+        : "",
+      breakStart: record.breakStart
+        ? format(new Date(record.breakStart), "HH:mm")
+        : "",
+      breakEnd: record.breakEnd
+        ? format(new Date(record.breakEnd), "HH:mm")
+        : "",
       status: record.status || "present",
       notes: record.notes || "",
     });
@@ -224,7 +234,9 @@ export default function AttendanceManagement() {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this attendance record?")) {
+    if (
+      window.confirm("Are you sure you want to delete this attendance record?")
+    ) {
       deleteMutation.mutate(id);
     }
   };
@@ -247,30 +259,33 @@ export default function AttendanceManagement() {
       vacation: { variant: "outline" as const, label: "Vacation" },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.present;
+    const config =
+      statusConfig[status as keyof typeof statusConfig] || statusConfig.present;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const filteredAttendance = (Array.isArray(attendance) ? attendance : []).filter((record: any) =>
-    record.staffName?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredAttendance = (
+    Array.isArray(attendance) ? attendance : []
+  ).filter((record: any) =>
+    record.staffName?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const todaysAttendance = (Array.isArray(attendance) ? attendance : []).filter((record: any) => {
-    const recordDate = new Date(record.date);
-    const today = new Date();
-    return recordDate.toDateString() === today.toDateString();
-  });
+  const todaysAttendance = (Array.isArray(attendance) ? attendance : []).filter(
+    (record: any) => {
+      const recordDate = new Date(record.date);
+      const today = new Date();
+      return recordDate.toDateString() === today.toDateString();
+    },
+  );
 
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Clock className="h-8 w-8" />
-            Attendance Management
-          </h1>
-          <p className="text-muted-foreground">Track staff attendance and working hours</p>
+          <p className="text-muted-foreground">
+            Track staff attendance and working hours
+          </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -282,7 +297,9 @@ export default function AttendanceManagement() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {editingRecord ? "Edit Attendance Record" : "Add Attendance Record"}
+                {editingRecord
+                  ? "Edit Attendance Record"
+                  : "Add Attendance Record"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -290,7 +307,9 @@ export default function AttendanceManagement() {
                 <Label htmlFor="staffId">Staff Member *</Label>
                 <Select
                   value={formData.staffId}
-                  onValueChange={(value) => setFormData({ ...formData, staffId: value })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, staffId: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select staff member" />
@@ -311,7 +330,9 @@ export default function AttendanceManagement() {
                   id="date"
                   type="date"
                   value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, date: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -323,7 +344,9 @@ export default function AttendanceManagement() {
                     id="clockIn"
                     type="time"
                     value={formData.clockIn}
-                    onChange={(e) => setFormData({ ...formData, clockIn: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, clockIn: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -332,7 +355,9 @@ export default function AttendanceManagement() {
                     id="clockOut"
                     type="time"
                     value={formData.clockOut}
-                    onChange={(e) => setFormData({ ...formData, clockOut: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, clockOut: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -344,7 +369,9 @@ export default function AttendanceManagement() {
                     id="breakStart"
                     type="time"
                     value={formData.breakStart}
-                    onChange={(e) => setFormData({ ...formData, breakStart: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, breakStart: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -353,7 +380,9 @@ export default function AttendanceManagement() {
                     id="breakEnd"
                     type="time"
                     value={formData.breakEnd}
-                    onChange={(e) => setFormData({ ...formData, breakEnd: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, breakEnd: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -362,7 +391,9 @@ export default function AttendanceManagement() {
                 <Label htmlFor="status">Status</Label>
                 <Select
                   value={formData.status}
-                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, status: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -383,7 +414,9 @@ export default function AttendanceManagement() {
                 <Textarea
                   id="notes"
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
                   placeholder="Optional notes"
                 />
               </div>
@@ -398,13 +431,15 @@ export default function AttendanceManagement() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? "Saving..."
                     : editingRecord
-                    ? "Update"
-                    : "Create"}
+                      ? "Update"
+                      : "Create"}
                 </Button>
               </div>
             </form>
@@ -423,11 +458,17 @@ export default function AttendanceManagement() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {staff.map((member: any) => {
-              const todayRecord = todaysAttendance.find((record: any) => record.staffId === member.id);
+              const todayRecord = todaysAttendance.find(
+                (record: any) => record.staffId === member.id,
+              );
               return (
                 <div key={member.id} className="border rounded-lg p-4">
-                  <div className="font-medium">{member.firstName} {member.lastName}</div>
-                  <div className="text-sm text-muted-foreground">{member.position}</div>
+                  <div className="font-medium">
+                    {member.firstName} {member.lastName}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {member.position}
+                  </div>
                   <div className="mt-2 space-x-2">
                     {!todayRecord || !todayRecord.clockIn ? (
                       <Button
@@ -452,8 +493,10 @@ export default function AttendanceManagement() {
                   </div>
                   {todayRecord && (
                     <div className="text-xs text-muted-foreground mt-1">
-                      {todayRecord.clockIn && `In: ${format(new Date(todayRecord.clockIn), 'HH:mm')}`}
-                      {todayRecord.clockOut && ` Out: ${format(new Date(todayRecord.clockOut), 'HH:mm')}`}
+                      {todayRecord.clockIn &&
+                        `In: ${format(new Date(todayRecord.clockIn), "HH:mm")}`}
+                      {todayRecord.clockOut &&
+                        ` Out: ${format(new Date(todayRecord.clockOut), "HH:mm")}`}
                     </div>
                   )}
                 </div>
@@ -525,7 +568,9 @@ export default function AttendanceManagement() {
           {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading attendance...</p>
+              <p className="text-muted-foreground mt-2">
+                Loading attendance...
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -546,29 +591,40 @@ export default function AttendanceManagement() {
                   {filteredAttendance.map((record: any) => (
                     <TableRow key={record.id}>
                       <TableCell>
-                        {format(new Date(record.date), 'MMM dd, yyyy')}
+                        {format(new Date(record.date), "MMM dd, yyyy")}
                       </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">{record.staffName}</div>
-                          <div className="text-sm text-muted-foreground">{record.staffPosition}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {record.staffPosition}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        {record.clockIn ? format(new Date(record.clockIn), 'HH:mm') : '-'}
+                        {record.clockIn
+                          ? format(new Date(record.clockIn), "HH:mm")
+                          : "-"}
                       </TableCell>
                       <TableCell>
-                        {record.clockOut ? format(new Date(record.clockOut), 'HH:mm') : '-'}
+                        {record.clockOut
+                          ? format(new Date(record.clockOut), "HH:mm")
+                          : "-"}
                       </TableCell>
                       <TableCell>
                         {record.breakStart && record.breakEnd ? (
                           <div className="text-sm">
-                            {format(new Date(record.breakStart), 'HH:mm')} - {format(new Date(record.breakEnd), 'HH:mm')}
+                            {format(new Date(record.breakStart), "HH:mm")} -{" "}
+                            {format(new Date(record.breakEnd), "HH:mm")}
                           </div>
-                        ) : '-'}
+                        ) : (
+                          "-"
+                        )}
                       </TableCell>
                       <TableCell>
-                        {record.totalHours ? `${parseFloat(record.totalHours).toFixed(2)}h` : '-'}
+                        {record.totalHours
+                          ? `${parseFloat(record.totalHours).toFixed(2)}h`
+                          : "-"}
                       </TableCell>
                       <TableCell>{getStatusBadge(record.status)}</TableCell>
                       <TableCell>

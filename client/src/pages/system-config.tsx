@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Settings, Database, Server, Shield } from "lucide-react";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -8,9 +7,7 @@ export default function SystemConfig() {
     <ProtectedRoute resource="system" action="read_write">
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3">
-          <Settings className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">System Configuration</h1>
             <p className="text-muted-foreground">
               Manage system-wide settings and configurations
             </p>

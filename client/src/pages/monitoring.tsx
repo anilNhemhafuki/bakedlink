@@ -8,9 +8,7 @@ export default function SystemMonitoring() {
     <ProtectedRoute resource="monitoring" action="read">
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3">
-          <Monitor className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">System Monitoring</h1>
             <p className="text-muted-foreground">
               Real-time system monitoring and analytics
             </p>

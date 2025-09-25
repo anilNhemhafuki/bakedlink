@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +40,18 @@ import {
   PageSizeSelector,
   usePagination,
 } from "@/components/ui/pagination";
-import { Plus, Search, Edit, Trash2, Clock, Check, Target, Printer, AlertCircle, Calendar } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Clock,
+  Check,
+  Target,
+  Printer,
+  AlertCircle,
+  Calendar,
+} from "lucide-react";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
 
 interface ProductionItem {
@@ -67,7 +77,8 @@ interface ProductionItem {
 
 export default function Production() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingProduction, setEditingProduction] = useState<ProductionItem | null>(null);
+  const [editingProduction, setEditingProduction] =
+    useState<ProductionItem | null>(null);
   const [selectedProductId, setSelectedProductId] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedShift, setSelectedShift] = useState("Morning");
@@ -116,7 +127,7 @@ export default function Production() {
   const { data: productionHistory = [] } = useQuery({
     queryKey: ["production-schedule-history", historyDateFilter],
     queryFn: async () => {
-      const url = historyDateFilter 
+      const url = historyDateFilter
         ? `/api/production-schedule-history?date=${historyDateFilter}`
         : "/api/production-schedule-history";
       const res = await apiRequest("GET", url);
@@ -233,10 +244,13 @@ export default function Production() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["production-schedule"] });
-      queryClient.invalidateQueries({ queryKey: ["production-schedule-history"] });
+      queryClient.invalidateQueries({
+        queryKey: ["production-schedule-history"],
+      });
       toast({
         title: "Success",
-        description: "Production day closed successfully. All items moved to history.",
+        description:
+          "Production day closed successfully. All items moved to history.",
       });
     },
     onError: (error: any) => {
@@ -264,7 +278,7 @@ export default function Production() {
       };
 
       // Create a new window for printing
-      const printWindow = window.open('', '_blank');
+      const printWindow = window.open("", "_blank");
       if (printWindow) {
         printWindow.document.write(`
           <html>
@@ -282,12 +296,12 @@ export default function Production() {
             <body>
               <div class="label">
                 <h2>${labelData.productName}</h2>
-                <p><strong>Product Code:</strong> ${labelData.productCode || 'N/A'}</p>
-                <p class="batch"><strong>Batch No:</strong> ${labelData.batchNo || 'N/A'}</p>
+                <p><strong>Product Code:</strong> ${labelData.productCode || "N/A"}</p>
+                <p class="batch"><strong>Batch No:</strong> ${labelData.batchNo || "N/A"}</p>
                 <p><strong>Quantity:</strong> ${labelData.totalQuantity} ${labelData.unitType}</p>
-                ${labelData.actualQuantityPackets ? `<p><strong>Packets:</strong> ${labelData.actualQuantityPackets}</p>` : ''}
+                ${labelData.actualQuantityPackets ? `<p><strong>Packets:</strong> ${labelData.actualQuantityPackets}</p>` : ""}
                 <p><strong>Production Date:</strong> ${new Date(labelData.productionDate).toLocaleDateString()}</p>
-                <p><strong>Assigned To:</strong> ${labelData.assignedTo || 'N/A'}</p>
+                <p><strong>Assigned To:</strong> ${labelData.assignedTo || "N/A"}</p>
               </div>
             </body>
           </html>
@@ -326,7 +340,9 @@ export default function Production() {
     const productCode = formData.get("productCode") as string;
     const batchNo = formData.get("batchNo") as string;
     const unitType = formData.get("unitType") as string;
-    const actualQuantityPackets = formData.get("actualQuantityPackets") as string;
+    const actualQuantityPackets = formData.get(
+      "actualQuantityPackets",
+    ) as string;
     const plannedBy = formData.get("plannedBy") as string;
     const approvedBy = formData.get("approvedBy") as string;
 
@@ -350,7 +366,9 @@ export default function Production() {
       batchNo: batchNo || null,
       totalQuantity,
       unitType: unitType || "kg",
-      actualQuantityPackets: actualQuantityPackets ? parseFloat(actualQuantityPackets) : null,
+      actualQuantityPackets: actualQuantityPackets
+        ? parseFloat(actualQuantityPackets)
+        : null,
       priority: selectedPriority,
       productionStartTime: productionStartTime || null,
       productionEndTime: productionEndTime || null,
@@ -371,7 +389,11 @@ export default function Production() {
   };
 
   const handleCloseDay = () => {
-    if (window.confirm("Are you sure you want to close the day? This will move all current production items to history and clear the current schedule.")) {
+    if (
+      window.confirm(
+        "Are you sure you want to close the day? This will move all current production items to history and clear the current schedule.",
+      )
+    ) {
       closeDayMutation.mutate();
     }
   };
@@ -420,11 +442,13 @@ export default function Production() {
 
   // Calculate totals
   const totalPlanned = productionSchedule.reduce(
-    (sum: number, item: any) => sum + (item.totalQuantity || item.quantity || 0),
+    (sum: number, item: any) =>
+      sum + (item.totalQuantity || item.quantity || 0),
     0,
   );
   const totalActual = productionSchedule.reduce(
-    (sum: number, item: any) => sum + (item.actualQuantityPackets || item.actualQuantity || 0),
+    (sum: number, item: any) =>
+      sum + (item.actualQuantityPackets || item.actualQuantity || 0),
     0,
   );
 
@@ -464,7 +488,6 @@ export default function Production() {
       {/* Header with Statistics */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Production Schedule</h2>
           <p className="text-gray-600">
             Plan and track your production activities
           </p>
@@ -531,7 +554,9 @@ export default function Production() {
                   <h3 className="font-semibold mb-3">Schedule Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Schedule Date *</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Schedule Date *
+                      </label>
                       <Input
                         name="scheduleDate"
                         type="date"
@@ -543,8 +568,13 @@ export default function Production() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Shift</label>
-                      <Select value={selectedShift} onValueChange={setSelectedShift}>
+                      <label className="block text-sm font-medium mb-1">
+                        Shift
+                      </label>
+                      <Select
+                        value={selectedShift}
+                        onValueChange={setSelectedShift}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select Shift" />
                         </SelectTrigger>
@@ -556,7 +586,9 @@ export default function Production() {
                       </Select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Planned By</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Planned By
+                      </label>
                       <Input
                         name="plannedBy"
                         placeholder="Name of planner/supervisor"
@@ -564,7 +596,9 @@ export default function Production() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Approved By</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Approved By
+                      </label>
                       <Input
                         name="approvedBy"
                         placeholder="Manager approval"
@@ -572,15 +606,22 @@ export default function Production() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Status *</label>
-                      <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                      <label className="block text-sm font-medium mb-1">
+                        Status *
+                      </label>
+                      <Select
+                        value={selectedStatus}
+                        onValueChange={setSelectedStatus}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select Status" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="draft">Draft</SelectItem>
                           <SelectItem value="scheduled">Scheduled</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="in_progress">
+                            In Progress
+                          </SelectItem>
                           <SelectItem value="completed">Completed</SelectItem>
                           <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>
@@ -594,8 +635,13 @@ export default function Production() {
                   <h3 className="font-semibold mb-3">Product Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Product *</label>
-                      <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+                      <label className="block text-sm font-medium mb-1">
+                        Product *
+                      </label>
+                      <Select
+                        value={selectedProductId}
+                        onValueChange={setSelectedProductId}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select Product" />
                         </SelectTrigger>
@@ -612,7 +658,9 @@ export default function Production() {
                       </Select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Product Code/SKU</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Product Code/SKU
+                      </label>
                       <Input
                         name="productCode"
                         placeholder="Product code or SKU"
@@ -620,7 +668,9 @@ export default function Production() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Batch No</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Batch No
+                      </label>
                       <Input
                         name="batchNo"
                         placeholder="Batch number"
@@ -628,8 +678,13 @@ export default function Production() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Priority</label>
-                      <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+                      <label className="block text-sm font-medium mb-1">
+                        Priority
+                      </label>
+                      <Select
+                        value={selectedPriority}
+                        onValueChange={setSelectedPriority}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select Priority" />
                         </SelectTrigger>
@@ -648,7 +703,9 @@ export default function Production() {
                   <h3 className="font-semibold mb-3">Quantity Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Total Quantity *</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Total Quantity *
+                      </label>
                       <Input
                         name="totalQuantity"
                         type="number"
@@ -659,7 +716,9 @@ export default function Production() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Unit</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Unit
+                      </label>
                       <Input
                         name="unitType"
                         placeholder="kg, packets, etc."
@@ -667,13 +726,17 @@ export default function Production() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Actual Quantity (Packets)</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Actual Quantity (Packets)
+                      </label>
                       <Input
                         name="actualQuantityPackets"
                         type="number"
                         step="0.01"
                         placeholder="Actual quantity in packets"
-                        defaultValue={editingProduction?.actualQuantityPackets || ""}
+                        defaultValue={
+                          editingProduction?.actualQuantityPackets || ""
+                        }
                       />
                     </div>
                   </div>
@@ -684,19 +747,27 @@ export default function Production() {
                   <h3 className="font-semibold mb-3">Production Timing</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Production Start Time</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Production Start Time
+                      </label>
                       <Input
                         name="productionStartTime"
                         type="datetime-local"
-                        defaultValue={editingProduction?.productionStartTime || ""}
+                        defaultValue={
+                          editingProduction?.productionStartTime || ""
+                        }
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Production End Time</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Production End Time
+                      </label>
                       <Input
                         name="productionEndTime"
                         type="datetime-local"
-                        defaultValue={editingProduction?.productionEndTime || ""}
+                        defaultValue={
+                          editingProduction?.productionEndTime || ""
+                        }
                       />
                     </div>
                   </div>
@@ -705,7 +776,9 @@ export default function Production() {
                 {/* Assignment and Notes */}
                 <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Assigned To</label>
+                    <label className="block text-sm font-medium mb-1">
+                      Assigned To
+                    </label>
                     <Input
                       name="assignedTo"
                       placeholder="Assign to team member"
@@ -713,7 +786,9 @@ export default function Production() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Notes</label>
+                    <label className="block text-sm font-medium mb-1">
+                      Notes
+                    </label>
                     <Textarea
                       name="notes"
                       placeholder="Additional notes"
@@ -752,14 +827,16 @@ export default function Production() {
         </div>
       </div>
 
-      {/* Search, Filter and History Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <SearchBar
-          placeholder="Search by product name, code, batch no, or notes..."
-          value={searchQuery}
-          onChange={setSearchQuery}
-        />
-        <div className="flex gap-2">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <SearchBar
+            placeholder="Search by product name, code, batch no, or notes..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+        </div>
+        <div className="w-full sm:w-48">
           {showHistory && (
             <Input
               type="date"
@@ -883,9 +960,16 @@ export default function Production() {
                           <Badge variant="outline">{item.shift}</Badge>
                         </TableCell>
                         <TableCell>
-                          {item.productionStartTime && item.productionEndTime ? (
+                          {item.productionStartTime &&
+                          item.productionEndTime ? (
                             <span className="text-sm">
-                              {new Date(item.productionStartTime).toLocaleTimeString()} - {new Date(item.productionEndTime).toLocaleTimeString()}
+                              {new Date(
+                                item.productionStartTime,
+                              ).toLocaleTimeString()}{" "}
+                              -{" "}
+                              {new Date(
+                                item.productionEndTime,
+                              ).toLocaleTimeString()}
                             </span>
                           ) : (
                             <span className="text-gray-400">—</span>
@@ -918,13 +1002,19 @@ export default function Production() {
                                 </Button>
                                 <DeleteConfirmationDialog
                                   trigger={
-                                    <Button variant="ghost" size="sm" title="Delete">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      title="Delete"
+                                    >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   }
                                   title="Delete Production Item"
                                   itemName={`production for ${item.productName}`}
-                                  onConfirm={() => deleteMutation.mutate(item.id)}
+                                  onConfirm={() =>
+                                    deleteMutation.mutate(item.id)
+                                  }
                                   isLoading={deleteMutation.isPending}
                                 />
                               </>
@@ -948,13 +1038,14 @@ export default function Production() {
                       <TableCell colSpan={12} className="text-center py-8">
                         <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                          {showHistory ? "No production history found" : "No production items found"}
+                          {showHistory
+                            ? "No production history found"
+                            : "No production items found"}
                         </h3>
                         <p className="text-muted-foreground mb-4">
-                          {showHistory 
+                          {showHistory
                             ? "No production history available for the selected filters."
-                            : "Schedule your first production item to get started."
-                          }
+                            : "Schedule your first production item to get started."}
                         </p>
                       </TableCell>
                     </TableRow>

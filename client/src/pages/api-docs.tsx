@@ -8,9 +8,7 @@ export default function ApiDocs() {
     <ProtectedRoute resource="api" action="read">
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3">
-          <Code className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">API Documentation</h1>
             <p className="text-muted-foreground">
               Complete API reference and developer documentation
             </p>

@@ -35,7 +35,11 @@ import { useTableSort } from "@/hooks/useTableSort";
 import { SortableTableHeader } from "@/components/ui/sortable-table-header";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
-import { Pagination, PaginationInfo, PageSizeSelector } from "@/components/ui/pagination";
+import {
+  Pagination,
+  PaginationInfo,
+  PageSizeSelector,
+} from "@/components/ui/pagination";
 
 export default function StaffDirectory() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -76,7 +80,11 @@ export default function StaffDirectory() {
     error,
   } = useQuery({
     queryKey: ["/api/staff", currentPage, pageSize, searchQuery],
-    queryFn: () => apiRequest("GET", `/api/staff?page=${currentPage}&limit=${pageSize}&search=${encodeURIComponent(searchQuery)}`),
+    queryFn: () =>
+      apiRequest(
+        "GET",
+        `/api/staff?page=${currentPage}&limit=${pageSize}&search=${encodeURIComponent(searchQuery)}`,
+      ),
   });
 
   const staff = staffData?.items || [];
@@ -154,7 +162,15 @@ export default function StaffDirectory() {
   });
 
   const uploadDocumentMutation = useMutation({
-    mutationFn: async ({ file, documentType, staffId }: { file: File; documentType: string; staffId: string }) => {
+    mutationFn: async ({
+      file,
+      documentType,
+      staffId,
+    }: {
+      file: File;
+      documentType: string;
+      staffId: string;
+    }) => {
       const formData = new FormData();
       formData.append("document", file);
       formData.append("documentType", documentType);
@@ -295,7 +311,7 @@ export default function StaffDirectory() {
 
   const handleFileUpload = async (file: File, documentType: string) => {
     const staffId = formData.staffId || `temp_${Date.now()}`;
-    
+
     try {
       const result = await uploadDocumentMutation.mutateAsync({
         file,
@@ -304,13 +320,16 @@ export default function StaffDirectory() {
       });
 
       // Update form data with the uploaded file URL
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [documentType === 'profile_photo' ? 'profilePhoto' : 
-         documentType === 'identity_card' ? 'identityCardUrl' : 'agreementPaperUrl']: result.url
+        [documentType === "profile_photo"
+          ? "profilePhoto"
+          : documentType === "identity_card"
+            ? "identityCardUrl"
+            : "agreementPaperUrl"]: result.url,
       }));
     } catch (error) {
-      console.error('File upload failed:', error);
+      console.error("File upload failed:", error);
     }
   };
 
@@ -349,10 +368,6 @@ export default function StaffDirectory() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8" />
-            Staff Directory
-          </h1>
           <p className="text-muted-foreground">
             Manage your bakery staff members
           </p>
@@ -611,7 +626,10 @@ export default function StaffDirectory() {
                     id="citizenshipNumber"
                     value={formData.citizenshipNumber}
                     onChange={(e) =>
-                      setFormData({ ...formData, citizenshipNumber: e.target.value })
+                      setFormData({
+                        ...formData,
+                        citizenshipNumber: e.target.value,
+                      })
                     }
                     placeholder="Citizenship number"
                   />
@@ -638,7 +656,7 @@ export default function StaffDirectory() {
                       accept="image/*"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, 'profile_photo');
+                        if (file) handleFileUpload(file, "profile_photo");
                       }}
                     />
                     {formData.profilePhoto && (
@@ -648,14 +666,16 @@ export default function StaffDirectory() {
                 </div>
 
                 <div>
-                  <Label htmlFor="identityCard">Identity Card (Image/PDF)</Label>
+                  <Label htmlFor="identityCard">
+                    Identity Card (Image/PDF)
+                  </Label>
                   <div className="flex items-center space-x-2">
                     <Input
                       type="file"
                       accept="image/*,application/pdf"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, 'identity_card');
+                        if (file) handleFileUpload(file, "identity_card");
                       }}
                     />
                     {formData.identityCardUrl && (
@@ -665,14 +685,16 @@ export default function StaffDirectory() {
                 </div>
 
                 <div>
-                  <Label htmlFor="agreementPaper">Agreement Paper (Image/PDF)</Label>
+                  <Label htmlFor="agreementPaper">
+                    Agreement Paper (Image/PDF)
+                  </Label>
                   <div className="flex items-center space-x-2">
                     <Input
                       type="file"
                       accept="image/*,application/pdf"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, 'agreement_paper');
+                        if (file) handleFileUpload(file, "agreement_paper");
                       }}
                     />
                     {formData.agreementPaperUrl && (
@@ -738,8 +760,8 @@ export default function StaffDirectory() {
           <div className="flex items-center justify-between">
             <CardTitle>Staff Members</CardTitle>
             <div className="flex items-center space-x-4">
-              <PageSizeSelector 
-                pageSize={pageSize} 
+              <PageSizeSelector
+                pageSize={pageSize}
                 onPageSizeChange={handlePageSizeChange}
                 options={[5, 10, 20, 50]}
               />
@@ -824,8 +846,8 @@ export default function StaffDirectory() {
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           {member.profilePhoto && (
-                            <img 
-                              src={member.profilePhoto} 
+                            <img
+                              src={member.profilePhoto}
                               alt="Profile"
                               className="w-8 h-8 rounded-full object-cover"
                             />
@@ -876,13 +898,19 @@ export default function StaffDirectory() {
                       <TableCell>
                         <div className="flex space-x-1">
                           {member.identityCardUrl && (
-                            <Badge variant="outline" className="text-xs">ID</Badge>
+                            <Badge variant="outline" className="text-xs">
+                              ID
+                            </Badge>
                           )}
                           {member.agreementPaperUrl && (
-                            <Badge variant="outline" className="text-xs">Agreement</Badge>
+                            <Badge variant="outline" className="text-xs">
+                              Agreement
+                            </Badge>
                           )}
                           {member.profilePhoto && (
-                            <Badge variant="outline" className="text-xs">Photo</Badge>
+                            <Badge variant="outline" className="text-xs">
+                              Photo
+                            </Badge>
                           )}
                         </div>
                       </TableCell>
@@ -914,7 +942,7 @@ export default function StaffDirectory() {
               </Table>
             </div>
           )}
-          
+
           {!isLoading && totalPages > 1 && (
             <div className="mt-4 flex justify-center">
               <Pagination

@@ -17,7 +17,11 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
-import { DataTable, DataTableColumn, DataTableAction } from "@/components/ui/data-table";
+import {
+  DataTable,
+  DataTableColumn,
+  DataTableAction,
+} from "@/components/ui/data-table";
 
 interface Product {
   id: number;
@@ -41,23 +45,39 @@ export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
-    key: 'id',
-    direction: 'desc'
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: "asc" | "desc";
+  } | null>({
+    key: "id",
+    direction: "desc",
   });
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
   // Fetch products with pagination
-  const { data: productsResponse, isLoading, error, refetch } = useQuery({
-    queryKey: ["/api/products/paginated", currentPage, pageSize, sortConfig?.key, sortConfig?.direction, searchQuery],
-    queryFn: () => apiRequest("GET", "/api/products/paginated", {
-      page: currentPage,
-      limit: pageSize,
-      sortBy: sortConfig?.key || 'id',
-      sortOrder: sortConfig?.direction || 'desc',
-      search: searchQuery || undefined
-    }),
+  const {
+    data: productsResponse,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      "/api/products/paginated",
+      currentPage,
+      pageSize,
+      sortConfig?.key,
+      sortConfig?.direction,
+      searchQuery,
+    ],
+    queryFn: () =>
+      apiRequest("GET", "/api/products/paginated", {
+        page: currentPage,
+        limit: pageSize,
+        sortBy: sortConfig?.key || "id",
+        sortOrder: sortConfig?.direction || "desc",
+        search: searchQuery || undefined,
+      }),
     keepPreviousData: true,
   });
 
@@ -66,7 +86,7 @@ export default function Products() {
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    pageSize: 10
+    pageSize: 10,
   };
 
   const deleteMutation = useMutation({
@@ -115,17 +135,18 @@ export default function Products() {
   };
 
   const handleSort = (key: string) => {
-    setSortConfig(prev => ({
+    setSortConfig((prev) => ({
       key,
-      direction: prev?.key === key && prev?.direction === 'asc' ? 'desc' : 'asc'
+      direction:
+        prev?.key === key && prev?.direction === "asc" ? "desc" : "asc",
     }));
   };
 
   // Define table columns
   const columns: DataTableColumn<Product>[] = [
     {
-      key: 'name',
-      title: 'Product',
+      key: "name",
+      title: "Product",
       sortable: true,
       render: (value, row) => (
         <div className="flex items-center space-x-3">
@@ -148,27 +169,30 @@ export default function Products() {
       ),
     },
     {
-      key: 'sku',
-      title: 'SKU',
+      key: "sku",
+      title: "SKU",
       sortable: true,
       className: "hidden md:table-cell",
-      render: (value) => value || <span className="text-muted-foreground">-</span>,
+      render: (value) =>
+        value || <span className="text-muted-foreground">-</span>,
     },
     {
-      key: 'price',
-      title: 'Price',
+      key: "price",
+      title: "Price",
       sortable: true,
-      render: (value) => <span className="font-medium">{formatCurrency(value)}</span>,
+      render: (value) => (
+        <span className="font-medium">{formatCurrency(value)}</span>
+      ),
     },
     {
-      key: 'cost',
-      title: 'Cost',
+      key: "cost",
+      title: "Cost",
       sortable: true,
       render: (value) => formatCurrency(value),
     },
     {
-      key: 'margin',
-      title: 'Margin',
+      key: "margin",
+      title: "Margin",
       sortable: true,
       render: (value) => (
         <Badge variant={value > 0 ? "default" : "destructive"}>
@@ -199,10 +223,6 @@ export default function Products() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Package className="h-8 w-8" />
-            Products
-          </h1>
           <p className="text-muted-foreground">
             Manage your product catalog and pricing
           </p>
@@ -224,7 +244,8 @@ export default function Products() {
         onExportClick={() => {
           toast({
             title: "Export",
-            description: "Product export functionality will be implemented soon",
+            description:
+              "Product export functionality will be implemented soon",
           });
         }}
         refreshable
